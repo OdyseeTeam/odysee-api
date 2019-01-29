@@ -3,8 +3,10 @@ package proxy
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/lbryio/lbryweb.go/config"
+	"github.com/lbryio/lbryweb.go/monitor"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -24,25 +26,35 @@ Example:
 */
 func ForwardCall(clientQuery []byte) ([]byte, error) {
 	var parsedClientQuery jsonrpc.RPCRequest
+	var processedResponse *jsonrpc.RPCResponse
+
 	err := json.Unmarshal(clientQuery, &parsedClientQuery)
 	if err != nil {
 		return nil, fmt.Errorf("client json parse error: %v", err)
 	}
+
 	finalQuery, err := processQuery(&parsedClientQuery)
 	if err != nil {
 		return nil, err
 	}
 
-	rpcClient := jsonrpc.NewClient(DaemonURL)
+	rpcClient := jsonrpc.NewClient(config.Settings.GetString("Lbrynet"))
+	queryStartTime := time.Now()
 	callResult, err := rpcClient.CallRaw(finalQuery)
+	if err != nil {
+		return nil, err
+	}
+	if callResult.Error == nil {
+		processedResponse, err = processResponse(&parsedClientQuery, callResult)
+		if err != nil {
+			return nil, err
+		}
+		monitor.LogSuccessfulQuery(parsedClientQuery.Method, time.Now().Sub(queryStartTime).Seconds())
+	} else {
+		processedResponse = callResult
+		monitor.LogFailedQuery(parsedClientQuery.Method, parsedClientQuery.Params, callResult.Error)
+	}
 
-	if err != nil {
-		return nil, err
-	}
-	processedResponse, err := processResponse(&parsedClientQuery, callResult)
-	if err != nil {
-		return nil, err
-	}
 	serializerdResponse, err := json.Marshal(processedResponse)
 	if err != nil {
 		return nil, err

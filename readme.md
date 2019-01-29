@@ -2,26 +2,51 @@
 
 The LBRY experience, in the comfort of your own browser.
 
+Active development is in progress, expect failing tests and breaking changes.
 
-## Install
+## Running with Docker (easy)
 
-Run `./build.sh`.
+Make sure you have Docker and docker-compose installed.
 
+Then run:
 
-## Usage
+```
+docker-compose up app
+```
 
-Run using `./lbryweb serve`, then open `http://localhost:8080` in your browser.  
+_Warning: this will pull and launch lbrynet image, which lbryweb requires to operate_
 
+After everything is done launching, open `http://localhost:8080` in your browser.
 
-## Running from Source (for devs)
+#### If you would like to run off the source
+
+You're still going to need lbrynet, so prefix your `go` commangs with docker stuff.
+
+```
+docker-compose up lbrynet --no-start
+docker-compose start lbrynet && export LW_LBRYNET=http://localhost:5579/
+go mod download
+go generate ./...
+make embed
+LW_DEBUG=1 go run *.go serve
+```
+
+## Testing
+
+Make sure you got `lbrynet` container running and run `make test`.
+
+## Modifying and building a Docker image
 
 First, make sure you have Go 1.11+
 
 - Ubuntu: https://launchpad.net/~longsleep/+archive/ubuntu/golang-backports or https://github.com/golang/go/wiki/Ubuntu
 - OSX: `brew install go`
- 
-Then, clone this repo and run `./dev.sh`.
 
+Then build the binary, create a docker image locally and run off it:
+
+```
+make image && docker-compose up app
+```
 
 ## Contributing
 

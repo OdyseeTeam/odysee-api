@@ -3,6 +3,8 @@ package proxy
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -11,7 +13,7 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func TestForwardCallHTTPError(t *testing.T) {
+func TestForwardCallWithHTTPError(t *testing.T) {
 	defaultDaemonURL := DaemonURL
 	DaemonURL = "http://localhost:59999"
 	query := jsonrpc.NewRequest("account_balance")
@@ -24,16 +26,46 @@ func TestForwardCallHTTPError(t *testing.T) {
 	DaemonURL = defaultDaemonURL
 }
 
-func TestForwardCallLbrynetError(t *testing.T) {
+func TestForwardCallWithLbrynetError(t *testing.T) {
 	var response jsonrpc.RPCResponse
 	query := jsonrpc.NewRequest("crazy_method")
 	queryBody, _ := json.Marshal(query)
 	rawResponse, err := ForwardCall(queryBody)
 	json.Unmarshal(rawResponse, &response)
 	assert.Nil(t, err)
-	assert.NotNil(t, response)
 	assert.NotNil(t, response.Error)
+	// TODO: Uncomment after lbrynet 0.31 release
+	// assert.Equal(t, "Invalid method requested: crazy_method.", response.Error.Message)
 	assert.Equal(t, "Method Not Found", response.Error.Message)
+}
+
+// A jsonrpc server that responds to every query with an error
+func launchGrumpyServer() {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		response, _ := json.Marshal(jsonrpc.RPCResponse{Error: &jsonrpc.RPCError{Message: "your ways are wrong"}})
+		w.Write(response)
+	})
+	log.Fatal(http.ListenAndServe("127.0.0.1:59999", nil))
+}
+
+func TestForwardCallWithClientError(t *testing.T) {
+	var response jsonrpc.RPCResponse
+
+	defaultDaemonURL := DaemonURL
+	DaemonURL = "http://localhost:59999"
+
+	go launchGrumpyServer()
+
+	query := jsonrpc.NewRequest("get")
+	queryBody, _ := json.Marshal(query)
+	rawResponse, err := ForwardCall(queryBody)
+	json.Unmarshal(rawResponse, &response)
+	assert.Nil(t, err)
+	assert.NotNil(t, response.Error)
+	assert.Equal(t, "your ways are wrong", response.Error.Message)
+
+	DaemonURL = defaultDaemonURL
 }
 
 func TestForwardCall(t *testing.T) {

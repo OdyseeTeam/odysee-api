@@ -1,0 +1,49 @@
+version: '3.2'
+
+services:
+  orchstr8:
+      image: sayplastic/lbry-orchstr8
+      ports:
+        - "50002:50002"
+        - "7954:7954"
+      entrypoint: "/usr/local/bin/orchstr8 start --blockchain 0.0.0.0 --spv 0.0.0.0"
+  test_lbrynet:
+    image: sayplastic/lbrynet:0.30.5
+    ports:
+      - "5479:5279"
+    volumes:
+    - type: bind
+      source: test_storage
+      target: /storage
+    environment:
+      LBRY_DOCKER_CONFIG: /conf/test_daemon_settings.yml
+    # depends_on:
+    #   - orchstr8
+  lbrynet:
+    image: sayplastic/lbrynet:0.30.5
+    ports:
+      - "5579:5279"
+    volumes:
+    - type: bind
+      source: storage
+      target: /storage
+  app:
+    image: sayplastic/lbryweb-go:v0.0.1
+    ports:
+      - "8080:80"
+    volumes:
+    - type: bind
+      source: storage
+      target: /storage
+    - type: bind
+      source: static
+      target: /static
+    environment:
+      LW_LBRYNET: http://lbrynet:5279/
+    depends_on:
+      - lbrynet
+
+volumes:
+  storage:
+  test_storage:
+  static:
