@@ -9,26 +9,11 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
-      - save_cache:
-          key: go-mod-cache-{{ checksum "go.sum" }}
-          paths:
-            - /go/pkg/mod
       - run: make test
-  build:
-    docker:
-      - image: circleci/golang:1.11
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - go-mod-cache-{{ checksum "go.sum" }}
-      - run: curl -sL https://git.io/goreleaser | bash
       - save_cache:
           key: go-mod-cache-{{ checksum "go.sum" }}
           paths:
             - /go/pkg/mod
-      - run: make snapshot
-      - run: make image
   release:
     docker:
       - image: circleci/golang:1.11
@@ -38,17 +23,12 @@ jobs:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
       - run: curl -sL https://git.io/goreleaser | bash
-      - save_cache:
-          key: go-mod-cache-{{ checksum "go.sum" }}
-          paths:
-            - /go/pkg/mod
-      - run: make release
+      - run: make image
 workflows:
   version: 2
-  test_and_build:
+  test:
     jobs:
       - test
-      - build
   release:
     jobs:
       - release:
