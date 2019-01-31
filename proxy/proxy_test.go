@@ -14,16 +14,16 @@ import (
 )
 
 func TestForwardCallWithHTTPError(t *testing.T) {
-	defaultDaemonURL := DaemonURL
-	DaemonURL = "http://localhost:59999"
+	defaultDaemonURL := config.Settings.GetString("Lbrynet")
+	config.Settings.Set("Lbrynet", "http://localhost:59999")
 	query := jsonrpc.NewRequest("account_balance")
 	queryBody, _ := json.Marshal(query)
 	response, err := ForwardCall(queryBody)
 	assert.Nil(t, response)
 	assert.NotNil(t, err)
-	assert.True(t, strings.HasPrefix(err.Error(), "rpc call account_balance() on http://localhost:59999"))
-	assert.True(t, strings.HasSuffix(err.Error(), "connect: connection refused"))
-	DaemonURL = defaultDaemonURL
+	assert.True(t, strings.HasPrefix(err.Error(), "rpc call account_balance() on http://localhost:59999"), err.Error())
+	assert.True(t, strings.HasSuffix(err.Error(), "connect: connection refused"), err.Error())
+	config.Settings.Set("Lbrynet", defaultDaemonURL)
 }
 
 func TestForwardCallWithLbrynetError(t *testing.T) {
@@ -34,9 +34,7 @@ func TestForwardCallWithLbrynetError(t *testing.T) {
 	json.Unmarshal(rawResponse, &response)
 	assert.Nil(t, err)
 	assert.NotNil(t, response.Error)
-	// TODO: Uncomment after lbrynet 0.31 release
-	// assert.Equal(t, "Invalid method requested: crazy_method.", response.Error.Message)
-	assert.Equal(t, "Method Not Found", response.Error.Message)
+	assert.Equal(t, "Invalid method requested: crazy_method.", response.Error.Message)
 }
 
 // A jsonrpc server that responds to every query with an error
@@ -52,8 +50,8 @@ func launchGrumpyServer() {
 func TestForwardCallWithClientError(t *testing.T) {
 	var response jsonrpc.RPCResponse
 
-	defaultDaemonURL := DaemonURL
-	DaemonURL = "http://localhost:59999"
+	defaultDaemonURL := config.Settings.GetString("Lbrynet")
+	config.Settings.Set("Lbrynet", "http://localhost:59999")
 
 	go launchGrumpyServer()
 
@@ -65,7 +63,7 @@ func TestForwardCallWithClientError(t *testing.T) {
 	assert.NotNil(t, response.Error)
 	assert.Equal(t, "your ways are wrong", response.Error.Message)
 
-	DaemonURL = defaultDaemonURL
+	config.Settings.Set("Lbrynet", defaultDaemonURL)
 }
 
 func TestForwardCall(t *testing.T) {
@@ -91,9 +89,6 @@ func TestForwardCall(t *testing.T) {
 		t.Errorf("daemon unexpectedly errored: %v", response.Error.Message)
 	} else if response.Result != "0.0" {
 		t.Errorf("unexpected result from daemon: %q", response.Result)
-	}
-	if response.ID != 123 {
-		t.Errorf("daemon response ID mismatch: %v != 123", response.ID)
 	}
 
 	query = jsonrpc.NewRequest("get", map[string]string{"uri": "what"})

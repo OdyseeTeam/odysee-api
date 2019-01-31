@@ -34,9 +34,9 @@ func LogSuccessfulQuery(method string, time float64) {
 // LogFailedQuery takes a method name, query params, response error object and logs it
 func LogFailedQuery(method string, query interface{}, error interface{}) {
 	Logger.WithFields(log.Fields{
-		"method": method,
-		"query":  query,
-		"error":  error,
+		"method":   method,
+		"query":    query,
+		"response": error,
 	}).Error("server responded with error")
 }
 

@@ -10,9 +10,6 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-// DaemonURL is the URL of lbrynet json-rpc endpoint
-var DaemonURL = "http://localhost:5479"
-
 /*
 ForwardCall takes a raw client request, passes it over to the daemon and returns daemon response.
 
