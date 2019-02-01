@@ -9,7 +9,7 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
-      - run: make circleci_test
+      - run: make test_circleci
       - save_cache:
           key: go-mod-cache-{{ checksum "go.sum" }}
           paths:
@@ -22,7 +22,7 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
-      - run: make circleci_test
+      - run: make test_circleci
       - run: curl -sL https://git.io/goreleaser | bash
       - run: make image
 workflows:
