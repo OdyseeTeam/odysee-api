@@ -30,9 +30,6 @@ func (release *githubRelease) download(zipFile *os.File) (*os.File, error) {
 	defer zipFileResponse.Body.Close()
 
 	_, err = io.Copy(zipFile, zipFileResponse.Body)
-	if err != nil {
-		return zipFile, err
-	}
 	return zipFile, nil
 }
 

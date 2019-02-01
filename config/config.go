@@ -11,8 +11,12 @@ import (
 // Settings stores project settings such as download paths, host prefix for URLs and so on
 var Settings = viper.New()
 
+func init() {
+	read()
+}
+
 // Read parses `lbryweb.yml`
-func Read() {
+func read() {
 	Settings.SetEnvPrefix("LW")
 	Settings.BindEnv("Debug")
 	Settings.SetDefault("Debug", false)
@@ -45,8 +49,4 @@ func ProjectRoot() string {
 		panic(err)
 	}
 	return filepath.Dir(ex)
-}
-
-func init() {
-	Read()
 }

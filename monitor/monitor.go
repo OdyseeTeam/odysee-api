@@ -11,9 +11,12 @@ import (
 
 var Logger = log.New()
 
-func init() {
+// SetupLogging initializes and sets a few parameters for the logging subsystem
+func SetupLogging() {
 	log.SetLevel(log.InfoLevel)
+	Logger.SetLevel(log.InfoLevel)
 	log.AddHook(logrus_stack.StandardHook())
+	Logger.AddHook(logrus_stack.StandardHook())
 	if config.IsProduction() {
 		log.SetFormatter(&log.JSONFormatter{})
 		Logger.SetFormatter(&log.JSONFormatter{})
@@ -42,16 +45,16 @@ func LogFailedQuery(method string, query interface{}, error interface{}) {
 
 const responseSnippetLen = 250.
 
-// LoggingWriter mimics http.ResponseWriter but stores a snippet of response, status code
+// loggingWriter mimics http.ResponseWriter but stores a snippet of response, status code
 // and response size for easier logging
-type LoggingWriter struct {
+type loggingWriter struct {
 	http.ResponseWriter
 	Status          int
 	ResponseSnippet string
 	ResponseSize    int
 }
 
-func (w *LoggingWriter) Write(p []byte) (int, error) {
+func (w *loggingWriter) Write(p []byte) (int, error) {
 	if w.ResponseSnippet == "" {
 		w.ResponseSnippet = string(p[:int(math.Min(float64(len(p)), responseSnippetLen))])
 	}
@@ -59,18 +62,18 @@ func (w *LoggingWriter) Write(p []byte) (int, error) {
 	return w.ResponseWriter.Write(p)
 }
 
-func (w *LoggingWriter) WriteHeader(status int) {
+func (w *loggingWriter) WriteHeader(status int) {
 	w.Status = status
 	w.ResponseWriter.WriteHeader(status)
 }
 
-func (w *LoggingWriter) IsSuccess() bool {
+func (w *loggingWriter) IsSuccess() bool {
 	return w.Status <= http.StatusBadRequest
 }
 
 func RequestLoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		loggingWriter := &LoggingWriter{ResponseWriter: writer}
+		loggingWriter := &loggingWriter{ResponseWriter: writer}
 		next.ServeHTTP(loggingWriter, request)
 		fields := log.Fields{
 			"url":    request.URL.Path,

@@ -9,6 +9,7 @@ import (
 	// "github.com/lbryio/lbryweb.go/assets"
 
 	"github.com/lbryio/lbryweb.go/config"
+	"github.com/lbryio/lbryweb.go/monitor"
 	"github.com/lbryio/lbryweb.go/server"
 	"github.com/lbryio/lbryweb.go/updater"
 	log "github.com/sirupsen/logrus"
@@ -22,6 +23,8 @@ var (
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
+
+	monitor.SetupLogging()
 
 	// this is a *client-side* timeout (for when we make http requests, not when we serve them)
 	//https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
