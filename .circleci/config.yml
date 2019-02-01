@@ -22,6 +22,7 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
+      - run: make test
       - run: curl -sL https://git.io/goreleaser | bash
       - run: make image
 workflows:
@@ -37,5 +38,3 @@ workflows:
               ignore: /.*/
             tags:
               only: /v[0-9]+(\.[0-9]+)*(-.*)*/
-          requires:
-            - test
