@@ -11,6 +11,11 @@ prepare_test:
 test:
 	go test ./...
 
+.PHONY: test_circleci
+test_circleci:
+	scripts/wait_for_wallet.sh http://lbrynet:5479/
+	go test ./...
+
 release:
 	goreleaser --rm-dist
 
