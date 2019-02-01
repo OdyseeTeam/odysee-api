@@ -13,7 +13,7 @@ test:
 
 .PHONY: test_circleci
 test_circleci:
-	scripts/wait_for_wallet.sh http://lbrynet:5479/
+	scripts/wait_for_wallet.sh http://localhost:5479/
 	go test ./...
 
 release:
