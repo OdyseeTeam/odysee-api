@@ -1,0 +1,42 @@
+version: 2
+jobs:
+  test:
+    docker:
+      - image: circleci/golang:1.11
+      - image: sayplastic/lbrynet:0.30.5
+    environment:
+      LW_LBRYNET: http://localhost:5279/
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - go-mod-cache-{{ checksum "go.sum" }}
+      - run: make test_circleci
+      - save_cache:
+          key: go-mod-cache-{{ checksum "go.sum" }}
+          paths:
+            - /go/pkg/mod
+  release:
+    docker:
+      - image: circleci/golang:1.11
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - go-mod-cache-{{ checksum "go.sum" }}
+      - run: make test_circleci
+      - run: curl -sL https://git.io/goreleaser | bash
+      - run: make image
+workflows:
+  version: 2
+  test:
+    jobs:
+      - test
+  release:
+    jobs:
+      - release:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /v[0-9]+(\.[0-9]+)*(-.*)*/

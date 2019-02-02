@@ -1,2 +1,6 @@
+.idea/
 /lbryweb
 /assets/bindata.go
+/assets/static/app
+/dist/
+**/rice-box.go
