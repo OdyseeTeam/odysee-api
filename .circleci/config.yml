@@ -22,7 +22,9 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
+      - run: make embed
       - run: GOARCH=amd64 GOOS=linux go build -o dist/linux_amd64/lbryweb main.go
+      - setup_remote_docker
       - run:
           name: Build Docker image
           command: make image
@@ -34,6 +36,7 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
+      - setup_remote_docker
       - run: curl -sL https://git.io/goreleaser | bash
       - run: make image
   publish-image:
