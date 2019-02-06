@@ -45,6 +45,11 @@ jobs:
     docker:
       - image: circleci/buildpack-deps:stretch
     steps:
+      - checkout
+      - run: go get ./...
+      - run: go get github.com/GeertJohan/go.rice/rice
+      - run: make embed
+      - run: GOARCH=amd64 GOOS=linux go build -o dist/linux_amd64/lbryweb main.go
       - setup_remote_docker
       - run:
           name: Publish Docker image to Docker Hub
@@ -60,15 +65,9 @@ workflows:
   deploy-snapshot:
     jobs:
       - test
-      - snapshot:
-          requires:
-            - test
-          filters:
-            branches:
-              only: master
       - publish-image:
           requires:
-            - snapshot
+            - test
           filters:
             branches:
               only: master
