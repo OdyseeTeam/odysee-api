@@ -4,8 +4,6 @@ jobs:
     docker:
       - image: circleci/golang:1.11
       - image: lbryweb/lbrynet:latest
-    environment:
-      LW_LBRYNET: http://localhost:5279/
     steps:
       - checkout
       - restore_cache:
@@ -24,7 +22,6 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
-      - run: make test_circleci
       - run: curl -sL https://git.io/goreleaser | bash
       - run: make snapshot
       - run:
@@ -38,7 +35,6 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
-      - run: make test_circleci
       - run: curl -sL https://git.io/goreleaser | bash
       - run: make image
   publish-image:
