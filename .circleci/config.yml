@@ -22,8 +22,7 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
-      - run: curl -sL https://git.io/goreleaser | bash
-      - run: make snapshot
+      - run: GOARCH=amd64 GOOS=linux go build -o dist/linux_amd64/lbryweb main.go
       - run:
           name: Build Docker image
           command: make image
@@ -59,6 +58,9 @@ workflows:
       - snapshot:
           requires:
             - test
+          filters:
+            branches:
+              only: master
       - publish-image:
           requires:
             - snapshot
@@ -67,7 +69,12 @@ workflows:
               only: master
   release:
     jobs:
-      - release
+      - release:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /v[0-9]+(\.[0-9]+)*(-.*)*/
       - publish-image:
           filters:
             branches:
