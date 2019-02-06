@@ -22,6 +22,7 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
+      - run: go get ./...
       - run: make embed
       - run: GOARCH=amd64 GOOS=linux go build -o dist/linux_amd64/lbryweb main.go
       - setup_remote_docker
