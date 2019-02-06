@@ -20,7 +20,7 @@ services:
     # depends_on:
     #   - orchstr8
   lbrynet:
-    image: sayplastic/lbrynet:latest
+    image: lbryweb/lbrynet:latest
     ports:
       - "5579:5279"
     volumes:
@@ -35,7 +35,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
   app:
-    image: sayplastic/lbryweb-go:latest
+    image: lbryweb/lbryweb-go:latest
     ports:
       - "8080:8080"
     volumes:

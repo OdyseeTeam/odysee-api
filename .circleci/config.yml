@@ -3,7 +3,7 @@ jobs:
   test:
     docker:
       - image: circleci/golang:1.11
-      - image: sayplastic/lbrynet:0.30.5
+      - image: lbryweb/lbrynet:latest
     environment:
       LW_LBRYNET: http://localhost:5279/
     steps:
@@ -16,6 +16,20 @@ jobs:
           key: go-mod-cache-{{ checksum "go.sum" }}
           paths:
             - /go/pkg/mod
+  snapshot:
+    docker:
+      - image: circleci/golang:1.11
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - go-mod-cache-{{ checksum "go.sum" }}
+      - run: make test_circleci
+      - run: curl -sL https://git.io/goreleaser | bash
+      - run: make snapshot
+      - run:
+          name: Build Docker image
+          command: make image
   release:
     docker:
       - image: circleci/golang:1.11
@@ -27,11 +41,40 @@ jobs:
       - run: make test_circleci
       - run: curl -sL https://git.io/goreleaser | bash
       - run: make image
+  publish-image:
+    docker:
+      - image: circleci/buildpack-deps:stretch
+    steps:
+      - setup_remote_docker
+      - run:
+          name: Publish Docker image to Docker Hub
+          command: |
+            echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+            make publish_image
+
 workflows:
   version: 2
   test:
     jobs:
       - test
+  deploy-snapshot:
+    jobs:
+      - test:
+          filters:
+            branches:
+              only: master
+      - snapshot:
+          requires:
+            - test
+          filters:
+            branches:
+              only: master
+      - publish-image:
+          requires:
+            - snapshot
+          filters:
+            branches:
+              only: master
   release:
     jobs:
       - release:
@@ -40,3 +83,11 @@ workflows:
               ignore: /.*/
             tags:
               only: /v[0-9]+(\.[0-9]+)*(-.*)*/
+      - publish-image:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /v[0-9]+(\.[0-9]+)*(-.*)*/
+          requires:
+            - release

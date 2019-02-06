@@ -23,8 +23,12 @@ snapshot:
 	goreleaser --snapshot --rm-dist
 
 .PHONY: image
-image: snapshot
-	docker build -t sayplastic/lbryweb-go:$(VERSION) .
+image:
+	docker build -t lbryweb/lbryweb-go:$(VERSION) -t lbryweb/lbryweb-go:latest .
+
+.PHONY: publish_image
+publish_image:
+	docker push lbryweb/lbryweb-go
 
 embed:
 	rice embed-go -i ./routes
