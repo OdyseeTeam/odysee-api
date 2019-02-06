@@ -59,16 +59,10 @@ workflows:
       - test
   deploy-snapshot:
     jobs:
-      - test:
-          filters:
-            branches:
-              only: master
+      - test
       - snapshot:
           requires:
             - test
-          filters:
-            branches:
-              only: master
       - publish-image:
           requires:
             - snapshot
@@ -77,12 +71,7 @@ workflows:
               only: master
   release:
     jobs:
-      - release:
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /v[0-9]+(\.[0-9]+)*(-.*)*/
+      - release
       - publish-image:
           filters:
             branches:
