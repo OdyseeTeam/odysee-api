@@ -49,7 +49,7 @@ jobs:
       - run: go get ./...
       - run: go get github.com/GeertJohan/go.rice/rice
       - run: make embed
-      - run: GOARCH=amd64 GOOS=linux go build -o dist/linux_amd64/lbryweb main.go
+      - run: CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -a -o dist/linux_amd64/lbryweb .
       - setup_remote_docker
       - run:
           name: Build Docker image
