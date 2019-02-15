@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lbryio/lbry.go/errors"
-	ljsonrpc "github.com/lbryio/lbry.go/jsonrpc"
+	"github.com/lbryio/lbry.go/extras/errors"
+	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
 	lbryschema "github.com/lbryio/types/go"
 	"github.com/mitchellh/mapstructure"
 	"github.com/shopspring/decimal"
