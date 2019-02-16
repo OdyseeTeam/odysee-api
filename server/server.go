@@ -38,8 +38,9 @@ func Serve() {
 	// api.ResponseHeaders = hs
 
 	router := mux.NewRouter()
-	router.HandleFunc("/api/proxy", routes.Proxy)
 	router.HandleFunc("/", routes.Index)
+	router.HandleFunc("/api/proxy", routes.Proxy)
+	router.HandleFunc("/content/uris/{uri}", routes.ContentByURI)
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
 	// httpServeMux.Handle("/", http.FileServer(&assetfs.AssetFS{Asset: assets.Asset, AssetDir: assets.AssetDir, AssetInfo: assets.AssetInfo, Prefix: "assets"}))
 	router.Use(monitor.RequestLoggingMiddleware)
