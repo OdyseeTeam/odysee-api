@@ -95,32 +95,39 @@ func TestForwardCall(t *testing.T) {
 	query = jsonrpc.NewRequest("resolve", map[string]string{"uri": streamURI})
 	queryBody, _ = json.Marshal(query)
 	rawResponse, err = ForwardCall(queryBody)
-	json.Unmarshal(rawResponse, &response)
 	if err != nil {
 		t.Errorf("failed with an unexpected error: %v", err)
+		return
 	} else if response.Error != nil {
 		t.Errorf("daemon errored: %v", response.Error.Message)
+		return
 	}
 
 	var resolveResponse *ljsonrpc.ResolveResponse
+	json.Unmarshal(rawResponse, &response)
 	response.GetObject(&resolveResponse)
 	outpoint := fmt.Sprintf("%v:%v", (*resolveResponse)[streamURI].Claim.Txid, 0)
+
 	query = jsonrpc.NewRequest("file_list", map[string]string{"outpoint": outpoint})
 	queryBody, _ = json.Marshal(query)
 	rawResponse, err = ForwardCall(queryBody)
-	json.Unmarshal(rawResponse, &response)
+	if err != nil {
+		t.Errorf("failed with an unexpected error: %v", err)
+		return
+	}
 
-	var resultArray []map[string]interface{}
-	response.GetObject(&resultArray)
-	assert.Nil(t, err)
+	var fileListResponse *ljsonrpc.FileListResponse
+	json.Unmarshal(rawResponse, &response)
 	assert.Nil(t, response.Error)
-	if len(resultArray) == 0 {
-		t.Errorf("not enough results, daemon responded with %v", response.Result)
+	response.GetObject(&fileListResponse)
+
+	if len(*fileListResponse) == 0 {
+		t.Errorf("not enough results, daemon responded with %v", fileListResponse)
 		return
 	}
 
 	expectedPath := fmt.Sprintf(
 		"%s%s/%s/%s/%s", config.Settings.GetString("BaseContentURL"),
-		"claims", "what", "6769855a9aa43b67086f9ff3c1a5bacb5698a27a", resultArray[0]["file_name"])
-	assert.Equal(t, resultArray[0]["download_path"], expectedPath)
+		"claims", "what", "6769855a9aa43b67086f9ff3c1a5bacb5698a27a", (*fileListResponse)[0].FileName)
+	assert.Equal(t, (*fileListResponse)[0].DownloadPath, expectedPath)
 }
