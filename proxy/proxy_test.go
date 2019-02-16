@@ -112,7 +112,7 @@ func TestForwardCall(t *testing.T) {
 	queryBody, _ = json.Marshal(query)
 	rawResponse, err = ForwardCall(queryBody)
 	if err != nil {
-		t.Errorf("failed with an unexpected error: %v", err)
+		t.Errorf("file_list failed with an unexpected error: %v", err)
 		return
 	}
 

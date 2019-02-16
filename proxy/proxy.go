@@ -115,7 +115,7 @@ func fileListResponseProcessor(query *jsonrpc.RPCRequest, response *jsonrpc.RPCR
 	}
 
 	if len(resultArray) == 0 {
-		return response, errors.Err("server responded with %v", response)
+		return response, errors.Err("file_list response is empty: %v", resultArray)
 	}
 	resultArray[0]["download_path"] = fmt.Sprintf(
 		"%sclaims/%s/%s/%s",
