@@ -46,13 +46,30 @@ func TestReflectedStream_prepareWriter(t *testing.T) {
 
 func Test_parseRange(t *testing.T) {
 	var start, end int64
+
 	start, end = parseRange("range=0-111111")
-	assert.Equal(t, start, int64(0))
-	assert.Equal(t, end, int64(0))
+	assert.EqualValues(t, 0, start)
+	assert.EqualValues(t, 0, end)
+
+	start, end = parseRange("range=")
+	assert.EqualValues(t, 0, start)
+	assert.EqualValues(t, 0, end)
+
+	start, end = parseRange("")
+	assert.EqualValues(t, 0, start)
+	assert.EqualValues(t, 0, end)
+
+	start, end = parseRange("bytes-")
+	assert.EqualValues(t, 0, start)
+	assert.EqualValues(t, 0, end)
+
+	start, end = parseRange("bytes=124-1")
+	assert.EqualValues(t, 0, start)
+	assert.EqualValues(t, 0, end)
 
 	start, end = parseRange("bytes=15-124")
-	assert.Equal(t, start, int64(15))
-	assert.Equal(t, end, int64(124))
+	assert.Equal(t, int64(15), start)
+	assert.Equal(t, int64(124), end)
 }
 
 func TestPlayURI(t *testing.T) {

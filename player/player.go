@@ -75,6 +75,10 @@ func parseRange(header string) (int64, int64) {
 	if end < 0 {
 		end = 0
 	}
+	if start > end {
+		start = 0
+		end = 0
+	}
 	return start, end
 }
 
