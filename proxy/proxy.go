@@ -109,13 +109,15 @@ func fileListResponseProcessor(query *jsonrpc.RPCRequest, response *jsonrpc.RPCR
 	var resultArray []map[string]interface{}
 	response.GetObject(&resultArray)
 
-	queryParams, err := getQueryParams(query)
 	if err != nil {
 		return response, err
 	}
 
 	resultArray[0]["download_path"] = fmt.Sprintf(
-		"%soutpoints/%s/%s", config.Settings.GetString("BaseContentURL"), queryParams["outpoint"], resultArray[0]["file_name"])
+		"%sclaims/%s/%s/%s",
+		config.Settings.GetString("BaseContentURL"),
+		resultArray[0]["claim_name"], resultArray[0]["claim_id"],
+		resultArray[0]["file_name"])
 	response.Result = resultArray
 	return response, nil
 }

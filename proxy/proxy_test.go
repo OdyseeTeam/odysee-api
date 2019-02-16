@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
 	"github.com/lbryio/lbryweb.go/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/ybbus/jsonrpc"
@@ -71,7 +72,6 @@ func TestForwardCall(t *testing.T) {
 	var query *jsonrpc.RPCRequest
 	var response jsonrpc.RPCResponse
 	var rawResponse []byte
-	var result map[string]interface{}
 	var queryBody []byte
 
 	_, err = ForwardCall([]byte("yo"))
@@ -91,7 +91,8 @@ func TestForwardCall(t *testing.T) {
 		t.Errorf("unexpected result from daemon: %q", response.Result)
 	}
 
-	query = jsonrpc.NewRequest("get", map[string]string{"uri": "what"})
+	streamURI := "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
+	query = jsonrpc.NewRequest("resolve", map[string]string{"uri": streamURI})
 	queryBody, _ = json.Marshal(query)
 	rawResponse, err = ForwardCall(queryBody)
 	json.Unmarshal(rawResponse, &response)
@@ -101,16 +102,14 @@ func TestForwardCall(t *testing.T) {
 		t.Errorf("daemon errored: %v", response.Error.Message)
 	}
 
-	response.GetObject(&result)
-	expectedPath := fmt.Sprintf(
-		"%s%s/%s", config.Settings.GetString("BaseContentURL"), "what", result["outpoint"])
-	assert.Equal(t, expectedPath, result["download_path"])
-
-	outpoint := result["outpoint"]
-	query = jsonrpc.NewRequest("file_list", map[string]string{"outpoint": outpoint.(string)})
+	var resolveResponse *ljsonrpc.ResolveResponse
+	response.GetObject(&resolveResponse)
+	outpoint := fmt.Sprintf("%v:%v", (*resolveResponse)[streamURI].Claim.Txid, 0)
+	query = jsonrpc.NewRequest("file_list", map[string]string{"outpoint": outpoint})
 	queryBody, _ = json.Marshal(query)
 	rawResponse, err = ForwardCall(queryBody)
 	json.Unmarshal(rawResponse, &response)
+
 	var resultArray []map[string]interface{}
 	response.GetObject(&resultArray)
 	assert.Nil(t, err)
@@ -120,10 +119,8 @@ func TestForwardCall(t *testing.T) {
 		return
 	}
 
-	expectedPath = fmt.Sprintf(
-		"%s%s/%s/%s", config.Settings.GetString("BaseContentURL"), "outpoints",
-		outpoint, resultArray[0]["file_name"])
-	if resultArray[0]["download_path"] != expectedPath {
-		t.Errorf("expected result.0.download_path to be %v but got %v", expectedPath, resultArray[0]["download_path"])
-	}
+	expectedPath := fmt.Sprintf(
+		"%s%s/%s/%s/%s", config.Settings.GetString("BaseContentURL"),
+		"claims", "what", "6769855a9aa43b67086f9ff3c1a5bacb5698a27a", resultArray[0]["file_name"])
+	assert.Equal(t, resultArray[0]["download_path"], expectedPath)
 }
