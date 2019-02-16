@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lbryio/lbry.go/extras/errors"
 	"github.com/lbryio/lbryweb.go/config"
 	"github.com/lbryio/lbryweb.go/monitor"
 	"github.com/ybbus/jsonrpc"
@@ -76,7 +77,7 @@ func processResponse(query *jsonrpc.RPCRequest, response *jsonrpc.RPCResponse) (
 	case "file_list":
 		processedResponse, err = fileListResponseProcessor(query, response)
 	}
-	return processedResponse, nil
+	return processedResponse, err
 }
 
 func getQueryProcessor(query *jsonrpc.RPCRequest) (*jsonrpc.RPCRequest, error) {
@@ -113,6 +114,9 @@ func fileListResponseProcessor(query *jsonrpc.RPCRequest, response *jsonrpc.RPCR
 		return response, err
 	}
 
+	if len(resultArray) == 0 {
+		return response, errors.Err("server responded with %v", response)
+	}
 	resultArray[0]["download_path"] = fmt.Sprintf(
 		"%sclaims/%s/%s/%s",
 		config.Settings.GetString("BaseContentURL"),
