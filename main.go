@@ -41,7 +41,7 @@ func main() {
 		log.Printf("lbryweb %v, commit %v, built at %v", version, commit, date)
 	case "serve":
 		log.Printf("lbryweb %v starting", version)
-		server.Serve()
+		server.ServeUntilInterrupted()
 	case "update_js":
 		updater.GetLatestRelease("sayplastic/lbryweb-js", config.Settings.GetString("StaticDir"))
 	default:
