@@ -1,7 +1,6 @@
 package player
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -44,17 +43,16 @@ type reflectedBlob struct {
 // (use rangeHeader := request.Header.Get("Range"))
 func PlayURI(uri string, rangeHeader string, writer http.ResponseWriter) (err error) {
 	start, end := parseRange(rangeHeader)
-	stream := newReflectedStream(uri)
-	err = stream.resolve()
+	rs, err := newReflectedStream(uri)
 	if err != nil {
 		return err
 	}
-	err = stream.fetchData()
+	err = rs.fetchData()
 	if err != nil {
 		return err
 	}
-	blobStart, blobEnd := stream.prepareWriter(start, end, writer)
-	err = stream.streamBlobs(blobStart, blobEnd, writer)
+	blobStart, blobEnd := rs.prepareWriter(start, end, writer)
+	err = rs.streamBlobs(blobStart, blobEnd, writer)
 	return err
 }
 
@@ -82,8 +80,11 @@ func parseRange(header string) (int64, int64) {
 	return start, end
 }
 
-func newReflectedStream(uri string) *reflectedStream {
-	return &reflectedStream{URI: uri}
+func newReflectedStream(uri string) (rs *reflectedStream, err error) {
+	client := ljsonrpc.NewClient(config.Settings.GetString("Lbrynet"))
+	rs = &reflectedStream{URI: uri}
+	err = rs.resolve(client)
+	return rs, err
 }
 
 func (s *reflectedStream) URL() string {
@@ -92,8 +93,10 @@ func (s *reflectedStream) URL() string {
 
 // resolve gets SD hash from the daemon for a given URI to enable further retrieval of stream content from
 // reflector servers
-func (s *reflectedStream) resolve() error {
-	client := ljsonrpc.NewClient(config.Settings.GetString("Lbrynet"))
+func (s *reflectedStream) resolve(client *ljsonrpc.Client) error {
+	if s.URI == "" {
+		return errors.Err("stream URI is not set")
+	}
 	response, err := client.Resolve(s.URI)
 	if err != nil {
 		return err
@@ -118,14 +121,17 @@ func (s *reflectedStream) fetchData() error {
 		"uri": s.URI,
 		"url": s.URL(),
 	}).Info("requesting stream data")
-	httpRequest, err := http.NewRequest("GET", s.URL(), new(bytes.Buffer))
-	httpClient := &http.Client{}
-	httpResponse, err := httpClient.Do(httpRequest)
+	resp, err := http.Get(s.URL())
+	// httpResponse, err := httpClient.Do(httpRequest)
 	if err != nil {
 		return err
 	}
-	defer httpResponse.Body.Close()
-	err = json.NewDecoder(httpResponse.Body).Decode(&s)
+	defer resp.Body.Close()
+	// body, err := ioutil.ReadAll(resp.Body)
+	err = json.NewDecoder(resp.Body).Decode(&s)
+	// sdb := &stream.SDBlob{}
+	// sdb.FromBlob(body)
+
 	if err != nil {
 		return err
 	}
@@ -192,26 +198,25 @@ func (s *reflectedStream) streamBlobs(blobStart, blobEnd int, writer http.Respon
 		monitor.Logger.WithFields(log.Fields{
 			"url": blob.URL(),
 		}).Info("requesting a blob")
-		httpRequest, err := http.NewRequest("GET", blob.URL(), new(bytes.Buffer))
-		httpClient := &http.Client{}
-		httpResponse, err := httpClient.Do(httpRequest)
+		resp, err := http.Get(blob.URL())
 		if err != nil {
 			return err
 		}
-		defer httpResponse.Body.Close()
-		if httpResponse.StatusCode == http.StatusOK {
-			encryptedBody, err := ioutil.ReadAll(httpResponse.Body)
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			encryptedBody, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
 				return err
 			}
 			blob.encryptedBody = encryptedBody
-			decryptedBody, err := blob.decrypt(s)
+			decryptedBody, err := stream.DecryptBlob(
+				stream.Blob(encryptedBody), s.DecodedKey, blob.DecodedIV)
 			if err != nil {
 				return err
 			}
 			writer.Write(decryptedBody)
 		} else {
-			return errors.Err("server responded with an unexpected status (%v)", httpResponse.Status)
+			return errors.Err("server responded with an unexpected status (%v)", resp.Status)
 		}
 	}
 	return nil

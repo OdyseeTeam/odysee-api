@@ -92,7 +92,7 @@ func TestForwardCall(t *testing.T) {
 	}
 
 	streamURI := "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
-	query = jsonrpc.NewRequest("resolve", map[string]string{"uri": streamURI})
+	query = jsonrpc.NewRequest("resolve", map[string]string{"urls": streamURI})
 	queryBody, _ = json.Marshal(query)
 	rawResponse, err = ForwardCall(queryBody)
 	if err != nil {

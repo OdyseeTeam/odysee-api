@@ -11,29 +11,35 @@ import (
 
 const streamURL = "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
 
-func TestReflectedStream_resolve(t *testing.T) {
-	stream := newReflectedStream(streamURL)
-	err := stream.resolve()
-	assert.Nil(t, err)
+func Test_newReflectedStream(t *testing.T) {
+	rs, err := newReflectedStream(streamURL)
+	if err != nil {
+		t.Fatal(err)
+	}
 	assert.Equal(t,
 		"d5169241150022f996fa7cd6a9a1c421937276a3275eb912790bd07ba7aec1fac5fd45431d226b8fb402691e79aeb24b",
-		string(stream.SDHash))
+		string(rs.SDHash))
 }
+
+func Test_newReflectedStream_emptyURL(t *testing.T) {
+	_, err := newReflectedStream("")
+	assert.NotNil(t, err)
+}
+
 func TestReflectedStream_fetchData(t *testing.T) {
-	stream := newReflectedStream(streamURL)
-	err := stream.resolve()
-	err = stream.fetchData()
+	rs, err := newReflectedStream(streamURL)
+	err = rs.fetchData()
 	assert.Nil(t, err)
-	assert.NotNil(t, stream.SDHash)
-	assert.Equal(t, 0, stream.Blobs[0].Number)
-	assert.Equal(t, 38, stream.Blobs[38].Number)
+	assert.NotNil(t, rs.SDHash)
+	assert.Equal(t, 0, rs.Blobs[0].Number)
+	assert.Equal(t, 38, rs.Blobs[38].Number)
 }
+
 func TestReflectedStream_prepareWriter(t *testing.T) {
-	stream := newReflectedStream(streamURL)
+	rs, _ := newReflectedStream(streamURL)
 	rr := httptest.NewRecorder()
-	stream.resolve()
-	stream.fetchData()
-	blobStart, blobEnd := stream.prepareWriter(5*1024*1024, 15*1024*1024, rr)
+	rs.fetchData()
+	blobStart, blobEnd := rs.prepareWriter(5*1024*1024, 15*1024*1024, rr)
 	response := rr.Result()
 	assert.Equal(t, 2, blobStart)
 	assert.Equal(t, 7, blobEnd)
@@ -88,7 +94,8 @@ func TestPlayURI(t *testing.T) {
 		return
 	}
 	first52, err := hex.DecodeString(
-		"00000018667479706D703432000000006D7034326D7034310000C4EA6D6F6F760000006C6D76686400000000D39A07E8D39A07F2")
+		"00000018667479706D703432000000006D7034326D7034310000" +
+			"C4EA6D6F6F760000006C6D76686400000000D39A07E8D39A07F2")
 	assert.Nil(t, err)
 	assert.Equal(t, first52, responseFirst52)
 }
