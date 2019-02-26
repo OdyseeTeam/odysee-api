@@ -159,7 +159,7 @@ func TestProxy(t *testing.T) {
 	var parsedResponse jsonrpc.RPCResponse
 	resolveResponse := make(ljsonrpc.ResolveResponse)
 
-	query = jsonrpc.NewRequest("resolve", map[string]string{"uri": "what"})
+	query = jsonrpc.NewRequest("resolve", map[string]string{"urls": "what"})
 	queryBody, _ = json.Marshal(query)
 	request, _ := http.NewRequest("POST", "/api/proxy", bytes.NewBuffer(queryBody))
 	rr := httptest.NewRecorder()

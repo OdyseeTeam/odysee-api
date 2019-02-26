@@ -15,13 +15,97 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Serve is the main app entry point that configures and starts a webserver
-func Serve() {
-	staticDir := config.Settings.GetString("StaticDir")
-	port := config.Settings.GetString("Port")
+type Server struct {
+	Config        *ServerConfig
+	Logger        *log.Logger
+	router        *mux.Router
+	httpListener  *http.Server
+	InterruptChan chan os.Signal
+}
 
-	// api.TraceEnabled = meta.Debugging
+type ServerConfig struct {
+	StaticDir string
+	Address   string
+}
 
+// NewConfiguredServer returns a server initialized with settings from global config.
+func NewConfiguredServer() *Server {
+	return &Server{
+		Config: &ServerConfig{
+			StaticDir: config.Settings.GetString("StaticDir"),
+			Address:   config.Settings.GetString("Address"),
+		},
+		Logger:        monitor.Logger,
+		InterruptChan: make(chan os.Signal),
+	}
+}
+
+func (s *Server) configureHTTPListener() *http.Server {
+	return &http.Server{
+		Addr:         s.Config.Address,
+		Handler:      s.router,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
+		// ErrorLog:     logger.Writer,
+	}
+}
+
+func configureRouter(staticDir string) *mux.Router {
+	router := mux.NewRouter()
+
+	router.HandleFunc("/", routes.Index)
+	router.HandleFunc("/api/proxy", routes.Proxy)
+	router.HandleFunc("/content/uris/{uri}", routes.ContentByURI)
+	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
+
+	router.Use(monitor.RequestLoggingMiddleware)
+	return router
+}
+
+// Start starts a http server and returns immediately.
+func (s *Server) Start() error {
+	s.router = configureRouter(s.Config.StaticDir)
+	s.Logger.Printf("serving %v at /static/", s.Config.StaticDir)
+	s.httpListener = s.configureHTTPListener()
+
+	go func() {
+		err := s.httpListener.ListenAndServe()
+		if err != nil {
+			//Normal graceful shutdown error
+			if err.Error() == "http: Server closed" {
+				s.Logger.Info(err)
+			} else {
+				s.Logger.Fatal(err)
+			}
+		}
+	}()
+	s.Logger.Printf("listening on %v", s.Config.Address)
+	return nil
+}
+
+// WaitForShutdown blocks until a shutdown signal is received, then shuts down the http server.
+func (s *Server) WaitForShutdown() {
+	signal.Notify(s.InterruptChan, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT)
+	sig := <-s.InterruptChan
+	s.Logger.Printf("caught a signal (%v), shutting down http server...", sig)
+	err := s.Shutdown()
+	if err != nil {
+		s.Logger.Error("error shutting down server: ", err)
+	} else {
+		s.Logger.Info("http server shut down")
+	}
+}
+
+// Shutdown gracefully shuts down the peer server.
+func (s *Server) Shutdown() error {
+	err := s.httpListener.Shutdown(context.Background())
+	return err
+}
+
+// ServeUntilInterrupted is the main module entry point that configures and starts a webserver,
+// which runs until one of OS shutdown signals are received. The function is blocking.
+func ServeUntilInterrupted() {
 	// hs := make(map[string]string)
 	// hs["Server"] = "lbry.tv" // TODO: change this to whatever it ends up being
 	// hs["Content-Type"] = "application/json; charset=utf-8"
@@ -37,45 +121,10 @@ func Serve() {
 	// }
 	// api.ResponseHeaders = hs
 
-	router := mux.NewRouter()
-	router.HandleFunc("/", routes.Index)
-	router.HandleFunc("/api/proxy", routes.Proxy)
-	router.HandleFunc("/content/uris/{uri}", routes.ContentByURI)
-	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
-	// httpServeMux.Handle("/", http.FileServer(&assetfs.AssetFS{Asset: assets.Asset, AssetDir: assets.AssetDir, AssetInfo: assets.AssetInfo, Prefix: "assets"}))
-	router.Use(monitor.RequestLoggingMiddleware)
-
-	srv := &http.Server{
-		Addr:    ":" + port,
-		Handler: router,
-		//https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
-		//https://blog.cloudflare.com/exposing-go-on-the-internet/
-		ReadTimeout: 5 * time.Second,
-		//WriteTimeout: 10 * time.Second, // cant use this yet, since some of our responses take a long time (e.g. sending emails)
-		IdleTimeout: 120 * time.Second,
-		// ErrorLog:    logger.Writer,
-	}
-
-	go func() {
-		log.Printf("listening on 0.0.0.0:%v", port)
-		err := srv.ListenAndServe()
-		if err != nil {
-			//Normal graceful shutdown error
-			if err.Error() == "http: Server closed" {
-				log.Info(err)
-			} else {
-				log.Fatal(err)
-			}
-		}
-	}()
-
-	//Wait for shutdown signal, then shutdown api server. This will wait for all connections to finish.
-	interruptChan := make(chan os.Signal, 1)
-	signal.Notify(interruptChan, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT)
-	<-interruptChan
-	log.Debug("Shutting down ...")
-	err := srv.Shutdown(context.Background())
+	server := NewConfiguredServer()
+	err := server.Start()
 	if err != nil {
-		log.Error("Error shutting down server: ", err)
+		log.Fatal(err)
 	}
+	server.WaitForShutdown()
 }

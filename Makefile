@@ -9,12 +9,12 @@ prepare_test:
 
 .PHONY: test
 test:
-	go test ./...
+	go test -cover ./...
 
 .PHONY: test_circleci
 test_circleci:
 	scripts/wait_for_wallet.sh
-	go test ./...
+	go test -cover ./...
 
 release:
 	goreleaser --rm-dist

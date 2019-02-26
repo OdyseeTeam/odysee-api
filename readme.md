@@ -4,6 +4,8 @@ The LBRY experience, in the comfort of your own browser.
 
 Active development is in progress, expect failing tests and breaking changes.
 
+[![CircleCI](https://img.shields.io/circleci/project/github/lbryio/lbryweb.go/master.svg)](https://circleci.com/gh/lbryio/lbryweb.go/tree/master) [![Coverage](https://img.shields.io/coveralls/github/lbryio/lbryweb.go.svg)](https://coveralls.io/github/lbryio/lbryweb.go)
+
 ## Running with Docker (easy)
 
 Make sure you have Docker and docker-compose installed.
