@@ -31,8 +31,8 @@ func TestReflectedStream_fetchData(t *testing.T) {
 	err = rs.fetchData()
 	assert.Nil(t, err)
 	assert.NotNil(t, rs.SDHash)
-	assert.Equal(t, 0, rs.Blobs.BlobInfos[0].BlobNum)
-	assert.Equal(t, 38, rs.Blobs.BlobInfos[38].BlobNum)
+	assert.Equal(t, 0, rs.SDBlob.BlobInfos[0].BlobNum)
+	assert.Equal(t, 38, rs.SDBlob.BlobInfos[38].BlobNum)
 }
 
 func TestReflectedStream_prepareWriter(t *testing.T) {

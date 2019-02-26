@@ -24,16 +24,7 @@ type reflectedStream struct {
 	SDHash      []byte
 	Size        int
 	ContentType string
-	Blobs       *stream.SDBlob
-}
-
-type reflectedBlob struct {
-	Hash          string `json:"blob_hash"`
-	Number        int    `json:"blob_num"`
-	IV            string `json:"iv"`
-	DecodedIV     []byte `json:"-"`
-	Length        int    `json:"length"`
-	encryptedBody []byte
+	SDBlob      *stream.SDBlob
 }
 
 // PlayURI downloads and streams LBRY video content located at uri and delimited by rangeHeader
@@ -113,14 +104,12 @@ func (s *reflectedStream) resolve(client *ljsonrpc.Client) error {
 	return nil
 }
 
-// fetchData gets stream data from the reflector and does some blob magic along the way
 func (s *reflectedStream) fetchData() error {
 	if s.SDHash == nil {
 		return errors.Err("No hash set, call `resolve` first")
 	}
 	monitor.Logger.WithFields(log.Fields{
-		"uri": s.URI,
-		"url": s.URL(),
+		"uri": s.URI, "url": s.URL(),
 	}).Info("requesting stream data")
 
 	resp, err := http.Get(s.URL())
@@ -138,19 +127,19 @@ func (s *reflectedStream) fetchData() error {
 	}
 
 	var blobsSizes string
-	for _, b := range sdb.BlobInfos {
-		if b.Length == stream.MaxBlobSize {
-			s.Size += b.Length - 1
+	for _, bi := range sdb.BlobInfos {
+		if bi.Length == stream.MaxBlobSize {
+			s.Size += bi.Length - 1
 		} else {
-			s.Size += b.Length
+			s.Size += bi.Length
 		}
 		if err != nil {
 			return err
 		}
 		if blobsSizes == "" {
-			blobsSizes = fmt.Sprintf("%v", b.Length)
+			blobsSizes = fmt.Sprintf("%v", bi.Length)
 		} else {
-			blobsSizes = fmt.Sprintf("%v+%v", blobsSizes, b.Length)
+			blobsSizes = fmt.Sprintf("%v+%v", blobsSizes, bi.Length)
 		}
 	}
 
@@ -160,6 +149,7 @@ func (s *reflectedStream) fetchData() error {
 	sort.Slice(sdb.BlobInfos, func(i, j int) bool {
 		return sdb.BlobInfos[i].BlobNum < sdb.BlobInfos[j].BlobNum
 	})
+	s.SDBlob = sdb
 
 	monitor.Logger.WithFields(log.Fields{
 		"blobs_number": len(sdb.BlobInfos),
@@ -167,7 +157,6 @@ func (s *reflectedStream) fetchData() error {
 		"stream_size":  s.Size,
 		"uri":          s.URI,
 	}).Info("got stream data")
-	s.Blobs = sdb
 	return nil
 }
 
@@ -194,12 +183,13 @@ func (s *reflectedStream) prepareWriter(startByte, endByte int64, writer http.Re
 }
 
 func (s *reflectedStream) streamBlobs(blobStart, blobEnd int, writer http.ResponseWriter) error {
-	for _, bi := range s.Blobs.BlobInfos[blobStart : blobEnd+1] {
+	for _, bi := range s.SDBlob.BlobInfos[blobStart : blobEnd+1] {
+		url := blobInfoURL(bi)
 		monitor.Logger.WithFields(log.Fields{
-			"url": blobURL(bi),
+			"url": url,
 		}).Info("requesting a blob")
 
-		resp, err := http.Get(blobURL(bi))
+		resp, err := http.Get(url)
 		if err != nil {
 			return err
 		}
@@ -210,7 +200,7 @@ func (s *reflectedStream) streamBlobs(blobStart, blobEnd int, writer http.Respon
 			if err != nil {
 				return err
 			}
-			decryptedBody, err := stream.DecryptBlob(stream.Blob(encryptedBody), s.Blobs.Key, bi.IV)
+			decryptedBody, err := stream.DecryptBlob(stream.Blob(encryptedBody), s.SDBlob.Key, bi.IV)
 			if err != nil {
 				return err
 			}
@@ -222,6 +212,6 @@ func (s *reflectedStream) streamBlobs(blobStart, blobEnd int, writer http.Respon
 	return nil
 }
 
-func blobURL(bi stream.BlobInfo) string {
+func blobInfoURL(bi stream.BlobInfo) string {
 	return reflectorURL + hex.EncodeToString(bi.BlobHash)
 }
