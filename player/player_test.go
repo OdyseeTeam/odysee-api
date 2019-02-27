@@ -35,14 +35,22 @@ func TestReflectedStream_fetchData(t *testing.T) {
 	assert.Equal(t, 38, rs.SDBlob.BlobInfos[38].BlobNum)
 }
 
+func TestReflectedStream_getBlobsRange(t *testing.T) {
+	rs, _ := newReflectedStream(streamURL)
+	rs.fetchData()
+	rs.setRange(5*1024*1024, 15*1024*1024)
+	blobStart, blobEnd := rs.getBlobsRange()
+	assert.Equal(t, 2, blobStart)
+	assert.Equal(t, 7, blobEnd)
+}
+
 func TestReflectedStream_prepareWriter(t *testing.T) {
 	rs, _ := newReflectedStream(streamURL)
 	rr := httptest.NewRecorder()
 	rs.fetchData()
-	blobStart, blobEnd := rs.prepareWriter(5*1024*1024, 15*1024*1024, rr)
+	rs.setRange(5*1024*1024, 15*1024*1024)
+	rs.prepareWriter(rr)
 	response := rr.Result()
-	assert.Equal(t, 2, blobStart)
-	assert.Equal(t, 7, blobEnd)
 	assert.Equal(t, http.StatusPartialContent, response.StatusCode)
 	assert.Equal(t, "bytes", response.Header["Accept-Ranges"][0])
 	assert.Equal(t, "video/mp4", response.Header["Content-Type"][0])

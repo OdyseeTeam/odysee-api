@@ -21,6 +21,8 @@ const reflectorURL = "http://blobs.lbry.io/"
 
 type reflectedStream struct {
 	URI         string
+	StartByte   int64
+	EndByte     int64
 	SDHash      []byte
 	Size        int
 	ContentType string
@@ -30,13 +32,13 @@ type reflectedStream struct {
 // PlayURI downloads and streams LBRY video content located at uri and delimited by rangeHeader
 // (use rangeHeader := request.Header.Get("Range")).
 // Streaming works like this:
-//  1. Resolve stream hash through lbrynet daemon (see `resolve`)
+//  1. Resolve stream hash through lbrynet daemon (see resolve)
 //  2. Retrieve stream details (list of blob hashes and lengths, etc) by the SD hash from the reflector
-//  (see `fetchData`)
-//  3. Calculate which blobs contain the requested stream range
-//  4. Sequentially download, decrypt and stream blobs to the provided writer (`streamBlobs`)
-func PlayURI(uri string, rangeHeader string, writer http.ResponseWriter) (err error) {
-	start, end := parseRange(rangeHeader)
+//  (see fetchData)
+//  3. Calculate which blobs contain the requested stream range (getBlobsRange)
+//	4. Prepare http writer with necessary headers (prepareWriter)
+//  5. Sequentially download, decrypt and stream blobs to the provided writer (streamBlobs)
+func PlayURI(uri string, rangeHeader string, w http.ResponseWriter) (err error) {
 	rs, err := newReflectedStream(uri)
 	if err != nil {
 		return err
@@ -45,8 +47,10 @@ func PlayURI(uri string, rangeHeader string, writer http.ResponseWriter) (err er
 	if err != nil {
 		return err
 	}
-	blobStart, blobEnd := rs.prepareWriter(start, end, writer)
-	err = rs.streamBlobs(blobStart, blobEnd, writer)
+	rs.setRangeFromHeader(rangeHeader)
+	blobStart, blobEnd := rs.getBlobsRange()
+	rs.prepareWriter(w)
+	err = rs.streamBlobs(blobStart, blobEnd, w)
 	return err
 }
 
@@ -160,26 +164,39 @@ func (s *reflectedStream) fetchData() error {
 	return nil
 }
 
-// prepareWriter writes necessary range headers and sets the status, preparing HTTP for partial blob streaming.
-// This should be called before streamBlobs
-func (s *reflectedStream) prepareWriter(startByte, endByte int64, writer http.ResponseWriter) (startBlob, endBlob int) {
+func (s *reflectedStream) setRange(startByte, endByte int64) {
 	if endByte == 0 {
 		endByte = int64(s.Size - 1)
 	}
-	startBlob = int(startByte / (stream.MaxBlobSize - 2))
-	endBlob = int(endByte / (stream.MaxBlobSize - 2))
-	rangeStart := startBlob * (stream.MaxBlobSize - 1)
+	s.StartByte = startByte
+	s.EndByte = endByte
+}
+
+func (s *reflectedStream) setRangeFromHeader(h string) {
+	startByte, endByte := parseRange(h)
+	s.setRange(startByte, endByte)
+}
+
+func (s *reflectedStream) getBlobsRange() (startBlob, endBlob int) {
+	startBlob = int(s.StartByte / (stream.MaxBlobSize - 2))
+	endBlob = int(s.EndByte / (stream.MaxBlobSize - 2))
 	rangeEnd := (endBlob + 1) * (stream.MaxBlobSize - 1)
 	if rangeEnd > s.Size {
 		rangeEnd = s.Size
 	}
+	return startBlob, endBlob
+}
+
+func (s *reflectedStream) prepareWriter(writer http.ResponseWriter) {
+	startBlob, endBlob := s.getBlobsRange()
+	rangeStart := startBlob * (stream.MaxBlobSize - 1)
+	rangeEnd := (endBlob + 1) * (stream.MaxBlobSize - 1)
 	resultingSize := rangeEnd + 1 - rangeStart
 	writer.Header().Set("Content-Type", s.ContentType)
 	writer.Header().Set("Accept-Ranges", "bytes")
 	writer.Header().Set("Content-Length", fmt.Sprintf("%v", resultingSize))
 	writer.Header().Set("Content-Range", fmt.Sprintf("bytes %v-%v/%v", rangeStart, rangeEnd, s.Size))
 	writer.WriteHeader(http.StatusPartialContent)
-	return startBlob, endBlob
 }
 
 func (s *reflectedStream) streamBlobs(blobStart, blobEnd int, writer http.ResponseWriter) error {
