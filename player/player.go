@@ -36,8 +36,8 @@ type reflectedStream struct {
 //  2. Retrieve stream details (list of blob hashes and lengths, etc) by the SD hash from the reflector
 //  (see fetchData)
 //  3. Calculate which blobs contain the requested stream range (getBlobsRange)
-//	4. Prepare http writer with necessary headers (prepareWriter)
-//  5. Sequentially download, decrypt and stream blobs to the provided writer (streamBlobs)
+//	4. Prepare http w with necessary headers (prepareWriter)
+//  5. Sequentially download, decrypt and stream blobs to the provided w (streamBlobs)
 func PlayURI(uri string, rangeHeader string, w http.ResponseWriter) (err error) {
 	rs, err := newReflectedStream(uri)
 	if err != nil {
@@ -187,23 +187,25 @@ func (s *reflectedStream) getBlobsRange() (startBlob, endBlob int) {
 	return startBlob, endBlob
 }
 
-func (s *reflectedStream) prepareWriter(writer http.ResponseWriter) {
+func (s *reflectedStream) prepareWriter(w http.ResponseWriter) {
 	startBlob, endBlob := s.getBlobsRange()
 	rangeStart := startBlob * (stream.MaxBlobSize - 1)
 	rangeEnd := (endBlob + 1) * (stream.MaxBlobSize - 1)
 	resultingSize := rangeEnd + 1 - rangeStart
-	writer.Header().Set("Content-Type", s.ContentType)
-	writer.Header().Set("Accept-Ranges", "bytes")
-	writer.Header().Set("Content-Length", fmt.Sprintf("%v", resultingSize))
-	writer.Header().Set("Content-Range", fmt.Sprintf("bytes %v-%v/%v", rangeStart, rangeEnd, s.Size))
-	writer.WriteHeader(http.StatusPartialContent)
+	w.Header().Set("Content-Type", s.ContentType)
+	w.Header().Set("Accept-Ranges", "bytes")
+	w.Header().Set("Content-Length", fmt.Sprintf("%v", resultingSize))
+	w.Header().Set("Content-Range", fmt.Sprintf("bytes %v-%v/%v", rangeStart, rangeEnd, s.Size))
+	w.WriteHeader(http.StatusPartialContent)
 }
 
-func (s *reflectedStream) streamBlobs(blobStart, blobEnd int, writer http.ResponseWriter) error {
+func (s *reflectedStream) streamBlobs(blobStart, blobEnd int, w http.ResponseWriter) error {
 	for _, bi := range s.SDBlob.BlobInfos[blobStart : blobEnd+1] {
 		url := blobInfoURL(bi)
 		monitor.Logger.WithFields(log.Fields{
-			"url": url,
+			"url":      url,
+			"stream":   s.URI,
+			"blob_num": bi.BlobNum,
 		}).Info("requesting a blob")
 
 		resp, err := http.Get(url)
@@ -221,7 +223,11 @@ func (s *reflectedStream) streamBlobs(blobStart, blobEnd int, writer http.Respon
 			if err != nil {
 				return err
 			}
-			writer.Write(decryptedBody)
+			w.Write(decryptedBody)
+			monitor.Logger.WithFields(log.Fields{
+				"stream":   s.URI,
+				"blob_num": bi.BlobNum,
+			}).Info("done streaming a blob")
 		} else {
 			return errors.Err("server responded with an unexpected status (%v)", resp.Status)
 		}
