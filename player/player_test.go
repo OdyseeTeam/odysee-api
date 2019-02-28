@@ -54,7 +54,7 @@ func TestReflectedStream_prepareWriter(t *testing.T) {
 	assert.Equal(t, http.StatusPartialContent, response.StatusCode)
 	assert.Equal(t, "bytes", response.Header["Accept-Ranges"][0])
 	assert.Equal(t, "video/mp4", response.Header["Content-Type"][0])
-	assert.Equal(t, "12582907", response.Header["Content-Length"][0])
+	assert.Equal(t, "12582906", response.Header["Content-Length"][0])
 	assert.Equal(t, "bytes 4194302-16777208/158433814", response.Header["Content-Range"][0])
 }
 
@@ -84,6 +84,10 @@ func Test_parseRange(t *testing.T) {
 	start, end = parseRange("bytes=15-124")
 	assert.Equal(t, int64(15), start)
 	assert.Equal(t, int64(124), end)
+
+	start, end = parseRange("bytes=82378752-")
+	assert.Equal(t, int64(82378752), start)
+	assert.EqualValues(t, 0, end)
 }
 
 func TestPlayURI(t *testing.T) {

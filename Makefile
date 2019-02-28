@@ -36,3 +36,7 @@ embed:
 clean:
 	find . -name rice-box.go | xargs rm
 	rm -rf ./dist
+
+.PHONY: server
+server:
+	go run . serve

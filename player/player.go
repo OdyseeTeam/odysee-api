@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/lbryio/lbry.go/extras/errors"
 	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
@@ -62,8 +63,11 @@ func parseRange(header string) (int64, int64) {
 	}
 	start, err1 := strconv.ParseInt(m[1], 10, 64)
 	end, err2 := strconv.ParseInt(m[2], 10, 64)
-	if err1 != nil || err2 != nil {
-		return 0, 0
+	if err1 != nil {
+		start = 0
+	}
+	if err2 != nil {
+		end = 0
 	}
 	if start < 0 {
 		start = 0
@@ -71,7 +75,7 @@ func parseRange(header string) (int64, int64) {
 	if end < 0 {
 		end = 0
 	}
-	if start > end {
+	if end > 0 && start > 0 && start > end {
 		start = 0
 		end = 0
 	}
@@ -191,10 +195,13 @@ func (s *reflectedStream) prepareWriter(w http.ResponseWriter) {
 	startBlob, endBlob := s.getBlobsRange()
 	rangeStart := startBlob * (stream.MaxBlobSize - 1)
 	rangeEnd := (endBlob + 1) * (stream.MaxBlobSize - 1)
-	resultingSize := rangeEnd + 1 - rangeStart
+	if rangeEnd > s.Size-1 {
+		rangeEnd = s.Size - 1
+	}
+	// resultingSize := rangeEnd + 1 - rangeStart
 	w.Header().Set("Content-Type", s.ContentType)
 	w.Header().Set("Accept-Ranges", "bytes")
-	w.Header().Set("Content-Length", fmt.Sprintf("%v", resultingSize))
+	w.Header().Set("Content-Length", fmt.Sprintf("%v", rangeEnd-rangeStart))
 	w.Header().Set("Content-Range", fmt.Sprintf("bytes %v-%v/%v", rangeStart, rangeEnd, s.Size))
 	w.WriteHeader(http.StatusPartialContent)
 }
@@ -208,13 +215,20 @@ func (s *reflectedStream) streamBlobs(blobStart, blobEnd int, w http.ResponseWri
 			"blob_num": bi.BlobNum,
 		}).Info("requesting a blob")
 
+		start := time.Now()
 		resp, err := http.Get(url)
 		if err != nil {
 			return err
 		}
 		defer resp.Body.Close()
+		monitor.Logger.WithFields(log.Fields{
+			"stream":       s.URI,
+			"blob_num":     bi.BlobNum,
+			"time_elapsed": time.Since(start),
+		}).Info("done downloading a blob")
 
 		if resp.StatusCode == http.StatusOK {
+			start := time.Now()
 			encryptedBody, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
 				return err
@@ -223,10 +237,15 @@ func (s *reflectedStream) streamBlobs(blobStart, blobEnd int, w http.ResponseWri
 			if err != nil {
 				return err
 			}
-			w.Write(decryptedBody)
+			n, err := w.Write(decryptedBody)
+			if err != nil {
+				return errors.Err("write error: %v", err)
+			}
 			monitor.Logger.WithFields(log.Fields{
-				"stream":   s.URI,
-				"blob_num": bi.BlobNum,
+				"stream":        s.URI,
+				"blob_num":      bi.BlobNum,
+				"bytes_written": n,
+				"time_elapsed":  time.Since(start),
 			}).Info("done streaming a blob")
 		} else {
 			return errors.Err("server responded with an unexpected status (%v)", resp.Status)

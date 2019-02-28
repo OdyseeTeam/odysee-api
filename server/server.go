@@ -42,12 +42,12 @@ func NewConfiguredServer() *Server {
 
 func (s *Server) configureHTTPListener() *http.Server {
 	return &http.Server{
-		Addr:         s.Config.Address,
-		Handler:      s.router,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		Addr:        s.Config.Address,
+		Handler:     s.router,
+		ReadTimeout: 5 * time.Second,
+		// WriteTimeout: 30 * time.Second,
+		WriteTimeout: 0,
 		IdleTimeout:  120 * time.Second,
-		// ErrorLog:     logger.Writer,
 	}
 }
 
@@ -56,7 +56,8 @@ func configureRouter(staticDir string) *mux.Router {
 
 	router.HandleFunc("/", routes.Index)
 	router.HandleFunc("/api/proxy", routes.Proxy)
-	router.HandleFunc("/content/uris/{uri}", routes.ContentByURI)
+	router.HandleFunc("/api/proxy/", routes.Proxy)
+	router.HandleFunc("/content/claims/{uri}/{claim}/{filename}", routes.ContentByClaimsURI)
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
 
 	router.Use(monitor.RequestLoggingMiddleware)
@@ -73,7 +74,7 @@ func (s *Server) Start() error {
 		err := s.httpListener.ListenAndServe()
 		if err != nil {
 			//Normal graceful shutdown error
-			if err.Error() == "http: Server closed" {
+			if err.Error() == "http: server closed" {
 				s.Logger.Info(err)
 			} else {
 				s.Logger.Fatal(err)
