@@ -74,7 +74,7 @@ func (s *Server) Start() error {
 		err := s.httpListener.ListenAndServe()
 		if err != nil {
 			//Normal graceful shutdown error
-			if err.Error() == "http: server closed" {
+			if err.Error() == "http: Server closed" {
 				s.Logger.Info(err)
 			} else {
 				s.Logger.Fatal(err)
