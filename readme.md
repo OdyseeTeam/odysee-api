@@ -18,6 +18,15 @@ _Warning: this will pull and launch lbrynet image, which lbryweb requires to ope
 
 After everything is done launching, open `http://localhost:8080` in your browser.
 
+## Development
+
+This allows modifying `bundle.js` locally and seeing changes immediately without having to restart or re-build the `app` image.
+Set `LBRY_DESKTOP_BUILD` to wherever your bundle.js is (ex. `~/Repos/lbry-desktop/dist/web`), then run:
+
+```
+docker-compose up dev-app
+```
+
 #### If you would like to run off the source
 
 You're still going to need lbrynet, so prefix your `go` commangs with docker stuff.
