@@ -4,19 +4,20 @@ import (
 	"math"
 	"net/http"
 
-	logrus_stack "github.com/Gurpartap/logrus-stack"
 	"github.com/lbryio/lbryweb.go/config"
 	log "github.com/sirupsen/logrus"
 )
 
 var Logger = log.New()
 
+const responseSnippetLen = 250.
+
 // SetupLogging initializes and sets a few parameters for the logging subsystem
 func SetupLogging() {
 	log.SetLevel(log.InfoLevel)
 	Logger.SetLevel(log.InfoLevel)
-	log.AddHook(logrus_stack.StandardHook())
-	Logger.AddHook(logrus_stack.StandardHook())
+	// log.AddHook(logrus_stack.StandardHook())
+	// Logger.AddHook(logrus_stack.StandardHook())
 	if config.IsProduction() {
 		log.SetFormatter(&log.JSONFormatter{})
 		Logger.SetFormatter(&log.JSONFormatter{})
@@ -43,8 +44,6 @@ func LogFailedQuery(method string, query interface{}, error interface{}) {
 	}).Error("server responded with error")
 }
 
-const responseSnippetLen = 250.
-
 // loggingWriter mimics http.ResponseWriter but stores a snippet of response, status code
 // and response size for easier logging
 type loggingWriter struct {
@@ -55,9 +54,7 @@ type loggingWriter struct {
 }
 
 func (w *loggingWriter) Write(p []byte) (int, error) {
-	if w.ResponseSnippet == "" {
-		w.ResponseSnippet = string(p[:int(math.Min(float64(len(p)), responseSnippetLen))])
-	}
+	w.ResponseSnippet = string(p[:int(math.Min(float64(len(p)), responseSnippetLen))])
 	w.ResponseSize += len(p)
 	return w.ResponseWriter.Write(p)
 }

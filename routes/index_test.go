@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lbryio/lbry.go/errors"
-	ljsonrpc "github.com/lbryio/lbry.go/jsonrpc"
+	"github.com/lbryio/lbry.go/extras/errors"
+	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
 	lbryschema "github.com/lbryio/types/go"
 	"github.com/mitchellh/mapstructure"
 	"github.com/shopspring/decimal"
@@ -159,7 +159,7 @@ func TestProxy(t *testing.T) {
 	var parsedResponse jsonrpc.RPCResponse
 	resolveResponse := make(ljsonrpc.ResolveResponse)
 
-	query = jsonrpc.NewRequest("resolve", map[string]string{"uri": "what"})
+	query = jsonrpc.NewRequest("resolve", map[string]string{"urls": "what"})
 	queryBody, _ = json.Marshal(query)
 	request, _ := http.NewRequest("POST", "/api/proxy", bytes.NewBuffer(queryBody))
 	rr := httptest.NewRecorder()

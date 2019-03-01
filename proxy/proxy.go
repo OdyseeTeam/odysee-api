@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lbryio/lbry.go/extras/errors"
 	"github.com/lbryio/lbryweb.go/config"
 	"github.com/lbryio/lbryweb.go/monitor"
 	"github.com/ybbus/jsonrpc"
@@ -76,7 +77,7 @@ func processResponse(query *jsonrpc.RPCRequest, response *jsonrpc.RPCResponse) (
 	case "file_list":
 		processedResponse, err = fileListResponseProcessor(query, response)
 	}
-	return processedResponse, nil
+	return processedResponse, err
 }
 
 func getQueryProcessor(query *jsonrpc.RPCRequest) (*jsonrpc.RPCRequest, error) {
@@ -109,13 +110,18 @@ func fileListResponseProcessor(query *jsonrpc.RPCRequest, response *jsonrpc.RPCR
 	var resultArray []map[string]interface{}
 	response.GetObject(&resultArray)
 
-	queryParams, err := getQueryParams(query)
 	if err != nil {
 		return response, err
 	}
 
+	if len(resultArray) == 0 {
+		return response, errors.Err("file_list response is empty: %v, full server response: %v", resultArray, response)
+	}
 	resultArray[0]["download_path"] = fmt.Sprintf(
-		"%soutpoints/%s/%s", config.Settings.GetString("BaseContentURL"), queryParams["outpoint"], resultArray[0]["file_name"])
+		"%sclaims/%s/%s/%s",
+		config.Settings.GetString("BaseContentURL"),
+		resultArray[0]["claim_name"], resultArray[0]["claim_id"],
+		resultArray[0]["file_name"])
 	response.Result = resultArray
 	return response, nil
 }
