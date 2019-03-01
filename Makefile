@@ -9,12 +9,12 @@ prepare_test:
 
 .PHONY: test
 test:
-	go test ./...
+	go test -cover ./...
 
 .PHONY: test_circleci
 test_circleci:
 	scripts/wait_for_wallet.sh
-	go test ./...
+	go test -cover ./...
 
 release:
 	goreleaser --rm-dist
@@ -32,3 +32,11 @@ publish_image:
 
 embed:
 	rice embed-go -i ./routes
+
+clean:
+	find . -name rice-box.go | xargs rm
+	rm -rf ./dist
+
+.PHONY: server
+server:
+	go run . serve

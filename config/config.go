@@ -11,11 +11,15 @@ import (
 // Settings stores project settings such as download paths, host prefix for URLs and so on
 var Settings = viper.New()
 
+// overriddenValues stores overridden settings values
+// and is initialized as an empty map in the read method
+var overriddenValues map[string]interface{}
+
 func init() {
 	read()
 }
 
-// Read parses `lbryweb.yml`
+// read parses `lbryweb.yml`
 func read() {
 	Settings.SetEnvPrefix("LW")
 	Settings.BindEnv("Debug")
@@ -23,11 +27,12 @@ func read() {
 	Settings.BindEnv("Lbrynet")
 	Settings.SetDefault("Lbrynet", "http://localhost:5279/")
 
-	Settings.SetDefault("Port", 8080)
+	Settings.SetDefault("Address", ":8080")
 	Settings.SetDefault("Host", "http://localhost:8080")
 	Settings.SetDefault("BaseContentURL", "http://localhost:8080/content/")
 
 	Settings.SetDefault("StaticURLPrefix", "/static/")
+	Settings.SetDefault("StaticDir", "./assets/static")
 	Settings.SetConfigName("lbryweb") // name of config file (without extension)
 	Settings.AddConfigPath("./")
 	Settings.AddConfigPath("../")
@@ -36,6 +41,7 @@ func read() {
 	if err != nil {
 		panic(fmt.Errorf("fatal error reading config file: %s", err))
 	}
+	overriddenValues = make(map[string]interface{})
 }
 
 // IsProduction is true if we are running in a production environment
@@ -49,4 +55,25 @@ func ProjectRoot() string {
 		panic(err)
 	}
 	return filepath.Dir(ex)
+}
+
+// Override sets a setting key value to whatever you supply.
+// Useful in tests:
+//	config.Override("Lbrynet", "http://www.google.com:8080/api/proxy")
+//	defer config.RestoreOverridden()
+//	...
+func Override(key string, value interface{}) {
+	overriddenValues[key] = Settings.Get(key)
+	Settings.Set(key, value)
+}
+
+// RestoreOverridden restores original settings values overridden by Override
+func RestoreOverridden() {
+	if len(overriddenValues) == 0 {
+		return
+	}
+	for k, v := range overriddenValues {
+		Settings.Set(k, v)
+	}
+	overriddenValues = make(map[string]interface{})
 }
