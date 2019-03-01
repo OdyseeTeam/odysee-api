@@ -103,6 +103,17 @@ func TestForwardCall(t *testing.T) {
 		return
 	}
 
+	query = jsonrpc.NewRequest("get", map[string]string{"uri": streamURI})
+	queryBody, _ = json.Marshal(query)
+	_, err = ForwardCall(queryBody)
+	if err != nil {
+		t.Errorf("failed with an unexpected error: %v", err)
+		return
+	} else if response.Error != nil {
+		t.Errorf("daemon errored: %v", response.Error.Message)
+		return
+	}
+
 	var resolveResponse *ljsonrpc.ResolveResponse
 	json.Unmarshal(rawResponse, &response)
 	response.GetObject(&resolveResponse)
