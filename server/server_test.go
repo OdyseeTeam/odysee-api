@@ -27,3 +27,19 @@ func TestStartAndWaitForShutdown(t *testing.T) {
 	response, err = http.Get("http://localhost:40080/")
 	assert.Error(t, err)
 }
+func TestHeaders(t *testing.T) {
+	config.Override("Address", "localhost:40080")
+	defer config.RestoreOverridden()
+
+	server := NewConfiguredServer()
+	server.Start()
+	go server.WaitForShutdown()
+
+	response, err := http.Get("http://localhost:40080/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, http.StatusOK, response.StatusCode)
+	assert.Equal(t, "*", response.Header["X-Access-Control-Allow-Origin"][0])
+	server.InterruptChan <- syscall.SIGINT
+}

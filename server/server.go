@@ -15,29 +15,36 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Server holds entities that can be used to control the web server
 type Server struct {
-	Config        *ServerConfig
-	Logger        *log.Logger
-	router        *mux.Router
-	httpListener  *http.Server
-	InterruptChan chan os.Signal
+	Config         *Config
+	Logger         *log.Logger
+	router         *mux.Router
+	httpListener   *http.Server
+	InterruptChan  chan os.Signal
+	DefaultHeaders map[string]string
 }
 
-type ServerConfig struct {
+// Config holds basic web server settings
+type Config struct {
 	StaticDir string
 	Address   string
 }
 
 // NewConfiguredServer returns a server initialized with settings from global config.
 func NewConfiguredServer() *Server {
-	return &Server{
-		Config: &ServerConfig{
+	s := &Server{
+		Config: &Config{
 			StaticDir: config.Settings.GetString("StaticDir"),
 			Address:   config.Settings.GetString("Address"),
 		},
-		Logger:        monitor.Logger,
-		InterruptChan: make(chan os.Signal),
+		Logger:         monitor.Logger,
+		InterruptChan:  make(chan os.Signal),
+		DefaultHeaders: make(map[string]string),
 	}
+	s.DefaultHeaders["X-Access-Control-Allow-Origin"] = "*"
+	s.DefaultHeaders["Server"] = "lbry.tv"
+	return s
 }
 
 func (s *Server) configureHTTPListener() *http.Server {
@@ -51,22 +58,32 @@ func (s *Server) configureHTTPListener() *http.Server {
 	}
 }
 
-func configureRouter(staticDir string) *mux.Router {
+func (s *Server) defaultHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for k, v := range s.DefaultHeaders {
+			w.Header().Set(k, v)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) configureRouter() *mux.Router {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/", routes.Index)
 	router.HandleFunc("/api/proxy", routes.Proxy)
 	router.HandleFunc("/api/proxy/", routes.Proxy)
 	router.HandleFunc("/content/claims/{uri}/{claim}/{filename}", routes.ContentByClaimsURI)
-	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
+	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(s.Config.StaticDir))))
 
 	router.Use(monitor.RequestLoggingMiddleware)
+	router.Use(s.defaultHeadersMiddleware)
 	return router
 }
 
 // Start starts a http server and returns immediately.
 func (s *Server) Start() error {
-	s.router = configureRouter(s.Config.StaticDir)
+	s.router = s.configureRouter()
 	s.Logger.Printf("serving %v at /static/", s.Config.StaticDir)
 	s.httpListener = s.configureHTTPListener()
 
@@ -107,21 +124,6 @@ func (s *Server) Shutdown() error {
 // ServeUntilInterrupted is the main module entry point that configures and starts a webserver,
 // which runs until one of OS shutdown signals are received. The function is blocking.
 func ServeUntilInterrupted() {
-	// hs := make(map[string]string)
-	// hs["Server"] = "lbry.tv" // TODO: change this to whatever it ends up being
-	// hs["Content-Type"] = "application/json; charset=utf-8"
-	// hs["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-	// hs["Access-Control-Allow-Origin"] = "*"
-	// hs["X-Content-Type-Options"] = "nosniff"
-	// hs["X-Frame-Options"] = "deny"
-	// hs["Content-Security-Policy"] = "default-src 'none'"
-	// hs["X-XSS-Protection"] = "1; mode=block"
-	// hs["Referrer-Policy"] = "same-origin"
-	// if !meta.Debugging {
-	// 	//hs["Strict-Transport-Security"] = "max-age=31536000; preload"
-	// }
-	// api.ResponseHeaders = hs
-
 	server := NewConfiguredServer()
 	err := server.Start()
 	if err != nil {
