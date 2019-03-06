@@ -167,6 +167,7 @@ func TestProxy(t *testing.T) {
 	http.HandlerFunc(Proxy).ServeHTTP(rr, request)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "application/json; charset=utf-8", rr.HeaderMap["Content-Type"][0])
 	err := json.Unmarshal(rr.Body.Bytes(), &parsedResponse)
 	if err != nil {
 		panic(err)
