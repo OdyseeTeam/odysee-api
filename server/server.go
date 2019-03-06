@@ -42,8 +42,8 @@ func NewConfiguredServer() *Server {
 		InterruptChan:  make(chan os.Signal),
 		DefaultHeaders: make(map[string]string),
 	}
-	s.DefaultHeaders["X-Access-Control-Allow-Origin"] = "*"
-	s.DefaultHeaders["Server"] = "lbry.tv"
+	s.DefaultHeaders["Access-Control-Allow-Origin"] = "*"
+	s.DefaultHeaders["Server"] = "api.lbry.tv"
 	return s
 }
 

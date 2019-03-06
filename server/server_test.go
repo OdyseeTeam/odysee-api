@@ -40,6 +40,6 @@ func TestHeaders(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, http.StatusOK, response.StatusCode)
-	assert.Equal(t, "*", response.Header["X-Access-Control-Allow-Origin"][0])
+	assert.Equal(t, "*", response.Header["Access-Control-Allow-Origin"][0])
 	server.InterruptChan <- syscall.SIGINT
 }
