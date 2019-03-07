@@ -39,4 +39,4 @@ clean:
 
 .PHONY: server
 server:
-	go run . serve
+	LW_DEBUG=1 go run . serve

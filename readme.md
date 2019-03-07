@@ -39,7 +39,7 @@ docker-compose start lbrynet && export LW_LBRYNET=http://localhost:5579/
 go mod download
 go generate ./...
 make embed
-LW_DEBUG=1 go run *.go serve
+LW_DEBUG=1 go run . serve
 ```
 
 ## Testing

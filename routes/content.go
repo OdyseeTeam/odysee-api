@@ -12,7 +12,7 @@ import (
 func ContentByClaimsURI(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	uri := fmt.Sprintf("%s#%s", vars["uri"], vars["claim"])
-	err := player.PlayURI(uri, req.Header.Get("Range"), w)
+	err := player.PlayURI(uri, req, w)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		fmt.Fprintf(w, "%v", err)

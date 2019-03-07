@@ -14,14 +14,16 @@ const responseSnippetLen = 250.
 
 // SetupLogging initializes and sets a few parameters for the logging subsystem
 func SetupLogging() {
-	log.SetLevel(log.InfoLevel)
-	Logger.SetLevel(log.InfoLevel)
 	// log.AddHook(logrus_stack.StandardHook())
 	// Logger.AddHook(logrus_stack.StandardHook())
 	if config.IsProduction() {
+		log.SetLevel(log.InfoLevel)
+		Logger.SetLevel(log.InfoLevel)
 		log.SetFormatter(&log.JSONFormatter{})
 		Logger.SetFormatter(&log.JSONFormatter{})
 	} else {
+		log.SetLevel(log.DebugLevel)
+		Logger.SetLevel(log.DebugLevel)
 		log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
 		Logger.SetFormatter(&log.TextFormatter{FullTimestamp: true})
 	}
