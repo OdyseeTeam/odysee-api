@@ -31,7 +31,7 @@ docker-compose up dev-app
 
 #### If you would like to run off the source
 
-You're still going to need lbrynet, so prefix your `go` commangs with docker stuff.
+You're still going to need lbrynet, so prefix your `go` commands with docker stuff.
 
 ```
 docker-compose up lbrynet --no-start

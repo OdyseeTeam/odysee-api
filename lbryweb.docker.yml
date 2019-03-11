@@ -1,2 +1,2 @@
 StaticDir: /static
-BaseContentURL: /content/
+BaseContentURL: https://api.lbry.tv/content/
