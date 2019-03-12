@@ -53,11 +53,12 @@ func ForwardCall(clientQuery []byte) ([]byte, error) {
 		monitor.LogFailedQuery(parsedClientQuery.Method, parsedClientQuery.Params, callResult.Error)
 	}
 
-	serializerdResponse, err := json.Marshal(processedResponse)
+	serializedResponse, err := json.MarshalIndent(processedResponse, "", "  ")
+
 	if err != nil {
 		return nil, err
 	}
-	return serializerdResponse, nil
+	return serializedResponse, nil
 }
 
 func processQuery(query *jsonrpc.RPCRequest) (processedQuery *jsonrpc.RPCRequest, err error) {
