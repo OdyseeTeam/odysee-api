@@ -68,17 +68,14 @@ func (s *Server) defaultHeadersMiddleware(next http.Handler) http.Handler {
 }
 
 func (s *Server) configureRouter() *mux.Router {
-	router := mux.NewRouter()
+	r := mux.NewRouter()
 
-	router.HandleFunc("/", routes.Index)
-	router.HandleFunc("/api/proxy", routes.Proxy)
-	router.HandleFunc("/api/proxy/", routes.Proxy)
-	router.HandleFunc("/content/claims/{uri}/{claim}/{filename}", routes.ContentByClaimsURI)
-	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(s.Config.StaticDir))))
+	routes.InstallRoutes(r)
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(s.Config.StaticDir))))
 
-	router.Use(monitor.RequestLoggingMiddleware)
-	router.Use(s.defaultHeadersMiddleware)
-	return router
+	r.Use(monitor.RequestLoggingMiddleware)
+	r.Use(s.defaultHeadersMiddleware)
+	return r
 }
 
 // Start starts a http server and returns immediately.
