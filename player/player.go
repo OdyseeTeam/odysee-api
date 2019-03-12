@@ -252,6 +252,8 @@ func (s *reflectedStream) streamBlobs(startBlob, endBlob int, startOffsetInBlob 
 				"blob_num":      bi.BlobNum,
 				"bytes_written": n,
 				"time_elapsed":  time.Since(start),
+				"start_offset":  startOffsetInBlob,
+				"end_offset":    endOffsetInBlob,
 			}).Info("done streaming a blob")
 		} else {
 			return n, errors.Err("server responded with an unexpected status (%v)", resp.Status)

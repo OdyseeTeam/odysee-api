@@ -136,3 +136,29 @@ func TestPlayURI_4MB_4MB105B(t *testing.T) {
 	assert.Equal(t, expectedData, responseData[:105])
 	assert.Equal(t, responseData[106:], emptyData)
 }
+
+func TestPlayURI_Big(t *testing.T) {
+	var err error
+	r, _ := http.NewRequest("", "", nil)
+	r.Header.Add("Range", "bytes=0-100000")
+	rr := httptest.NewRecorder()
+	err = PlayURI(streamURL, r, rr)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	response := rr.Result()
+	if http.StatusPartialContent != response.StatusCode {
+		t.Errorf("erroneous response status: %v", response.StatusCode)
+		return
+	}
+	assert.Equal(t, "bytes", response.Header["Accept-Ranges"][0])
+	assert.Equal(t, "video/mp4", response.Header["Content-Type"][0])
+
+	responseData := make([]byte, 100000)
+	n, err := response.Body.Read(responseData)
+	if 100000 != n {
+		t.Errorf("expected to read 100000 bytes, read %v", n)
+		return
+	}
+}
