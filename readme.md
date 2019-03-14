@@ -6,7 +6,7 @@ Active development is in progress, expect failing tests and breaking changes.
 
 [![CircleCI](https://img.shields.io/circleci/project/github/lbryio/lbryweb.go/master.svg)](https://circleci.com/gh/lbryio/lbryweb.go/tree/master) [![Coverage](https://img.shields.io/coveralls/github/lbryio/lbryweb.go.svg)](https://coveralls.io/github/lbryio/lbryweb.go)
 
-## Running with Docker (easy)
+## Running with Docker (if you want to try things)
 
 Make sure you have Docker and docker-compose installed.
 
@@ -20,14 +20,15 @@ _Warning: this will pull and launch lbrynet image, which lbryweb requires to ope
 
 After everything is done launching, open `http://localhost:8080` in your browser.
 
-## Development
+## Development (if you want to modify things)
 
-This allows modifying `bundle.js` locally and seeing changes immediately without having to restart or re-build the `app` image.
-Set `LBRY_DESKTOP_BUILD` to wherever your bundle.js is (ex. `~/Repos/lbry-desktop/dist/web`), then run:
+Make sure you have Docker and docker-compose installed.
 
-```
-docker-compose up dev-app
-```
+1. Run `docker-compose up app` (or run off the source)
+2. `git clone` [lbry-desktop](https://github.com/lbryio/lbry-desktop/) repo
+3. Run `SDK_API_URL=http://localhost:8080/api/proxy/ yarn dev:web` in lbry-desktop repo
+4. Open http://localhost:8081/ in Chrome
+
 
 #### If you would like to run off the source
 

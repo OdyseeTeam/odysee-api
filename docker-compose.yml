@@ -37,7 +37,7 @@ services:
   app:
     image: lbryweb/lbryweb-go:latest
     ports:
-      - "8081:8080"
+      - "8080:8080"
     volumes:
     - type: bind
       source: storage
@@ -45,19 +45,6 @@ services:
     - type: bind
       source: static
       target: /static
-    environment:
-      LW_LBRYNET: http://lbrynet:5279/
-    depends_on:
-      - lbrynet
-  dev-app:
-    image: lbryweb/lbryweb-go:latest
-    ports:
-      - "8080:8080"
-    volumes:
-    - type: bind
-      source: storage
-      target: /storage
-    - ${LBRY_DESKTOP_BUILD}:/static
     environment:
       LW_LBRYNET: http://lbrynet:5279/
     depends_on:
