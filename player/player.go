@@ -51,7 +51,7 @@ func PlayURI(uri string, req *http.Request, w http.ResponseWriter) (err error) {
 		return err
 	}
 	rs.prepareWriter(w)
-	http.ServeContent(w, req, "test", time.Time{}, rs)
+	ServeContent(w, req, "test", time.Time{}, rs)
 	return err
 }
 
@@ -68,26 +68,24 @@ func (s *reflectedStream) Read(p []byte) (n int, err error) {
 
 	bufferLen := len(p)
 	seekOffsetEnd := s.seekOffset + int64(bufferLen)
-	startBlob := int(s.seekOffset / (stream.MaxBlobSize - 2))
-	endBlob := int(seekOffsetEnd / (stream.MaxBlobSize - 2))
+	blobNum := int(s.seekOffset / (stream.MaxBlobSize - 2))
 
-	if stream.MaxBlobSize > s.seekOffset {
-		startOffsetInBlob = s.seekOffset
+	if blobNum == 0 {
+		startOffsetInBlob = s.seekOffset - int64(blobNum*stream.MaxBlobSize)
 	} else {
-		startOffsetInBlob = s.seekOffset - int64(startBlob*stream.MaxBlobSize) + 1
+		startOffsetInBlob = s.seekOffset - int64(blobNum*stream.MaxBlobSize) + int64(blobNum)
 	}
+
+	n, err = s.streamBlob(blobNum, startOffsetInBlob, p)
 
 	monitor.Logger.WithFields(log.Fields{
 		"read_buffer_length": bufferLen,
-		"start_blob":         startBlob,
-		"end_blob":           endBlob,
+		"blob_num":           blobNum,
 		"current_offset":     s.seekOffset,
 		"offset_in_blob":     startOffsetInBlob,
-	}).Infof("requesting to read bytes %v..%v from blob stream", s.seekOffset, seekOffsetEnd)
+	}).Infof("read %v bytes (%v..%v) from blob stream", n, s.seekOffset, seekOffsetEnd)
 
-	n, err = s.streamBlobs(startBlob, endBlob, startOffsetInBlob, p)
 	s.seekOffset += int64(n)
-
 	return n, err
 }
 
@@ -196,68 +194,63 @@ func (s *reflectedStream) prepareWriter(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", s.ContentType)
 }
 
-func (s *reflectedStream) streamBlobs(startBlob, endBlob int, startOffsetInBlob int64, dest []byte) (n int, err error) {
-	if startBlob > endBlob {
-		return n, e.New("cannot stream blobs backwards")
+func (s *reflectedStream) streamBlob(blobNum int, startOffsetInBlob int64, dest []byte) (n int, err error) {
+	bi := s.SDBlob.BlobInfos[blobNum]
+	if n > 0 {
+		startOffsetInBlob = 0
 	}
+	url := blobInfoURL(bi)
 
-	for _, bi := range s.SDBlob.BlobInfos[startBlob : endBlob+1] {
-		if n > 0 {
-			startOffsetInBlob = 0
-		}
-		url := blobInfoURL(bi)
+	monitor.Logger.WithFields(log.Fields{
+		"url":      url,
+		"stream":   s.URI,
+		"blob_num": bi.BlobNum,
+	}).Info("requesting a blob")
+	start := time.Now()
 
-		monitor.Logger.WithFields(log.Fields{
-			"url":      url,
-			"stream":   s.URI,
-			"blob_num": bi.BlobNum,
-		}).Info("requesting a blob")
+	resp, err := http.Get(url)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	monitor.Logger.WithFields(log.Fields{
+		"stream":       s.URI,
+		"blob_num":     bi.BlobNum,
+		"time_elapsed": time.Since(start),
+	}).Info("done downloading a blob")
+
+	if resp.StatusCode == http.StatusOK {
 		start := time.Now()
 
-		resp, err := http.Get(url)
+		encryptedBody, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return 0, err
 		}
-		defer resp.Body.Close()
+
+		decryptedBody, err := stream.DecryptBlob(stream.Blob(encryptedBody), s.SDBlob.Key, bi.IV)
+		if err != nil {
+			return 0, err
+		}
+
+		endOffsetInBlob := int64(len(dest)) + startOffsetInBlob
+		if endOffsetInBlob > int64(len(decryptedBody)) {
+			endOffsetInBlob = int64(len(decryptedBody))
+		}
+
+		thisN := copy(dest, decryptedBody[startOffsetInBlob:endOffsetInBlob])
+		n += thisN
 
 		monitor.Logger.WithFields(log.Fields{
-			"stream":       s.URI,
-			"blob_num":     bi.BlobNum,
-			"time_elapsed": time.Since(start),
-		}).Info("done downloading a blob")
-
-		if resp.StatusCode == http.StatusOK {
-			start := time.Now()
-
-			encryptedBody, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				return 0, err
-			}
-
-			decryptedBody, err := stream.DecryptBlob(stream.Blob(encryptedBody), s.SDBlob.Key, bi.IV)
-			if err != nil {
-				return 0, err
-			}
-
-			endOffsetInBlob := int64(len(dest)) + startOffsetInBlob
-			if endOffsetInBlob > int64(len(decryptedBody)) {
-				endOffsetInBlob = int64(len(decryptedBody))
-			}
-
-			thisN := copy(dest, decryptedBody[startOffsetInBlob:endOffsetInBlob])
-			n += thisN
-
-			monitor.Logger.WithFields(log.Fields{
-				"stream":        s.URI,
-				"blob_num":      bi.BlobNum,
-				"bytes_written": n,
-				"time_elapsed":  time.Since(start),
-				"start_offset":  startOffsetInBlob,
-				"end_offset":    endOffsetInBlob,
-			}).Info("done streaming a blob")
-		} else {
-			return n, errors.Err("server responded with an unexpected status (%v)", resp.Status)
-		}
+			"stream":        s.URI,
+			"blob_num":      bi.BlobNum,
+			"bytes_written": n,
+			"time_elapsed":  time.Since(start),
+			"start_offset":  startOffsetInBlob,
+			"end_offset":    endOffsetInBlob,
+		}).Info("done streaming a blob")
+	} else {
+		return n, errors.Err("server responded with an unexpected status (%v)", resp.Status)
 	}
 	return n, nil
 }
