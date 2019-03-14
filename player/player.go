@@ -91,7 +91,7 @@ func (s *reflectedStream) Read(p []byte) (n int, err error) {
 
 // Seek implements io.ReadSeeker interface
 func (s *reflectedStream) Seek(offset int64, whence int) (int64, error) {
-	var zero, newSeekOffset int64
+	var newSeekOffset int64
 
 	if whence == io.SeekEnd {
 		newSeekOffset = s.Size - 1 - offset
@@ -100,11 +100,11 @@ func (s *reflectedStream) Seek(offset int64, whence int) (int64, error) {
 	} else if whence == io.SeekCurrent {
 		newSeekOffset = s.seekOffset + offset
 	} else {
-		return zero, e.New("invalid seek whence argument")
+		return 0, e.New("invalid seek whence argument")
 	}
 
 	if 0 > newSeekOffset {
-		return zero, e.New("seeking before start of the file")
+		return 0, e.New("seeking before start of the file")
 	}
 
 	monitor.Logger.WithFields(log.Fields{
