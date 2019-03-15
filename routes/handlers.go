@@ -2,37 +2,20 @@ package routes
 
 import (
 	"encoding/json"
-	"html/template"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
-	rice "github.com/GeertJohan/go.rice"
-	"github.com/lbryio/lbryweb.go/config"
+	"github.com/gorilla/mux"
+	"github.com/lbryio/lbryweb.go/player"
 	"github.com/lbryio/lbryweb.go/proxy"
 	log "github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
 )
 
-// Index serves the static home page
+// Index just serves a blank home page
 func Index(w http.ResponseWriter, req *http.Request) {
-	// find a rice.Box
-	templateBox, err := rice.FindBox("../assets/templates/")
-	if err != nil {
-		log.Fatal(err)
-	}
-	// get file contents as string
-	templateString, err := templateBox.String("index.html")
-	if err != nil {
-		log.Fatal(err)
-	}
-	// parse and execute the template
-	tmplMessage, err := template.New("index").Parse(templateString)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	w.WriteHeader(http.StatusOK)
-	tmplMessage.Execute(w, map[string]string{"Static": config.Settings.GetString("StaticURLPrefix")})
 }
 
 // Proxy takes client request body and feeds it to proxy.ForwardCall
@@ -58,4 +41,24 @@ func Proxy(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write(lbrynetResponse)
+}
+
+// ContentByClaimsURI streams content requested by URI to the browser
+func ContentByClaimsURI(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	uri := fmt.Sprintf("%s#%s", vars["uri"], vars["claim"])
+	err := player.PlayURI(uri, req, w)
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		fmt.Fprintf(w, "%v", err)
+	}
+}
+
+// ContentByURL streams content requested by URI to the browser
+func ContentByURL(w http.ResponseWriter, req *http.Request) {
+	err := player.PlayURI(req.URL.RawQuery, req, w)
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		fmt.Fprintf(w, "%v", err)
+	}
 }
