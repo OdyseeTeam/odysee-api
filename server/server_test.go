@@ -10,13 +10,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestStartAndWaitForShutdown(t *testing.T) {
+func TestStartAndServeUntilShutdown(t *testing.T) {
 	config.Override("Address", "localhost:40080")
 	defer config.RestoreOverridden()
 
 	server := NewConfiguredServer()
 	server.Start()
-	go server.WaitForShutdown()
+	go server.ServeUntilShutdown()
 
 	response, err := http.Get("http://localhost:40080/")
 	if err != nil {
@@ -41,7 +41,7 @@ func TestHeaders(t *testing.T) {
 
 	server := NewConfiguredServer()
 	server.Start()
-	go server.WaitForShutdown()
+	go server.ServeUntilShutdown()
 
 	response, err := http.Get("http://localhost:40080/")
 	if err != nil {
