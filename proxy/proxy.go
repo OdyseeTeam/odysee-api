@@ -46,7 +46,10 @@ func ForwardCall(clientQuery []byte) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		monitor.LogSuccessfulQuery(parsedClientQuery.Method, time.Now().Sub(queryStartTime).Seconds())
+		// Too many account_balance requests, no need to log them
+		if parsedClientQuery.Method != "account_balance" {
+			monitor.LogSuccessfulQuery(parsedClientQuery.Method, time.Now().Sub(queryStartTime).Seconds())
+		}
 	} else {
 		processedResponse = callResult
 		monitor.LogFailedQuery(parsedClientQuery.Method, parsedClientQuery.Params, callResult.Error)
