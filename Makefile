@@ -17,7 +17,7 @@ test_circleci:
 	go get golang.org/x/tools/cmd/cover
 	go get github.com/mattn/goveralls
 	go test -covermode=count -coverprofile=coverage.out ./...
-	goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $(COVERALLS_TOKEN)
+	goveralls -coverprofile=coverage.out -service=circle-ci -repotoken $(COVERALLS_TOKEN)
 
 release:
 	goreleaser --rm-dist
