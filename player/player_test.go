@@ -41,7 +41,7 @@ func TestPlayURI_0B_52B(t *testing.T) {
 	r, _ := http.NewRequest("", "", nil)
 	r.Header.Add("Range", "bytes=0-52")
 	rr := httptest.NewRecorder()
-	err = PlayURI(streamURL, r, rr)
+	err = PlayURI(streamURL, rr, r)
 	if err != nil {
 		t.Error(err)
 		return
@@ -72,7 +72,7 @@ func TestPlayURI_156B_259B(t *testing.T) {
 	r, _ := http.NewRequest("", "", nil)
 	r.Header.Add("Range", "bytes=156-259")
 	rr := httptest.NewRecorder()
-	err = PlayURI(streamURL, r, rr)
+	err = PlayURI(streamURL, rr, r)
 	if err != nil {
 		t.Error(err)
 		return
@@ -107,7 +107,7 @@ func TestPlayURI_4MB_4MB105B(t *testing.T) {
 	r, _ := http.NewRequest("", "", nil)
 	r.Header.Add("Range", "bytes=4000000-4000104")
 	rr := httptest.NewRecorder()
-	err = PlayURI(streamURL, r, rr)
+	err = PlayURI(streamURL, rr, r)
 	if err != nil {
 		t.Error(err)
 		return
@@ -142,7 +142,7 @@ func TestPlayURI_Big(t *testing.T) {
 	r, _ := http.NewRequest("", "", nil)
 	r.Header.Add("Range", "bytes=0-100000")
 	rr := httptest.NewRecorder()
-	err = PlayURI(streamURL, r, rr)
+	err = PlayURI(streamURL, rr, r)
 	if err != nil {
 		t.Error(err)
 		return

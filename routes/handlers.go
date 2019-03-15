@@ -43,22 +43,23 @@ func Proxy(w http.ResponseWriter, req *http.Request) {
 	w.Write(lbrynetResponse)
 }
 
-// ContentByClaimsURI streams content requested by URI to the browser
-func ContentByClaimsURI(w http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	uri := fmt.Sprintf("%s#%s", vars["uri"], vars["claim"])
-	err := player.PlayURI(uri, req, w)
-	if err != nil {
+func stream(uri string, w http.ResponseWriter, req *http.Request) {
+	err := player.PlayURI(uri, w, req)
+	// Only output error if player has not pushed anything to the client yet
+	if err != nil && w.Header().Get("Content-Type") == "" {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		fmt.Fprintf(w, "%v", err)
 	}
 }
 
+// ContentByClaimsURI streams content requested by URI to the browser
+func ContentByClaimsURI(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	uri := fmt.Sprintf("%s#%s", vars["uri"], vars["claim"])
+	stream(uri, w, req)
+}
+
 // ContentByURL streams content requested by URI to the browser
 func ContentByURL(w http.ResponseWriter, req *http.Request) {
-	err := player.PlayURI(req.URL.RawQuery, req, w)
-	if err != nil {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		fmt.Fprintf(w, "%v", err)
-	}
+	stream(req.URL.RawQuery, w, req)
 }
