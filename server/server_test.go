@@ -36,6 +36,10 @@ func TestStartAndServeUntilShutdown(t *testing.T) {
 	assert.Error(t, err)
 }
 func TestHeaders(t *testing.T) {
+	var (
+		err      error
+		response *http.Response
+	)
 	config.Override("Address", "localhost:40080")
 	defer config.RestoreOverridden()
 
@@ -43,7 +47,14 @@ func TestHeaders(t *testing.T) {
 	server.Start()
 	go server.ServeUntilShutdown()
 
-	response, err := http.Get("http://localhost:40080/")
+	// Retry 10 times to give the server a chance to start
+	for range [10]int{} {
+		time.Sleep(100 * time.Millisecond)
+		response, err = http.Get("http://localhost:40080/")
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
