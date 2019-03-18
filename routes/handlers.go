@@ -2,37 +2,20 @@ package routes
 
 import (
 	"encoding/json"
-	"html/template"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
-	rice "github.com/GeertJohan/go.rice"
-	"github.com/lbryio/lbryweb.go/config"
+	"github.com/gorilla/mux"
+	"github.com/lbryio/lbryweb.go/player"
 	"github.com/lbryio/lbryweb.go/proxy"
 	log "github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
 )
 
-// Index serves the static home page
+// Index just serves a blank home page
 func Index(w http.ResponseWriter, req *http.Request) {
-	// find a rice.Box
-	templateBox, err := rice.FindBox("../assets/templates/")
-	if err != nil {
-		log.Fatal(err)
-	}
-	// get file contents as string
-	templateString, err := templateBox.String("index.html")
-	if err != nil {
-		log.Fatal(err)
-	}
-	// parse and execute the template
-	tmplMessage, err := template.New("index").Parse(templateString)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	w.WriteHeader(http.StatusOK)
-	tmplMessage.Execute(w, map[string]string{"Static": config.Settings.GetString("StaticURLPrefix")})
 }
 
 // Proxy takes client request body and feeds it to proxy.ForwardCall
@@ -58,4 +41,25 @@ func Proxy(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write(lbrynetResponse)
+}
+
+func stream(uri string, w http.ResponseWriter, req *http.Request) {
+	err := player.PlayURI(uri, w, req)
+	// Only output error if player has not pushed anything to the client yet
+	if err != nil && w.Header().Get("Content-Type") == "" {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		fmt.Fprintf(w, "%v", err)
+	}
+}
+
+// ContentByClaimsURI streams content requested by URI to the browser
+func ContentByClaimsURI(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	uri := fmt.Sprintf("%s#%s", vars["uri"], vars["claim"])
+	stream(uri, w, req)
+}
+
+// ContentByURL streams content requested by URI to the browser
+func ContentByURL(w http.ResponseWriter, req *http.Request) {
+	stream(req.URL.RawQuery, w, req)
 }

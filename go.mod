@@ -12,12 +12,14 @@ require (
 	github.com/akavel/rsrc v0.0.0-20170831122431-f6a15ece2cfd // indirect
 	github.com/btcsuite/btcd v0.0.0-20190213025234-306aecffea32 // indirect
 	github.com/btcsuite/goleveldb v1.0.0 // indirect
+	github.com/certifi/gocertifi v0.0.0-20190105021004-abcd57078448 // indirect
 	github.com/cespare/reflex v0.2.0 // indirect
 	github.com/coreos/go-systemd v0.0.0-20190212144455-93d5ec2c7f76 // indirect
 	github.com/daaku/go.zipexe v0.0.0-20150329023125-a5fe2436ffcb // indirect
 	github.com/elazarl/go-bindata-assetfs v1.0.0
 	github.com/facebookgo/stack v0.0.0-20160209184415-751773369052 // indirect
 	github.com/fatih/color v1.7.0
+	github.com/getsentry/raven-go v0.2.0
 	github.com/gliderlabs/ssh v0.1.3 // indirect
 	github.com/go-ini/ini v1.42.0 // indirect
 	github.com/go-logfmt/logfmt v0.4.0 // indirect

@@ -4,3 +4,4 @@
 /assets/static/app
 /dist/
 **/rice-box.go
+coverage.*

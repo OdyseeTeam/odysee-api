@@ -4,18 +4,19 @@ import (
 	"net/http"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/lbryio/lbryweb.go/config"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestStartAndWaitForShutdown(t *testing.T) {
+func TestStartAndServeUntilShutdown(t *testing.T) {
 	config.Override("Address", "localhost:40080")
 	defer config.RestoreOverridden()
 
 	server := NewConfiguredServer()
 	server.Start()
-	go server.WaitForShutdown()
+	go server.ServeUntilShutdown()
 
 	response, err := http.Get("http://localhost:40080/")
 	if err != nil {
@@ -24,18 +25,36 @@ func TestStartAndWaitForShutdown(t *testing.T) {
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 	server.InterruptChan <- syscall.SIGINT
 
-	response, err = http.Get("http://localhost:40080/")
+	// Retry 10 times to give the server a chance to shut down
+	for range [10]int{} {
+		time.Sleep(100 * time.Millisecond)
+		response, err = http.Get("http://localhost:40080/")
+		if err != nil {
+			break
+		}
+	}
 	assert.Error(t, err)
 }
 func TestHeaders(t *testing.T) {
+	var (
+		err      error
+		response *http.Response
+	)
 	config.Override("Address", "localhost:40080")
 	defer config.RestoreOverridden()
 
 	server := NewConfiguredServer()
 	server.Start()
-	go server.WaitForShutdown()
+	go server.ServeUntilShutdown()
 
-	response, err := http.Get("http://localhost:40080/")
+	// Retry 10 times to give the server a chance to start
+	for range [10]int{} {
+		time.Sleep(100 * time.Millisecond)
+		response, err = http.Get("http://localhost:40080/")
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

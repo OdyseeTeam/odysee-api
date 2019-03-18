@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lbryio/lbry.go/extras/errors"
 	"github.com/lbryio/lbryweb.go/config"
 	"github.com/lbryio/lbryweb.go/monitor"
 	"github.com/ybbus/jsonrpc"
@@ -47,7 +46,10 @@ func ForwardCall(clientQuery []byte) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		monitor.LogSuccessfulQuery(parsedClientQuery.Method, time.Now().Sub(queryStartTime).Seconds())
+		// Too many account_balance requests, no need to log them
+		if parsedClientQuery.Method != "account_balance" {
+			monitor.LogSuccessfulQuery(parsedClientQuery.Method, time.Now().Sub(queryStartTime).Seconds())
+		}
 	} else {
 		processedResponse = callResult
 		monitor.LogFailedQuery(parsedClientQuery.Method, parsedClientQuery.Params, callResult.Error)
@@ -115,14 +117,13 @@ func fileListResponseProcessor(query *jsonrpc.RPCRequest, response *jsonrpc.RPCR
 		return response, err
 	}
 
-	if len(resultArray) == 0 {
-		return response, errors.Err("file_list response is empty: %v, full server response: %v", resultArray, response)
+	if len(resultArray) != 0 {
+		resultArray[0]["download_path"] = fmt.Sprintf(
+			"%sclaims/%s/%s/%s",
+			config.Settings.GetString("BaseContentURL"),
+			resultArray[0]["claim_name"], resultArray[0]["claim_id"],
+			resultArray[0]["file_name"])
 	}
-	resultArray[0]["download_path"] = fmt.Sprintf(
-		"%sclaims/%s/%s/%s",
-		config.Settings.GetString("BaseContentURL"),
-		resultArray[0]["claim_name"], resultArray[0]["claim_id"],
-		resultArray[0]["file_name"])
 	response.Result = resultArray
 	return response, nil
 }

@@ -4,6 +4,7 @@ import (
 	"math"
 	"net/http"
 
+	raven "github.com/getsentry/raven-go"
 	"github.com/lbryio/lbryweb.go/config"
 	log "github.com/sirupsen/logrus"
 )
@@ -14,14 +15,25 @@ const responseSnippetLen = 250.
 
 // SetupLogging initializes and sets a few parameters for the logging subsystem
 func SetupLogging() {
-	log.SetLevel(log.InfoLevel)
-	Logger.SetLevel(log.InfoLevel)
+	dsn := config.Settings.GetString("SentryDSN")
+	if dsn != "" {
+		raven.SetDSN(dsn)
+	}
+
 	// log.AddHook(logrus_stack.StandardHook())
 	// Logger.AddHook(logrus_stack.StandardHook())
 	if config.IsProduction() {
+		raven.SetEnvironment("production")
+
+		log.SetLevel(log.InfoLevel)
+		Logger.SetLevel(log.InfoLevel)
 		log.SetFormatter(&log.JSONFormatter{})
 		Logger.SetFormatter(&log.JSONFormatter{})
 	} else {
+		raven.SetEnvironment("develop")
+
+		log.SetLevel(log.DebugLevel)
+		Logger.SetLevel(log.DebugLevel)
 		log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
 		Logger.SetFormatter(&log.TextFormatter{FullTimestamp: true})
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// An MP4 file, size: 158433824 bytes, blobs: 77
 const streamURL = "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
 
 func Test_newReflectedStream(t *testing.T) {
@@ -35,70 +36,24 @@ func TestReflectedStream_fetchData(t *testing.T) {
 	assert.Equal(t, 38, rs.SDBlob.BlobInfos[38].BlobNum)
 }
 
-func TestReflectedStream_getBlobsRange(t *testing.T) {
-	rs, _ := newReflectedStream(streamURL)
-	rs.fetchData()
-	rs.setRange(5*1024*1024, 15*1024*1024)
-	blobStart, blobEnd := rs.getBlobsRange()
-	assert.Equal(t, 2, blobStart)
-	assert.Equal(t, 7, blobEnd)
-}
-
-func TestReflectedStream_prepareWriter(t *testing.T) {
-	rs, _ := newReflectedStream(streamURL)
-	rr := httptest.NewRecorder()
-	rs.fetchData()
-	rs.setRange(5*1024*1024, 15*1024*1024)
-	rs.prepareWriter(rr)
-	response := rr.Result()
-	assert.Equal(t, http.StatusPartialContent, response.StatusCode)
-	assert.Equal(t, "bytes", response.Header["Accept-Ranges"][0])
-	assert.Equal(t, "video/mp4", response.Header["Content-Type"][0])
-	assert.Equal(t, "12582906", response.Header["Content-Length"][0])
-	assert.Equal(t, "bytes 4194302-16777208/158433814", response.Header["Content-Range"][0])
-}
-
-func Test_parseRange(t *testing.T) {
-	var start, end int64
-
-	start, end = parseRange("range=0-111111")
-	assert.EqualValues(t, 0, start)
-	assert.EqualValues(t, 0, end)
-
-	start, end = parseRange("range=")
-	assert.EqualValues(t, 0, start)
-	assert.EqualValues(t, 0, end)
-
-	start, end = parseRange("")
-	assert.EqualValues(t, 0, start)
-	assert.EqualValues(t, 0, end)
-
-	start, end = parseRange("bytes-")
-	assert.EqualValues(t, 0, start)
-	assert.EqualValues(t, 0, end)
-
-	start, end = parseRange("bytes=124-1")
-	assert.EqualValues(t, 0, start)
-	assert.EqualValues(t, 0, end)
-
-	start, end = parseRange("bytes=15-124")
-	assert.Equal(t, int64(15), start)
-	assert.Equal(t, int64(124), end)
-
-	start, end = parseRange("bytes=82378752-")
-	assert.Equal(t, int64(82378752), start)
-	assert.EqualValues(t, 0, end)
-}
-
-func TestPlayURI(t *testing.T) {
+func TestPlayURI_0B_52B(t *testing.T) {
 	var err error
+	r, _ := http.NewRequest("", "", nil)
+	r.Header.Add("Range", "bytes=0-52")
 	rr := httptest.NewRecorder()
-	PlayURI(streamURL, "bytes=0-52", rr)
+	err = PlayURI(streamURL, rr, r)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	response := rr.Result()
+	if http.StatusPartialContent != response.StatusCode {
+		t.Errorf("erroneous response status: %v", response.StatusCode)
+		return
+	}
+	assert.Equal(t, "bytes", response.Header["Accept-Ranges"][0])
+	assert.Equal(t, "video/mp4", response.Header["Content-Type"][0])
+
 	responseFirst52 := make([]byte, 52)
 	n, err := response.Body.Read(responseFirst52)
 	if 52 != n {
@@ -110,4 +65,100 @@ func TestPlayURI(t *testing.T) {
 			"C4EA6D6F6F760000006C6D76686400000000D39A07E8D39A07F2")
 	assert.Nil(t, err)
 	assert.Equal(t, first52, responseFirst52)
+}
+
+func TestPlayURI_156B_259B(t *testing.T) {
+	var err error
+	r, _ := http.NewRequest("", "", nil)
+	r.Header.Add("Range", "bytes=156-259")
+	rr := httptest.NewRecorder()
+	err = PlayURI(streamURL, rr, r)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	response := rr.Result()
+	if http.StatusPartialContent != response.StatusCode {
+		t.Errorf("erroneous response status: %v", response.StatusCode)
+		return
+	}
+	assert.Equal(t, "bytes", response.Header["Accept-Ranges"][0])
+	assert.Equal(t, "video/mp4", response.Header["Content-Type"][0])
+
+	responseData := make([]byte, 10000)
+	emptyData := make([]byte, 10000-104)
+	n, err := response.Body.Read(responseData)
+	if 104 != n {
+		t.Errorf("expected to read 104 bytes, read %v", n)
+		return
+	}
+	expectedData, err := hex.DecodeString(
+		"00000001D39A07E8D39A07E80000000100000000008977680000" +
+			"0000000000000000000000000000000100000000000000000000" +
+			"0000000000010000000000000000000000000000400000000780" +
+			"00000438000000000024656474730000001C656C737400000000")
+	assert.Nil(t, err)
+	assert.Equal(t, expectedData, responseData[:104])
+	assert.Equal(t, responseData[104:], emptyData)
+}
+
+func TestPlayURI_4MB_4MB105B(t *testing.T) {
+	var err error
+	r, _ := http.NewRequest("", "", nil)
+	r.Header.Add("Range", "bytes=4000000-4000104")
+	rr := httptest.NewRecorder()
+	err = PlayURI(streamURL, rr, r)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	response := rr.Result()
+	if http.StatusPartialContent != response.StatusCode {
+		t.Errorf("erroneous response status: %v", response.StatusCode)
+		return
+	}
+	assert.Equal(t, "bytes", response.Header["Accept-Ranges"][0])
+	assert.Equal(t, "video/mp4", response.Header["Content-Type"][0])
+
+	responseData := make([]byte, 10000)
+	emptyData := make([]byte, 10000-106)
+	n, err := response.Body.Read(responseData)
+	if 105 != n {
+		t.Errorf("expected to read 105 bytes, read %v", n)
+		return
+	}
+	expectedData, err := hex.DecodeString(
+		"6E81C93A90DD3A322190C8D608E29AA929867407596665097B5AE780412" +
+			"61638A51C10BC26770AFFEF1533715FBD1428DCADEDC7BEA5D7A9C7D170" +
+			"B71EF38E7138D24B0C7E86D791695EDAE1B88EDBE54F95C98EF3DCFD91D" +
+			"A025C284EE37D8FEEA2EA84B76B9A22D3")
+	assert.Nil(t, err)
+	assert.Equal(t, expectedData, responseData[:105])
+	assert.Equal(t, responseData[106:], emptyData)
+}
+
+func TestPlayURI_Big(t *testing.T) {
+	var err error
+	r, _ := http.NewRequest("", "", nil)
+	r.Header.Add("Range", "bytes=0-100000")
+	rr := httptest.NewRecorder()
+	err = PlayURI(streamURL, rr, r)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	response := rr.Result()
+	if http.StatusPartialContent != response.StatusCode {
+		t.Errorf("erroneous response status: %v", response.StatusCode)
+		return
+	}
+	assert.Equal(t, "bytes", response.Header["Accept-Ranges"][0])
+	assert.Equal(t, "video/mp4", response.Header["Content-Type"][0])
+
+	responseData := make([]byte, 100000)
+	n, err := response.Body.Read(responseData)
+	if 100000 != n {
+		t.Errorf("expected to read 100000 bytes, read %v", n)
+		return
+	}
 }

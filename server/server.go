@@ -99,8 +99,8 @@ func (s *Server) Start() error {
 	return nil
 }
 
-// WaitForShutdown blocks until a shutdown signal is received, then shuts down the http server.
-func (s *Server) WaitForShutdown() {
+// ServeUntilShutdown blocks until a shutdown signal is received, then shuts down the http server.
+func (s *Server) ServeUntilShutdown() {
 	signal.Notify(s.InterruptChan, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT)
 	sig := <-s.InterruptChan
 	s.Logger.Printf("caught a signal (%v), shutting down http server...", sig)
@@ -126,5 +126,5 @@ func ServeUntilInterrupted() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	server.WaitForShutdown()
+	server.ServeUntilShutdown()
 }

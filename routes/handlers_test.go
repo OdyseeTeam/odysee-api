@@ -175,16 +175,3 @@ func TestProxy(t *testing.T) {
 	decode(parsedResponse.Result, &resolveResponse)
 	assert.Equal(t, "what", resolveResponse["what"].Claim.Name)
 }
-
-func TestIndex(t *testing.T) {
-	request, err := http.NewRequest("GET", "/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rr := httptest.NewRecorder()
-
-	http.HandlerFunc(Index).ServeHTTP(rr, request)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Contains(t, rr.Body.String(), `<script src="/static/app/bundle.js"></script>`)
-}

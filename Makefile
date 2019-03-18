@@ -14,7 +14,10 @@ test:
 .PHONY: test_circleci
 test_circleci:
 	scripts/wait_for_wallet.sh
-	go test -cover ./...
+	go get golang.org/x/tools/cmd/cover
+	go get github.com/mattn/goveralls
+	go test -covermode=count -coverprofile=coverage.out ./...
+	goveralls -coverprofile=coverage.out -service=circle-ci -repotoken $(COVERALLS_TOKEN)
 
 release:
 	goreleaser --rm-dist
@@ -39,4 +42,4 @@ clean:
 
 .PHONY: server
 server:
-	go run . serve
+	LW_DEBUG=1 go run . serve
