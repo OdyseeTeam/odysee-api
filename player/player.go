@@ -126,18 +126,27 @@ func (s *reflectedStream) resolve(client *ljsonrpc.Client) error {
 	if s.URI == "" {
 		return errors.Err("stream URI is not set")
 	}
+
 	response, err := client.Resolve(s.URI)
 	if err != nil {
 		return err
 	}
-	source := (*response)[s.URI].Claim.Value.Stream.Source
+
+	stream := (*response)[s.URI].Claim.Value.Stream
+	if stream.Metadata.Fee != nil && (*stream.Metadata.Fee.Amount > 0) {
+		return errors.Err("paid stream")
+	}
+
+	source := stream.Source
 	s.SDHash = source.Source
 	s.ContentType = source.GetContentType()
+
 	monitor.Logger.WithFields(log.Fields{
 		"sd_hash":      fmt.Sprintf("%s", s.SDHash),
 		"uri":          s.URI,
 		"content_type": s.ContentType,
 	}).Info("resolved uri")
+
 	return nil
 }
 
