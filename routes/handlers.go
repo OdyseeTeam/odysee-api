@@ -46,9 +46,13 @@ func Proxy(w http.ResponseWriter, req *http.Request) {
 func stream(uri string, w http.ResponseWriter, req *http.Request) {
 	err := player.PlayURI(uri, w, req)
 	// Only output error if player has not pushed anything to the client yet
-	if err != nil && w.Header().Get("Content-Type") == "" {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		fmt.Fprintf(w, "%v", err)
+	if err != nil {
+		if err.Error() == "paid stream" {
+			w.WriteHeader(http.StatusPaymentRequired)
+		} else if w.Header().Get("Content-Type") == "" {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			fmt.Fprintf(w, "%v", err)
+		}
 	}
 }
 

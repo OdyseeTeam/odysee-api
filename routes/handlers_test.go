@@ -3,6 +3,7 @@ package routes
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -174,4 +175,16 @@ func TestProxy(t *testing.T) {
 	}
 	decode(parsedResponse.Result, &resolveResponse)
 	assert.Equal(t, "what", resolveResponse["what"].Claim.Name)
+}
+
+func TestContentByURL_NoPayment(t *testing.T) {
+	req, _ := http.NewRequest("GET", "http://localhost:40080/content/url", nil)
+	req.URL.RawQuery = "pra-onde-vamos-em-2018-seguran-a-online#3a508cce1fda3b7c1a2502cb4323141d40a2cf0b"
+	req.Header.Add("Range", "bytes=0-1023")
+	rr := httptest.NewRecorder()
+	http.HandlerFunc(ContentByURL).ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusPaymentRequired, rr.Code)
+	_, err := rr.Body.ReadByte()
+	assert.Equal(t, io.EOF, err)
 }
