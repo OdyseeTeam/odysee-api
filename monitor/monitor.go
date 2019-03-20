@@ -88,9 +88,7 @@ func RequestLoggingMiddleware(next http.Handler) http.Handler {
 			"url":    request.URL.Path,
 			"status": loggingWriter.Status,
 		}
-		if loggingWriter.IsSuccess() {
-			Logger.WithFields(fields).Infof("responded with %v bytes", loggingWriter.ResponseSize)
-		} else {
+		if !loggingWriter.IsSuccess() {
 			fields["response"] = loggingWriter.ResponseSnippet
 			Logger.WithFields(fields).Error("server responded with error")
 		}
