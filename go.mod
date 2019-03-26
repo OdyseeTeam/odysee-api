@@ -37,9 +37,9 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kisielk/errcheck v1.2.0 // indirect
 	github.com/kkdai/bstream v0.0.0-20181106074824-b3251f7901ec // indirect
-	github.com/lbryio/lbry.go v0.0.0-20190222180913-9b603ca498c6
+	github.com/lbryio/lbry.go v0.0.0-20190222180913-6d9a53d
 	github.com/lbryio/ozzo-validation v3.0.2+incompatible // indirect
-	github.com/lbryio/types v0.0.0-20181001180206-594241d24e00
+	github.com/lbryio/types v0.0.0-20190304154608-a6f2fd6d5f38
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.4 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.2 // indirect

@@ -30,7 +30,9 @@ func Test_newReflectedStream_emptyURL(t *testing.T) {
 func TestReflectedStream_fetchData(t *testing.T) {
 	rs, err := newReflectedStream(streamURL)
 	err = rs.fetchData()
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	assert.NotNil(t, rs.SDHash)
 	assert.Equal(t, 0, rs.SDBlob.BlobInfos[0].BlobNum)
 	assert.Equal(t, 38, rs.SDBlob.BlobInfos[38].BlobNum)
