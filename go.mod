@@ -29,10 +29,13 @@ require (
 	github.com/google/pprof v0.0.0-20190208070709-b421f19a5c07 // indirect
 	github.com/googleapis/gax-go v2.0.2+incompatible // indirect
 	github.com/gorilla/mux v1.7.0
+	github.com/gorilla/sessions v1.1.3 // indirect
 	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.7.0 // indirect
 	github.com/jessevdk/go-flags v1.4.0 // indirect
+	github.com/jinzhu/gorm v1.9.2
+	github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a // indirect
 	github.com/jteeuwen/go-bindata v3.0.7+incompatible // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kisielk/errcheck v1.2.0 // indirect
@@ -40,6 +43,7 @@ require (
 	github.com/lbryio/lbry.go v0.0.0-20190222180913-9b603ca498c6
 	github.com/lbryio/ozzo-validation v3.0.2+incompatible // indirect
 	github.com/lbryio/types v0.0.0-20181001180206-594241d24e00
+	github.com/lib/pq v1.0.0 // indirect
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.4 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.2 // indirect
@@ -76,6 +80,7 @@ require (
 	github.com/tylerwince/godbg v0.0.0-20190124164012-26b74329f678
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v0.0.0-20170224212429-dcecefd839c4 // indirect
+	github.com/wader/gormstore v0.0.0-20190302154359-acb787ba3755
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	go.opencensus.io v0.19.0 // indirect
 	go4.org v0.0.0-20190218023631-ce4c26f7be8e // indirect

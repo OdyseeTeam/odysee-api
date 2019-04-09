@@ -1,24 +1,12 @@
 version: '3.2'
 
 services:
-  # orchstr8:
-  #     image: sayplastic/lbry-orchstr8
-  #     ports:
-  #       - "50002:50002"
-  #       - "7954:7954"
-  #     entrypoint: "/usr/local/bin/orchstr8 start --blockchain 0.0.0.0 --spv 0.0.0.0"
-  # test_lbrynet:
-  #   image: sayplastic/lbrynet:latest
-  #   ports:
-  #     - "5479:5279"
-  #   volumes:
-  #   - type: bind
-  #     source: test_storage
-  #     target: /storage
-  #   environment:
-  #     LBRY_DOCKER_CONFIG: /conf/test_daemon_settings.yml
-    # depends_on:
-    #   - orchstr8
+  db:
+    image: postgres:11-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: lbryweb
   lbrynet:
     image: lbryweb/lbrynet:latest
     ports:
