@@ -10,7 +10,7 @@ services:
   lbrynet:
     image: lbryweb/lbrynet:latest
     ports:
-      - "5579:5279"
+      - "5279:5279"
     volumes:
     - type: bind
       source: storage

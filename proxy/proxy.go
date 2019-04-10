@@ -24,6 +24,7 @@ Example:
 func ForwardCall(clientQuery []byte) ([]byte, error) {
 	var parsedClientQuery jsonrpc.RPCRequest
 	var processedResponse *jsonrpc.RPCResponse
+	rpcClient := jsonrpc.NewClient(config.Settings.GetString("Lbrynet"))
 
 	err := json.Unmarshal(clientQuery, &parsedClientQuery)
 	if err != nil {
@@ -35,7 +36,6 @@ func ForwardCall(clientQuery []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	rpcClient := jsonrpc.NewClient(config.Settings.GetString("Lbrynet"))
 	queryStartTime := time.Now()
 	callResult, err := rpcClient.CallRaw(finalQuery)
 	if err != nil {
