@@ -12,7 +12,7 @@ import (
 
 	"github.com/lbryio/lbry.go/extras/errors"
 	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
-	lbryschema "github.com/lbryio/types/go"
+	lbryschema "github.com/lbryio/types/v2/go"
 	"github.com/mitchellh/mapstructure"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"

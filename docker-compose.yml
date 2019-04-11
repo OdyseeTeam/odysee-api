@@ -8,9 +8,10 @@ services:
     environment:
       POSTGRES_USER: lbryweb
   lbrynet:
-    image: lbryweb/lbrynet:latest
+    image: lbryweb/lbrynet:0.35.0
     ports:
       - "5279:5279"
+      - "5579:5279"
     volumes:
     - type: bind
       source: storage

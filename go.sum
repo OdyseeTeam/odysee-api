@@ -114,6 +114,8 @@ github.com/golang/mock v1.1.1/go.mod h1:oTYuIxOrZwtPieC+H1uAHpcLFnEyAGVDL/k47Jfb
 github.com/golang/mock v1.2.0/go.mod h1:oTYuIxOrZwtPieC+H1uAHpcLFnEyAGVDL/k47Jfbm0A=
 github.com/golang/protobuf v1.2.0 h1:P3YflyNX/ehuJFLhxviNdFxQPkGK5cDcApsge1SqnvM=
 github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
+github.com/golang/protobuf v1.3.0 h1:kbxbvI4Un1LUWKxufD+BiE6AEExYYgkQLQmLFqA1LFk=
+github.com/golang/protobuf v1.3.0/go.mod h1:Qd/q+1AKNOZr9uGQzbzCmRO6sUih6GTPZv6a1/R87v0=
 github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
 github.com/golang/snappy v0.0.1/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
 github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c/go.mod h1:lNA+9X1NB3Zf8V7Ke586lFgjr2dZNuvo3lPJSGZ5JPQ=
@@ -197,6 +199,10 @@ github.com/lbryio/lbry.go v0.0.0-20190218193305-969a14238271 h1:YJkXwECXIUysDPZv
 github.com/lbryio/lbry.go v0.0.0-20190218193305-969a14238271/go.mod h1:eeRWWGtKPjdOhlB/5dHjfOLI3KClhtAe+co9fzoN3Fc=
 github.com/lbryio/lbry.go v0.0.0-20190222180913-9b603ca498c6 h1:llfL4wNCmPiu97HFeoDlrGPwjRgIDGuJJNzeP0Nz4bQ=
 github.com/lbryio/lbry.go v0.0.0-20190222180913-9b603ca498c6/go.mod h1:NEYqeulfWa6bW9sajq5zdd1cAJ+o8v4j1aFsqvWmySs=
+github.com/lbryio/lbry.go v0.0.0-20190409212638-958e832399e6 h1:lrwol+USVBWD2Sgc4kIx9bAcWfL1nd0312FWwUtpnds=
+github.com/lbryio/lbry.go v0.0.0-20190409212638-958e832399e6/go.mod h1:Hx1dsX+tisA6B8CcHHuJ/+eoa/goNpSxYkFeHLH+uoA=
+github.com/lbryio/lbry.go v0.0.0-20190410212638-0ce23a6a3cd5 h1:BZSoYG1VC03cMIopcf0gTHECDZlP96nX5/Hah9BUX14=
+github.com/lbryio/lbry.go v0.0.0-20190410212638-0ce23a6a3cd5/go.mod h1:8Cl5i+Rmi6gMr0VoxRjaZivMK6OKA3QUzr05MgoQb6c=
 github.com/lbryio/ozzo-validation v0.0.0-20170323141101-d1008ad1fd04/go.mod h1:fbG/dzobG8r95KzMwckXiLMHfFjZaBRQqC9hPs2XAQ4=
 github.com/lbryio/ozzo-validation v3.0.2+incompatible h1:B/SBbsYa06BlNpEyBn0Zn7ZCbhnNh70Kukjur5fS3yQ=
 github.com/lbryio/ozzo-validation v3.0.2+incompatible/go.mod h1:fbG/dzobG8r95KzMwckXiLMHfFjZaBRQqC9hPs2XAQ4=
@@ -204,6 +210,12 @@ github.com/lbryio/sqlboiler v2.3.0+incompatible h1:fX1vZf/PEJxGVS89NyXs6vz9PRTY9
 github.com/lbryio/sqlboiler v2.3.0+incompatible/go.mod h1:F6p5lBCnuVhpG8ZJwwRFhQn5SNVCzYzMIepCkuqbkDI=
 github.com/lbryio/types v0.0.0-20181001180206-594241d24e00 h1:1qRpd8lcyVigX+kYkwQL13gpOURyytgvxZtuIQfPPX8=
 github.com/lbryio/types v0.0.0-20181001180206-594241d24e00/go.mod h1:CG3wsDv5BiVYQd5i1Jp7wGsaVyjZTJshqXeWMVKsISE=
+github.com/lbryio/types v0.0.0-20190304154608-a6f2fd6d5f38 h1:78rErXiBhMjs7vh4Ke3ZMqQjf+pnQeNrkXYmQ8L6aKE=
+github.com/lbryio/types v0.0.0-20190304154608-a6f2fd6d5f38/go.mod h1:CG3wsDv5BiVYQd5i1Jp7wGsaVyjZTJshqXeWMVKsISE=
+github.com/lbryio/types v0.0.0-20190404154608-54c3c28f676a h1:ZLWpOCkQB/2U9ETJA+O0KHVIg9gcookN0dn0QajMoSk=
+github.com/lbryio/types v0.0.0-20190404154608-54c3c28f676a/go.mod h1:CG3wsDv5BiVYQd5i1Jp7wGsaVyjZTJshqXeWMVKsISE=
+github.com/lbryio/types v0.0.0-20190405005919-54c3c28f676a h1:twWvrsBDvSb+qnmpSq3nvFrodgC5PpXUipyo4T/W790=
+github.com/lbryio/types v0.0.0-20190405005919-54c3c28f676a/go.mod h1:CG3wsDv5BiVYQd5i1Jp7wGsaVyjZTJshqXeWMVKsISE=
 github.com/lib/pq v1.0.0 h1:X5PMW56eZitiTeO7tKzZxFCSpbFZJtkMMooicw2us9A=
 github.com/lib/pq v1.0.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/lusis/go-slackbot v0.0.0-20180109053408-401027ccfef5 h1:AsEBgzv3DhuYHI/GiQh2HxvTP71HCCE9E/tzGUzGdtU=

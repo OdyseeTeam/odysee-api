@@ -133,13 +133,12 @@ func (s *reflectedStream) resolve(client *ljsonrpc.Client) error {
 	}
 
 	stream := (*response)[s.URI].Claim.Value.Stream
-	if stream.Metadata.Fee != nil && (*stream.Metadata.Fee.Amount > 0) {
+	if stream.Fee != nil && stream.Fee.Amount > 0 {
 		return errors.Err("paid stream")
 	}
 
-	source := stream.Source
-	s.SDHash = source.Source
-	s.ContentType = source.GetContentType()
+	s.SDHash = stream.SdHash
+	s.ContentType = stream.MediaType
 
 	monitor.Logger.WithFields(log.Fields{
 		"sd_hash":      fmt.Sprintf("%s", s.SDHash),
