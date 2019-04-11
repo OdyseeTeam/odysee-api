@@ -23,6 +23,7 @@ require (
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
 	github.com/facebookgo/stack v0.0.0-20160209184415-751773369052 // indirect
 	github.com/fatih/color v1.7.0
+	github.com/fatih/structs v1.1.0 // indirect
 	github.com/getsentry/raven-go v0.2.0
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/gliderlabs/ssh v0.1.3 // indirect
@@ -49,7 +50,7 @@ require (
 	github.com/kisielk/errcheck v1.2.0 // indirect
 	github.com/kkdai/bstream v0.0.0-20181106074824-b3251f7901ec // indirect
 	github.com/kr/pretty v0.1.0 // indirect
-	github.com/lbryio/lbry.go v0.0.0-20190410212638-0ce23a6a3cd5
+	github.com/lbryio/lbry.go v0.0.0-20190411184531-846f1afaaba8
 	github.com/lbryio/ozzo-validation v3.0.2+incompatible // indirect
 	github.com/lbryio/sqlboiler v2.3.0+incompatible
 	github.com/lbryio/types v0.0.0-20190405005919-54c3c28f676a
