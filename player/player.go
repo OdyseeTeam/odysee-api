@@ -132,7 +132,10 @@ func (s *reflectedStream) resolve(client *ljsonrpc.Client) error {
 		return err
 	}
 
-	stream := (*response)[s.URI].Claim.Value.Stream
+	stream := (*response)[s.URI].Claim.Value.GetStream()
+	if stream == nil {
+		panic(fmt.Sprintf("something's wrong for %v, no stream in %v", s.URI, (*response)[s.URI].Claim.Type))
+	}
 	if stream.Fee != nil && stream.Fee.Amount > 0 {
 		return errors.Err("paid stream")
 	}
