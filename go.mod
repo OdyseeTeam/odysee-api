@@ -49,7 +49,7 @@ require (
 	github.com/kisielk/errcheck v1.2.0 // indirect
 	github.com/kkdai/bstream v0.0.0-20181106074824-b3251f7901ec // indirect
 	github.com/kr/pretty v0.1.0 // indirect
-	github.com/lbryio/lbry.go v0.0.0-20190411190437-80eda2b43191
+	github.com/lbryio/lbry.go v0.0.0-20190419055300-80b25b225e18
 	github.com/lbryio/ozzo-validation v3.0.2+incompatible // indirect
 	github.com/lbryio/sqlboiler v2.3.0+incompatible
 	github.com/lbryio/types v0.0.0-20190405005919-54c3c28f676a
