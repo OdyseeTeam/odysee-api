@@ -17,7 +17,7 @@ services:
       source: storage
       target: /storage
     environment:
-      LBRY_DOCKER_CONFIG: /conf/daemon_settings.yml
+      LBRY_DOCKER_CONFIG: /daemon/daemon_settings.yml
   watchtower:
     image: v2tec/watchtower
     command: --interval 30 --cleanup
