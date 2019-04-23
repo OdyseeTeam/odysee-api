@@ -5,6 +5,7 @@ import (
 
 	raven "github.com/getsentry/raven-go"
 	"github.com/gorilla/mux"
+	"github.com/lbryio/lbryweb.go/users"
 )
 
 // CaptureErrors wraps http handler with raven.RecoveryHandler which captures unhandled exceptions to sentry.io
