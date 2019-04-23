@@ -19,7 +19,7 @@ func Test_newReflectedStream(t *testing.T) {
 	}
 	assert.Equal(t,
 		"d5169241150022f996fa7cd6a9a1c421937276a3275eb912790bd07ba7aec1fac5fd45431d226b8fb402691e79aeb24b",
-		string(rs.SDHash))
+		rs.SDHash)
 }
 
 func Test_newReflectedStream_emptyURL(t *testing.T) {

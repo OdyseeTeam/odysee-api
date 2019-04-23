@@ -38,9 +38,11 @@ github.com/asaskevich/govalidator v0.0.0-20180720115003-f9ffefc3facf/go.mod h1:l
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/bradfitz/go-smtpd v0.0.0-20170404230938-deb6d6237625/go.mod h1:HYsPBTaaSFSlLx/70C2HPIMNZpVV8+vt/A+FMnYP11g=
 github.com/btcsuite/btcd v0.0.0-20180531025944-86fed781132a/go.mod h1:Dmm/EzmjnCiweXmzRIAiUWCInVmPgjkzgv5k4tVyXiQ=
+github.com/btcsuite/btcd v0.0.0-20190213025234-306aecffea32 h1:qkOC5Gd33k54tobS36cXdAzJbeHaduLtnLQQwNoIi78=
 github.com/btcsuite/btcd v0.0.0-20190213025234-306aecffea32/go.mod h1:DrZx5ec/dmnfpw9KyYoQyYo7d0KEvTkk/5M/vbZjAr8=
 github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f/go.mod h1:TdznJufoqS23FtqVCzL0ZqgP5MqXbb4fg/WgDys70nA=
 github.com/btcsuite/btcutil v0.0.0-20180524032703-d4cc87b86016/go.mod h1:+5NJ2+qvTyV9exUAL/rxXi3DcLg2Ts+ymUAY5y4NvMg=
+github.com/btcsuite/btcutil v0.0.0-20190207003914-4c204d697803 h1:j3AgPKKZtZStM2nyhrDSLSYgT7YHrZKdSkq1OYeLjvM=
 github.com/btcsuite/btcutil v0.0.0-20190207003914-4c204d697803/go.mod h1:+5NJ2+qvTyV9exUAL/rxXi3DcLg2Ts+ymUAY5y4NvMg=
 github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd/go.mod h1:HHNXQzUsZCxOoE+CPiyCTO6x34Zs86zZUiwtpXoGdtg=
 github.com/btcsuite/goleveldb v0.0.0-20160330041536-7834afc9e8cd/go.mod h1:F+uVaaLLH7j4eDXPRvw78tMflu7Ie2bzYOH4Y8rRKBY=
@@ -209,6 +211,10 @@ github.com/lbryio/lbry.go v0.0.0-20190411190437-80eda2b43191 h1:y25pvuyDP4QhucSr
 github.com/lbryio/lbry.go v0.0.0-20190411190437-80eda2b43191/go.mod h1:kd08aOMCuBVYJ3EafY4Kx3dRAWWQYhobJ9beREgsaRI=
 github.com/lbryio/lbry.go v0.0.0-20190419055300-80b25b225e18 h1:0A2dFh24ooznk15P797wgQiirpR/9ZHlNzZdW9ul7dY=
 github.com/lbryio/lbry.go v0.0.0-20190419055300-80b25b225e18/go.mod h1:kd08aOMCuBVYJ3EafY4Kx3dRAWWQYhobJ9beREgsaRI=
+github.com/lbryio/lbry.go v0.0.0-20190422035747-b9b1729832f5 h1:NvGSpvYavoK+tIlvJlS36oxQsvJZAbcpK/bEIXV8D9Y=
+github.com/lbryio/lbry.go v0.0.0-20190422035747-b9b1729832f5/go.mod h1:FubnMAYvLt2jGasG7BrQsokYHZ2wpNtWethPHUVauMc=
+github.com/lbryio/lbryschema.go v0.0.0-20190422030648-322c658307e0 h1:/YWLlbbDefRGLs/ozyuRpvpwpFISYehwR4AAVlPthA8=
+github.com/lbryio/lbryschema.go v0.0.0-20190422030648-322c658307e0/go.mod h1:dAzPCBj3CKKWBGYBZxK6tKBP5SCgY2tqd9SnQd/OyKo=
 github.com/lbryio/ozzo-validation v0.0.0-20170323141101-d1008ad1fd04/go.mod h1:fbG/dzobG8r95KzMwckXiLMHfFjZaBRQqC9hPs2XAQ4=
 github.com/lbryio/ozzo-validation v3.0.2+incompatible h1:B/SBbsYa06BlNpEyBn0Zn7ZCbhnNh70Kukjur5fS3yQ=
 github.com/lbryio/ozzo-validation v3.0.2+incompatible/go.mod h1:fbG/dzobG8r95KzMwckXiLMHfFjZaBRQqC9hPs2XAQ4=
@@ -222,6 +228,10 @@ github.com/lbryio/types v0.0.0-20190404154608-54c3c28f676a h1:ZLWpOCkQB/2U9ETJA+
 github.com/lbryio/types v0.0.0-20190404154608-54c3c28f676a/go.mod h1:CG3wsDv5BiVYQd5i1Jp7wGsaVyjZTJshqXeWMVKsISE=
 github.com/lbryio/types v0.0.0-20190405005919-54c3c28f676a h1:twWvrsBDvSb+qnmpSq3nvFrodgC5PpXUipyo4T/W790=
 github.com/lbryio/types v0.0.0-20190405005919-54c3c28f676a/go.mod h1:CG3wsDv5BiVYQd5i1Jp7wGsaVyjZTJshqXeWMVKsISE=
+github.com/lbryio/types v0.0.0-20190420150432-3af925981a5f h1:N8ErMlrpP87wK+NfDhkV1A84Ect8xYWdO+ozAdi1z7k=
+github.com/lbryio/types v0.0.0-20190420150432-3af925981a5f/go.mod h1:CG3wsDv5BiVYQd5i1Jp7wGsaVyjZTJshqXeWMVKsISE=
+github.com/lbryio/types v0.0.0-20190422033210-321fb2abda9c h1:m3O7561xBQ00lfUVayW4c6SnpVbUDQtPUwGcGYSUYQA=
+github.com/lbryio/types v0.0.0-20190422033210-321fb2abda9c/go.mod h1:CG3wsDv5BiVYQd5i1Jp7wGsaVyjZTJshqXeWMVKsISE=
 github.com/lib/pq v1.0.0 h1:X5PMW56eZitiTeO7tKzZxFCSpbFZJtkMMooicw2us9A=
 github.com/lib/pq v1.0.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/lusis/go-slackbot v0.0.0-20180109053408-401027ccfef5 h1:AsEBgzv3DhuYHI/GiQh2HxvTP71HCCE9E/tzGUzGdtU=
@@ -510,6 +520,7 @@ gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7/go.mod h1:dt/ZhP58zS4L8KSrWD
 gopkg.in/yaml.v2 v2.2.1/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v2 v2.2.2 h1:ZCJp+EgiOT7lHqUV2J862kp8Qj64Jo6az82+3Td9dZw=
 gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
+gotest.tools v2.2.0+incompatible/go.mod h1:DsYFclhRJ6vuDpmuTbkuFWG+y2sxOXAzmJt81HFBacw=
 grpc.go4.org v0.0.0-20170609214715-11d0a25b4919/go.mod h1:77eQGdRu53HpSqPFJFmuJdjuHRquDANNeA4x7B8WQ9o=
 honnef.co/go/tools v0.0.0-20180728063816-88497007e858/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 honnef.co/go/tools v0.0.0-20180920025451-e3ad64cb4ed3/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=

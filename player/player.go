@@ -24,7 +24,7 @@ type reflectedStream struct {
 	URI         string
 	StartByte   int64
 	EndByte     int64
-	SDHash      []byte
+	SDHash      string
 	Size        int64
 	ContentType string
 	SDBlob      *stream.SDBlob
@@ -119,7 +119,7 @@ func (s *reflectedStream) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (s *reflectedStream) URL() string {
-	return reflectorURL + string(s.SDHash)
+	return reflectorURL + s.SDHash
 }
 
 func (s *reflectedStream) resolve(client *ljsonrpc.Client) error {
@@ -140,8 +140,8 @@ func (s *reflectedStream) resolve(client *ljsonrpc.Client) error {
 		return errors.Err("paid stream")
 	}
 
-	s.SDHash = stream.SdHash
-	s.ContentType = stream.MediaType
+	s.SDHash = hex.EncodeToString(stream.Source.SdHash)
+	s.ContentType = stream.Source.MediaType
 
 	monitor.Logger.WithFields(log.Fields{
 		"sd_hash":      fmt.Sprintf("%s", s.SDHash),
@@ -153,8 +153,8 @@ func (s *reflectedStream) resolve(client *ljsonrpc.Client) error {
 }
 
 func (s *reflectedStream) fetchData() error {
-	if s.SDHash == nil {
-		return errors.Err("No hash set, call `resolve` first")
+	if s.SDHash == "" {
+		return errors.Err("No sd hash set, call `resolve` first")
 	}
 	monitor.Logger.WithFields(log.Fields{
 		"uri": s.URI, "url": s.URL(),
