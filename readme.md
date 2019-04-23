@@ -80,5 +80,5 @@ Our PGP key is [here](https://keybase.io/lbry/key.asc) if you need it.
 
 ## Contact
 
-The primary contact for this project is [@lyoshenka](https://github.com/lyoshenka) (grin@lbry.io).
+The primary contact for this project is [@sayplastic](https://github.com/sayplastic) (andrey@lbry.com).
 
