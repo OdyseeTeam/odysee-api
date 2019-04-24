@@ -1,9 +1,13 @@
 package db
 
 import (
+	"fmt"
+
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres" // Dialect import
 	"github.com/lbryio/lbryweb.go/config"
+	"github.com/lbryio/lbryweb.go/monitor"
+	log "github.com/sirupsen/logrus"
 )
 
 // DB holds global database connection
@@ -15,15 +19,60 @@ type User struct {
 	SDKAccountID string
 }
 
-func init() {
-	openConnection()
+type connectionParams struct {
+	DatabaseConnection string
+	DatabaseName       string
+	DatabaseOptions    string
 }
 
-func openConnection() {
+func GetURL(params connectionParams) string {
+	if params.DatabaseConnection == "" {
+		params.DatabaseConnection = config.Settings.GetString("DatabaseConnection")
+	}
+	if params.DatabaseName == "" {
+		params.DatabaseName = config.Settings.GetString("DatabaseName")
+	}
+	if params.DatabaseOptions == "" {
+		params.DatabaseOptions = config.Settings.GetString("DatabaseOptions")
+	}
+	return fmt.Sprintf(
+		"%v/%v?%v",
+		params.DatabaseConnection,
+		params.DatabaseName,
+		params.DatabaseOptions,
+	)
+}
+
+func init() {
+	initializeConnection()
+}
+
+func openDefaultDB() {
 	var err error
-	DB, err = gorm.Open("postgres", config.Settings.GetString("DbURL"))
+
+	dbURL := GetURL(connectionParams{})
+	monitor.Logger.WithFields(log.Fields{
+		"db_url": dbURL,
+	}).Info("connecting to the database")
+	DB, err = gorm.Open("postgres", dbURL)
 	if err != nil {
 		panic(err)
 	}
+}
 
+func initializeConnection() {
+	dbURL := GetURL(connectionParams{DatabaseName: "postgres"})
+
+	monitor.Logger.WithFields(log.Fields{
+		"db_url": dbURL,
+	}).Info("connecting to the database")
+
+	db, err := gorm.Open("postgres", dbURL)
+	if err != nil {
+		panic(err)
+	}
+	db = db.Exec(fmt.Sprintf("CREATE DATABASE %v;", config.Settings.GetString("DatabaseName")))
+	if db.Error != nil {
+		openDefaultDB()
+	}
 }
