@@ -1,3 +1,6 @@
 StaticDir: /static
 BaseContentURL: https://api.lbry.tv/content/
 SentryDSN: "https://9ef75ef77a844d4aa35d834d78266477:3cff15dc36fa4595b056af781b042852@sentry.io/1416147"
+DatabaseConnection: postgres://postgres:postgres@db
+DatabaseName: lbryweb
+DatabaseOptions: sslmode=disable
