@@ -3,7 +3,7 @@ jobs:
   test:
     docker:
       - image: circleci/golang:1.11
-      - image: lbryweb/lbrynet:latest
+      - image: lbryweb/lbrynet:0.36.0
       - image: postgres:11-alpine
     steps:
       - checkout
