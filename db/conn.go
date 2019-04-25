@@ -10,8 +10,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// DB holds global database connection
-var DB *gorm.DB
+// Conn holds global database connection
+var Conn *gorm.DB
 
 // User contains necessary internal-apis and SDK's account_id
 type User struct {
@@ -54,7 +54,7 @@ func openDefaultDB() {
 	monitor.Logger.WithFields(log.Fields{
 		"db_url": dbURL,
 	}).Info("connecting to the database")
-	DB, err = gorm.Open("postgres", dbURL)
+	Conn, err = gorm.Open("postgres", dbURL)
 	if err != nil {
 		panic(err)
 	}
@@ -78,5 +78,22 @@ func initializeConnection() {
 	db = db.Exec(fmt.Sprintf("CREATE DATABASE %v;", dbName))
 	if db.Error != nil {
 		openDefaultDB()
+	}
+}
+
+// DropDatabase deletes the default database configured in settings. Use cautiously
+func DropDatabase() {
+	dbURL := GetURL(connectionParams{DatabaseName: "postgres"})
+
+	db, err := gorm.Open("postgres", dbURL)
+	if err != nil {
+		panic(err)
+	}
+
+	Conn.Close()
+
+	db.Exec(fmt.Sprintf("DROP DATABASE %v;", config.Settings.GetString("DatabaseName")))
+	if db.Error != nil {
+		panic(db.Error)
 	}
 }

@@ -22,7 +22,7 @@ func init() {
 }
 
 func initializeStore() {
-	store = gormstore.New(db.DB, []byte("secret"))
+	store = gormstore.New(db.Conn, []byte("secret"))
 
 	// db cleanup every hour
 	// close quit channel to stop cleanup

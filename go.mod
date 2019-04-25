@@ -111,6 +111,7 @@ require (
 	golang.org/x/perf v0.0.0-20190124201629-844a5f5b46f4 // indirect
 	golang.org/x/sys v0.0.0-20190225065934-cc5685c2db12 // indirect
 	gopkg.in/ini.v1 v1.42.0 // indirect
+	gotest.tools v2.2.0+incompatible
 	honnef.co/go/tools v0.0.0-20190215041234-466a0476246c // indirect
 	sourcegraph.com/sourcegraph/go-diff v0.5.0 // indirect
 	sourcegraph.com/sqs/pbtypes v1.0.0 // indirect

@@ -1,0 +1,58 @@
+package users
+
+import (
+	"testing"
+
+	"github.com/jinzhu/gorm"
+	"github.com/lbryio/lbryweb.go/db"
+	"github.com/stretchr/testify/suite"
+	"gotest.tools/assert"
+)
+
+type StoreSuite struct {
+	suite.Suite
+	store *dbStore
+	db    *gorm.DB
+}
+
+func (s *StoreSuite) SetupSuite() {
+	s.db = db.Conn
+	s.store = &dbStore{db: db.Conn}
+	s.store.AutoMigrate()
+}
+
+func (s *StoreSuite) SetupTest() {
+	db := s.db.Exec("DELETE FROM users")
+	if db.Error != nil {
+		s.T().Fatal(db.Error)
+	}
+}
+
+func (s *StoreSuite) TearDownSuite() {
+	// Close the connection after all tests in the suite finish
+	db.DropDatabase()
+}
+
+func TestStoreSuite(t *testing.T) {
+	s := new(StoreSuite)
+	suite.Run(t, s)
+}
+
+func (s *StoreSuite) TestCreateRecord() {
+	err := s.store.CreateRecord("acCID", "tOkEn")
+	if err != nil {
+		s.T().Fatal(err)
+	}
+
+	user, err := s.store.GetRecordByToken("tOkEn")
+	if err != nil {
+		s.T().Fatal(err)
+	}
+	assert.Equal(s.T(), "acCID", user.SDKAccountID)
+
+	// Duplicate record should not go through
+	err = s.store.CreateRecord("acCID", "tOkEn")
+	if err == nil {
+		s.T().Fatal("duplicate record created")
+	}
+}
