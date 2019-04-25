@@ -61,8 +61,12 @@ func openDefaultDB() {
 }
 
 func initializeConnection() {
+	dbName := config.Settings.GetString("DatabaseName")
 	dbURL := GetURL(connectionParams{DatabaseName: "postgres"})
 
+	if dbName == "" {
+		panic("DatabaseName not configured")
+	}
 	monitor.Logger.WithFields(log.Fields{
 		"db_url": dbURL,
 	}).Info("connecting to the database")
@@ -71,7 +75,7 @@ func initializeConnection() {
 	if err != nil {
 		panic(err)
 	}
-	db = db.Exec(fmt.Sprintf("CREATE DATABASE %v;", config.Settings.GetString("DatabaseName")))
+	db = db.Exec(fmt.Sprintf("CREATE DATABASE %v;", dbName))
 	if db.Error != nil {
 		openDefaultDB()
 	}
