@@ -3,9 +3,9 @@ package sessions
 import (
 	"time"
 
-	"github.com/jinzhu/gorm"
+	"github.com/lbryio/lbryweb.go/db"
+
 	_ "github.com/jinzhu/gorm/dialects/postgres" // Dialect import
-	"github.com/lbryio/lbryweb.go/config"
 	"github.com/wader/gormstore"
 )
 
@@ -22,11 +22,7 @@ func init() {
 }
 
 func initializeStore() {
-	db, err := gorm.Open("postgres", config.Settings.GetString("DbURL"))
-	if err != nil {
-		panic(err)
-	}
-	store = gormstore.New(db, []byte("secret"))
+	store = gormstore.New(db.DB, []byte("secret"))
 
 	// db cleanup every hour
 	// close quit channel to stop cleanup
