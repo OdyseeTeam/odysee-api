@@ -21,8 +21,8 @@ After everything is done launching, open `http://localhost:8080` in your browser
 
 You're still going to need docker / docker-compose for running SDK and DB containers.
 
-1. Run `docker-compose up db lbrynet  --no-start` (if this is your first launch)
-2. Run `docker-compose start db lbrynet` to launch containers
+1. Run `docker-compose up postgres lbrynet  --no-start` (if this is your first launch)
+2. Run `docker-compose start postgres lbrynet` to launch containers
 3. Run `go run . serve` to start lbryweb API server
 4. `git clone` [lbry-desktop](https://github.com/lbryio/lbry-desktop/) repo in a separate folder
 5. Run `SDK_API_URL=http://localhost:8080/api/proxy/ yarn dev:web` in lbry-desktop repo
@@ -30,7 +30,7 @@ You're still going to need docker / docker-compose for running SDK and DB contai
 
 ## Testing
 
-Make sure you got `lbrynet` and `db` containers running and run `make test`.
+Make sure you got `lbrynet` and `postgres` containers running and run `make test`.
 
 ## Modifying and building a Docker image
 

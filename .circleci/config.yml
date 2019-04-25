@@ -4,6 +4,7 @@ jobs:
     docker:
       - image: circleci/golang:1.11
       - image: lbryweb/lbrynet:latest
+      - image: postgres:11-alpine
     steps:
       - checkout
       - restore_cache:
