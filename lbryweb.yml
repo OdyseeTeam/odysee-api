@@ -1,4 +1,6 @@
 Lbrynet: http://localhost:5579/
 Debug: 1
-DbURL: postgres://postgres:postgres@db/lbryweb?sslmode=disable
+DatabaseConnection: postgres://postgres:postgres@localhost
 InternalAPIs: https://api.lbry.com/
+DatabaseName: lbryweb
+DatabaseOptions: sslmode=disable
