@@ -12,10 +12,10 @@ import (
 )
 
 type IAPIResponse struct {
-	Success bool        `json:"success"`
-	Error   *string     `json:"error"`
-	Data    interface{} `json:"data"`
-	Trace   []string    `json:"_trace,omitempty"`
+	Success bool                   `json:"success"`
+	Error   *string                `json:"error"`
+	Data    map[string]interface{} `json:"data"`
+	Trace   []string               `json:"_trace,omitempty"`
 }
 
 // Call just takes an existing raw POST payload and sends it to internal-apis
@@ -47,9 +47,5 @@ func Call(object string, method string, payload io.ReadCloser) (response IAPIRes
 	}
 
 	err = json.Unmarshal(body, &response)
-	if err != nil {
-		return response, err
-	}
-
 	return response, err
 }

@@ -1,6 +1,7 @@
 package users
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -22,16 +23,18 @@ func AutoMigrate() {
 	db.DB.AutoMigrate(&User{})
 }
 
-// GetByToken retrieves user record by token
+// GetRecordByToken retrieves user record by token
 func GetRecordByToken(token string) (u User) {
 	db.DB.First(&u, "auth_token = ?", token)
 	return u
 }
 
-// Create saves user record to the database
-func CreateRecord(account, token string) error {
-	if GetByToken(token) {
-		return err.Error("user already exists")
+// CreateRecord saves user record to the database
+func CreateRecord(accountID, token string) error {
+	u := User{}
+	if GetRecordByToken(token) != u {
+		return fmt.Errorf("user %v already exists", token)
 	}
-	db.DB.Create(&User{AuthToken: token, SDKAccountID: account})
+	db.DB.Create(&User{AuthToken: token, SDKAccountID: accountID})
+	return nil
 }
