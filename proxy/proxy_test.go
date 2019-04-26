@@ -131,9 +131,33 @@ var homePageUrls = [110]string{
 	"lbry://ten",
 }
 
+// A jsonrpc server that responds to every query with an error
+func launchGrumpyServer() {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		response, _ := json.Marshal(jsonrpc.RPCResponse{Error: &jsonrpc.RPCError{Message: "your ways are wrong"}})
+		w.Write(response)
+	})
+	log.Fatal(http.ListenAndServe("127.0.0.1:59999", nil))
+}
+
+// A jsonrpc server that responds to every query with a given result
+func launchDummyServer(r interface{}) {
+	response, err := json.Marshal(jsonrpc.RPCResponse{Result: r})
+	if err != nil {
+		log.Fatal("failed to marshal dummy rpc response", err)
+	}
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write(response)
+	})
+	log.Fatal(http.ListenAndServe("127.0.0.1:59999", nil))
+}
+
 func TestForwardCallWithHTTPError(t *testing.T) {
-	defaultDaemonURL := config.Settings.GetString("Lbrynet")
-	config.Settings.Set("Lbrynet", "http://localhost:59999")
+	config.Override("Lbrynet", "http://localhost:59999")
+	defer config.RestoreOverridden()
+
 	query := jsonrpc.NewRequest("account_balance")
 	queryBody, _ := json.Marshal(query)
 	response, err := ForwardCall(queryBody)
@@ -141,7 +165,6 @@ func TestForwardCallWithHTTPError(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.True(t, strings.HasPrefix(err.Error(), "rpc call account_balance() on http://localhost:59999"), err.Error())
 	assert.True(t, strings.HasSuffix(err.Error(), "connect: connection refused"), err.Error())
-	config.Settings.Set("Lbrynet", defaultDaemonURL)
 }
 
 func TestForwardCallWithLbrynetError(t *testing.T) {
@@ -155,21 +178,11 @@ func TestForwardCallWithLbrynetError(t *testing.T) {
 	assert.Equal(t, "Invalid method requested: crazy_method.", response.Error.Message)
 }
 
-// A jsonrpc server that responds to every query with an error
-func launchGrumpyServer() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		response, _ := json.Marshal(jsonrpc.RPCResponse{Error: &jsonrpc.RPCError{Message: "your ways are wrong"}})
-		w.Write(response)
-	})
-	log.Fatal(http.ListenAndServe("127.0.0.1:59999", nil))
-}
-
 func TestForwardCallWithClientError(t *testing.T) {
 	var response jsonrpc.RPCResponse
 
-	defaultDaemonURL := config.Settings.GetString("Lbrynet")
-	config.Settings.Set("Lbrynet", "http://localhost:59999")
+	config.Override("Lbrynet", "http://localhost:59999")
+	defer config.RestoreOverridden()
 
 	go launchGrumpyServer()
 
@@ -180,8 +193,6 @@ func TestForwardCallWithClientError(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, response.Error)
 	assert.Equal(t, "your ways are wrong", response.Error.Message)
-
-	config.Settings.Set("Lbrynet", defaultDaemonURL)
 }
 
 func TestForwardCall(t *testing.T) {
