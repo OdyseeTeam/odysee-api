@@ -41,7 +41,7 @@ func ForwardCall(clientQuery []byte) ([]byte, error) {
 	if shouldCache(finalQuery.Method, finalQuery.Params) {
 		cachedResponse := responseCache.Retrieve(finalQuery.Method, finalQuery.Params)
 		if cachedResponse != nil {
-			serializedResponse, err := json.MarshalIndent(processedResponse, "", "  ")
+			serializedResponse, err := json.MarshalIndent(cachedResponse, "", "  ")
 			if err != nil {
 				return nil, err
 			}

@@ -318,7 +318,8 @@ func TestForwardCallWithCache(t *testing.T) {
 	}
 
 	response.GetObject(&cachedResolveResponse)
-	assert.Equal(t, resolveResponse, cachedResolveResponse)
+	assert.Equal(t, 110, len(*cachedResolveResponse))
+	assert.Equal(t, *resolveResponse, *cachedResolveResponse)
 }
 
 func BenchmarkResolve(b *testing.B) {
