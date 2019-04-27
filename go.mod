@@ -65,6 +65,7 @@ require (
 	github.com/nkovacs/streamquote v0.0.0-20170412213628-49af9bddb229 // indirect
 	github.com/nullbio/inflect v0.0.0-20170731032957-3edb4592a77b // indirect
 	github.com/ogier/pflag v0.0.1 // indirect
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90 // indirect
 	github.com/prometheus/procfs v0.0.0-20190225181712-6ed1f7e10411 // indirect
