@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -131,39 +132,37 @@ var homePageUrls = [110]string{
 	"lbry://ten",
 }
 
+const grumpyServerURL = "http://127.0.0.1:59999"
+
 // A jsonrpc server that responds to every query with an error
 func launchGrumpyServer() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		response, _ := json.Marshal(jsonrpc.RPCResponse{Error: &jsonrpc.RPCError{Message: "your ways are wrong"}})
-		w.Write(response)
-	})
-	log.Fatal(http.ListenAndServe("127.0.0.1:59999", nil))
-}
-
-// A jsonrpc server that responds to every query with a given result
-func launchDummyServer(r interface{}) {
-	response, err := json.Marshal(jsonrpc.RPCResponse{Result: r})
-	if err != nil {
-		log.Fatal("failed to marshal dummy rpc response", err)
+	s := &http.Server{
+		Addr: "127.0.0.1:59999",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			response, _ := json.Marshal(jsonrpc.RPCResponse{Error: &jsonrpc.RPCError{Message: "your ways are wrong"}})
+			w.Write(response)
+		}),
 	}
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write(response)
-	})
-	log.Fatal(http.ListenAndServe("127.0.0.1:59999", nil))
+	log.Fatal(s.ListenAndServe())
 }
 
+func TestMain(m *testing.M) {
+	go launchGrumpyServer()
+	os.Exit(m.Run())
+}
+
+// TestForwardCallWithHTTPError tests for HTTP level error connecting to a port that no server is listening on
 func TestForwardCallWithHTTPError(t *testing.T) {
-	config.Override("Lbrynet", "http://localhost:59999")
+	config.Override("Lbrynet", "http://127.0.0.1:49999")
 	defer config.RestoreOverridden()
 
 	query := jsonrpc.NewRequest("account_balance")
 	queryBody, _ := json.Marshal(query)
 	response, err := ForwardCall(queryBody)
-	assert.Nil(t, response)
 	assert.NotNil(t, err)
-	assert.True(t, strings.HasPrefix(err.Error(), "rpc call account_balance() on http://localhost:59999"), err.Error())
+	assert.Nil(t, response)
+	assert.True(t, strings.HasPrefix(err.Error(), "rpc call account_balance() on http://127.0.0.1:49999"), err.Error())
 	assert.True(t, strings.HasSuffix(err.Error(), "connect: connection refused"), err.Error())
 }
 
@@ -183,8 +182,6 @@ func TestForwardCallWithClientError(t *testing.T) {
 
 	config.Override("Lbrynet", "http://localhost:59999")
 	defer config.RestoreOverridden()
-
-	go launchGrumpyServer()
 
 	query := jsonrpc.NewRequest("get")
 	queryBody, _ := json.Marshal(query)
@@ -244,7 +241,8 @@ func TestForwardCall(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed with an unexpected error: %v", err)
 		return
-	} else if response.Error != nil {
+	}
+	if response.Error != nil {
 		t.Errorf("daemon errored: %v", response.Error.Message)
 		return
 	}
@@ -294,26 +292,31 @@ func TestForwardCallWithCache(t *testing.T) {
 	query = jsonrpc.NewRequest("resolve", resolveArgs)
 	queryBody, _ = json.Marshal(query)
 	rawResponse, err = ForwardCall(queryBody)
+	json.Unmarshal(rawResponse, &response)
 	if err != nil {
 		t.Fatal("failed with an unexpected error", err)
-	} else if response.Error != nil {
+	}
+	if response.Error != nil {
 		t.Fatal("daemon errored", response.Error.Message)
 	}
-
-	json.Unmarshal(rawResponse, &response)
 	response.GetObject(&resolveResponse)
 	assert.Equal(t, 110, len(*resolveResponse))
+
+	// Next resolve request should not touch the (grumpy) lbrynet and hit the cache instead
+	config.Override("Lbrynet", grumpyServerURL)
+	defer config.RestoreOverridden()
 
 	query = jsonrpc.NewRequest("resolve", resolveArgs)
 	queryBody, _ = json.Marshal(query)
 	rawResponse, err = ForwardCall(queryBody)
+	json.Unmarshal(rawResponse, &response)
 	if err != nil {
 		t.Fatal("failed with an unexpected error", err)
-	} else if response.Error != nil {
-		t.Fatal("daemon errored", response.Error.Message)
+	}
+	if response.Error != nil {
+		t.Fatal("unexpectedly hit the grumpy server")
 	}
 
-	json.Unmarshal(rawResponse, &response)
 	response.GetObject(&cachedResolveResponse)
 	assert.Equal(t, resolveResponse, cachedResolveResponse)
 }

@@ -10,6 +10,8 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
+const cacheResolveLongerThan = 10
+
 /*
 ForwardCall takes a raw client request, passes it over to the daemon and returns daemon response.
 
@@ -36,6 +38,18 @@ func ForwardCall(clientQuery []byte) ([]byte, error) {
 		return nil, err
 	}
 
+	if shouldCache(finalQuery.Method, finalQuery.Params) {
+		cachedResponse := responseCache.Retrieve(finalQuery.Method, finalQuery.Params)
+		if cachedResponse != nil {
+			serializedResponse, err := json.MarshalIndent(processedResponse, "", "  ")
+			if err != nil {
+				return nil, err
+			}
+			monitor.LogCachedQuery(parsedClientQuery.Method)
+			return serializedResponse, nil
+		}
+	}
+
 	queryStartTime := time.Now()
 	callResult, err := rpcClient.CallRaw(finalQuery)
 	if err != nil {
@@ -47,8 +61,11 @@ func ForwardCall(clientQuery []byte) ([]byte, error) {
 			return nil, err
 		}
 		// Too many account_balance requests, no need to log them
-		if parsedClientQuery.Method != "account_balance" {
+		if finalQuery.Method != "account_balance" {
 			monitor.LogSuccessfulQuery(parsedClientQuery.Method, time.Now().Sub(queryStartTime).Seconds())
+		}
+		if shouldCache(finalQuery.Method, finalQuery.Params) {
+			responseCache.Save(finalQuery.Method, finalQuery.Params, processedResponse)
 		}
 	} else {
 		processedResponse = callResult
@@ -61,6 +78,19 @@ func ForwardCall(clientQuery []byte) ([]byte, error) {
 		return nil, err
 	}
 	return serializedResponse, nil
+}
+
+// shouldCache returns true if we got a resolve query with more than `cacheResolveLongerThan` urls in it
+func shouldCache(method string, params interface{}) bool {
+	if method == "resolve" {
+		paramsMap := params.(map[string]interface{})
+		if urls, ok := paramsMap["urls"].([]interface{}); ok {
+			if len(urls) > cacheResolveLongerThan {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func processQuery(query *jsonrpc.RPCRequest) (processedQuery *jsonrpc.RPCRequest, err error) {

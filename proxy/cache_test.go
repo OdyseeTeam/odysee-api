@@ -13,9 +13,15 @@ import (
 func TestCache(t *testing.T) {
 	var (
 		response jsonrpc.RPCResponse
+		query    jsonrpc.RPCRequest
 	)
-	responseCache.flush()
-	params := map[string]interface{}{"urls": []string{"one", "two", "three"}}
+
+	// params := map[string]interface{}{"urls": []string{"one", "two", "three"}}
+	rawQuery := `{"jsonrpc":"2.0","method":"resolve","params":{"urls":["one", "two", "three"]},"id":1555013448981}`
+	err := json.Unmarshal([]byte(rawQuery), &query)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	absPath, _ := filepath.Abs("./testdata/resolve_response.json")
 	rawJSON, err := ioutil.ReadFile(absPath)
@@ -27,8 +33,9 @@ func TestCache(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Nil(t, responseCache.Retrieve("resolve", params))
-	responseCache.Save("resolve", params, response.Result)
+	responseCache.flush()
+	assert.Nil(t, responseCache.Retrieve("resolve", query.Params))
+	responseCache.Save("resolve", query.Params, response.Result)
 	assert.Equal(t, 1, responseCache.Count())
-	assert.Equal(t, response.Result, responseCache.Retrieve("resolve", params))
+	assert.Equal(t, response.Result, responseCache.Retrieve("resolve", query.Params))
 }

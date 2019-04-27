@@ -51,11 +51,14 @@ func (s *cacheStorage) Retrieve(method string, params interface{}) (cachedRespon
 
 func (s *cacheStorage) getKey(method string, params interface{}) (key string, err error) {
 	h := sha256.New()
-	// gob.Register(map[string]interface{}{})
+	paramsMap := params.(map[string]interface{})
+	gob.Register(paramsMap)
+	for _, v := range paramsMap {
+		gob.Register(v)
+	}
 	enc := gob.NewEncoder(h)
 	err = enc.Encode(params)
 	if err != nil {
-		// log.Fatalf("attempted to encode %v, errored: %v", params, err)
 		panic(err)
 	}
 	return fmt.Sprintf("%v|%v", method, h.Sum(nil)), err
