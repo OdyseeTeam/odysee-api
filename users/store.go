@@ -33,11 +33,12 @@ func InitStore(s Store) {
 }
 
 // AutoMigrate migrates user table
-func (s *dbStore) AutoMigrate() {
+func (s *dbStore) AutoMigrate() error {
 	db := s.db.AutoMigrate(&User{})
 	if db.Error != nil {
-		panic(db.Error)
+		return db.Error
 	}
+	return nil
 }
 
 // GetRecordByToken retrieves user record by token

@@ -18,7 +18,10 @@ type StoreSuite struct {
 func (s *StoreSuite) SetupSuite() {
 	s.db = db.Conn
 	s.store = &dbStore{db: db.Conn}
-	s.store.AutoMigrate()
+	err := s.store.AutoMigrate()
+	if err != nil {
+		s.T().Fatal(err)
+	}
 }
 
 func (s *StoreSuite) SetupTest() {
@@ -30,6 +33,9 @@ func (s *StoreSuite) SetupTest() {
 
 func (s *StoreSuite) TearDownSuite() {
 	s.db.Exec("DELETE FROM users;")
+	if s.db.Error != nil {
+		s.T().Fatal(s.db.Error)
+	}
 }
 
 func TestStoreSuite(t *testing.T) {
