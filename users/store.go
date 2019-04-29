@@ -33,7 +33,7 @@ func InitStore(s Store) {
 }
 
 // AutoMigrate migrates user table
-func (s *dbStore) AutoMigrate() error {
+func (s dbStore) AutoMigrate() error {
 	db := s.db.AutoMigrate(&User{})
 	if db.Error != nil {
 		return db.Error
@@ -42,13 +42,13 @@ func (s *dbStore) AutoMigrate() error {
 }
 
 // GetRecordByToken retrieves user record by token
-func (s *dbStore) GetRecordByToken(token string) (u User, err error) {
+func (s dbStore) GetRecordByToken(token string) (u User, err error) {
 	db := s.db.First(&u, "auth_token = ?", token)
 	return u, db.Error
 }
 
 // CreateRecord saves user record to the database
-func (s *dbStore) CreateRecord(accountID, token string) error {
+func (s dbStore) CreateRecord(accountID, token string) error {
 	_, err := s.GetRecordByToken(token)
 	if err == nil {
 		return fmt.Errorf("user %v already exists", token)
