@@ -92,7 +92,10 @@ func DropDatabase() {
 		panic(err)
 	}
 
-	Conn.Close()
+	err = Conn.Close()
+	if err != nil {
+		panic(err)
+	}
 
 	db.Exec(fmt.Sprintf("DROP DATABASE %s;", pq.QuoteIdentifier(config.Settings.GetString("DatabaseName"))))
 	if db.Error != nil {
