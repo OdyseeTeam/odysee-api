@@ -3,61 +3,39 @@ package users
 import (
 	"testing"
 
-	"github.com/jinzhu/gorm"
 	"github.com/lbryio/lbryweb.go/db"
-	"github.com/stretchr/testify/suite"
 	"gotest.tools/assert"
 )
 
-type StoreSuite struct {
-	suite.Suite
-	store *dbStore
-	db    *gorm.DB
-}
+func TestCreateRecord(t *testing.T) {
+	var store *dbStore
 
-func (s *StoreSuite) SetupSuite() {
-	s.db = db.Conn
-	s.store = &dbStore{db: db.Conn}
-	err := s.store.AutoMigrate()
-	if err != nil {
-		s.T().Fatal(err)
-	}
-}
+	store = &dbStore{db: db.Conn}
+	err := store.AutoMigrate()
 
-func (s *StoreSuite) SetupTest() {
-	db := s.db.Exec("DELETE FROM users;")
+	db := db.Conn.Exec("DELETE FROM users;")
 	if db.Error != nil {
-		s.T().Fatal(db.Error)
+		t.Fatal(err)
 	}
-}
 
-func (s *StoreSuite) TearDownSuite() {
-	s.db.Exec("DELETE FROM users;")
-	if s.db.Error != nil {
-		s.T().Fatal(s.db.Error)
-	}
-}
-
-func TestStoreSuite(t *testing.T) {
-	s := new(StoreSuite)
-	suite.Run(t, s)
-}
-
-func (s *StoreSuite) TestCreateRecord() {
-	err := s.store.CreateRecord("acCID", "tOkEn")
 	if err != nil {
-		s.T().Fatal(err)
+		t.Fatal(err)
 	}
 
-	user, err := s.store.GetRecordByToken("tOkEn")
+	err = store.CreateRecord("acCID", "tOkEn")
 	if err != nil {
-		s.T().Fatal(err)
+		t.Fatal(err)
 	}
-	assert.Equal(s.T(), "acCID", user.SDKAccountID)
+
+	user, err := store.GetRecordByToken("tOkEn")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "acCID", user.SDKAccountID)
 
 	// Duplicate record should not go through
-	err = s.store.CreateRecord("acCID", "tOkEn")
+	err = store.CreateRecord("acCID", "tOkEn")
 	if err == nil {
-		s.T().Fatal("duplicate record created")
+		t.Fatal("duplicate record created")
 	}
 }
