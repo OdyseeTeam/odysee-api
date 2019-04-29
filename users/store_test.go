@@ -22,15 +22,14 @@ func (s *StoreSuite) SetupSuite() {
 }
 
 func (s *StoreSuite) SetupTest() {
-	db := s.db.Exec("DELETE FROM users")
+	db := s.db.Exec("DELETE FROM users;")
 	if db.Error != nil {
 		s.T().Fatal(db.Error)
 	}
 }
 
 func (s *StoreSuite) TearDownSuite() {
-	// Close the connection after all tests in the suite finish
-	db.DropDatabase()
+	s.db.Exec("DELETE FROM users;")
 }
 
 func TestStoreSuite(t *testing.T) {
