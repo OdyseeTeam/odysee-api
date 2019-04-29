@@ -3,10 +3,12 @@ package db
 import (
 	"fmt"
 
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres" // Dialect import
 	"github.com/lbryio/lbryweb.go/config"
 	"github.com/lbryio/lbryweb.go/monitor"
+
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres" // Dialect import
+	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -75,7 +77,7 @@ func initializeConnection() {
 	if err != nil {
 		panic(err)
 	}
-	db = db.Exec(fmt.Sprintf("CREATE DATABASE %v;", dbName))
+	db = db.Exec(fmt.Sprintf("CREATE DATABASE %s;", pq.QuoteIdentifier(dbName)))
 	if db.Error != nil {
 		openDefaultDB()
 	}
@@ -92,7 +94,7 @@ func DropDatabase() {
 
 	Conn.Close()
 
-	db.Exec(fmt.Sprintf("DROP DATABASE %v;", config.Settings.GetString("DatabaseName")))
+	db.Exec(fmt.Sprintf("DROP DATABASE %s;", pq.QuoteIdentifier(config.Settings.GetString("DatabaseName"))))
 	if db.Error != nil {
 		panic(db.Error)
 	}
