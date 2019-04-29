@@ -5,5 +5,3 @@
 /dist/
 **/rice-box.go
 coverage.*
-.vscode/
-
