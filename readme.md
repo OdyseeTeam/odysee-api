@@ -10,42 +10,27 @@ Active development is in progress, expect failing tests and breaking changes.
 
 Make sure you have Docker and docker-compose installed.
 
-Then run:
-
-```
-docker-compose up app
-```
-
-_Warning: this will pull and launch lbrynet image, which lbryweb requires to operate_
-
-After everything is done launching, open `http://localhost:8080` in your browser.
-
-## Development (if you want to modify things)
-
-Make sure you have Docker and docker-compose installed.
-
-1. Run `docker-compose up app` (or run off the source)
-2. `git clone` [lbry-desktop](https://github.com/lbryio/lbry-desktop/) repo
+1. Run `docker-compose up app` (this will pull and launch SDK and postgres images, which lbryweb requires to operate)
+2. `git clone` [lbry-desktop](https://github.com/lbryio/lbry-desktop/) repo in a separate folder
 3. Run `SDK_API_URL=http://localhost:8080/api/proxy/ yarn dev:web` in lbry-desktop repo
 4. Open http://localhost:8081/ in Chrome
 
+After everything is done launching, open `http://localhost:8080` in your browser.
 
-#### If you would like to run off the source
+## Running off the source (if you want to modify things)
 
-You're still going to need lbrynet, so prefix your `go` commands with docker stuff.
+You're still going to need docker / docker-compose for running SDK and DB containers.
 
-```
-docker-compose up lbrynet --no-start
-docker-compose start lbrynet && export LW_LBRYNET=http://localhost:5579/
-go mod download
-go generate ./...
-make embed
-LW_DEBUG=1 go run . serve
-```
+1. Run `docker-compose up postgres lbrynet  --no-start` (if this is your first launch)
+2. Run `docker-compose start postgres lbrynet` to launch containers
+3. Run `go run . serve` to start lbryweb API server
+4. `git clone` [lbry-desktop](https://github.com/lbryio/lbry-desktop/) repo in a separate folder
+5. Run `SDK_API_URL=http://localhost:8080/api/proxy/ yarn dev:web` in lbry-desktop repo
+6. Open http://localhost:8081/ in Chrome
 
 ## Testing
 
-Make sure you got `lbrynet` container running and run `make test`.
+Make sure you got `lbrynet` and `postgres` containers running and run `make test`.
 
 ## Modifying and building a Docker image
 
@@ -64,7 +49,7 @@ make image && docker-compose up app
 
 Contributions to this project are welcome, encouraged, and compensated. For more details, see [lbry.io/faq/contributing](https://lbry.io/faq/contributing).
 
-Please ensure that your code builds (using `./build.sh`) before pushing your branch. You must `go fmt` your code before you commit it, or the build will fail.
+Please ensure that your code builds and automated tests run successfully before pushing your branch. You must `go fmt` your code before you commit it, or the build will fail.
 
 
 ## License
@@ -80,5 +65,5 @@ Our PGP key is [here](https://keybase.io/lbry/key.asc) if you need it.
 
 ## Contact
 
-The primary contact for this project is [@lyoshenka](https://github.com/lyoshenka) (grin@lbry.io).
+The primary contact for this project is [@sayplastic](https://github.com/sayplastic) (andrey@lbry.com).
 

@@ -19,7 +19,7 @@ func Test_newReflectedStream(t *testing.T) {
 	}
 	assert.Equal(t,
 		"d5169241150022f996fa7cd6a9a1c421937276a3275eb912790bd07ba7aec1fac5fd45431d226b8fb402691e79aeb24b",
-		string(rs.SDHash))
+		rs.SdHash)
 }
 
 func Test_newReflectedStream_emptyURL(t *testing.T) {
@@ -33,7 +33,7 @@ func TestReflectedStream_fetchData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.NotNil(t, rs.SDHash)
+	assert.NotNil(t, rs.SdHash)
 	assert.Equal(t, 0, rs.SDBlob.BlobInfos[0].BlobNum)
 	assert.Equal(t, 38, rs.SDBlob.BlobInfos[38].BlobNum)
 }

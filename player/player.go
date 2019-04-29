@@ -2,7 +2,7 @@ package player
 
 import (
 	"encoding/hex"
-	e "errors"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -10,7 +10,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/lbryio/lbry.go/extras/errors"
 	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
 	"github.com/lbryio/lbry.go/stream"
 	"github.com/lbryio/lbryweb.go/config"
@@ -24,7 +23,7 @@ type reflectedStream struct {
 	URI         string
 	StartByte   int64
 	EndByte     int64
-	SDHash      []byte
+	SdHash      string
 	Size        int64
 	ContentType string
 	SDBlob      *stream.SDBlob
@@ -100,11 +99,11 @@ func (s *reflectedStream) Seek(offset int64, whence int) (int64, error) {
 	} else if whence == io.SeekCurrent {
 		newSeekOffset = s.seekOffset + offset
 	} else {
-		return 0, e.New("invalid seek whence argument")
+		return 0, errors.New("invalid seek whence argument")
 	}
 
 	if 0 > newSeekOffset {
-		return 0, e.New("seeking before start of the file")
+		return 0, errors.New("seeking before start of the file")
 	}
 
 	monitor.Logger.WithFields(log.Fields{
@@ -119,30 +118,35 @@ func (s *reflectedStream) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (s *reflectedStream) URL() string {
-	return reflectorURL + string(s.SDHash)
+	return reflectorURL + s.SdHash
 }
 
 func (s *reflectedStream) resolve(client *ljsonrpc.Client) error {
 	if s.URI == "" {
-		return errors.Err("stream URI is not set")
+		return errors.New("stream URI is not set")
 	}
 
 	response, err := client.Resolve(s.URI)
 	if err != nil {
 		return err
 	}
-
-	stream := (*response)[s.URI].Claim.Value.Stream
-	if stream.Metadata.Fee != nil && (*stream.Metadata.Fee.Amount > 0) {
-		return errors.Err("paid stream")
+	if response == nil {
+		return errors.New("got empty response resolving stream")
 	}
 
-	source := stream.Source
-	s.SDHash = source.Source
-	s.ContentType = source.GetContentType()
+	stream := (*response)[s.URI].Claim.Value.GetStream()
+	if stream == nil {
+		return fmt.Errorf("something's wrong for %v, no stream in %v", s.URI, (*response)[s.URI].Claim.Type)
+	}
+	if stream.Fee != nil && stream.Fee.Amount > 0 {
+		return errors.New("paid stream")
+	}
+
+	s.SdHash = hex.EncodeToString(stream.Source.SdHash)
+	s.ContentType = stream.Source.MediaType
 
 	monitor.Logger.WithFields(log.Fields{
-		"sd_hash":      fmt.Sprintf("%s", s.SDHash),
+		"sd_hash":      fmt.Sprintf("%s", s.SdHash),
 		"uri":          s.URI,
 		"content_type": s.ContentType,
 	}).Info("resolved uri")
@@ -151,8 +155,8 @@ func (s *reflectedStream) resolve(client *ljsonrpc.Client) error {
 }
 
 func (s *reflectedStream) fetchData() error {
-	if s.SDHash == nil {
-		return errors.Err("No hash set, call `resolve` first")
+	if s.SdHash == "" {
+		return errors.New("no sd hash set, call `resolve` first")
 	}
 	monitor.Logger.WithFields(log.Fields{
 		"uri": s.URI, "url": s.URL(),
@@ -259,7 +263,7 @@ func (s *reflectedStream) streamBlob(blobNum int, startOffsetInBlob int64, dest 
 			"end_offset":    endOffsetInBlob,
 		}).Info("done streaming a blob")
 	} else {
-		return n, errors.Err("server responded with an unexpected status (%v)", resp.Status)
+		return n, fmt.Errorf("server responded with an unexpected status (%v)", resp.Status)
 	}
 	return n, nil
 }

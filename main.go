@@ -8,10 +8,8 @@ import (
 
 	// "github.com/lbryio/lbryweb.go/assets"
 
-	"github.com/lbryio/lbryweb.go/config"
 	"github.com/lbryio/lbryweb.go/monitor"
 	"github.com/lbryio/lbryweb.go/server"
-	"github.com/lbryio/lbryweb.go/updater"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -42,8 +40,6 @@ func main() {
 	case "serve":
 		log.Printf("lbryweb %v starting", version)
 		server.ServeUntilInterrupted()
-	case "update_js":
-		updater.GetLatestRelease("sayplastic/lbryweb-js", config.Settings.GetString("StaticDir"))
 	default:
 		log.Errorf("Invalid command: '%s'\n", command)
 	}

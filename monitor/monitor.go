@@ -47,6 +47,13 @@ func LogSuccessfulQuery(method string, time float64) {
 	}).Info("processed a call")
 }
 
+// LogCachedQuery logs a cache hit for a given method
+func LogCachedQuery(method string) {
+	Logger.WithFields(log.Fields{
+		"method": method,
+	}).Info("processed a cached query")
+}
+
 // LogFailedQuery takes a method name, query params, response error object and logs it
 func LogFailedQuery(method string, query interface{}, error interface{}) {
 	Logger.WithFields(log.Fields{
