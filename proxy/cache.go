@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lbryio/lbryweb.go/monitor"
+
 	"github.com/patrickmn/go-cache"
 )
 
 // ResponseCache interface describes methods for SDK response cache saving and retrieval
 type ResponseCache interface {
-	Save(method string, params interface{}, r interface{}) error
+	Save(method string, params interface{}, r interface{})
 	Retrieve(method string, params interface{}) interface{}
 	Count() int
 	getKey(method string, params interface{}) (string, error)
@@ -30,20 +32,20 @@ func InitResponseCache(c ResponseCache) {
 }
 
 // Save puts a response object into cache, making it available for a later retrieval by method and query params
-func (s *cacheStorage) Save(method string, params interface{}, r interface{}) error {
+func (s *cacheStorage) Save(method string, params interface{}, r interface{}) {
 	cacheKey, err := s.getKey(method, params)
 	if err != nil {
-		panic("unable to get key")
+		monitor.Logger.Error("unable to get key")
 	}
 	s.c.Set(cacheKey, r, cache.DefaultExpiration)
-	return nil
 }
 
 // Retrieve earlier saved server response by method and query params
 func (s *cacheStorage) Retrieve(method string, params interface{}) (cachedResponse interface{}) {
 	cacheKey, err := s.getKey(method, params)
 	if err != nil {
-		panic("unable to get key")
+		monitor.Logger.Error("unable to get key")
+		return nil
 	}
 	cachedResponse, _ = s.c.Get(cacheKey)
 	return cachedResponse
@@ -59,7 +61,7 @@ func (s *cacheStorage) getKey(method string, params interface{}) (key string, er
 	enc := gob.NewEncoder(h)
 	err = enc.Encode(params)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 	return fmt.Sprintf("%v|%v", method, h.Sum(nil)), err
 }
