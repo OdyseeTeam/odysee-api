@@ -1,5 +1,0 @@
-postgres:
-  dbname: lbryweb
-  host: localhost
-  user: lbryweb
-  sslmode: disable
