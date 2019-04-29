@@ -54,7 +54,7 @@ require (
 	github.com/lbryio/ozzo-validation v3.0.2+incompatible // indirect
 	github.com/lbryio/sqlboiler v2.3.0+incompatible
 	github.com/lbryio/types v0.0.0-20190422033210-321fb2abda9c
-	github.com/lib/pq v1.0.0 // indirect
+	github.com/lib/pq v1.0.0
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.4 // indirect
 	github.com/mattn/go-sqlite3 v1.10.0 // indirect
