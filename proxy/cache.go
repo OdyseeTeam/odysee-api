@@ -32,7 +32,7 @@ func InitResponseCache(c ResponseCache) {
 }
 
 // Save puts a response object into cache, making it available for a later retrieval by method and query params
-func (s *cacheStorage) Save(method string, params interface{}, r interface{}) {
+func (s cacheStorage) Save(method string, params interface{}, r interface{}) {
 	cacheKey, err := s.getKey(method, params)
 	if err != nil {
 		monitor.Logger.Error("unable to get key")
@@ -41,7 +41,7 @@ func (s *cacheStorage) Save(method string, params interface{}, r interface{}) {
 }
 
 // Retrieve earlier saved server response by method and query params
-func (s *cacheStorage) Retrieve(method string, params interface{}) (cachedResponse interface{}) {
+func (s cacheStorage) Retrieve(method string, params interface{}) (cachedResponse interface{}) {
 	cacheKey, err := s.getKey(method, params)
 	if err != nil {
 		monitor.Logger.Error("unable to get key")
@@ -51,7 +51,7 @@ func (s *cacheStorage) Retrieve(method string, params interface{}) (cachedRespon
 	return cachedResponse
 }
 
-func (s *cacheStorage) getKey(method string, params interface{}) (key string, err error) {
+func (s cacheStorage) getKey(method string, params interface{}) (key string, err error) {
 	h := sha256.New()
 	paramsMap := params.(map[string]interface{})
 	gob.Register(paramsMap)
@@ -66,15 +66,15 @@ func (s *cacheStorage) getKey(method string, params interface{}) (key string, er
 	return fmt.Sprintf("%v|%v", method, h.Sum(nil)), err
 }
 
-func (s *cacheStorage) flush() {
+func (s cacheStorage) flush() {
 	s.c.Flush()
 }
 
 // Count returns the total number of non-expired items stored in cache
-func (s *cacheStorage) Count() int {
+func (s cacheStorage) Count() int {
 	return s.c.ItemCount()
 }
 
 func init() {
-	InitResponseCache(&cacheStorage{c: cache.New(2*time.Minute, 10*time.Minute)})
+	InitResponseCache(cacheStorage{c: cache.New(2*time.Minute, 10*time.Minute)})
 }
