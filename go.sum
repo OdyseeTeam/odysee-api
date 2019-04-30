@@ -217,8 +217,12 @@ github.com/lbryio/lbry.go v0.0.0-20190419055300-80b25b225e18 h1:0A2dFh24ooznk15P
 github.com/lbryio/lbry.go v0.0.0-20190419055300-80b25b225e18/go.mod h1:kd08aOMCuBVYJ3EafY4Kx3dRAWWQYhobJ9beREgsaRI=
 github.com/lbryio/lbry.go v0.0.0-20190422035747-b9b1729832f5 h1:NvGSpvYavoK+tIlvJlS36oxQsvJZAbcpK/bEIXV8D9Y=
 github.com/lbryio/lbry.go v0.0.0-20190422035747-b9b1729832f5/go.mod h1:FubnMAYvLt2jGasG7BrQsokYHZ2wpNtWethPHUVauMc=
+github.com/lbryio/lbry.go v0.0.0-20190430060840-a74d748506db h1:aUDvNyObgvGcUdHFz82CgNO0Gn04HUzFc/Aq09ZsoK4=
+github.com/lbryio/lbry.go v0.0.0-20190430060840-a74d748506db/go.mod h1:rAREtjHq/Wkkqy4+yt89Er/7JAVu6uMo3v8nevCEEIA=
 github.com/lbryio/lbryschema.go v0.0.0-20190422030648-322c658307e0 h1:/YWLlbbDefRGLs/ozyuRpvpwpFISYehwR4AAVlPthA8=
 github.com/lbryio/lbryschema.go v0.0.0-20190422030648-322c658307e0/go.mod h1:dAzPCBj3CKKWBGYBZxK6tKBP5SCgY2tqd9SnQd/OyKo=
+github.com/lbryio/lbryschema.go v0.0.0-20190428231007-c54836bca002 h1:urfYK5ElpUrAv90auPLldoVC60LwiGAcY0OE6HJB9KI=
+github.com/lbryio/lbryschema.go v0.0.0-20190428231007-c54836bca002/go.mod h1:dAzPCBj3CKKWBGYBZxK6tKBP5SCgY2tqd9SnQd/OyKo=
 github.com/lbryio/ozzo-validation v0.0.0-20170323141101-d1008ad1fd04/go.mod h1:fbG/dzobG8r95KzMwckXiLMHfFjZaBRQqC9hPs2XAQ4=
 github.com/lbryio/ozzo-validation v3.0.2+incompatible h1:B/SBbsYa06BlNpEyBn0Zn7ZCbhnNh70Kukjur5fS3yQ=
 github.com/lbryio/ozzo-validation v3.0.2+incompatible/go.mod h1:fbG/dzobG8r95KzMwckXiLMHfFjZaBRQqC9hPs2XAQ4=
