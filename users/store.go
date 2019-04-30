@@ -17,7 +17,7 @@ type dbStore struct {
 	db *gorm.DB
 }
 
-// User is a thin model containing basic data about lbryweb user.
+// User is a thin model containing basic data about lbrytv user.
 // The majority of user data is stored in internal-apis, referenced by AuthToken
 type User struct {
 	gorm.Model

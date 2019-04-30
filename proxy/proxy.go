@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lbryio/lbryweb.go/config"
-	"github.com/lbryio/lbryweb.go/monitor"
+	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/monitor"
 	"github.com/ybbus/jsonrpc"
 )
 

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/lbryweb.go/config"
+	"github.com/lbryio/lbrytv/config"
 	"github.com/stretchr/testify/assert"
 )
 

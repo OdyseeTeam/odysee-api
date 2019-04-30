@@ -3,7 +3,7 @@ package users
 import (
 	"testing"
 
-	"github.com/lbryio/lbryweb.go/db"
+	"github.com/lbryio/lbrytv/db"
 	"gotest.tools/assert"
 )
 

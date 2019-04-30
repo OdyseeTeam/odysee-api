@@ -3,7 +3,7 @@ package sessions
 import (
 	"time"
 
-	"github.com/lbryio/lbryweb.go/db"
+	"github.com/lbryio/lbrytv/db"
 
 	_ "github.com/jinzhu/gorm/dialects/postgres" // Dialect import
 	"github.com/wader/gormstore"

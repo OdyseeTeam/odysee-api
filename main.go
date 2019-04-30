@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
-	// "github.com/lbryio/lbryweb.go/assets"
+	// "github.com/lbryio/lbrytv/assets"
 
-	"github.com/lbryio/lbryweb.go/monitor"
-	"github.com/lbryio/lbryweb.go/server"
+	"github.com/lbryio/lbrytv/monitor"
+	"github.com/lbryio/lbrytv/server"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -29,18 +29,18 @@ func main() {
 	http.DefaultClient.Timeout = 20 * time.Second
 
 	if len(os.Args) < 2 {
-		log.Errorf("Usage: %s COMMAND", os.Args[0])
+		log.Errorf("usage: %s COMMAND", os.Args[0])
 		return
 	}
 
 	command := os.Args[1]
 	switch command {
 	case "version":
-		log.Printf("lbryweb %v, commit %v, built at %v", version, commit, date)
+		log.Printf("lbrytv %v, commit %v, built at %v", version, commit, date)
 	case "serve":
-		log.Printf("lbryweb %v starting", version)
+		log.Printf("lbrytv %v starting", version)
 		server.ServeUntilInterrupted()
 	default:
-		log.Errorf("Invalid command: '%s'\n", command)
+		log.Errorf("invalid command: '%s'\n", command)
 	}
 }

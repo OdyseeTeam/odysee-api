@@ -2,7 +2,7 @@ package lbrynet
 
 import (
 	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
-	"github.com/lbryio/lbryweb.go/config"
+	"github.com/lbryio/lbrytv/config"
 )
 
 // Client is a JSON RPC client for lbrynet daemon

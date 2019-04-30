@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	raven "github.com/getsentry/raven-go"
-	"github.com/lbryio/lbryweb.go/config"
+	"github.com/lbryio/lbrytv/config"
 	log "github.com/sirupsen/logrus"
 )
 

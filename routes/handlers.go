@@ -7,8 +7,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/lbryio/lbryweb.go/player"
-	"github.com/lbryio/lbryweb.go/proxy"
+	"github.com/lbryio/lbrytv/player"
+	"github.com/lbryio/lbrytv/proxy"
 	log "github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
 )

@@ -14,7 +14,7 @@ builds:
   - darwin
   goarch:
   - amd64
-  binary: lbryweb
+  binary: lbrytv
   hooks:
     pre: make embed
 

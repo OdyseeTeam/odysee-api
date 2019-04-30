@@ -3,8 +3,8 @@ package db
 import (
 	"fmt"
 
-	"github.com/lbryio/lbryweb.go/config"
-	"github.com/lbryio/lbryweb.go/monitor"
+	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/monitor"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres" // Dialect import

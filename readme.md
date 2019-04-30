@@ -4,13 +4,13 @@ The LBRY experience, in the comfort of your own browser.
 
 Active development is in progress, expect failing tests and breaking changes.
 
-[![CircleCI](https://img.shields.io/circleci/project/github/lbryio/lbryweb.go/master.svg)](https://circleci.com/gh/lbryio/lbryweb.go/tree/master) [![Coverage](https://img.shields.io/coveralls/github/lbryio/lbryweb.go.svg)](https://coveralls.io/github/lbryio/lbryweb.go)
+[![CircleCI](https://img.shields.io/circleci/project/github/lbryio/lbrytv/master.svg)](https://circleci.com/gh/lbryio/lbrytv/tree/master) [![Coverage](https://img.shields.io/coveralls/github/lbryio/lbrytv.svg)](https://coveralls.io/github/lbryio/lbrytv)
 
 ## Running with Docker (if you want to try things)
 
 Make sure you have Docker and docker-compose installed.
 
-1. Run `docker-compose up app` (this will pull and launch SDK and postgres images, which lbryweb requires to operate)
+1. Run `docker-compose up app` (this will pull and launch SDK and postgres images, which lbrytv requires to operate)
 2. `git clone` [lbry-desktop](https://github.com/lbryio/lbry-desktop/) repo in a separate folder
 3. Run `SDK_API_URL=http://localhost:8080/api/proxy/ yarn dev:web` in lbry-desktop repo
 4. Open http://localhost:8081/ in Chrome
@@ -23,7 +23,7 @@ You're still going to need docker / docker-compose for running SDK and DB contai
 
 1. Run `docker-compose up postgres lbrynet  --no-start` (if this is your first launch)
 2. Run `docker-compose start postgres lbrynet` to launch containers
-3. Run `go run . serve` to start lbryweb API server
+3. Run `go run . serve` to start lbrytv API server
 4. `git clone` [lbry-desktop](https://github.com/lbryio/lbry-desktop/) repo in a separate folder
 5. Run `SDK_API_URL=http://localhost:8080/api/proxy/ yarn dev:web` in lbry-desktop repo
 6. Open http://localhost:8081/ in Chrome

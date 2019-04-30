@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lbryio/lbryweb.go/monitor"
+	"github.com/lbryio/lbrytv/monitor"
 
 	"github.com/patrickmn/go-cache"
 )

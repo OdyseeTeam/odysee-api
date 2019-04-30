@@ -19,7 +19,7 @@ func init() {
 	read()
 }
 
-// read parses `lbryweb.yml`
+// read parses `lbrytv.yml`
 func read() {
 	Settings.SetEnvPrefix("LW")
 	Settings.BindEnv("Debug")
@@ -33,10 +33,10 @@ func read() {
 
 	Settings.SetDefault("StaticURLPrefix", "/static/")
 	Settings.SetDefault("StaticDir", "./assets/static")
-	Settings.SetConfigName("lbryweb") // name of config file (without extension)
+	Settings.SetConfigName("lbrytv") // name of config file (without extension)
 	Settings.AddConfigPath("./")
 	Settings.AddConfigPath("../")
-	Settings.AddConfigPath("$HOME/.lbryweb")
+	Settings.AddConfigPath("$HOME/.lbrytv")
 	err := Settings.ReadInConfig()
 	if err != nil {
 		panic(fmt.Errorf("fatal error reading config file: %s", err))

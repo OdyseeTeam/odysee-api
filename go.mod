@@ -1,4 +1,4 @@
-module github.com/lbryio/lbryweb.go
+module github.com/lbryio/lbrytv
 
 require (
 	dmitri.shuralyov.com/app/changes v0.0.0-20181114035150-5af16e21babb // indirect
