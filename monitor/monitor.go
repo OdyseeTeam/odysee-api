@@ -6,10 +6,13 @@ import (
 
 	raven "github.com/getsentry/raven-go"
 	"github.com/lbryio/lbrytv/config"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
-var Logger = log.New()
+var Logger = logrus.New()
+
+// F can be supplied to Log function for providing additional log context
+type F map[string]interface{}
 
 const responseSnippetLen = 250.
 
@@ -20,28 +23,40 @@ func SetupLogging() {
 		raven.SetDSN(dsn)
 	}
 
-	// log.AddHook(logrus_stack.StandardHook())
+	// logrus.AddHook(logrus_stack.StandardHook())
 	// Logger.AddHook(logrus_stack.StandardHook())
 	if config.IsProduction() {
 		raven.SetEnvironment("production")
 
-		log.SetLevel(log.InfoLevel)
-		Logger.SetLevel(log.InfoLevel)
-		log.SetFormatter(&log.JSONFormatter{})
-		Logger.SetFormatter(&log.JSONFormatter{})
+		logrus.SetLevel(logrus.InfoLevel)
+		Logger.SetLevel(logrus.InfoLevel)
+		logrus.SetFormatter(&logrus.JSONFormatter{})
+		Logger.SetFormatter(&logrus.JSONFormatter{})
 	} else {
 		raven.SetEnvironment("develop")
 
-		log.SetLevel(log.DebugLevel)
-		Logger.SetLevel(log.DebugLevel)
-		log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
-		Logger.SetFormatter(&log.TextFormatter{FullTimestamp: true})
+		logrus.SetLevel(logrus.DebugLevel)
+		Logger.SetLevel(logrus.DebugLevel)
+		logrus.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
+		Logger.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
 	}
+}
+
+// Log returns a new log entry containing additional info provided by module and fields.
+// Example:
+//  Log("db", F{"query": "..."}).Info("query error")
+func Log(module string, fields F) *logrus.Entry {
+	logFields := logrus.Fields{}
+	logFields["module"] = module
+	for k, v := range fields {
+		logFields[k] = v
+	}
+	return Logger.WithFields(logFields)
 }
 
 // LogSuccessfulQuery takes a remote method name and execution time and logs it
 func LogSuccessfulQuery(method string, time float64) {
-	Logger.WithFields(log.Fields{
+	Logger.WithFields(logrus.Fields{
 		"method":          method,
 		"processing_time": time,
 	}).Info("processed a call")
@@ -49,14 +64,14 @@ func LogSuccessfulQuery(method string, time float64) {
 
 // LogCachedQuery logs a cache hit for a given method
 func LogCachedQuery(method string) {
-	Logger.WithFields(log.Fields{
+	Logger.WithFields(logrus.Fields{
 		"method": method,
 	}).Info("processed a cached query")
 }
 
 // LogFailedQuery takes a method name, query params, response error object and logs it
 func LogFailedQuery(method string, query interface{}, error interface{}) {
-	Logger.WithFields(log.Fields{
+	Logger.WithFields(logrus.Fields{
 		"method":   method,
 		"query":    query,
 		"response": error,
@@ -91,7 +106,7 @@ func RequestLoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		loggingWriter := &loggingWriter{ResponseWriter: writer}
 		next.ServeHTTP(loggingWriter, request)
-		fields := log.Fields{
+		fields := logrus.Fields{
 			"url":    request.URL.Path,
 			"status": loggingWriter.Status,
 		}

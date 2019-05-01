@@ -7,21 +7,25 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLogSuccessfulQuery(t *testing.T) {
 	hook := test.NewLocal(Logger)
+
 	LogSuccessfulQuery("account_balance", 0.025)
-	assert.Equal(t, 1, len(hook.Entries))
-	assert.Equal(t, log.InfoLevel, hook.LastEntry().Level)
-	assert.Equal(t, "account_balance", hook.LastEntry().Data["method"])
-	assert.Equal(t, 0.025, hook.LastEntry().Data["processing_time"])
-	assert.Equal(t, "processed a call", hook.LastEntry().Message)
+
+	require.Equal(t, 1, len(hook.Entries))
+	require.Equal(t, log.InfoLevel, hook.LastEntry().Level)
+	require.Equal(t, "account_balance", hook.LastEntry().Data["method"])
+	require.Equal(t, 0.025, hook.LastEntry().Data["processing_time"])
+	require.Equal(t, "processed a call", hook.LastEntry().Message)
+
 	hook.Reset()
 }
 func TestLogFailedQuery(t *testing.T) {
 	hook := test.NewLocal(Logger)
+
 	response := &jsonrpc.RPCError{
 		Code: 111,
 		// TODO: Uncomment after lbrynet 0.31 release
@@ -30,11 +34,26 @@ func TestLogFailedQuery(t *testing.T) {
 	}
 	queryParams := map[string]string{"param1": "value1"}
 	LogFailedQuery("unknown_method", queryParams, response)
-	assert.Equal(t, 1, len(hook.Entries))
-	assert.Equal(t, log.ErrorLevel, hook.LastEntry().Level)
-	assert.Equal(t, "unknown_method", hook.LastEntry().Data["method"])
-	assert.Equal(t, queryParams, hook.LastEntry().Data["query"])
-	assert.Equal(t, response, hook.LastEntry().Data["response"])
-	assert.Equal(t, "server responded with error", hook.LastEntry().Message)
+
+	require.Equal(t, 1, len(hook.Entries))
+	require.Equal(t, log.ErrorLevel, hook.LastEntry().Level)
+	require.Equal(t, "unknown_method", hook.LastEntry().Data["method"])
+	require.Equal(t, queryParams, hook.LastEntry().Data["query"])
+	require.Equal(t, response, hook.LastEntry().Data["response"])
+	require.Equal(t, "server responded with error", hook.LastEntry().Message)
+
 	hook.Reset()
+}
+
+func TestLog(t *testing.T) {
+	hook := test.NewLocal(Logger)
+
+	Log("db", F{"number": 1}).Info("error!")
+	require.Equal(t, 1, len(hook.Entries))
+	require.Equal(t, log.InfoLevel, hook.LastEntry().Level)
+	require.Equal(t, 1, hook.LastEntry().Data["number"])
+	require.Equal(t, "error!", hook.LastEntry().Message)
+
+	hook.Reset()
+
 }
