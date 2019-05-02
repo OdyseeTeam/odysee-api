@@ -9,14 +9,21 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Logger is a global instance of logrus object.
 var Logger = logrus.New()
 
-// F can be supplied to Log function for providing additional log context
+// ModuleLogger contains module-specific logger details.
+type ModuleLogger struct {
+	ModuleName string
+	Logger     *logrus.Logger
+}
+
+// F can be supplied to ModuleLogger's Log function for providing additional log context.
 type F map[string]interface{}
 
 const responseSnippetLen = 250.
 
-// SetupLogging initializes and sets a few parameters for the logging subsystem
+// SetupLogging initializes and sets a few parameters for the logging subsystem.
 func SetupLogging() {
 	dsn := config.Settings.GetString("SentryDSN")
 	if dsn != "" {
@@ -42,16 +49,34 @@ func SetupLogging() {
 	}
 }
 
-// Log returns a new log entry containing additional info provided by module and fields.
+// NewModuleLogger creates a new ModuleLogger instance carrying module name
+// for later `Log()` calls.
+func NewModuleLogger(moduleName string) ModuleLogger {
+	return ModuleLogger{
+		ModuleName: moduleName,
+		Logger:     logrus.New(),
+	}
+}
+
+// LogF returns a new log entry containing additional info provided by fields,
+// which can be called upon with a corresponding logLevel.
 // Example:
-//  Log("db", F{"query": "..."}).Info("query error")
-func Log(module string, fields F) *logrus.Entry {
+//  LogF("db", F{"query": "..."}).Info("query error")
+func (l ModuleLogger) LogF(fields F) *logrus.Entry {
 	logFields := logrus.Fields{}
-	logFields["module"] = module
+	logFields["module"] = l.ModuleName
 	for k, v := range fields {
 		logFields[k] = v
 	}
 	return Logger.WithFields(logFields)
+}
+
+// Log returns a new log entry for the module
+// which can be called upon with a corresponding logLevel.
+// Example:
+//  Log().Info("query error")
+func (l ModuleLogger) Log() *logrus.Entry {
+	return Logger.WithFields(logrus.Fields{"module": l.ModuleName})
 }
 
 // LogSuccessfulQuery takes a remote method name and execution time and logs it
