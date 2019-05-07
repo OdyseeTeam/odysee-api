@@ -8,6 +8,7 @@ import (
 
 	// "github.com/lbryio/lbrytv/assets"
 
+	"github.com/lbryio/lbrytv/db"
 	"github.com/lbryio/lbrytv/monitor"
 	"github.com/lbryio/lbrytv/server"
 	log "github.com/sirupsen/logrus"
@@ -40,6 +41,14 @@ func main() {
 	case "serve":
 		log.Printf("lbrytv %v starting", version)
 		server.ServeUntilInterrupted()
+	case "db_migrate":
+		log.Printf("lbrytv %v applying migrations", version)
+		c := db.NewConnection(db.GetDefaultDSN())
+		c.MigrateUp()
+	case "db_migrate_down":
+		log.Printf("lbrytv %v unapplying migrations", version)
+		c := db.NewConnection(db.GetDefaultDSN())
+		c.MigrateDown()
 	default:
 		log.Errorf("invalid command: '%s'\n", command)
 	}

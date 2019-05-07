@@ -5,29 +5,36 @@ import (
 
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/monitor"
-
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres" // Dialect import
 	"github.com/lib/pq"
-	log "github.com/sirupsen/logrus"
+
+	"github.com/gobuffalo/packr/v2"
+	_ "github.com/jinzhu/gorm/dialects/postgres" // Dialect import
+	"github.com/jmoiron/sqlx"
+	migrate "github.com/rubenv/sql-migrate"
 )
 
-// Conn holds global database connection
-var Conn *gorm.DB
-
-// User contains necessary internal-apis and SDK's account_id
-type User struct {
-	AuthToken    string
-	SDKAccountID string
+// Connection implements the app database handler.
+type Connection interface {
+	MigrateUp()
+	MigrateDown()
 }
 
-type connectionParams struct {
+// ConnData holds connection data.
+type ConnData struct {
+	DB      *sqlx.DB
+	dialect string
+	Logger  monitor.ModuleLogger
+}
+
+// ConnParams holds database server parameters.
+type ConnParams struct {
 	DatabaseConnection string
 	DatabaseName       string
 	DatabaseOptions    string
 }
 
-func GetURL(params connectionParams) string {
+// GetDSN generates DSN string from config parameters, which can be overridden in params.
+func GetDSN(params ConnParams) string {
 	if params.DatabaseConnection == "" {
 		params.DatabaseConnection = config.Settings.GetString("DatabaseConnection")
 	}
@@ -45,60 +52,65 @@ func GetURL(params connectionParams) string {
 	)
 }
 
-func init() {
-	initializeConnection()
+// GetDefaultDSN is a wrapper for GetDSN without params.
+func GetDefaultDSN() string {
+	return GetDSN(ConnParams{})
 }
 
-func openDefaultDB() {
-	var err error
-
-	dbURL := GetURL(connectionParams{})
-	monitor.Logger.WithFields(log.Fields{
-		"db_url": dbURL,
-	}).Info("connecting to the database")
-	Conn, err = gorm.Open("postgres", dbURL)
+// NewConnection sets up a database object, panics if unable to connect.
+func NewConnection(dsn string) ConnData {
+	c := ConnData{dialect: "postgres", Logger: monitor.NewModuleLogger("db")}
+	c.Logger.LogF(monitor.F{"dsn": dsn}).Info("connecting to the database")
+	db, err := connect(c.dialect, dsn)
 	if err != nil {
 		panic(err)
 	}
+
+	c.DB = db
+	return c
 }
 
-func initializeConnection() {
-	dbName := config.Settings.GetString("DatabaseName")
-	dbURL := GetURL(connectionParams{DatabaseName: "postgres"})
-
-	if dbName == "" {
-		panic("DatabaseName not configured")
-	}
-	monitor.Logger.WithFields(log.Fields{
-		"db_url": dbURL,
-	}).Info("connecting to the database")
-
-	db, err := gorm.Open("postgres", dbURL)
-	if err != nil {
-		panic(err)
-	}
-	db = db.Exec(fmt.Sprintf("CREATE DATABASE %s;", pq.QuoteIdentifier(dbName)))
-	if db.Error != nil {
-		openDefaultDB()
-	}
+func connect(dialect, dsn string) (*sqlx.DB, error) {
+	conn, err := sqlx.Connect(dialect, dsn)
+	return conn, err
 }
 
-// DropDatabase deletes the default database configured in settings. Use cautiously
-func DropDatabase() {
-	dbURL := GetURL(connectionParams{DatabaseName: "postgres"})
-
-	db, err := gorm.Open("postgres", dbURL)
+// MigrateUp executes forward migrations.
+func (c ConnData) MigrateUp() {
+	migrations := &migrate.PackrMigrationSource{
+		Box: packr.New("migrations", "./migrations"),
+		Dir: ".",
+	}
+	n, err := migrate.Exec(c.DB.DB, c.dialect, migrations, migrate.Up)
 	if err != nil {
-		panic(err)
+		c.Logger.Log().Panicf("failed to migrate the database up: %v", err)
 	}
+	c.Logger.LogF(monitor.F{"migrations_number": n}).Info("migrated the database up")
+}
 
-	err = Conn.Close()
+// MigrateDown undoes the previous migration.
+func (c ConnData) MigrateDown() {
+	migrations := &migrate.PackrMigrationSource{
+		Box: packr.New("migrations", "./migrations"),
+		Dir: ".",
+	}
+	n, err := migrate.Exec(c.DB.DB, c.dialect, migrations, migrate.Down)
 	if err != nil {
-		panic(err)
+		c.Logger.Log().Panicf("failed to migrate the database down: %v", err)
 	}
+	c.Logger.LogF(monitor.F{"migrations_number": n}).Info("migrated the database down")
+}
 
-	db.Exec(fmt.Sprintf("DROP DATABASE %s;", pq.QuoteIdentifier(config.Settings.GetString("DatabaseName"))))
-	if db.Error != nil {
-		panic(db.Error)
-	}
+// CreateDB creates the requested database.
+func CreateDB(dbName string) (err error) {
+	c := NewConnection(GetDSN(ConnParams{DatabaseName: "postgres"}))
+	_, err = c.DB.Exec(fmt.Sprintf("create database %s;", pq.QuoteIdentifier(dbName)))
+	return err
+}
+
+// DropDB drops the requested database.
+func DropDB(dbName string) (err error) {
+	c := NewConnection(GetDSN(ConnParams{DatabaseName: "postgres"}))
+	_, err = c.DB.Exec(fmt.Sprintf("drop database %s;", pq.QuoteIdentifier(dbName)))
+	return err
 }
