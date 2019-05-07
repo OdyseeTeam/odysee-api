@@ -169,21 +169,21 @@ func (s *reflectedStream) fetchData() error {
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
-	sdb := &stream.SDBlob{}
-	sdb.UnmarshalJSON(body)
+	if err != nil {
+		return err
+	}
 
+	sdb := &stream.SDBlob{}
+	err = sdb.UnmarshalJSON(body)
 	if err != nil {
 		return err
 	}
 
 	for _, bi := range sdb.BlobInfos {
 		if bi.Length == stream.MaxBlobSize {
-			s.Size += int64(bi.Length - 1)
+			s.Size += int64(stream.MaxBlobSize - 1)
 		} else {
 			s.Size += int64(bi.Length)
-		}
-		if err != nil {
-			return err
 		}
 	}
 
