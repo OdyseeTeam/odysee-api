@@ -147,6 +147,29 @@ func launchGrumpyServer() {
 	log.Fatal(s.ListenAndServe())
 }
 
+// A shorthand for making a call to proxy function and getting a response
+func call(t *testing.T, method string, params ...interface{}) jsonrpc.RPCResponse {
+	var response jsonrpc.RPCResponse
+	query := jsonrpc.NewRequest(method, params)
+
+	queryBody, err := json.Marshal(query)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rawResponse, err := ForwardCall(queryBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = json.Unmarshal(rawResponse, &response)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return response
+}
+
 func TestMain(m *testing.M) {
 	go launchGrumpyServer()
 	os.Exit(m.Run())
@@ -178,18 +201,12 @@ func TestForwardCallWithLbrynetError(t *testing.T) {
 }
 
 func TestForwardCallWithClientError(t *testing.T) {
-	var response jsonrpc.RPCResponse
-
 	config.Override("Lbrynet", "http://localhost:59999")
 	defer config.RestoreOverridden()
 
-	query := jsonrpc.NewRequest("get")
-	queryBody, _ := json.Marshal(query)
-	rawResponse, err := ForwardCall(queryBody)
-	json.Unmarshal(rawResponse, &response)
-	assert.Nil(t, err)
-	assert.NotNil(t, response.Error)
-	assert.Equal(t, "your ways are wrong", response.Error.Message)
+	r := call(t, "status")
+	assert.NotNil(t, r.Error)
+	assert.Equal(t, "your ways are wrong", r.Error.Message)
 }
 
 func TestForwardCall(t *testing.T) {
