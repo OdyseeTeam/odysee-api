@@ -149,8 +149,15 @@ func launchGrumpyServer() {
 
 // A shorthand for making a call to proxy function and getting a response
 func call(t *testing.T, method string, params ...interface{}) jsonrpc.RPCResponse {
-	var response jsonrpc.RPCResponse
-	query := jsonrpc.NewRequest(method, params)
+	var (
+		response jsonrpc.RPCResponse
+		query    *jsonrpc.RPCRequest
+	)
+	if len(params) > 0 {
+		query = jsonrpc.NewRequest(method, params[0])
+	} else {
+		query = jsonrpc.NewRequest(method)
+	}
 
 	queryBody, err := json.Marshal(query)
 	if err != nil {

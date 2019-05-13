@@ -2,7 +2,9 @@ package proxy
 
 import (
 	"fmt"
+	"reflect"
 
+	"github.com/lbryio/lbrytv/monitor"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -34,7 +36,11 @@ func getPreconditionedQueryResponse(method string, params interface{}) *jsonrpc.
 		}
 	}
 
+	monitor.Logger.Infof("WTF %v", params)
+	paramsMapZ, ok := params.(map[string]interface{})
+	monitor.Logger.Infof("WTF %v %v %v", reflect.TypeOf(params), paramsMapZ, ok)
 	if paramsMap, ok := params.(map[string]interface{}); ok {
+		monitor.Logger.Infof("FUUU %v", paramsMap[forbiddenParam])
 		if paramsMap[forbiddenParam] != nil {
 			return &jsonrpc.RPCResponse{Error: &jsonrpc.RPCError{Code: -32602, Message: fmt.Sprintf("Forbidden parameter supplied: %v", forbiddenParam)}}
 		}

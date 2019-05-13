@@ -7,6 +7,7 @@ import (
 
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/monitor"
+	log "github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -23,18 +24,21 @@ Example:
 	}
 	lbrynetResponse, err := proxy.ForwardCall(body)
 */
-func ForwardCall(clientQuery []byte) ([]byte, error) {
-	var parsedClientQuery jsonrpc.RPCRequest
+func ForwardCall(rawRequest []byte) ([]byte, error) {
+	var request jsonrpc.RPCRequest
 	var processedResponse *jsonrpc.RPCResponse
 	rpcClient := jsonrpc.NewClient(config.Settings.GetString("Lbrynet"))
 
-	err := json.Unmarshal(clientQuery, &parsedClientQuery)
+	err := json.Unmarshal(rawRequest, &request)
 	if err != nil {
 		return nil, fmt.Errorf("client json parse error: %v", err)
 	}
 
-	pqr := getPreconditionedQueryResponse(parsedClientQuery.Method, parsedClientQuery.Params)
+	pqr := getPreconditionedQueryResponse(request.Method, request.Params)
 	if pqr != nil {
+		monitor.Logger.WithFields(log.Fields{
+			"method": request.Method, "params": request.Params,
+		}).Info("got a preconditioned query response")
 		serializedResponse, err := json.MarshalIndent(pqr, "", "  ")
 		if err != nil {
 			return nil, err
@@ -42,7 +46,7 @@ func ForwardCall(clientQuery []byte) ([]byte, error) {
 		return serializedResponse, nil
 	}
 
-	finalQuery, err := processQuery(&parsedClientQuery)
+	finalQuery, err := processQuery(&request)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +58,7 @@ func ForwardCall(clientQuery []byte) ([]byte, error) {
 			if err != nil {
 				return nil, err
 			}
-			monitor.LogCachedQuery(parsedClientQuery.Method)
+			monitor.LogCachedQuery(request.Method)
 			return serializedResponse, nil
 		}
 	}
@@ -65,20 +69,20 @@ func ForwardCall(clientQuery []byte) ([]byte, error) {
 		return nil, err
 	}
 	if callResult.Error == nil {
-		processedResponse, err = processResponse(&parsedClientQuery, callResult)
+		processedResponse, err = processResponse(&request, callResult)
 		if err != nil {
 			return nil, err
 		}
 		// Too many account_balance requests, no need to log them
 		if finalQuery.Method != "account_balance" {
-			monitor.LogSuccessfulQuery(parsedClientQuery.Method, time.Now().Sub(queryStartTime).Seconds())
+			monitor.LogSuccessfulQuery(request.Method, time.Now().Sub(queryStartTime).Seconds())
 		}
 		if shouldCache(finalQuery.Method, finalQuery.Params) {
 			responseCache.Save(finalQuery.Method, finalQuery.Params, processedResponse)
 		}
 	} else {
 		processedResponse = callResult
-		monitor.LogFailedQuery(parsedClientQuery.Method, parsedClientQuery.Params, callResult.Error)
+		monitor.LogFailedQuery(request.Method, request.Params, callResult.Error)
 	}
 
 	serializedResponse, err := json.MarshalIndent(processedResponse, "", "  ")
