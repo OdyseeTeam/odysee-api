@@ -33,8 +33,10 @@ require (
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
 	github.com/kkdai/bstream v0.0.0-20181106074824-b3251f7901ec // indirect
 	github.com/kr/pty v1.1.4 // indirect
+	github.com/lbryio/errors.go v0.0.0-20180223142025-ad03d3cc6a5c
 	github.com/lbryio/lbry.go v1.0.1
 	github.com/lbryio/lbryschema.go v0.0.0-20190504040023-d701bab7f623 // indirect
+
 	github.com/lbryio/types v0.0.0-20190429192756-41949417483a // indirect
 	github.com/lib/pq v1.0.0
 	github.com/lusis/slack-test v0.0.0-20190426140909-c40012f20018 // indirect
@@ -75,6 +77,7 @@ require (
 	google.golang.org/grpc v1.20.1 // indirect
 	gopkg.in/gorp.v1 v1.7.2 // indirect
 	gopkg.in/ini.v1 v1.42.0 // indirect
+	gopkg.in/nullbio/null.v6 v6.0.0-20161116030900-40264a2e6b79
 	gotest.tools v2.2.0+incompatible
 	honnef.co/go/tools v0.0.0-20190418001031-e561f6794a2a // indirect
 )

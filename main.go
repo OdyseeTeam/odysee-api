@@ -41,14 +41,12 @@ func main() {
 	case "serve":
 		log.Printf("lbrytv %v starting", version)
 		server.ServeUntilInterrupted()
-	case "db_migrate":
+	case "db_migrate_up":
 		log.Printf("lbrytv %v applying migrations", version)
-		c := db.NewConnection(db.GetDefaultDSN())
-		c.MigrateUp()
+		db.Init().MigrateUp()
 	case "db_migrate_down":
 		log.Printf("lbrytv %v unapplying migrations", version)
-		c := db.NewConnection(db.GetDefaultDSN())
-		c.MigrateDown()
+		db.Init().MigrateDown()
 	default:
 		log.Errorf("invalid command: '%s'\n", command)
 	}

@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/volatiletech/null"
 	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/volatiletech/sqlboiler/queries"
 	"github.com/volatiletech/sqlboiler/queries/qm"
@@ -24,15 +23,16 @@ import (
 
 // User is an object representing the database table.
 type User struct {
-	ID                 int         `boil:"id" json:"id" toml:"id" yaml:"id"`
-	Created            time.Time   `boil:"created" json:"created" toml:"created" yaml:"created"`
-	AuthToken          null.String `boil:"auth_token" json:"auth_token,omitempty" toml:"auth_token" yaml:"auth_token,omitempty"`
-	IsIdentityVerified null.Bool   `boil:"is_identity_verified" json:"is_identity_verified,omitempty" toml:"is_identity_verified" yaml:"is_identity_verified,omitempty"`
-	HasVerifiedEmail   null.Bool   `boil:"has_verified_email" json:"has_verified_email,omitempty" toml:"has_verified_email" yaml:"has_verified_email,omitempty"`
-	SDKAccountID       null.String `boil:"sdk_account_id" json:"sdk_account_id,omitempty" toml:"sdk_account_id" yaml:"sdk_account_id,omitempty"`
-	PrivateKey         null.String `boil:"private_key" json:"private_key,omitempty" toml:"private_key" yaml:"private_key,omitempty"`
-	PublicKey          null.String `boil:"public_key" json:"public_key,omitempty" toml:"public_key" yaml:"public_key,omitempty"`
-	Seed               null.String `boil:"seed" json:"seed,omitempty" toml:"seed" yaml:"seed,omitempty"`
+	ID                 int       `boil:"id" json:"id" toml:"id" yaml:"id"`
+	Created            time.Time `boil:"created" json:"created" toml:"created" yaml:"created"`
+	Email              string    `boil:"email" json:"email" toml:"email" yaml:"email"`
+	AuthToken          string    `boil:"auth_token" json:"auth_token" toml:"auth_token" yaml:"auth_token"`
+	IsIdentityVerified bool      `boil:"is_identity_verified" json:"is_identity_verified" toml:"is_identity_verified" yaml:"is_identity_verified"`
+	HasVerifiedEmail   bool      `boil:"has_verified_email" json:"has_verified_email" toml:"has_verified_email" yaml:"has_verified_email"`
+	SDKAccountID       string    `boil:"sdk_account_id" json:"sdk_account_id" toml:"sdk_account_id" yaml:"sdk_account_id"`
+	PrivateKey         string    `boil:"private_key" json:"private_key" toml:"private_key" yaml:"private_key"`
+	PublicKey          string    `boil:"public_key" json:"public_key" toml:"public_key" yaml:"public_key"`
+	Seed               string    `boil:"seed" json:"seed" toml:"seed" yaml:"seed"`
 
 	R *userR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -41,6 +41,7 @@ type User struct {
 var UserColumns = struct {
 	ID                 string
 	Created            string
+	Email              string
 	AuthToken          string
 	IsIdentityVerified string
 	HasVerifiedEmail   string
@@ -51,6 +52,7 @@ var UserColumns = struct {
 }{
 	ID:                 "id",
 	Created:            "created",
+	Email:              "email",
 	AuthToken:          "auth_token",
 	IsIdentityVerified: "is_identity_verified",
 	HasVerifiedEmail:   "has_verified_email",
@@ -92,72 +94,37 @@ func (w whereHelpertime_Time) GTE(x time.Time) qm.QueryMod {
 	return qmhelper.Where(w.field, qmhelper.GTE, x)
 }
 
-type whereHelpernull_String struct{ field string }
+type whereHelperbool struct{ field string }
 
-func (w whereHelpernull_String) EQ(x null.String) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, false, x)
-}
-func (w whereHelpernull_String) NEQ(x null.String) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, true, x)
-}
-func (w whereHelpernull_String) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
-func (w whereHelpernull_String) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
-func (w whereHelpernull_String) LT(x null.String) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelpernull_String) LTE(x null.String) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelpernull_String) GT(x null.String) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelpernull_String) GTE(x null.String) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
-
-type whereHelpernull_Bool struct{ field string }
-
-func (w whereHelpernull_Bool) EQ(x null.Bool) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, false, x)
-}
-func (w whereHelpernull_Bool) NEQ(x null.Bool) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, true, x)
-}
-func (w whereHelpernull_Bool) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
-func (w whereHelpernull_Bool) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
-func (w whereHelpernull_Bool) LT(x null.Bool) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelpernull_Bool) LTE(x null.Bool) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelpernull_Bool) GT(x null.Bool) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelpernull_Bool) GTE(x null.Bool) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
+func (w whereHelperbool) EQ(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
+func (w whereHelperbool) NEQ(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
+func (w whereHelperbool) LT(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
+func (w whereHelperbool) LTE(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
+func (w whereHelperbool) GT(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
+func (w whereHelperbool) GTE(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
 
 var UserWhere = struct {
 	ID                 whereHelperint
 	Created            whereHelpertime_Time
-	AuthToken          whereHelpernull_String
-	IsIdentityVerified whereHelpernull_Bool
-	HasVerifiedEmail   whereHelpernull_Bool
-	SDKAccountID       whereHelpernull_String
-	PrivateKey         whereHelpernull_String
-	PublicKey          whereHelpernull_String
-	Seed               whereHelpernull_String
+	Email              whereHelperstring
+	AuthToken          whereHelperstring
+	IsIdentityVerified whereHelperbool
+	HasVerifiedEmail   whereHelperbool
+	SDKAccountID       whereHelperstring
+	PrivateKey         whereHelperstring
+	PublicKey          whereHelperstring
+	Seed               whereHelperstring
 }{
 	ID:                 whereHelperint{field: `id`},
 	Created:            whereHelpertime_Time{field: `created`},
-	AuthToken:          whereHelpernull_String{field: `auth_token`},
-	IsIdentityVerified: whereHelpernull_Bool{field: `is_identity_verified`},
-	HasVerifiedEmail:   whereHelpernull_Bool{field: `has_verified_email`},
-	SDKAccountID:       whereHelpernull_String{field: `sdk_account_id`},
-	PrivateKey:         whereHelpernull_String{field: `private_key`},
-	PublicKey:          whereHelpernull_String{field: `public_key`},
-	Seed:               whereHelpernull_String{field: `seed`},
+	Email:              whereHelperstring{field: `email`},
+	AuthToken:          whereHelperstring{field: `auth_token`},
+	IsIdentityVerified: whereHelperbool{field: `is_identity_verified`},
+	HasVerifiedEmail:   whereHelperbool{field: `has_verified_email`},
+	SDKAccountID:       whereHelperstring{field: `sdk_account_id`},
+	PrivateKey:         whereHelperstring{field: `private_key`},
+	PublicKey:          whereHelperstring{field: `public_key`},
+	Seed:               whereHelperstring{field: `seed`},
 }
 
 // UserRels is where relationship names are stored.
@@ -177,9 +144,9 @@ func (*userR) NewStruct() *userR {
 type userL struct{}
 
 var (
-	userColumns               = []string{"id", "created", "auth_token", "is_identity_verified", "has_verified_email", "sdk_account_id", "private_key", "public_key", "seed"}
-	userColumnsWithoutDefault = []string{"auth_token", "is_identity_verified", "has_verified_email", "sdk_account_id", "private_key", "public_key", "seed"}
-	userColumnsWithDefault    = []string{"id", "created"}
+	userColumns               = []string{"id", "created", "email", "auth_token", "is_identity_verified", "has_verified_email", "sdk_account_id", "private_key", "public_key", "seed"}
+	userColumnsWithoutDefault = []string{"email", "auth_token", "sdk_account_id", "private_key", "public_key", "seed"}
+	userColumnsWithDefault    = []string{"id", "created", "is_identity_verified", "has_verified_email"}
 	userPrimaryKeyColumns     = []string{"id"}
 )
 

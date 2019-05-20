@@ -33,6 +33,17 @@ type ConnParams struct {
 	DatabaseOptions    string
 }
 
+// Conn is a module-level connection-holding variable
+var Conn *ConnData
+
+// Init initializes a module-level connection object
+func Init() *ConnData {
+	if Conn == nil {
+		Conn = NewConnection(GetDefaultDSN())
+	}
+	return Conn
+}
+
 // GetDSN generates DSN string from config parameters, which can be overridden in params.
 func GetDSN(params ConnParams) string {
 	if params.DatabaseConnection == "" {
@@ -58,16 +69,16 @@ func GetDefaultDSN() string {
 }
 
 // NewConnection sets up a database object, panics if unable to connect.
-func NewConnection(dsn string) ConnData {
+func NewConnection(dsn string) *ConnData {
 	c := ConnData{dialect: "postgres", Logger: monitor.NewModuleLogger("db")}
-	c.Logger.LogF(monitor.F{"dsn": dsn}).Info("connecting to the database")
+	c.Logger.LogF(monitor.F{dsn: dsn}).Info("connecting to the database")
 	db, err := connect(c.dialect, dsn)
 	if err != nil {
 		panic(err)
 	}
 
 	c.DB = db
-	return c
+	return &c
 }
 
 func connect(dialect, dsn string) (*sqlx.DB, error) {

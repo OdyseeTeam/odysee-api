@@ -7,18 +7,39 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/lbryio/lbrytv/db"
 	"github.com/lbryio/lbrytv/player"
 	"github.com/lbryio/lbrytv/proxy"
 	log "github.com/sirupsen/logrus"
-	"github.com/ybbus/jsonrpc"
 )
+
+const tokenHeader string = "X-Lbry-Auth-Token"
 
 // Index just serves a blank home page
 func Index(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// Proxy takes client request body and feeds it to proxy.ForwardCall
+func getAuthToken(req *http.Request) string {
+	if header, ok := req.Header[tokenHeader]; ok {
+		return header[0]
+	}
+	return ""
+}
+
+func getAccountID(req *http.Request) (string, error) {
+	token := getAuthToken(req)
+	if token == "" {
+		return "", nil
+	}
+	u, err := db.GetUser(token)
+	if err != nil {
+		return "", nil
+	}
+	return string(u.SDKAccountID), nil
+}
+
+// Proxy takes client request body and feeds it to the proxy module
 func Proxy(w http.ResponseWriter, req *http.Request) {
 	if req.Body == nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -30,9 +51,25 @@ func Proxy(w http.ResponseWriter, req *http.Request) {
 		log.Panicf("error: %v", err.Error())
 	}
 
-	lbrynetResponse, err := proxy.ForwardCall(body)
+	ur, err := proxy.UnmarshalRequest(body)
 	if err != nil {
-		response, _ := json.Marshal(jsonrpc.RPCResponse{Error: &jsonrpc.RPCError{Message: err.Error()}})
+		response, _ := json.Marshal(proxy.NewErrorResponse(err.Error(), proxy.ErrProxy))
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write(response)
+		return
+	}
+
+	accountID, err := getAccountID(req)
+	if err != nil {
+		response, _ := json.Marshal(proxy.NewErrorResponse(err.Error(), proxy.ErrProxyAuthFailed))
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write(response)
+		return
+	}
+
+	lbrynetResponse, err := proxy.Proxy(ur, accountID)
+	if err != nil {
+		response, _ := json.Marshal(proxy.NewErrorResponse(err.Error(), proxy.ErrProxy))
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write(response)
 		return

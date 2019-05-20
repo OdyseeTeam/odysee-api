@@ -16,6 +16,7 @@ import (
 	"github.com/lbryio/lbrytv/monitor"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -159,12 +160,7 @@ func call(t *testing.T, method string, params ...interface{}) jsonrpc.RPCRespons
 		query = jsonrpc.NewRequest(method)
 	}
 
-	queryBody, err := json.Marshal(query)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	rawResponse, err := ForwardCall(queryBody)
+	rawResponse, err := Proxy(query, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,8 +184,7 @@ func TestForwardCallWithHTTPError(t *testing.T) {
 	defer config.RestoreOverridden()
 
 	query := jsonrpc.NewRequest("account_balance")
-	queryBody, _ := json.Marshal(query)
-	response, err := ForwardCall(queryBody)
+	response, err := ForwardCall(*query)
 	assert.NotNil(t, err)
 	assert.Nil(t, response)
 	assert.True(t, strings.HasPrefix(err.Error(), "rpc call account_balance() on http://127.0.0.1:49999"), err.Error())
@@ -199,10 +194,11 @@ func TestForwardCallWithHTTPError(t *testing.T) {
 func TestForwardCallWithLbrynetError(t *testing.T) {
 	var response jsonrpc.RPCResponse
 	query := jsonrpc.NewRequest("crazy_method")
-	queryBody, _ := json.Marshal(query)
-	rawResponse, err := ForwardCall(queryBody)
-	json.Unmarshal(rawResponse, &response)
-	assert.Nil(t, err)
+	rawResponse, err := ForwardCall(*query)
+	require.Nil(t, err)
+	err = json.Unmarshal(rawResponse, &response)
+	require.Nil(t, err)
+	assert.NotNil(t, response)
 	assert.NotNil(t, response.Error)
 	assert.Equal(t, "Invalid method requested: crazy_method.", response.Error.Message)
 }
@@ -216,20 +212,20 @@ func TestForwardCallWithClientError(t *testing.T) {
 	assert.Equal(t, "your ways are wrong", r.Error.Message)
 }
 
+func TestUnmarshalRequest(t *testing.T) {
+	_, err := UnmarshalRequest([]byte("yo"))
+	assert.NotNil(t, err)
+	assert.True(t, strings.HasPrefix(err.Error(), "client json parse error: invalid character 'y'"))
+}
+
 func TestForwardCall(t *testing.T) {
 	var err error
 	var query *jsonrpc.RPCRequest
 	var response jsonrpc.RPCResponse
 	var rawResponse []byte
-	var queryBody []byte
-
-	_, err = ForwardCall([]byte("yo"))
-	assert.NotNil(t, err)
-	assert.True(t, strings.HasPrefix(err.Error(), "client json parse error: invalid character 'y'"))
 
 	query = &jsonrpc.RPCRequest{Method: "account_balance", ID: 123}
-	queryBody, _ = json.Marshal(query)
-	rawResponse, err = ForwardCall(queryBody)
+	rawResponse, err = ForwardCall(*query)
 	json.Unmarshal(rawResponse, &response)
 	if err != nil {
 		t.Errorf("failed with an unexpected error: %v", err)
@@ -249,8 +245,9 @@ func TestForwardCall(t *testing.T) {
 
 	streamURI := "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
 	query = jsonrpc.NewRequest("resolve", map[string]string{"urls": streamURI})
-	queryBody, _ = json.Marshal(query)
-	rawResponse, err = ForwardCall(queryBody)
+	queryBody, _ := json.Marshal(query)
+	query, err = UnmarshalRequest(queryBody)
+	rawResponse, err = ForwardCall(*query)
 	if err != nil {
 		t.Errorf("failed with an unexpected error: %v", err)
 		return
@@ -260,8 +257,7 @@ func TestForwardCall(t *testing.T) {
 	}
 
 	query = jsonrpc.NewRequest("get", map[string]string{"uri": streamURI})
-	queryBody, _ = json.Marshal(query)
-	_, err = ForwardCall(queryBody)
+	_, err = ForwardCall(*query)
 	if err != nil {
 		t.Errorf("failed with an unexpected error: %v", err)
 		return
@@ -277,8 +273,7 @@ func TestForwardCall(t *testing.T) {
 	outpoint := fmt.Sprintf("%v:%v", (*resolveResponse)[streamURI].Claim.Txid, 0)
 
 	query = jsonrpc.NewRequest("file_list", map[string]string{"outpoint": outpoint})
-	queryBody, _ = json.Marshal(query)
-	rawResponse, err = ForwardCall(queryBody)
+	rawResponse, err = ForwardCall(*query)
 	if err != nil {
 		t.Errorf("file_list of outpoint %v failed with an unexpected error: %v", outpoint, err)
 		return
@@ -293,20 +288,14 @@ func TestForwardCall(t *testing.T) {
 		t.Errorf("not enough results, daemon responded with %v", fileListResponse)
 		return
 	}
-
-	expectedPath := fmt.Sprintf(
-		"%s%s/%s/%s/%s", config.Settings.GetString("BaseContentURL"),
-		"claims", "what", "6769855a9aa43b67086f9ff3c1a5bacb5698a27a", (*fileListResponse)[0].FileName)
-	assert.Equal(t, (*fileListResponse)[0].DownloadPath, expectedPath)
 }
 
-func TestForwardCallWithCache(t *testing.T) {
+func TesProxy_WithCache(t *testing.T) {
 	var (
 		err                   error
 		query                 *jsonrpc.RPCRequest
 		response              jsonrpc.RPCResponse
 		rawResponse           []byte
-		queryBody             []byte
 		resolveResponse       *ljsonrpc.ResolveResponse
 		cachedResolveResponse *ljsonrpc.ResolveResponse
 	)
@@ -314,8 +303,9 @@ func TestForwardCallWithCache(t *testing.T) {
 	resolveArgs := map[string][110]string{"urls": homePageUrls}
 
 	query = jsonrpc.NewRequest("resolve", resolveArgs)
-	queryBody, _ = json.Marshal(query)
-	rawResponse, err = ForwardCall(queryBody)
+	queryBody, _ := json.Marshal(query)
+	query, err = UnmarshalRequest(queryBody)
+	rawResponse, err = ForwardCall(*query)
 	json.Unmarshal(rawResponse, &response)
 	if err != nil {
 		t.Fatal("failed with an unexpected error", err)
@@ -330,9 +320,7 @@ func TestForwardCallWithCache(t *testing.T) {
 	config.Override("Lbrynet", grumpyServerURL)
 	defer config.RestoreOverridden()
 
-	query = jsonrpc.NewRequest("resolve", resolveArgs)
-	queryBody, _ = json.Marshal(query)
-	rawResponse, err = ForwardCall(queryBody)
+	rawResponse, err = ForwardCall(*query)
 	json.Unmarshal(rawResponse, &response)
 	if err != nil {
 		t.Fatal("failed with an unexpected error", err)
@@ -348,10 +336,6 @@ func TestForwardCallWithCache(t *testing.T) {
 
 func BenchmarkResolve(b *testing.B) {
 	query := jsonrpc.NewRequest("resolve", map[string][110]string{"urls": homePageUrls})
-	queryBody, err := json.Marshal(query)
-	if err != nil {
-		b.Fatal(err)
-	}
 
 	wg := sync.WaitGroup{}
 
@@ -360,7 +344,7 @@ func BenchmarkResolve(b *testing.B) {
 		go func(n int, wg *sync.WaitGroup) {
 			// queryStartTime := time.Now()
 			// monitor.Logger.WithFields(log.Fields{"n": n}).Info("sending a request")
-			_, err := ForwardCall(queryBody)
+			_, err := ForwardCall(*query)
 			if err != nil {
 				b.Error(err)
 				wg.Done()
