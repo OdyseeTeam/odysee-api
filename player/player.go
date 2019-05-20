@@ -144,6 +144,7 @@ func (s *reflectedStream) resolve(client *ljsonrpc.Client) error {
 
 	s.SdHash = hex.EncodeToString(stream.Source.SdHash)
 	s.ContentType = stream.Source.MediaType
+	s.Size = int64(stream.Source.Size)
 
 	monitor.Logger.WithFields(log.Fields{
 		"sd_hash":      fmt.Sprintf("%s", s.SdHash),
@@ -179,16 +180,23 @@ func (s *reflectedStream) fetchData() error {
 		return err
 	}
 
-	for _, bi := range sdb.BlobInfos {
-		if bi.Length == stream.MaxBlobSize {
-			s.Size += int64(stream.MaxBlobSize - 1)
-		} else {
-			s.Size += int64(bi.Length)
+	if s.Size == 0 {
+		for _, bi := range sdb.BlobInfos {
+			if bi.Length == stream.MaxBlobSize {
+				s.Size += int64(stream.MaxBlobSize - 1)
+			} else {
+				s.Size += int64(bi.Length)
+			}
 		}
-	}
 
-	// last padding is unguessable
-	s.Size -= 15
+		// last padding is unguessable
+		s.Size -= 15
+	} else {
+		monitor.Logger.WithFields(log.Fields{
+			"stream_size": s.Size,
+			"uri":         s.URI,
+		}).Info("found stream size field")
+	}
 
 	sort.Slice(sdb.BlobInfos, func(i, j int) bool {
 		return sdb.BlobInfos[i].BlobNum < sdb.BlobInfos[j].BlobNum
