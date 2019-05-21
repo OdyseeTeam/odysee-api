@@ -400,6 +400,8 @@ github.com/vattle/sqlboiler v2.5.0+incompatible h1:Wt7km7/dtfzZD8gt1u3NWeK0AuF5U
 github.com/vattle/sqlboiler v2.5.0+incompatible/go.mod h1:Q3YlQv8muqQLqYsCfq0TjX87Ec/oUbIcLuZFZIUV614=
 github.com/volatiletech/inflect v0.0.0-20170731032912-e7201282ae8d h1:gI4/tqP6lCY5k6Sg+4k9qSoBXmPwG+xXgMpK7jivD4M=
 github.com/volatiletech/inflect v0.0.0-20170731032912-e7201282ae8d/go.mod h1:jspfvgf53t5NLUT4o9L1IX0kIBNKamGq1tWc/MgWK9Q=
+github.com/volatiletech/null v8.0.0+incompatible h1:7wP8m5d/gZ6kW/9GnrLtMCRre2dlEnaQ9Km5OXlK4zg=
+github.com/volatiletech/null v8.0.0+incompatible/go.mod h1:0wD98JzdqB+rLyZ70fN05VDbXbafIb0KU0MdVhCzmOQ=
 github.com/volatiletech/sqlboiler v3.2.0+incompatible h1:gJc8xeHtnYgLR5oyRLXW9+fbugQ1RdmlDViSRUEhyVY=
 github.com/volatiletech/sqlboiler v3.2.0+incompatible/go.mod h1:jLfDkkHWPbS2cWRLkyC20vQWaIQsASEY7gM7zSo11Yw=
 github.com/wader/gormstore v0.0.0-20190302154359-acb787ba3755 h1:pNaEDfvqe9W2h4D+xm5f+lnZdao3Rob6O0b8SovpGbE=

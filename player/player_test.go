@@ -15,7 +15,7 @@ const streamURL = "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
 func Test_newReflectedStream(t *testing.T) {
 	rs, err := newReflectedStream(streamURL)
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 	assert.Equal(t,
 		"d5169241150022f996fa7cd6a9a1c421937276a3275eb912790bd07ba7aec1fac5fd45431d226b8fb402691e79aeb24b",

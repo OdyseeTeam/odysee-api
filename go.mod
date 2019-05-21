@@ -104,6 +104,7 @@ require (
 	github.com/valyala/fasttemplate v0.0.0-20170224212429-dcecefd839c4 // indirect
 	github.com/vattle/sqlboiler v2.5.0+incompatible // indirect
 	github.com/volatiletech/inflect v0.0.0-20170731032912-e7201282ae8d // indirect
+	github.com/volatiletech/null v8.0.0+incompatible // indirect
 	github.com/volatiletech/sqlboiler v3.2.0+incompatible
 	github.com/wader/gormstore v0.0.0-20190302154359-acb787ba3755
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
