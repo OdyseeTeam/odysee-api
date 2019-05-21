@@ -269,11 +269,6 @@ func TestForwardCall(t *testing.T) {
 		t.Errorf("not enough results, daemon responded with %v", fileListResponse)
 		return
 	}
-
-	expectedPath := fmt.Sprintf(
-		"%s%s/%s/%s/%s", config.Settings.GetString("BaseContentURL"),
-		"claims", "what", "6769855a9aa43b67086f9ff3c1a5bacb5698a27a", (*fileListResponse)[0].FileName)
-	assert.Equal(t, (*fileListResponse)[0].DownloadPath, expectedPath)
 }
 
 func TestForwardCallWithCache(t *testing.T) {

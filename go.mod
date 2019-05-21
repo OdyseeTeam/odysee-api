@@ -11,7 +11,6 @@ require (
 	github.com/Gurpartap/logrus-stack v0.0.0-20170710170904-89c00d8a28f4
 	github.com/Shopify/sarama v1.21.0 // indirect
 	github.com/akavel/rsrc v0.0.0-20170831122431-f6a15ece2cfd // indirect
-	github.com/btcsuite/btcd v0.0.0-20190213025234-306aecffea32 // indirect
 	github.com/btcsuite/goleveldb v1.0.0 // indirect
 	github.com/certifi/gocertifi v0.0.0-20190105021004-abcd57078448 // indirect
 	github.com/cespare/reflex v0.2.0 // indirect
@@ -50,7 +49,7 @@ require (
 	github.com/kisielk/errcheck v1.2.0 // indirect
 	github.com/kkdai/bstream v0.0.0-20181106074824-b3251f7901ec // indirect
 	github.com/kr/pretty v0.1.0 // indirect
-	github.com/lbryio/lbry.go v0.0.0-20190430060840-a74d748506db
+	github.com/lbryio/lbry.go v1.0.2
 	github.com/lbryio/ozzo-validation v3.0.2+incompatible // indirect
 	github.com/lbryio/sqlboiler v2.3.0+incompatible
 	github.com/lbryio/types v0.0.0-20190422033210-321fb2abda9c
@@ -104,6 +103,9 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v0.0.0-20170224212429-dcecefd839c4 // indirect
 	github.com/vattle/sqlboiler v2.5.0+incompatible // indirect
+	github.com/volatiletech/inflect v0.0.0-20170731032912-e7201282ae8d // indirect
+	github.com/volatiletech/null v8.0.0+incompatible // indirect
+	github.com/volatiletech/sqlboiler v3.2.0+incompatible
 	github.com/wader/gormstore v0.0.0-20190302154359-acb787ba3755
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	go4.org v0.0.0-20190218023631-ce4c26f7be8e // indirect
