@@ -93,7 +93,7 @@ func (s *reflectedStream) Seek(offset int64, whence int) (int64, error) {
 	var newSeekOffset int64
 
 	if whence == io.SeekEnd {
-		newSeekOffset = s.Size - 1 - offset
+		newSeekOffset = s.Size - offset
 	} else if whence == io.SeekStart {
 		newSeekOffset = offset
 	} else if whence == io.SeekCurrent {

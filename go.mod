@@ -28,6 +28,8 @@ require (
 	github.com/go-ini/ini v1.42.0 // indirect
 	github.com/go-logfmt/logfmt v0.4.0 // indirect
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
+	github.com/gobuffalo/packr v1.25.0 // indirect
+	github.com/gobuffalo/packr/v2 v2.2.0 // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/gogo/protobuf v1.2.1 // indirect
 	github.com/golang/lint v0.0.0-20181217174547-8f45f776aaf1 // indirect
@@ -44,11 +46,11 @@ require (
 	github.com/jinzhu/gorm v1.9.2
 	github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a // indirect
 	github.com/jinzhu/now v1.0.0 // indirect
+	github.com/jmoiron/sqlx v1.2.0 // indirect
 	github.com/jteeuwen/go-bindata v3.0.7+incompatible // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kisielk/errcheck v1.2.0 // indirect
 	github.com/kkdai/bstream v0.0.0-20181106074824-b3251f7901ec // indirect
-	github.com/kr/pretty v0.1.0 // indirect
 	github.com/lbryio/lbry.go v1.0.2
 	github.com/lbryio/ozzo-validation v3.0.2+incompatible // indirect
 	github.com/lbryio/sqlboiler v2.3.0+incompatible
@@ -68,6 +70,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90 // indirect
 	github.com/prometheus/procfs v0.0.0-20190225181712-6ed1f7e10411 // indirect
+	github.com/rubenv/sql-migrate v0.0.0-20190327083759-54bad0a9b051 // indirect
 	github.com/russross/blackfriday v2.0.0+incompatible // indirect
 	github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24
 	github.com/shurcooL/component v0.0.0-20170202220835-f88ec8f54cc4 // indirect
@@ -91,7 +94,7 @@ require (
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/shurcooL/users v0.0.0-20180125191416-49c67e49c537 // indirect
 	github.com/shurcooL/webdavfs v0.0.0-20181215192745-5988b2d638f6 // indirect
-	github.com/sirupsen/logrus v1.3.0
+	github.com/sirupsen/logrus v1.4.1
 	github.com/smartystreets/assertions v0.0.0-20190215210624-980c5ac6f3ac // indirect
 	github.com/smartystreets/goconvey v0.0.0-20190222223459-a17d461953aa // indirect
 	github.com/sourcegraph/annotate v0.0.0-20160123013949-f4cad6c6324d // indirect
@@ -113,6 +116,7 @@ require (
 	golang.org/x/exp v0.0.0-20190221220918-438050ddec5e // indirect
 	golang.org/x/perf v0.0.0-20190124201629-844a5f5b46f4 // indirect
 	golang.org/x/sys v0.0.0-20190225065934-cc5685c2db12 // indirect
+	gopkg.in/gorp.v1 v1.7.2 // indirect
 	gopkg.in/ini.v1 v1.42.0 // indirect
 	gotest.tools v2.2.0+incompatible
 	honnef.co/go/tools v0.0.0-20190215041234-466a0476246c // indirect
