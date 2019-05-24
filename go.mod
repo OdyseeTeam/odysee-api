@@ -19,7 +19,7 @@ require (
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/karrick/godirwalk v1.8.2 // indirect
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
-	github.com/lbryio/lbry.go v1.0.3
+	github.com/lbryio/lbry.go v1.0.4
 	github.com/lbryio/lbryschema.go v0.0.0-20190504040023-d701bab7f623 // indirect
 
 	github.com/lbryio/types v0.0.0-20190429192756-41949417483a // indirect
@@ -42,9 +42,10 @@ require (
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/crypto v0.0.0-20190510104115-cbcb75029529 // indirect
 	golang.org/x/net v0.0.0-20190509222800-a4d6f7feada5 // indirect
-	golang.org/x/sys v0.0.0-20190520201301-c432e742b0af // indirect
 	golang.org/x/text v0.3.2 // indirect
 	golang.org/x/tools v0.0.0-20190511041617-99f201b6807e // indirect
 	google.golang.org/appengine v1.5.0 // indirect
+	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
+	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
 	gopkg.in/gorp.v1 v1.7.2 // indirect
 )

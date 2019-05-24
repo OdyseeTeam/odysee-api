@@ -18,11 +18,12 @@ var Client = ljsonrpc.NewClient(config.Settings.GetString("Lbrynet"))
 
 var logger = monitor.NewModuleLogger("lbrynet")
 
+// AccountNameFromEmail returns email formatted for internal use
 func AccountNameFromEmail(email string) string {
 	return fmt.Sprintf(accountNameTemplate, email)
 }
 
-// GetAccount calls SDK's account_list with accountID as an argument.
+// GetAccount finds account in account_list by email
 func GetAccount(email string) (*ljsonrpc.Account, error) {
 	accounts, err := Client.AccountList()
 	if err != nil {

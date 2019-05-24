@@ -29,6 +29,8 @@ func TestGetAccount(t *testing.T) {
 	require.Nil(t, err, err)
 	assert.Equal(t, retrievedAccount.Name, account.Name)
 	assert.Equal(t, retrievedAccount.ID, account.ID)
+	prettyPrint(retrievedAccount)
+	prettyPrint(account)
 }
 
 func TestGetAccount_Nonexistent(t *testing.T) {
