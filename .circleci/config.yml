@@ -5,6 +5,8 @@ jobs:
       - image: circleci/golang:1.11
       - image: lbryweb/lbrynet:latest
       - image: postgres:11-alpine
+        environment:
+          POSTGRES_DB: lbrytv
     steps:
       - checkout
       - restore_cache:
@@ -24,8 +26,8 @@ jobs:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
       - run: go get ./...
-      - run: go get github.com/GeertJohan/go.rice/rice
-      - run: make embed
+      # - run: go get github.com/GeertJohan/go.rice/rice
+      # - run: make embed
       - run: GOARCH=amd64 GOOS=linux go build -o dist/linux_amd64/lbrytv main.go
       # - setup_remote_docker
       - run:
@@ -48,8 +50,8 @@ jobs:
     steps:
       - checkout
       - run: go get ./...
-      - run: go get github.com/GeertJohan/go.rice/rice
-      - run: make embed
+      # - run: go get github.com/GeertJohan/go.rice/rice
+      # - run: make embed
       - run: CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -a -o dist/linux_amd64/lbrytv .
       - setup_remote_docker
       - run:
