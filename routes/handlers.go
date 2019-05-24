@@ -6,37 +6,20 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/lbryio/lbrytv/db"
+	"github.com/lbryio/lbrytv/monitor"
 	"github.com/lbryio/lbrytv/player"
 	"github.com/lbryio/lbrytv/proxy"
+
+	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
-const tokenHeader string = "X-Lbry-Auth-Token"
+var logger = monitor.NewModuleLogger("db")
 
 // Index just serves a blank home page
 func Index(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
-}
-
-func getAuthToken(req *http.Request) string {
-	if header, ok := req.Header[tokenHeader]; ok {
-		return header[0]
-	}
-	return ""
-}
-
-func getAccountID(req *http.Request) (string, error) {
-	token := getAuthToken(req)
-	if token == "" {
-		return "", nil
-	}
-	u, err := db.GetUser(token)
-	if err != nil {
-		return "", nil
-	}
-	return string(u.SDKAccountID), nil
 }
 
 // Proxy takes client request body and feeds it to the proxy module
@@ -59,16 +42,17 @@ func Proxy(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	accountID, err := getAccountID(req)
+	accountID, err := db.GetAccountIDFromRequest(req)
 	if err != nil {
 		response, _ := json.Marshal(proxy.NewErrorResponse(err.Error(), proxy.ErrProxyAuthFailed))
-		w.WriteHeader(http.StatusServiceUnavailable)
+		w.WriteHeader(http.StatusForbidden)
 		w.Write(response)
 		return
 	}
 
 	lbrynetResponse, err := proxy.Proxy(ur, accountID)
 	if err != nil {
+		logger.LogF(monitor.F{"query": ur, "error": err}).Error("proxy errored")
 		response, _ := json.Marshal(proxy.NewErrorResponse(err.Error(), proxy.ErrProxy))
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write(response)

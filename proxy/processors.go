@@ -2,14 +2,20 @@ package proxy
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/monitor"
+	log "github.com/sirupsen/logrus"
+
+	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
 
 const mGet = "get"
 const mFileList = "file_list"
+const mAccountList = "account_list"
 
 func processQuery(query *jsonrpc.RPCRequest) (processedQuery *jsonrpc.RPCRequest, err error) {
 	processedQuery = query
@@ -27,6 +33,8 @@ func processResponse(query *jsonrpc.RPCRequest, response *jsonrpc.RPCResponse) (
 		processedResponse, err = responseProcessorGet(query, response)
 	case mFileList:
 		processedResponse, err = responseProcessorFileList(query, response)
+	case mAccountList:
+		processedResponse, err = responseProcessorAccountList(query, response)
 	}
 	return processedResponse, err
 }
@@ -73,5 +81,36 @@ func responseProcessorFileList(query *jsonrpc.RPCRequest, response *jsonrpc.RPCR
 			resultArray[0]["file_name"])
 	}
 	response.Result = resultArray
+	return response, nil
+}
+
+func getDefaultAccount(accounts *ljsonrpc.AccountListResponse) *ljsonrpc.Account {
+	for _, account := range accounts.LBCMainnet {
+		fmt.Println(account)
+		if account.IsDefault {
+			return &account
+		}
+	}
+	return nil
+}
+
+func responseProcessorAccountList(query *jsonrpc.RPCRequest, response *jsonrpc.RPCResponse) (*jsonrpc.RPCResponse, error) {
+	accounts := new(ljsonrpc.AccountListResponse)
+	// result := map[string]interface{}{}
+	// response.GetObject(&result)
+
+	monitor.Logger.WithFields(log.Fields{
+		"params": query.Params,
+	}).Info("got account_list query")
+	if query.Params == nil {
+		// No account_id is supplied, get the default account and return it
+		ljsonrpc.Decode(response.Result, accounts)
+		account := getDefaultAccount(accounts)
+		if account == nil {
+			return nil, errors.New("fatal error: no default account found")
+		}
+		response.Result = account
+	}
+	// response.Result = result
 	return response, nil
 }

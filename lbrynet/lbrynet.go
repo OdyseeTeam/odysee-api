@@ -1,76 +1,80 @@
 package lbrynet
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/proxy"
+	"github.com/lbryio/lbrytv/monitor"
 
 	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
 )
 
-const accountNameTemplate string = "lbrytv#user#%s"
+const accountNamePrefix string = "lbrytv#user#"
+const accountNameTemplate string = accountNamePrefix + "%s"
 
 // Client is a LBRY SDK jsonrpc client instance
-var Client *ljsonrpc.Client
+var Client = ljsonrpc.NewClient(config.Settings.GetString("Lbrynet"))
 
-func init() {
-	Client = ljsonrpc.NewClient(config.Settings.GetString("Lbrynet"))
-}
+var logger = monitor.NewModuleLogger("lbrynet")
 
-func accountIDFromEmail(email string) string {
+func AccountNameFromEmail(email string) string {
 	return fmt.Sprintf(accountNameTemplate, email)
 }
 
-// SingleAccountList calls SDK's account_list with accountID as an argument.
-// lbry.go's method cannot be used here because
-// a) it doesn't support arguments
-// b) it doesn't process singular acount_list response
-// TODO: Move this method to lbry.go client
-func SingleAccountList(email string) (*SingleAccountListResponse, error) {
-	accountID := accountIDFromEmail(email)
-	response := new(SingleAccountListResponse)
-	r, err := proxy.RawCall(proxy.NewRequest("account_list", map[string]string{account_id: accountID}))
+// GetAccount calls SDK's account_list with accountID as an argument.
+func GetAccount(email string) (*ljsonrpc.Account, error) {
+	accounts, err := Client.AccountList()
 	if err != nil {
 		return nil, err
 	}
-	if r.Error.Message != nil {
-		if strings.HasPrefix(r.Error, "Couldn't find account:") {
-			return nil, AccountNotFound{Email: accountID}
+	for _, account := range accounts.LBCMainnet {
+		accountEmail := strings.TrimPrefix(account.Name, accountNamePrefix)
+		if accountEmail == email {
+			return &account, nil
 		}
-		return nil, errors.New("error in daemon: %v", r.Error.Message)
 	}
-
-	err = Decode(r.Result, response)
-	if err != nil {
-		return nil, err
-	}
-	return response, err
+	return nil, AccountNotFound{Email: email}
 }
 
-// AccountExists checks if account exists at the local SDK instance
-func AccountExists(accountID string) bool {
-	a, err := SingleAccountList(accountID)
+// AccountExists checks if account exists at the local SDK instance.
+// In case of any errors apart from AccountNotFound we like want to break the flow of the caller and return true.
+func AccountExists(email string) bool {
+	_, err := GetAccount(email)
 	if err != nil {
-		switch err := err.(type) {
+		switch err.(type) {
 		case AccountNotFound:
 			return false
 		default:
-			// If the daemon errored in any way, safe to assume we shouldn't consider this account non-existing
 			return true
 		}
 	}
+	return true
 }
 
 // CreateAccount creates a new account with the SDK
 func CreateAccount(email string) (*ljsonrpc.AccountCreateResponse, error) {
-	accountID := accountIDFromEmail(email)
+	accountName := AccountNameFromEmail(email)
 	if AccountExists(email) {
+		logger.Log().Errorf("email %v is registered with the daemon", email)
 		return nil, AccountConflict{Email: email}
 	}
-	r, err := Client.AccountCreate(accountName, true)
+	logger.Log().Infof("creating account %v", email)
+	r, err := Client.AccountCreate(accountName, false)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+// RemoveAccount removes an account from the SDK by email
+func RemoveAccount(email string) (*ljsonrpc.AccountRemoveResponse, error) {
+	acc, err := GetAccount(email)
+	if err != nil {
+		return nil, err
+	}
+	logger.Log().Infof("removing account %v", email)
+	r, err := Client.AccountRemove(acc.ID)
 	if err != nil {
 		return nil, err
 	}

@@ -22,13 +22,13 @@ func TestProxyNilQuery(t *testing.T) {
 	assert.Equal(t, "empty request body", rr.Body.String())
 }
 
-func TestProxyNonsenseQuery(t *testing.T) {
+func TestProxyInvalidQuery(t *testing.T) {
 	var parsedResponse jsonrpc.RPCResponse
 
 	request, _ := http.NewRequest("POST", "/api/proxy", bytes.NewBuffer([]byte("yo")))
 	rr := httptest.NewRecorder()
 	http.HandlerFunc(Proxy).ServeHTTP(rr, request)
-	assert.Equal(t, http.StatusServiceUnavailable, rr.Code)
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
 	err := json.Unmarshal(rr.Body.Bytes(), &parsedResponse)
 	if err != nil {
 		panic(err)

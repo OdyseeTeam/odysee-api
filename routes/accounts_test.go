@@ -3,14 +3,16 @@ package routes
 import (
 	"bytes"
 	"encoding/json"
-	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/db"
 	"github.com/lbryio/lbrytv/lbrynet"
 
+	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"
@@ -19,27 +21,37 @@ import (
 const dummyServerURL = "http://127.0.0.1:59999"
 const proxySuffix = "/api/proxy"
 
-func launchDummyServer(response []byte) {
-	s := &http.Server{
-		Addr: "127.0.0.1:59999",
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json; charset=utf-8")
-			w.WriteHeader(http.StatusOK)
-			w.Write(response)
-		}),
-	}
-	log.Fatal(s.ListenAndServe())
+func TestMain(m *testing.M) {
+	// call flag.Parse() here if TestMain uses flags
+	code := m.Run()
+	cleanup()
+	os.Exit(code)
+}
+
+func launchDummyAPIServer(response []byte) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write(response)
+	}))
+}
+
+func cleanup() {
+	lbrynet.RemoveAccount("andrey@lbry.com")
+	db.Cleanup(*db.Conn)
 }
 
 func TestWithValidAuthToken(t *testing.T) {
+	cleanup()
+
 	var (
-		q              *jsonrpc.RPCRequest
-		qBody          []byte
-		parsedResponse jsonrpc.RPCResponse
-		sdkResponse    lbrynet.SingleAccountListResponse
+		q        *jsonrpc.RPCRequest
+		qBody    []byte
+		response jsonrpc.RPCResponse
+		account  ljsonrpc.Account
 	)
 
-	go launchDummyServer([]byte(`{
+	ts := launchDummyAPIServer([]byte(`{
 		"success": true,
 		"error": null,
 		"data": {
@@ -63,10 +75,11 @@ func TestWithValidAuthToken(t *testing.T) {
 		  "groups": []
 		}
 	}`))
-	config.Override("InternalAPIHost", dummyServerURL)
+	defer ts.Close()
+	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	q = jsonrpc.NewRequest("accounts_list")
+	q = jsonrpc.NewRequest("account_list")
 	qBody, _ = json.Marshal(q)
 	r, _ := http.NewRequest("POST", proxySuffix, bytes.NewBuffer(qBody))
 	r.Header.Add("X-Lbry-Auth-Token", "d94ab9865f8416d107935d2ca644509c")
@@ -74,73 +87,69 @@ func TestWithValidAuthToken(t *testing.T) {
 	rr := httptest.NewRecorder()
 	http.HandlerFunc(Proxy).ServeHTTP(rr, r)
 	require.Equal(t, http.StatusOK, rr.Code)
-	err := json.Unmarshal(rr.Body.Bytes(), &parsedResponse)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ljsonrpc.Decode(parsedResponse.Result, &sdkResponse)
-	assert.Equal(t, "andrey@lbry.com", sdkResponse.Name)
+	err := json.Unmarshal(rr.Body.Bytes(), &response)
+	require.Nil(t, err)
+	require.Nil(t, response.Error)
+	err = ljsonrpc.Decode(response.Result, &account)
+	require.Nil(t, err)
+	assert.Equal(t, lbrynet.AccountNameFromEmail("andrey@lbry.com"), account.Name)
 }
 
 func TestWithWrongAuthToken(t *testing.T) {
+	cleanup()
+
 	var (
-		q              *jsonrpc.RPCRequest
-		qBody          []byte
-		parsedResponse jsonrpc.RPCResponse
+		q        *jsonrpc.RPCRequest
+		qBody    []byte
+		response jsonrpc.RPCResponse
 	)
 
-	go launchDummyServer([]byte(`{
+	ts := launchDummyAPIServer([]byte(`{
 		"success": false,
 		"error": "could not authenticate user",
 		"data": null
 	}`))
-	config.Override("InternalAPIHost", dummyServerURL)
+	defer ts.Close()
+	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	q = jsonrpc.NewRequest("accounts_list")
+	q = jsonrpc.NewRequest("account_list")
 	qBody, _ = json.Marshal(q)
 	r, _ := http.NewRequest("POST", proxySuffix, bytes.NewBuffer(qBody))
-	r.Header.Add("X-Lbry-Auth-Token", "xXXx")
+	r.Header.Add("X-Lbry-Auth-Token", "xXxXxXx")
 
 	rr := httptest.NewRecorder()
 	http.HandlerFunc(Proxy).ServeHTTP(rr, r)
-	require.Equal(t, http.StatusOK, rr.Code)
-	err := json.Unmarshal(rr.Body.Bytes(), &parsedResponse)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, "Invalid auth_token", parsedResponse.Error.Message)
+	assert.Equal(t, http.StatusForbidden, rr.Code)
+	err := json.Unmarshal(rr.Body.Bytes(), &response)
+	require.Nil(t, err)
+	assert.Equal(t, "could not authenticate user", response.Error.Message)
 }
 
 func TestWithoutToken(t *testing.T) {
+	cleanup()
+	// Create a dummy account so we have a wallet beside the default one
+	lbrynet.CreateAccount("dummy@email.com")
+
 	var (
-		q              *jsonrpc.RPCRequest
-		qBody          []byte
-		parsedResponse jsonrpc.RPCResponse
-		sdkResponse    ljsonrpc.AccountListResponse
+		q        *jsonrpc.RPCRequest
+		qBody    []byte
+		response jsonrpc.RPCResponse
+		account  ljsonrpc.Account
 	)
 
-	q = jsonrpc.NewRequest("accounts_list")
+	q = jsonrpc.NewRequest("account_list")
 	qBody, _ = json.Marshal(q)
 	r, _ := http.NewRequest("POST", proxySuffix, bytes.NewBuffer(qBody))
+
 	rr := httptest.NewRecorder()
 	http.HandlerFunc(Proxy).ServeHTTP(rr, r)
-
 	require.Equal(t, http.StatusOK, rr.Code)
-	err := json.Unmarshal(rr.Body.Bytes(), &parsedResponse)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ljsonrpc.Decode(parsedResponse.Result, &sdkResponse)
-	firstRequestID := sdkResponse.LBCMainnet[0].ID
+	err := json.Unmarshal(rr.Body.Bytes(), &response)
 
-	rr = httptest.NewRecorder()
-	http.HandlerFunc(Proxy).ServeHTTP(rr, r)
-	require.Equal(t, http.StatusOK, rr.Code)
-	err = json.Unmarshal(rr.Body.Bytes(), &parsedResponse)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ljsonrpc.Decode(parsedResponse.Result, &sdkResponse)
-	assert.Equal(t, firstRequestID, sdkResponse.LBCMainnet[0].ID)
+	require.Nil(t, err)
+	require.Nil(t, response.Error)
+	err = ljsonrpc.Decode(response.Result, &account)
+	require.Nil(t, err)
+	assert.True(t, account.IsDefault, account)
 }

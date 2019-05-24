@@ -48,8 +48,6 @@ const ErrInvalidParams int = -32602
 // ErrMethodNotFound means the client-requested method cannot be found
 const ErrMethodNotFound int = -32601
 
-const MethodAccountCreate
-
 // UnmarshalRequest takes a raw json request body and serializes it into RPCRequest struct for further processing.
 func UnmarshalRequest(r []byte) (*jsonrpc.RPCRequest, error) {
 	var ur jsonrpc.RPCRequest
@@ -98,11 +96,15 @@ func preprocessRequest(r *jsonrpc.RPCRequest, accountID string) *jsonrpc.RPCResp
 	}
 
 	if accountID != "" && methodInList(r.Method, accountSpecificMethods) {
+		monitor.Logger.WithFields(log.Fields{
+			"method": r.Method, "params": r.Params,
+		}).Info("got an account-specific method call")
+
 		if paramsMap, ok := r.Params.(map[string]interface{}); ok {
 			paramsMap["account_id"] = accountID
 			r.Params = paramsMap
 		} else {
-			return NewErrorResponse("Account-specific method requested but non-map params supplied", ErrInvalidParams)
+			r.Params = map[string]string{"account_id": accountID}
 		}
 	}
 	processQuery(r)

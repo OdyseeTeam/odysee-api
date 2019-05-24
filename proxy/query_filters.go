@@ -13,7 +13,7 @@ var forbiddenMethods = []string{
 	"account_encrypt",
 	"account_decrypt",
 	"account_fund",
-	"account_list",
+	// "account_list",
 	"account_lock",
 	"account_remove",
 	"account_set",

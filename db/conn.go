@@ -6,6 +6,7 @@ import (
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/monitor"
 	"github.com/lib/pq"
+	"github.com/volatiletech/sqlboiler/boil"
 
 	"github.com/gobuffalo/packr/v2"
 	_ "github.com/jinzhu/gorm/dialects/postgres" // Dialect import
@@ -36,11 +37,16 @@ type ConnParams struct {
 // Conn is a module-level connection-holding variable
 var Conn *ConnData
 
+func init() {
+	Init()
+}
+
 // Init initializes a module-level connection object
 func Init() *ConnData {
 	if Conn == nil {
 		Conn = NewConnection(GetDefaultDSN())
 	}
+	boil.SetDB(Conn.DB)
 	return Conn
 }
 
@@ -71,7 +77,7 @@ func GetDefaultDSN() string {
 // NewConnection sets up a database object, panics if unable to connect.
 func NewConnection(dsn string) *ConnData {
 	c := ConnData{dialect: "postgres", Logger: monitor.NewModuleLogger("db")}
-	c.Logger.LogF(monitor.F{dsn: dsn}).Info("connecting to the database")
+	c.Logger.LogF(monitor.F{"dsn": dsn}).Info("connecting to the database")
 	db, err := connect(c.dialect, dsn)
 	if err != nil {
 		panic(err)

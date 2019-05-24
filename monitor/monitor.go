@@ -23,6 +23,11 @@ type F map[string]interface{}
 
 const responseSnippetLen = 250.
 
+// init magic is needed so logging is set up without calling it in every package explicitly
+func init() {
+	SetupLogging()
+}
+
 // SetupLogging initializes and sets a few parameters for the logging subsystem.
 func SetupLogging() {
 	dsn := config.Settings.GetString("SentryDSN")
@@ -33,6 +38,7 @@ func SetupLogging() {
 	// logrus.AddHook(logrus_stack.StandardHook())
 	// Logger.AddHook(logrus_stack.StandardHook())
 	if config.IsProduction() {
+		Logger.Info("running in production mode")
 		raven.SetEnvironment("production")
 
 		logrus.SetLevel(logrus.InfoLevel)
@@ -40,6 +46,7 @@ func SetupLogging() {
 		logrus.SetFormatter(&logrus.JSONFormatter{})
 		Logger.SetFormatter(&logrus.JSONFormatter{})
 	} else {
+		Logger.Info("running in develop mode")
 		raven.SetEnvironment("develop")
 
 		logrus.SetLevel(logrus.DebugLevel)
