@@ -24,7 +24,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
   app:
-    image: lbryweb/lbryweb-go:latest
+    image: lbryweb/lbryweb-go:latest-dev
     ports:
       - "8080:8080"
     volumes:

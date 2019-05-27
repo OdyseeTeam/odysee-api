@@ -2,5 +2,5 @@ Lbrynet: http://localhost:5579/
 Debug: 1
 InternalAPIs: https://api.lbry.com/
 DatabaseConnection: postgres://postgres:postgres@localhost
-DatabaseName: lbrytv
+DatabaseName: postgres
 DatabaseOptions: sslmode=disable
