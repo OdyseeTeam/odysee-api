@@ -6,15 +6,19 @@ Active development is in progress, expect failing tests and breaking changes.
 
 [![CircleCI](https://img.shields.io/circleci/project/github/lbryio/lbrytv/master.svg)](https://circleci.com/gh/lbryio/lbrytv/tree/master) [![Coverage](https://img.shields.io/coveralls/github/lbryio/lbrytv.svg)](https://coveralls.io/github/lbryio/lbrytv)
 
-## Running with Docker (if you want to try things)
+## Running with Docker
 
-Make sure you have Docker and docker-compose installed.
+This is the recommended method for frontend development.
+
+Make sure you have recent enough Docker and `docker-compose` installed.
 
 **1. Initialize and launch the containers**
 
 This will pull and launch SDK and postgres images, which lbrytv requires to operate.
 
 `docker-compose up app`
+
+*Note: if you're running a LBRY desktop app or lbrynet instance, you will have to either shut it down or change ports*
 
 **2. Setup up the database schema if this is your first launch**
 
