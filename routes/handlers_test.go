@@ -14,6 +14,14 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
+func TestProxy_Options(t *testing.T) {
+	request, _ := http.NewRequest("OPTIONS", "/api/proxy", nil)
+	rr := httptest.NewRecorder()
+	http.HandlerFunc(Proxy).ServeHTTP(rr, request)
+	response := rr.Result()
+	assert.Equal(t, http.StatusOK, response.StatusCode)
+}
+
 func TestProxyNilQuery(t *testing.T) {
 	request, _ := http.NewRequest("POST", "/api/proxy", nil)
 	rr := httptest.NewRecorder()

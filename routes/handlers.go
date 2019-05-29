@@ -24,6 +24,10 @@ func Index(w http.ResponseWriter, req *http.Request) {
 
 // Proxy takes client request body and feeds it to the proxy module
 func Proxy(w http.ResponseWriter, req *http.Request) {
+	if req.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	if req.Body == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("empty request body"))
