@@ -5,8 +5,8 @@ services:
     image: postgres:11-alpine
     ports:
       - "5432:5432"
-    # environment:
-    #   POSTGRES_USER: lbrytv
+    environment:
+      POSTGRES_DB: lbrytv
   lbrynet:
     image: lbryweb/lbrynet:latest
     ports:
