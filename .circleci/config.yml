@@ -26,10 +26,7 @@ jobs:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
       - run: go get ./...
-      # - run: go get github.com/GeertJohan/go.rice/rice
-      # - run: make embed
       - run: GOARCH=amd64 GOOS=linux go build -o dist/linux_amd64/lbrytv main.go
-      # - setup_remote_docker
       - run:
           name: Build Docker image
           command: make image
@@ -41,7 +38,6 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
-      # - setup_remote_docker
       - run: curl -sL https://git.io/goreleaser | bash
       - run: make image
   publish-image:
@@ -50,8 +46,6 @@ jobs:
     steps:
       - checkout
       - run: go get ./...
-      # - run: go get github.com/GeertJohan/go.rice/rice
-      # - run: make embed
       - run: CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -a -o dist/linux_amd64/lbrytv .
       - setup_remote_docker
       - run:

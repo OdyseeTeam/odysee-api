@@ -39,7 +39,6 @@ func GetUserByToken(token string) (*models.User, error) {
 			u, err := models.Users(models.UserWhere.AuthToken.EQ(email)).One(ctx, Conn.DB)
 			if err != nil {
 				Conn.Logger.LogF(monitor.F{"token": token, "email": email}).Info("user seen first time, creating locally")
-				// No user with that email in our database, create one with the daemon instance and save to the database
 				a, err := lbrynet.CreateAccount(email)
 				if err != nil {
 					return nil, err

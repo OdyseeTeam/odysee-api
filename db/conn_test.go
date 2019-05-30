@@ -46,6 +46,7 @@ func TestMigrate(t *testing.T) {
 	c.MigrateDown()
 	rows, err = c.DB.Query("SELECT id FROM users")
 	require.NotNil(t, err)
+	rows.Close()
 
 	if err = c.DB.Close(); err != nil {
 		t.Fatal(err)
