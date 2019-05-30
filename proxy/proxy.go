@@ -1,3 +1,14 @@
+// Package proxy handles incoming JSON-RPC requests from UI client (lbry-desktop or any other), forwards them to the actual SDK instance running nearby and returns its response to the client.
+// The purpose of it is to expose SDK over a publicly accessible http interface,  fixing aspects of it which normally would prevent SDK from being safely or efficiently shared between multiple remote clients.
+
+// Currently it does:
+
+// * Request validation
+// * Request processing
+// * Gatekeeping (blocks certain methods from being called)
+// * Response processing
+// * Response caching
+
 package proxy
 
 import (
@@ -59,6 +70,7 @@ func UnmarshalRequest(r []byte) (*jsonrpc.RPCRequest, error) {
 }
 
 // Proxy takes a parsed jsonrpc request, calls processors on it and passes it over to the daemon.
+// If accountID is supplied, it's injected as a request param.
 func Proxy(r *jsonrpc.RPCRequest, accountID string) ([]byte, error) {
 	resp := preprocessRequest(r, accountID)
 	if resp != nil {
