@@ -24,7 +24,7 @@ import (
 // User is an object representing the database table.
 type User struct {
 	ID                 int       `boil:"id" json:"id" toml:"id" yaml:"id"`
-	Created            time.Time `boil:"created" json:"created" toml:"created" yaml:"created"`
+	CreatedAt          time.Time `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	Email              string    `boil:"email" json:"email" toml:"email" yaml:"email"`
 	AuthToken          string    `boil:"auth_token" json:"auth_token" toml:"auth_token" yaml:"auth_token"`
 	IsIdentityVerified bool      `boil:"is_identity_verified" json:"is_identity_verified" toml:"is_identity_verified" yaml:"is_identity_verified"`
@@ -40,7 +40,7 @@ type User struct {
 
 var UserColumns = struct {
 	ID                 string
-	Created            string
+	CreatedAt          string
 	Email              string
 	AuthToken          string
 	IsIdentityVerified string
@@ -51,7 +51,7 @@ var UserColumns = struct {
 	Seed               string
 }{
 	ID:                 "id",
-	Created:            "created",
+	CreatedAt:          "created_at",
 	Email:              "email",
 	AuthToken:          "auth_token",
 	IsIdentityVerified: "is_identity_verified",
@@ -105,7 +105,7 @@ func (w whereHelperbool) GTE(x bool) qm.QueryMod { return qmhelper.Where(w.field
 
 var UserWhere = struct {
 	ID                 whereHelperint
-	Created            whereHelpertime_Time
+	CreatedAt          whereHelpertime_Time
 	Email              whereHelperstring
 	AuthToken          whereHelperstring
 	IsIdentityVerified whereHelperbool
@@ -116,7 +116,7 @@ var UserWhere = struct {
 	Seed               whereHelperstring
 }{
 	ID:                 whereHelperint{field: `id`},
-	Created:            whereHelpertime_Time{field: `created`},
+	CreatedAt:          whereHelpertime_Time{field: `created_at`},
 	Email:              whereHelperstring{field: `email`},
 	AuthToken:          whereHelperstring{field: `auth_token`},
 	IsIdentityVerified: whereHelperbool{field: `is_identity_verified`},
@@ -144,9 +144,9 @@ func (*userR) NewStruct() *userR {
 type userL struct{}
 
 var (
-	userColumns               = []string{"id", "created", "email", "auth_token", "is_identity_verified", "has_verified_email", "sdk_account_id", "private_key", "public_key", "seed"}
+	userColumns               = []string{"id", "created_at", "email", "auth_token", "is_identity_verified", "has_verified_email", "sdk_account_id", "private_key", "public_key", "seed"}
 	userColumnsWithoutDefault = []string{"email", "auth_token", "sdk_account_id", "private_key", "public_key", "seed"}
-	userColumnsWithDefault    = []string{"id", "created", "is_identity_verified", "has_verified_email"}
+	userColumnsWithDefault    = []string{"id", "created_at", "is_identity_verified", "has_verified_email"}
 	userPrimaryKeyColumns     = []string{"id"}
 )
 
@@ -495,6 +495,13 @@ func (o *User) Insert(ctx context.Context, exec boil.ContextExecutor, columns bo
 	}
 
 	var err error
+	if !boil.TimestampsAreSkipped(ctx) {
+		currTime := time.Now().In(boil.GetLocation())
+
+		if o.CreatedAt.IsZero() {
+			o.CreatedAt = currTime
+		}
+	}
 
 	if err := o.doBeforeInsertHooks(ctx, exec); err != nil {
 		return err
@@ -719,6 +726,13 @@ func (o *User) UpsertG(ctx context.Context, updateOnConflict bool, conflictColum
 func (o *User) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
 		return errors.New("models: no users provided for upsert")
+	}
+	if !boil.TimestampsAreSkipped(ctx) {
+		currTime := time.Now().In(boil.GetLocation())
+
+		if o.CreatedAt.IsZero() {
+			o.CreatedAt = currTime
+		}
 	}
 
 	if err := o.doBeforeUpsertHooks(ctx, exec); err != nil {

@@ -2,22 +2,15 @@ package db
 
 import (
 	"database/sql"
-	"math/rand"
 	"testing"
+
+	"github.com/lbryio/lbry.go/extras/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-func RandStringBytes(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
-	}
-	return string(b)
-}
 
 func TestInit(t *testing.T) {
 	c := NewConnection(GetDSN(ConnParams{}))
@@ -28,7 +21,7 @@ func TestInit(t *testing.T) {
 func TestMigrate(t *testing.T) {
 	var err error
 	var rows *sql.Rows
-	tempDbName := RandStringBytes(24)
+	tempDbName := crypto.RandString(24)
 	err = CreateDB(tempDbName)
 	if err != nil {
 		t.Fatal(err)
@@ -46,7 +39,7 @@ func TestMigrate(t *testing.T) {
 	c.MigrateDown()
 	rows, err = c.DB.Query("SELECT id FROM users")
 	require.NotNil(t, err)
-	rows.Close()
+	require.Nil(t, rows)
 
 	if err = c.DB.Close(); err != nil {
 		t.Fatal(err)

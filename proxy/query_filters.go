@@ -24,6 +24,10 @@ var forbiddenMethods = []string{
 
 const forbiddenParam = "account_id"
 
+func MethodRequiresAccountID(method string) bool {
+	return methodInList(method, accountSpecificMethods)
+}
+
 func methodInList(method string, checkMethods []string) bool {
 	for _, m := range checkMethods {
 		if m == method {

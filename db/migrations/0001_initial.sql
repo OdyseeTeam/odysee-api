@@ -3,7 +3,7 @@
 -- +migrate StatementBegin
 CREATE TABLE "users" (
     "id" serial,
-    "created" timestamp NOT NULL DEFAULT now(),
+    "created_at" timestamp NOT NULL DEFAULT now(),
     "email" varchar NOT NULL,
     "auth_token" varchar NOT NULL,
     "is_identity_verified" bool NOT NULL DEFAULT false,

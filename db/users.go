@@ -32,39 +32,39 @@ func GetUserByToken(token string) (*models.User, error) {
 		if err != nil {
 			Conn.Logger.LogF(monitor.F{"token": token}).Error("internal-api responded with an error")
 			// No user found in internal-apis database, give up at this point
-			return u, err
+			return nil, err
 		}
-		if email, ok := r["primary_email"].(string); ok {
+
+		email, verifiedEmail := r["primary_email"].(string)
+		if !verifiedEmail {
+			email = ""
+			Conn.Logger.LogF(monitor.F{"token": token, "email": email}).Info("got an anonymous account from internal-apis")
+		} else {
 			Conn.Logger.LogF(monitor.F{"token": token, "email": email}).Info("got an account from internal-apis")
-			u, err := models.Users(models.UserWhere.AuthToken.EQ(email)).One(ctx, Conn.DB)
-			if err != nil {
-				Conn.Logger.LogF(monitor.F{"token": token, "email": email}).Info("user seen first time, creating locally")
-				a, err := lbrynet.CreateAccount(email)
-				if err != nil {
-					return nil, err
-				}
+		}
 
-				u = new(models.User)
-				u.Email = email
-				u.AuthToken = token
-				u.IsIdentityVerified = false
-				u.HasVerifiedEmail = false
-				u.SDKAccountID = a.ID
-				u.PrivateKey = a.PrivateKey
-				u.PublicKey = a.PublicKey
-				u.Seed = a.Seed
-				err = u.InsertG(ctx, boil.Infer())
+		a, err := lbrynet.CreateAccount(email)
+		if err != nil {
+			return nil, err
+		}
 
-				if err != nil {
-					Conn.Logger.LogF(monitor.F{"token": token, "email": email}).Error("error inserting a record, rolling back account")
-					_, errDelete := lbrynet.RemoveAccount(email)
-					if errDelete != nil {
-						Conn.Logger.LogF(monitor.F{"token": token, "email": email}).Errorf("error rolling back account: %v", errDelete)
-					}
-					return nil, err
-				}
-				return u, nil
+		u = new(models.User)
+		u.Email = email
+		u.AuthToken = token
+		u.HasVerifiedEmail = verifiedEmail
+		u.SDKAccountID = a.ID
+		u.PrivateKey = a.PrivateKey
+		u.PublicKey = a.PublicKey
+		u.Seed = a.Seed
+		err = u.InsertG(ctx, boil.Infer())
+
+		if err != nil {
+			Conn.Logger.LogF(monitor.F{"token": token, "email": email}).Error("error inserting a record, rolling back account")
+			_, errDelete := lbrynet.RemoveAccount(email)
+			if errDelete != nil {
+				Conn.Logger.LogF(monitor.F{"token": token, "email": email}).Errorf("error rolling back account: %v", errDelete)
 			}
+			return nil, err
 		}
 	}
 	return u, nil

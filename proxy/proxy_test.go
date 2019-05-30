@@ -179,7 +179,7 @@ func TestMain(m *testing.M) {
 }
 
 // TestForwardCallWithHTTPError tests for HTTP level error connecting to a port that no server is listening on
-func TestForwardCallWithHTTPError(t *testing.T) {
+func TestForwardCall_HTTPError(t *testing.T) {
 	config.Override("Lbrynet", "http://127.0.0.1:49999")
 	defer config.RestoreOverridden()
 
@@ -191,7 +191,7 @@ func TestForwardCallWithHTTPError(t *testing.T) {
 	assert.True(t, strings.HasSuffix(err.Error(), "connect: connection refused"), err.Error())
 }
 
-func TestForwardCallWithLbrynetError(t *testing.T) {
+func TestForwardCall_LbrynetError(t *testing.T) {
 	var response jsonrpc.RPCResponse
 	query := jsonrpc.NewRequest("crazy_method")
 	rawResponse, err := ForwardCall(*query)
@@ -203,13 +203,19 @@ func TestForwardCallWithLbrynetError(t *testing.T) {
 	assert.Equal(t, "Invalid method requested: crazy_method.", response.Error.Message)
 }
 
-func TestForwardCallWithClientError(t *testing.T) {
+func TestForwardCall_ClientError(t *testing.T) {
 	config.Override("Lbrynet", "http://localhost:59999")
 	defer config.RestoreOverridden()
 
 	r := call(t, "status")
 	assert.NotNil(t, r.Error)
 	assert.Equal(t, "your ways are wrong", r.Error.Message)
+}
+
+func TestForwardCall_InvalidResolveParams(t *testing.T) {
+	r := call(t, "resolve")
+	assert.NotNil(t, r.Error)
+	assert.Equal(t, "jsonrpc_resolve() missing 1 required positional argument: 'urls'", r.Error.Message)
 }
 
 func TestUnmarshalRequest(t *testing.T) {

@@ -121,6 +121,8 @@ func (c ConnData) MigrateDown() {
 // CreateDB creates the requested database.
 func CreateDB(dbName string) (err error) {
 	c := NewConnection(GetDSN(ConnParams{DatabaseName: "postgres"}))
+	// fmt.Sprintf is used instead of query placeholders because postgres does not
+	// handle them in schema-modifying queries
 	_, err = c.DB.Exec(fmt.Sprintf("create database %s;", pq.QuoteIdentifier(dbName)))
 	return err
 }

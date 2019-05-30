@@ -188,7 +188,7 @@ func ForwardCall(request jsonrpc.RPCRequest) ([]byte, error) {
 
 // shouldCache returns true if we got a resolve query with more than `cacheResolveLongerThan` urls in it.
 func shouldCache(method string, params interface{}) bool {
-	if method == "resolve" {
+	if method == "resolve" && params != nil {
 		paramsMap := params.(map[string]interface{})
 		if urls, ok := paramsMap["urls"].([]interface{}); ok {
 			if len(urls) > cacheResolveLongerThan {

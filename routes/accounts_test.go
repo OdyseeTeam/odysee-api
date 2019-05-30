@@ -92,7 +92,7 @@ func TestWithValidAuthToken(t *testing.T) {
 	require.Nil(t, response.Error)
 	err = ljsonrpc.Decode(response.Result, &account)
 	require.Nil(t, err)
-	assert.Equal(t, lbrynet.AccountNameFromEmail("andrey@lbry.com"), account.Name)
+	assert.Equal(t, lbrynet.AccountNameFromUID("andrey@lbry.com"), account.Name)
 }
 
 func TestWithWrongAuthToken(t *testing.T) {

@@ -139,6 +139,41 @@ func TestGetUser_Nonexistent(t *testing.T) {
 	assert.Equal(t, "could not authenticate user", err.Error())
 }
 
+func TestGetUser_EmptyEmail(t *testing.T) {
+	cleanup()
+	ts := launchDummyAPIServer([]byte(`{
+		"success": true,
+		"error": null,
+		"data": {
+			"id": 1000985,
+			"language": "en",
+			"given_name": null,
+			"family_name": null,
+			"created_at": "2019-05-30T13:24:57Z",
+			"updated_at": "2019-05-30T13:31:07Z",
+			"invited_by_id": 756576,
+			"invited_at": null,
+			"invites_remaining": 0,
+			"invite_reward_claimed": false,
+			"is_email_enabled": true,
+			"manual_approval_user_id": null,
+			"reward_status_change_trigger": null,
+			"primary_email": null,
+			"has_verified_email": false,
+			"is_identity_verified": false,
+			"is_reward_approved": false,
+			"groups": []
+		}
+	}`))
+	defer ts.Close()
+	config.Override("InternalAPIHost", ts.URL)
+	defer config.RestoreOverridden()
+
+	u, err := GetUserByToken("abc")
+	require.Nil(t, err)
+	require.NotNil(t, u)
+}
+
 func TestGetAccountIDFromRequest_NoToken(t *testing.T) {
 	r, _ := http.NewRequest("POST", "/", nil)
 
