@@ -124,12 +124,16 @@ func preprocessRequest(r *jsonrpc.RPCRequest, accountID string) *jsonrpc.RPCResp
 	if shouldCache(r.Method, r.Params) {
 		cResp := responseCache.Retrieve(r.Method, r.Params)
 		if cResp != nil {
-			mResp := cResp.(map[string]interface{})
-			resp.ID = r.ID
-			resp.JSONRPC = r.JSONRPC
-			resp.Result = mResp["Result"]
-			monitor.LogCachedQuery(r.Method)
-			return resp
+			// TODO: Temporary hack to find out why the following line doesn't work
+			// if mResp, ok := cResp.(map[string]interface{}); ok {
+			s, _ := json.Marshal(cResp)
+			err := json.Unmarshal(s, &resp)
+			if err == nil {
+				resp.ID = r.ID
+				resp.JSONRPC = r.JSONRPC
+				monitor.LogCachedQuery(r.Method)
+				return resp
+			}
 		}
 	}
 	return resp
