@@ -5,3 +5,5 @@
 /dist/
 **/rice-box.go
 coverage.*
+packrd/
+*packr.go
