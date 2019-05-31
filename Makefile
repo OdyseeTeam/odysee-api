@@ -34,9 +34,6 @@ image:
 publish_image:
 	docker push lbryweb/lbryweb-go
 
-embed:
-	rice embed-go -i ./routes
-
 clean:
 	find . -name rice-box.go | xargs rm
 	rm -rf ./dist

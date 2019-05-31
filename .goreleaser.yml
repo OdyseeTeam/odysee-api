@@ -16,7 +16,8 @@ builds:
   - amd64
   binary: lbrytv
   hooks:
-    pre: make embed
+    pre: packr2
+    post: packr2 clean
 
 archive:
   replacements:
