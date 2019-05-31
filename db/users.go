@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/lbryio/lbrytv/config"
@@ -77,6 +78,9 @@ func GetAccountIDFromRequest(req *http.Request) (string, error) {
 		u, err := GetUserByToken(token[0])
 		if err != nil {
 			return "", err
+		}
+		if u == nil {
+			return "", errors.New("unable to retrieve user")
 		}
 		return u.SDKAccountID, nil
 	}
