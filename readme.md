@@ -34,21 +34,49 @@ git clone git@github.com:lbryio/lbry-desktop.git
 **4. Launch UI in lbry-desktop repo folder**
 
 ```
-`SDK_API_URL=http://localhost:8080/api/proxy/ yarn dev:web`
+SDK_API_URL=http://localhost:8080/api/proxy/ yarn dev:web
 ```
 
 **5. Open http://localhost:8081/ in Chrome**
 
 ## Running off the source (if you want to modify things)
 
-You're still going to need docker / docker-compose for running SDK and DB containers.
+You still might want to use `docker` and `docker-compose` for running SDK and DB containers.
 
-1. Run `docker-compose up postgres lbrynet --no-start` (if this is your first launch)
-2. Run `docker-compose start postgres lbrynet` to launch containers
-3. Run `go run . serve` to start lbrytv API server
-4. `git clone` [lbry-desktop](https://github.com/lbryio/lbry-desktop/) repo in a separate folder
-5. Run `SDK_API_URL=http://localhost:8080/api/proxy/ yarn dev:web` in lbry-desktop repo
-6. Open http://localhost:8081/ in Chrome
+**1. Initialize and launch the containers**
+
+If this is your first launch, initialize:
+
+`docker-compose up postgres lbrynet --no-start`
+
+After that, launch the containers:
+
+`docker-compose start postgres lbrynet`
+
+*Note: if you're running a LBRY desktop app or lbrynet instance, you will have to either shut it down or change ports*
+
+**2. Setup up the database schema if this is your first launch**
+
+`go run . db_migrate_up`
+
+**3. Start lbrytv API server**
+
+`go run . serve`
+
+**4. Clone [lbry-desktop](https://github.com/lbryio/lbry-desktop/) repo, if you don't have it**
+
+```
+cd ..
+git clone git@github.com:lbryio/lbry-desktop.git
+```
+
+**5. Launch UI in lbry-desktop repo folder**
+
+```
+SDK_API_URL=http://localhost:8080/api/proxy/ yarn dev:web
+```
+
+**6. Open http://localhost:8081/ in Chrome**
 
 ## Testing
 
