@@ -56,7 +56,7 @@ func CreateAccount(UID string) (*ljsonrpc.AccountCreateResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger.LogF(monitor.F{"uid": UID, "account_id": r.ID}).Infof("registered a new account with lbrynet: %v", r)
+	logger.LogF(monitor.F{"uid": UID, "account_id": r.ID}).Info("registered a new account with lbrynet")
 	return r, nil
 }
 
