@@ -3,11 +3,12 @@ package monitor
 import (
 	"testing"
 
-	"github.com/ybbus/jsonrpc"
+	"github.com/lbryio/lbrytv/config"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
+	"github.com/ybbus/jsonrpc"
 )
 
 func TestLogSuccessfulQuery(t *testing.T) {
@@ -68,6 +69,20 @@ func TestModuleLoggerLog(t *testing.T) {
 	require.Equal(t, log.InfoLevel, hook.LastEntry().Level)
 	require.Equal(t, "db", hook.LastEntry().Data["module"])
 	require.Equal(t, "error!", hook.LastEntry().Message)
+
+	hook.Reset()
+}
+
+func TestModuleLoggerLogF_LogTokensDisabled(t *testing.T) {
+	hook := test.NewLocal(Logger)
+
+	config.Override("Debug", 0)
+	defer config.RestoreOverridden()
+
+	l := NewModuleLogger("auth")
+	l.LogF(F{"token": "secret", "email": "abc@abc.com"}).Info("something happened")
+	require.Equal(t, "abc@abc.com", hook.LastEntry().Data["email"])
+	require.Equal(t, masked, hook.LastEntry().Data["token"])
 
 	hook.Reset()
 }

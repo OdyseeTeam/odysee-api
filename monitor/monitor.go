@@ -4,13 +4,19 @@ import (
 	"math"
 	"net/http"
 
-	raven "github.com/getsentry/raven-go"
 	"github.com/lbryio/lbrytv/config"
+
+	raven "github.com/getsentry/raven-go"
 	"github.com/sirupsen/logrus"
 )
 
 // Logger is a global instance of logrus object.
 var Logger = logrus.New()
+
+// TokenF is a token field name that will be stripped from logs in production mode
+const TokenF = "token"
+
+const masked = "****"
 
 // ModuleLogger contains module-specific logger details.
 type ModuleLogger struct {
@@ -73,7 +79,13 @@ func (l ModuleLogger) LogF(fields F) *logrus.Entry {
 	logFields := logrus.Fields{}
 	logFields["module"] = l.ModuleName
 	for k, v := range fields {
-		logFields[k] = v
+		// Replace sensitive data with astericks if it's not empty to signify
+		// that some value has actually been provided
+		if k == TokenF && v != "" && config.IsProduction() {
+			logFields[k] = masked
+		} else {
+			logFields[k] = v
+		}
 	}
 	return Logger.WithFields(logFields)
 }
