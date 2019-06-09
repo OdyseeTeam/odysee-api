@@ -27,6 +27,7 @@ const cacheResolveLongerThan = 10
 var accountSpecificMethods = []string{
 	"publish",
 	"account_list",
+	"account_balance",
 	"channel_abandon",
 	"channel_create",
 	"channel_list",
