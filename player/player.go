@@ -82,7 +82,7 @@ func (s *reflectedStream) Read(p []byte) (n int, err error) {
 		"blob_num":           blobNum,
 		"current_offset":     s.seekOffset,
 		"offset_in_blob":     startOffsetInBlob,
-	}).Infof("read %v bytes (%v..%v) from blob stream", n, s.seekOffset, seekOffsetEnd)
+	}).Debugf("read %v bytes (%v..%v) from blob stream", n, s.seekOffset, seekOffsetEnd)
 
 	s.seekOffset += int64(n)
 	return n, err
@@ -103,15 +103,8 @@ func (s *reflectedStream) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	if 0 > newSeekOffset {
-		return 0, errors.New("seeking before start of the file")
+		return 0, errors.New("seeking before the beginning of file")
 	}
-
-	monitor.Logger.WithFields(log.Fields{
-		"offset":         offset,
-		"new_offset":     newSeekOffset,
-		"whence":         whence,
-		"current_offset": s.seekOffset,
-	}).Info("seeking")
 
 	s.seekOffset = newSeekOffset
 	return newSeekOffset, nil
@@ -150,7 +143,7 @@ func (s *reflectedStream) resolve(client *ljsonrpc.Client) error {
 		"sd_hash":      fmt.Sprintf("%s", s.SdHash),
 		"uri":          s.URI,
 		"content_type": s.ContentType,
-	}).Info("resolved uri")
+	}).Debug("resolved uri")
 
 	return nil
 }
@@ -161,7 +154,7 @@ func (s *reflectedStream) fetchData() error {
 	}
 	monitor.Logger.WithFields(log.Fields{
 		"uri": s.URI, "url": s.URL(),
-	}).Info("requesting stream data")
+	}).Debug("requesting stream data")
 
 	resp, err := http.Get(s.URL())
 	if err != nil {
@@ -191,11 +184,6 @@ func (s *reflectedStream) fetchData() error {
 
 		// last padding is unguessable
 		s.Size -= 15
-	} else {
-		monitor.Logger.WithFields(log.Fields{
-			"stream_size": s.Size,
-			"uri":         s.URI,
-		}).Info("found stream size field")
 	}
 
 	sort.Slice(sdb.BlobInfos, func(i, j int) bool {
@@ -207,7 +195,7 @@ func (s *reflectedStream) fetchData() error {
 		"blobs_number": len(sdb.BlobInfos),
 		"stream_size":  s.Size,
 		"uri":          s.URI,
-	}).Info("got stream data")
+	}).Debug("got stream data")
 	return nil
 }
 
@@ -226,7 +214,7 @@ func (s *reflectedStream) streamBlob(blobNum int, startOffsetInBlob int64, dest 
 		"url":      url,
 		"stream":   s.URI,
 		"blob_num": bi.BlobNum,
-	}).Info("requesting a blob")
+	}).Debug("requesting a blob")
 	start := time.Now()
 
 	resp, err := http.Get(url)
@@ -239,7 +227,7 @@ func (s *reflectedStream) streamBlob(blobNum int, startOffsetInBlob int64, dest 
 		"stream":       s.URI,
 		"blob_num":     bi.BlobNum,
 		"time_elapsed": time.Since(start),
-	}).Info("done downloading a blob")
+	}).Debug("done downloading a blob")
 
 	if resp.StatusCode == http.StatusOK {
 		start := time.Now()
@@ -269,7 +257,7 @@ func (s *reflectedStream) streamBlob(blobNum int, startOffsetInBlob int64, dest 
 			"time_elapsed":  time.Since(start),
 			"start_offset":  startOffsetInBlob,
 			"end_offset":    endOffsetInBlob,
-		}).Info("done streaming a blob")
+		}).Debug("done streaming a blob")
 	} else {
 		return n, fmt.Errorf("server responded with an unexpected status (%v)", resp.Status)
 	}
