@@ -5,13 +5,13 @@ import (
 
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/monitor"
-	"github.com/lib/pq"
-	"github.com/volatiletech/sqlboiler/boil"
 
 	"github.com/gobuffalo/packr/v2"
 	_ "github.com/jinzhu/gorm/dialects/postgres" // Dialect import
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	migrate "github.com/rubenv/sql-migrate"
+	"github.com/volatiletech/sqlboiler/boil"
 )
 
 // Connection implements the app database handler.
