@@ -3,17 +3,20 @@ package db
 import (
 	"sync"
 	"testing"
+	"time"
 )
 
 var dummyTokens = map[string]int{}
 
-func TestWithValidAuthTokenConcurrent(t *testing.T) {
+func TestLockToken(t *testing.T) {
 	var wg sync.WaitGroup
 
-	for range [10]int{} {
+	for range [100]int{} {
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			activeTokens.Lock("a")
+			lockToken("token")
+			time.Sleep(200 * time.Millisecond)
+			releaseToken("token")
 			wg.Done()
 		}(&wg)
 	}
