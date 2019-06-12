@@ -4,7 +4,6 @@
 package models
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"reflect"
@@ -109,7 +108,7 @@ type (
 	// This should generally be used opposed to []GorpMigration.
 	GorpMigrationSlice []*GorpMigration
 	// GorpMigrationHook is the signature for custom GorpMigration hook methods
-	GorpMigrationHook func(context.Context, boil.ContextExecutor, *GorpMigration) error
+	GorpMigrationHook func(boil.Executor, *GorpMigration) error
 
 	gorpMigrationQuery struct {
 		*queries.Query
@@ -149,13 +148,9 @@ var gorpMigrationAfterDeleteHooks []GorpMigrationHook
 var gorpMigrationAfterUpsertHooks []GorpMigrationHook
 
 // doBeforeInsertHooks executes all "before insert" hooks.
-func (o *GorpMigration) doBeforeInsertHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
-	if boil.HooksAreSkipped(ctx) {
-		return nil
-	}
-
+func (o *GorpMigration) doBeforeInsertHooks(exec boil.Executor) (err error) {
 	for _, hook := range gorpMigrationBeforeInsertHooks {
-		if err := hook(ctx, exec, o); err != nil {
+		if err := hook(exec, o); err != nil {
 			return err
 		}
 	}
@@ -164,13 +159,9 @@ func (o *GorpMigration) doBeforeInsertHooks(ctx context.Context, exec boil.Conte
 }
 
 // doBeforeUpdateHooks executes all "before Update" hooks.
-func (o *GorpMigration) doBeforeUpdateHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
-	if boil.HooksAreSkipped(ctx) {
-		return nil
-	}
-
+func (o *GorpMigration) doBeforeUpdateHooks(exec boil.Executor) (err error) {
 	for _, hook := range gorpMigrationBeforeUpdateHooks {
-		if err := hook(ctx, exec, o); err != nil {
+		if err := hook(exec, o); err != nil {
 			return err
 		}
 	}
@@ -179,13 +170,9 @@ func (o *GorpMigration) doBeforeUpdateHooks(ctx context.Context, exec boil.Conte
 }
 
 // doBeforeDeleteHooks executes all "before Delete" hooks.
-func (o *GorpMigration) doBeforeDeleteHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
-	if boil.HooksAreSkipped(ctx) {
-		return nil
-	}
-
+func (o *GorpMigration) doBeforeDeleteHooks(exec boil.Executor) (err error) {
 	for _, hook := range gorpMigrationBeforeDeleteHooks {
-		if err := hook(ctx, exec, o); err != nil {
+		if err := hook(exec, o); err != nil {
 			return err
 		}
 	}
@@ -194,13 +181,9 @@ func (o *GorpMigration) doBeforeDeleteHooks(ctx context.Context, exec boil.Conte
 }
 
 // doBeforeUpsertHooks executes all "before Upsert" hooks.
-func (o *GorpMigration) doBeforeUpsertHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
-	if boil.HooksAreSkipped(ctx) {
-		return nil
-	}
-
+func (o *GorpMigration) doBeforeUpsertHooks(exec boil.Executor) (err error) {
 	for _, hook := range gorpMigrationBeforeUpsertHooks {
-		if err := hook(ctx, exec, o); err != nil {
+		if err := hook(exec, o); err != nil {
 			return err
 		}
 	}
@@ -209,13 +192,9 @@ func (o *GorpMigration) doBeforeUpsertHooks(ctx context.Context, exec boil.Conte
 }
 
 // doAfterInsertHooks executes all "after Insert" hooks.
-func (o *GorpMigration) doAfterInsertHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
-	if boil.HooksAreSkipped(ctx) {
-		return nil
-	}
-
+func (o *GorpMigration) doAfterInsertHooks(exec boil.Executor) (err error) {
 	for _, hook := range gorpMigrationAfterInsertHooks {
-		if err := hook(ctx, exec, o); err != nil {
+		if err := hook(exec, o); err != nil {
 			return err
 		}
 	}
@@ -224,13 +203,9 @@ func (o *GorpMigration) doAfterInsertHooks(ctx context.Context, exec boil.Contex
 }
 
 // doAfterSelectHooks executes all "after Select" hooks.
-func (o *GorpMigration) doAfterSelectHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
-	if boil.HooksAreSkipped(ctx) {
-		return nil
-	}
-
+func (o *GorpMigration) doAfterSelectHooks(exec boil.Executor) (err error) {
 	for _, hook := range gorpMigrationAfterSelectHooks {
-		if err := hook(ctx, exec, o); err != nil {
+		if err := hook(exec, o); err != nil {
 			return err
 		}
 	}
@@ -239,13 +214,9 @@ func (o *GorpMigration) doAfterSelectHooks(ctx context.Context, exec boil.Contex
 }
 
 // doAfterUpdateHooks executes all "after Update" hooks.
-func (o *GorpMigration) doAfterUpdateHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
-	if boil.HooksAreSkipped(ctx) {
-		return nil
-	}
-
+func (o *GorpMigration) doAfterUpdateHooks(exec boil.Executor) (err error) {
 	for _, hook := range gorpMigrationAfterUpdateHooks {
-		if err := hook(ctx, exec, o); err != nil {
+		if err := hook(exec, o); err != nil {
 			return err
 		}
 	}
@@ -254,13 +225,9 @@ func (o *GorpMigration) doAfterUpdateHooks(ctx context.Context, exec boil.Contex
 }
 
 // doAfterDeleteHooks executes all "after Delete" hooks.
-func (o *GorpMigration) doAfterDeleteHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
-	if boil.HooksAreSkipped(ctx) {
-		return nil
-	}
-
+func (o *GorpMigration) doAfterDeleteHooks(exec boil.Executor) (err error) {
 	for _, hook := range gorpMigrationAfterDeleteHooks {
-		if err := hook(ctx, exec, o); err != nil {
+		if err := hook(exec, o); err != nil {
 			return err
 		}
 	}
@@ -269,13 +236,9 @@ func (o *GorpMigration) doAfterDeleteHooks(ctx context.Context, exec boil.Contex
 }
 
 // doAfterUpsertHooks executes all "after Upsert" hooks.
-func (o *GorpMigration) doAfterUpsertHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
-	if boil.HooksAreSkipped(ctx) {
-		return nil
-	}
-
+func (o *GorpMigration) doAfterUpsertHooks(exec boil.Executor) (err error) {
 	for _, hook := range gorpMigrationAfterUpsertHooks {
-		if err := hook(ctx, exec, o); err != nil {
+		if err := hook(exec, o); err != nil {
 			return err
 		}
 	}
@@ -308,17 +271,17 @@ func AddGorpMigrationHook(hookPoint boil.HookPoint, gorpMigrationHook GorpMigrat
 }
 
 // OneG returns a single gorpMigration record from the query using the global executor.
-func (q gorpMigrationQuery) OneG(ctx context.Context) (*GorpMigration, error) {
-	return q.One(ctx, boil.GetContextDB())
+func (q gorpMigrationQuery) OneG() (*GorpMigration, error) {
+	return q.One(boil.GetDB())
 }
 
 // One returns a single gorpMigration record from the query.
-func (q gorpMigrationQuery) One(ctx context.Context, exec boil.ContextExecutor) (*GorpMigration, error) {
+func (q gorpMigrationQuery) One(exec boil.Executor) (*GorpMigration, error) {
 	o := &GorpMigration{}
 
 	queries.SetLimit(q.Query, 1)
 
-	err := q.Bind(ctx, exec, o)
+	err := q.Bind(nil, exec, o)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
@@ -326,7 +289,7 @@ func (q gorpMigrationQuery) One(ctx context.Context, exec boil.ContextExecutor) 
 		return nil, errors.Wrap(err, "models: failed to execute a one query for gorp_migrations")
 	}
 
-	if err := o.doAfterSelectHooks(ctx, exec); err != nil {
+	if err := o.doAfterSelectHooks(exec); err != nil {
 		return o, err
 	}
 
@@ -334,22 +297,22 @@ func (q gorpMigrationQuery) One(ctx context.Context, exec boil.ContextExecutor) 
 }
 
 // AllG returns all GorpMigration records from the query using the global executor.
-func (q gorpMigrationQuery) AllG(ctx context.Context) (GorpMigrationSlice, error) {
-	return q.All(ctx, boil.GetContextDB())
+func (q gorpMigrationQuery) AllG() (GorpMigrationSlice, error) {
+	return q.All(boil.GetDB())
 }
 
 // All returns all GorpMigration records from the query.
-func (q gorpMigrationQuery) All(ctx context.Context, exec boil.ContextExecutor) (GorpMigrationSlice, error) {
+func (q gorpMigrationQuery) All(exec boil.Executor) (GorpMigrationSlice, error) {
 	var o []*GorpMigration
 
-	err := q.Bind(ctx, exec, &o)
+	err := q.Bind(nil, exec, &o)
 	if err != nil {
 		return nil, errors.Wrap(err, "models: failed to assign all query results to GorpMigration slice")
 	}
 
 	if len(gorpMigrationAfterSelectHooks) != 0 {
 		for _, obj := range o {
-			if err := obj.doAfterSelectHooks(ctx, exec); err != nil {
+			if err := obj.doAfterSelectHooks(exec); err != nil {
 				return o, err
 			}
 		}
@@ -359,18 +322,18 @@ func (q gorpMigrationQuery) All(ctx context.Context, exec boil.ContextExecutor) 
 }
 
 // CountG returns the count of all GorpMigration records in the query, and panics on error.
-func (q gorpMigrationQuery) CountG(ctx context.Context) (int64, error) {
-	return q.Count(ctx, boil.GetContextDB())
+func (q gorpMigrationQuery) CountG() (int64, error) {
+	return q.Count(boil.GetDB())
 }
 
 // Count returns the count of all GorpMigration records in the query.
-func (q gorpMigrationQuery) Count(ctx context.Context, exec boil.ContextExecutor) (int64, error) {
+func (q gorpMigrationQuery) Count(exec boil.Executor) (int64, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
 	queries.SetCount(q.Query)
 
-	err := q.Query.QueryRowContext(ctx, exec).Scan(&count)
+	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
 		return 0, errors.Wrap(err, "models: failed to count gorp_migrations rows")
 	}
@@ -379,19 +342,19 @@ func (q gorpMigrationQuery) Count(ctx context.Context, exec boil.ContextExecutor
 }
 
 // ExistsG checks if the row exists in the table, and panics on error.
-func (q gorpMigrationQuery) ExistsG(ctx context.Context) (bool, error) {
-	return q.Exists(ctx, boil.GetContextDB())
+func (q gorpMigrationQuery) ExistsG() (bool, error) {
+	return q.Exists(boil.GetDB())
 }
 
 // Exists checks if the row exists in the table.
-func (q gorpMigrationQuery) Exists(ctx context.Context, exec boil.ContextExecutor) (bool, error) {
+func (q gorpMigrationQuery) Exists(exec boil.Executor) (bool, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
 	queries.SetCount(q.Query)
 	queries.SetLimit(q.Query, 1)
 
-	err := q.Query.QueryRowContext(ctx, exec).Scan(&count)
+	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
 		return false, errors.Wrap(err, "models: failed to check if gorp_migrations exists")
 	}
@@ -406,13 +369,13 @@ func GorpMigrations(mods ...qm.QueryMod) gorpMigrationQuery {
 }
 
 // FindGorpMigrationG retrieves a single record by ID.
-func FindGorpMigrationG(ctx context.Context, iD string, selectCols ...string) (*GorpMigration, error) {
-	return FindGorpMigration(ctx, boil.GetContextDB(), iD, selectCols...)
+func FindGorpMigrationG(iD string, selectCols ...string) (*GorpMigration, error) {
+	return FindGorpMigration(boil.GetDB(), iD, selectCols...)
 }
 
 // FindGorpMigration retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindGorpMigration(ctx context.Context, exec boil.ContextExecutor, iD string, selectCols ...string) (*GorpMigration, error) {
+func FindGorpMigration(exec boil.Executor, iD string, selectCols ...string) (*GorpMigration, error) {
 	gorpMigrationObj := &GorpMigration{}
 
 	sel := "*"
@@ -425,7 +388,7 @@ func FindGorpMigration(ctx context.Context, exec boil.ContextExecutor, iD string
 
 	q := queries.Raw(query, iD)
 
-	err := q.Bind(ctx, exec, gorpMigrationObj)
+	err := q.Bind(nil, exec, gorpMigrationObj)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
@@ -437,20 +400,20 @@ func FindGorpMigration(ctx context.Context, exec boil.ContextExecutor, iD string
 }
 
 // InsertG a single record. See Insert for whitelist behavior description.
-func (o *GorpMigration) InsertG(ctx context.Context, columns boil.Columns) error {
-	return o.Insert(ctx, boil.GetContextDB(), columns)
+func (o *GorpMigration) InsertG(columns boil.Columns) error {
+	return o.Insert(boil.GetDB(), columns)
 }
 
 // Insert a single record using an executor.
 // See boil.Columns.InsertColumnSet documentation to understand column list inference for inserts.
-func (o *GorpMigration) Insert(ctx context.Context, exec boil.ContextExecutor, columns boil.Columns) error {
+func (o *GorpMigration) Insert(exec boil.Executor, columns boil.Columns) error {
 	if o == nil {
 		return errors.New("models: no gorp_migrations provided for insertion")
 	}
 
 	var err error
 
-	if err := o.doBeforeInsertHooks(ctx, exec); err != nil {
+	if err := o.doBeforeInsertHooks(exec); err != nil {
 		return err
 	}
 
@@ -501,9 +464,9 @@ func (o *GorpMigration) Insert(ctx context.Context, exec boil.ContextExecutor, c
 	}
 
 	if len(cache.retMapping) != 0 {
-		err = exec.QueryRowContext(ctx, cache.query, vals...).Scan(queries.PtrsFromMapping(value, cache.retMapping)...)
+		err = exec.QueryRow(cache.query, vals...).Scan(queries.PtrsFromMapping(value, cache.retMapping)...)
 	} else {
-		_, err = exec.ExecContext(ctx, cache.query, vals...)
+		_, err = exec.Exec(cache.query, vals...)
 	}
 
 	if err != nil {
@@ -516,21 +479,21 @@ func (o *GorpMigration) Insert(ctx context.Context, exec boil.ContextExecutor, c
 		gorpMigrationInsertCacheMut.Unlock()
 	}
 
-	return o.doAfterInsertHooks(ctx, exec)
+	return o.doAfterInsertHooks(exec)
 }
 
 // UpdateG a single GorpMigration record using the global executor.
 // See Update for more documentation.
-func (o *GorpMigration) UpdateG(ctx context.Context, columns boil.Columns) (int64, error) {
-	return o.Update(ctx, boil.GetContextDB(), columns)
+func (o *GorpMigration) UpdateG(columns boil.Columns) (int64, error) {
+	return o.Update(boil.GetDB(), columns)
 }
 
 // Update uses an executor to update the GorpMigration.
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
-func (o *GorpMigration) Update(ctx context.Context, exec boil.ContextExecutor, columns boil.Columns) (int64, error) {
+func (o *GorpMigration) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
 	var err error
-	if err = o.doBeforeUpdateHooks(ctx, exec); err != nil {
+	if err = o.doBeforeUpdateHooks(exec); err != nil {
 		return 0, err
 	}
 	key := makeCacheKey(columns, nil)
@@ -569,7 +532,7 @@ func (o *GorpMigration) Update(ctx context.Context, exec boil.ContextExecutor, c
 	}
 
 	var result sql.Result
-	result, err = exec.ExecContext(ctx, cache.query, values...)
+	result, err = exec.Exec(cache.query, values...)
 	if err != nil {
 		return 0, errors.Wrap(err, "models: unable to update gorp_migrations row")
 	}
@@ -585,19 +548,19 @@ func (o *GorpMigration) Update(ctx context.Context, exec boil.ContextExecutor, c
 		gorpMigrationUpdateCacheMut.Unlock()
 	}
 
-	return rowsAff, o.doAfterUpdateHooks(ctx, exec)
+	return rowsAff, o.doAfterUpdateHooks(exec)
 }
 
 // UpdateAllG updates all rows with the specified column values.
-func (q gorpMigrationQuery) UpdateAllG(ctx context.Context, cols M) (int64, error) {
-	return q.UpdateAll(ctx, boil.GetContextDB(), cols)
+func (q gorpMigrationQuery) UpdateAllG(cols M) (int64, error) {
+	return q.UpdateAll(boil.GetDB(), cols)
 }
 
 // UpdateAll updates all rows with the specified column values.
-func (q gorpMigrationQuery) UpdateAll(ctx context.Context, exec boil.ContextExecutor, cols M) (int64, error) {
+func (q gorpMigrationQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	queries.SetUpdate(q.Query, cols)
 
-	result, err := q.Query.ExecContext(ctx, exec)
+	result, err := q.Query.Exec(exec)
 	if err != nil {
 		return 0, errors.Wrap(err, "models: unable to update all for gorp_migrations")
 	}
@@ -611,12 +574,12 @@ func (q gorpMigrationQuery) UpdateAll(ctx context.Context, exec boil.ContextExec
 }
 
 // UpdateAllG updates all rows with the specified column values.
-func (o GorpMigrationSlice) UpdateAllG(ctx context.Context, cols M) (int64, error) {
-	return o.UpdateAll(ctx, boil.GetContextDB(), cols)
+func (o GorpMigrationSlice) UpdateAllG(cols M) (int64, error) {
+	return o.UpdateAll(boil.GetDB(), cols)
 }
 
 // UpdateAll updates all rows with the specified column values, using an executor.
-func (o GorpMigrationSlice) UpdateAll(ctx context.Context, exec boil.ContextExecutor, cols M) (int64, error) {
+func (o GorpMigrationSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	ln := int64(len(o))
 	if ln == 0 {
 		return 0, nil
@@ -651,7 +614,7 @@ func (o GorpMigrationSlice) UpdateAll(ctx context.Context, exec boil.ContextExec
 		fmt.Fprintln(boil.DebugWriter, args...)
 	}
 
-	result, err := exec.ExecContext(ctx, sql, args...)
+	result, err := exec.Exec(sql, args...)
 	if err != nil {
 		return 0, errors.Wrap(err, "models: unable to update all in gorpMigration slice")
 	}
@@ -664,18 +627,18 @@ func (o GorpMigrationSlice) UpdateAll(ctx context.Context, exec boil.ContextExec
 }
 
 // UpsertG attempts an insert, and does an update or ignore on conflict.
-func (o *GorpMigration) UpsertG(ctx context.Context, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
-	return o.Upsert(ctx, boil.GetContextDB(), updateOnConflict, conflictColumns, updateColumns, insertColumns)
+func (o *GorpMigration) UpsertG(updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+	return o.Upsert(boil.GetDB(), updateOnConflict, conflictColumns, updateColumns, insertColumns)
 }
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *GorpMigration) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *GorpMigration) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
 		return errors.New("models: no gorp_migrations provided for upsert")
 	}
 
-	if err := o.doBeforeUpsertHooks(ctx, exec); err != nil {
+	if err := o.doBeforeUpsertHooks(exec); err != nil {
 		return err
 	}
 
@@ -763,12 +726,12 @@ func (o *GorpMigration) Upsert(ctx context.Context, exec boil.ContextExecutor, u
 	}
 
 	if len(cache.retMapping) != 0 {
-		err = exec.QueryRowContext(ctx, cache.query, vals...).Scan(returns...)
+		err = exec.QueryRow(cache.query, vals...).Scan(returns...)
 		if err == sql.ErrNoRows {
 			err = nil // Postgres doesn't return anything when there's no update
 		}
 	} else {
-		_, err = exec.ExecContext(ctx, cache.query, vals...)
+		_, err = exec.Exec(cache.query, vals...)
 	}
 	if err != nil {
 		return errors.Wrap(err, "models: unable to upsert gorp_migrations")
@@ -780,23 +743,23 @@ func (o *GorpMigration) Upsert(ctx context.Context, exec boil.ContextExecutor, u
 		gorpMigrationUpsertCacheMut.Unlock()
 	}
 
-	return o.doAfterUpsertHooks(ctx, exec)
+	return o.doAfterUpsertHooks(exec)
 }
 
 // DeleteG deletes a single GorpMigration record.
 // DeleteG will match against the primary key column to find the record to delete.
-func (o *GorpMigration) DeleteG(ctx context.Context) (int64, error) {
-	return o.Delete(ctx, boil.GetContextDB())
+func (o *GorpMigration) DeleteG() (int64, error) {
+	return o.Delete(boil.GetDB())
 }
 
 // Delete deletes a single GorpMigration record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *GorpMigration) Delete(ctx context.Context, exec boil.ContextExecutor) (int64, error) {
+func (o *GorpMigration) Delete(exec boil.Executor) (int64, error) {
 	if o == nil {
 		return 0, errors.New("models: no GorpMigration provided for delete")
 	}
 
-	if err := o.doBeforeDeleteHooks(ctx, exec); err != nil {
+	if err := o.doBeforeDeleteHooks(exec); err != nil {
 		return 0, err
 	}
 
@@ -808,7 +771,7 @@ func (o *GorpMigration) Delete(ctx context.Context, exec boil.ContextExecutor) (
 		fmt.Fprintln(boil.DebugWriter, args...)
 	}
 
-	result, err := exec.ExecContext(ctx, sql, args...)
+	result, err := exec.Exec(sql, args...)
 	if err != nil {
 		return 0, errors.Wrap(err, "models: unable to delete from gorp_migrations")
 	}
@@ -818,7 +781,7 @@ func (o *GorpMigration) Delete(ctx context.Context, exec boil.ContextExecutor) (
 		return 0, errors.Wrap(err, "models: failed to get rows affected by delete for gorp_migrations")
 	}
 
-	if err := o.doAfterDeleteHooks(ctx, exec); err != nil {
+	if err := o.doAfterDeleteHooks(exec); err != nil {
 		return 0, err
 	}
 
@@ -826,14 +789,14 @@ func (o *GorpMigration) Delete(ctx context.Context, exec boil.ContextExecutor) (
 }
 
 // DeleteAll deletes all matching rows.
-func (q gorpMigrationQuery) DeleteAll(ctx context.Context, exec boil.ContextExecutor) (int64, error) {
+func (q gorpMigrationQuery) DeleteAll(exec boil.Executor) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("models: no gorpMigrationQuery provided for delete all")
 	}
 
 	queries.SetDelete(q.Query)
 
-	result, err := q.Query.ExecContext(ctx, exec)
+	result, err := q.Query.Exec(exec)
 	if err != nil {
 		return 0, errors.Wrap(err, "models: unable to delete all from gorp_migrations")
 	}
@@ -847,12 +810,12 @@ func (q gorpMigrationQuery) DeleteAll(ctx context.Context, exec boil.ContextExec
 }
 
 // DeleteAllG deletes all rows in the slice.
-func (o GorpMigrationSlice) DeleteAllG(ctx context.Context) (int64, error) {
-	return o.DeleteAll(ctx, boil.GetContextDB())
+func (o GorpMigrationSlice) DeleteAllG() (int64, error) {
+	return o.DeleteAll(boil.GetDB())
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o GorpMigrationSlice) DeleteAll(ctx context.Context, exec boil.ContextExecutor) (int64, error) {
+func (o GorpMigrationSlice) DeleteAll(exec boil.Executor) (int64, error) {
 	if o == nil {
 		return 0, errors.New("models: no GorpMigration slice provided for delete all")
 	}
@@ -863,7 +826,7 @@ func (o GorpMigrationSlice) DeleteAll(ctx context.Context, exec boil.ContextExec
 
 	if len(gorpMigrationBeforeDeleteHooks) != 0 {
 		for _, obj := range o {
-			if err := obj.doBeforeDeleteHooks(ctx, exec); err != nil {
+			if err := obj.doBeforeDeleteHooks(exec); err != nil {
 				return 0, err
 			}
 		}
@@ -883,7 +846,7 @@ func (o GorpMigrationSlice) DeleteAll(ctx context.Context, exec boil.ContextExec
 		fmt.Fprintln(boil.DebugWriter, args)
 	}
 
-	result, err := exec.ExecContext(ctx, sql, args...)
+	result, err := exec.Exec(sql, args...)
 	if err != nil {
 		return 0, errors.Wrap(err, "models: unable to delete all from gorpMigration slice")
 	}
@@ -895,7 +858,7 @@ func (o GorpMigrationSlice) DeleteAll(ctx context.Context, exec boil.ContextExec
 
 	if len(gorpMigrationAfterDeleteHooks) != 0 {
 		for _, obj := range o {
-			if err := obj.doAfterDeleteHooks(ctx, exec); err != nil {
+			if err := obj.doAfterDeleteHooks(exec); err != nil {
 				return 0, err
 			}
 		}
@@ -905,18 +868,18 @@ func (o GorpMigrationSlice) DeleteAll(ctx context.Context, exec boil.ContextExec
 }
 
 // ReloadG refetches the object from the database using the primary keys.
-func (o *GorpMigration) ReloadG(ctx context.Context) error {
+func (o *GorpMigration) ReloadG() error {
 	if o == nil {
 		return errors.New("models: no GorpMigration provided for reload")
 	}
 
-	return o.Reload(ctx, boil.GetContextDB())
+	return o.Reload(boil.GetDB())
 }
 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
-func (o *GorpMigration) Reload(ctx context.Context, exec boil.ContextExecutor) error {
-	ret, err := FindGorpMigration(ctx, exec, o.ID)
+func (o *GorpMigration) Reload(exec boil.Executor) error {
+	ret, err := FindGorpMigration(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -927,17 +890,17 @@ func (o *GorpMigration) Reload(ctx context.Context, exec boil.ContextExecutor) e
 
 // ReloadAllG refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *GorpMigrationSlice) ReloadAllG(ctx context.Context) error {
+func (o *GorpMigrationSlice) ReloadAllG() error {
 	if o == nil {
 		return errors.New("models: empty GorpMigrationSlice provided for reload all")
 	}
 
-	return o.ReloadAll(ctx, boil.GetContextDB())
+	return o.ReloadAll(boil.GetDB())
 }
 
 // ReloadAll refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *GorpMigrationSlice) ReloadAll(ctx context.Context, exec boil.ContextExecutor) error {
+func (o *GorpMigrationSlice) ReloadAll(exec boil.Executor) error {
 	if o == nil || len(*o) == 0 {
 		return nil
 	}
@@ -954,7 +917,7 @@ func (o *GorpMigrationSlice) ReloadAll(ctx context.Context, exec boil.ContextExe
 
 	q := queries.Raw(sql, args...)
 
-	err := q.Bind(ctx, exec, &slice)
+	err := q.Bind(nil, exec, &slice)
 	if err != nil {
 		return errors.Wrap(err, "models: unable to reload all in GorpMigrationSlice")
 	}
@@ -965,12 +928,12 @@ func (o *GorpMigrationSlice) ReloadAll(ctx context.Context, exec boil.ContextExe
 }
 
 // GorpMigrationExistsG checks if the GorpMigration row exists.
-func GorpMigrationExistsG(ctx context.Context, iD string) (bool, error) {
-	return GorpMigrationExists(ctx, boil.GetContextDB(), iD)
+func GorpMigrationExistsG(iD string) (bool, error) {
+	return GorpMigrationExists(boil.GetDB(), iD)
 }
 
 // GorpMigrationExists checks if the GorpMigration row exists.
-func GorpMigrationExists(ctx context.Context, exec boil.ContextExecutor, iD string) (bool, error) {
+func GorpMigrationExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
 	sql := "select exists(select 1 from \"gorp_migrations\" where \"id\"=$1 limit 1)"
 
@@ -979,7 +942,7 @@ func GorpMigrationExists(ctx context.Context, exec boil.ContextExecutor, iD stri
 		fmt.Fprintln(boil.DebugWriter, iD)
 	}
 
-	row := exec.QueryRowContext(ctx, sql, iD)
+	row := exec.QueryRow(sql, iD)
 
 	err := row.Scan(&exists)
 	if err != nil {
