@@ -1,8 +1,7 @@
 package db
 
 import (
-	"context"
-	"errors"
+	"database/sql"
 	"net/http"
 
 	"github.com/lbryio/lbrytv/config"
@@ -10,71 +9,110 @@ import (
 	"github.com/lbryio/lbrytv/models"
 	"github.com/lbryio/lbrytv/monitor"
 
+	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
 	"github.com/lbryio/lbry.go/extras/lbryinc"
+	"github.com/lib/pq"
+	"github.com/pkg/errors"
 	"github.com/volatiletech/sqlboiler/boil"
 )
 
 // TokenHeader is the name of HTTP header which is supplied by client and should contain internal-api auth_token
 const TokenHeader string = "X-Lbry-Auth-Token"
+const idPrefix string = "id:"
+const errUniqueViolation = "23505"
+
+func getRemoteUser(token string) map[string]interface{} {
+	c := lbryinc.NewClient(token)
+	c.ServerAddress = config.Settings.GetString("InternalAPIHost")
+	r, err := c.UserMe()
+	if err != nil {
+		Conn.Logger.LogF(monitor.F{monitor.TokenF: token}).Error("internal-api responded with an error")
+		// No user found in internal-apis database, give up at this point
+		return nil
+	}
+	return r
+}
 
 // GetUserByToken retrieves user by internal-api auth_token
 // TODO: Refactor out into logical pieces
 // TODO: Implement different error types for better error messages
 func GetUserByToken(token string) (*models.User, error) {
-	var u *models.User
-	ctx := context.Background()
+	var (
+		u     *models.User
+		id    int
+		email string
+	)
 
-	// This helps to ensure we don't try to look up and create users when multiple requests
-	// with the same auth token header come in from the client - and the auth token isn't present in the database yet
-	lockToken(token)
-	defer releaseToken(token)
+	rUser := getRemoteUser(token)
+	if rUser == nil {
+		Conn.Logger.LogF(monitor.F{monitor.TokenF: token}).Info("couldn't authenticate user with internal-apis")
+		return nil, errors.New("cannot authenticate user with internal-apis")
+	}
+	id = int(rUser["id"].(float64))
 
-	u, err := models.Users(models.UserWhere.AuthToken.EQ(token)).OneG(ctx)
-	if err != nil {
-		Conn.Logger.LogF(monitor.F{monitor.TokenF: token}).Info("token not found in the database, trying internal-apis")
-		c := lbryinc.NewClient(token)
-		c.ServerAddress = config.Settings.GetString("InternalAPIHost")
-		r, err := c.UserMe()
-		if err != nil {
-			Conn.Logger.LogF(monitor.F{monitor.TokenF: token}).Error("internal-api responded with an error")
-			// No user found in internal-apis database, give up at this point
-			return nil, err
-		}
+	if rUser["primary_email"] != nil {
+		email = rUser["primary_email"].(string)
+	}
 
-		email, verifiedEmail := r["primary_email"].(string)
-		if !verifiedEmail {
-			email = ""
-			Conn.Logger.LogF(monitor.F{monitor.TokenF: token, "email": email}).Info("got an anonymous account from internal-apis")
-		} else {
-			Conn.Logger.LogF(monitor.F{monitor.TokenF: token, "email": email}).Info("got an account from internal-apis")
-		}
+	logger := Conn.Logger.LogF(monitor.F{monitor.TokenF: token, "id": id, "email": email})
 
-		a, err := lbrynet.CreateAccount(email)
-		if err != nil {
-			return nil, err
-		}
+	u, err := getLocalUser(id)
 
+	if err == sql.ErrNoRows {
 		u = new(models.User)
-		u.Email = email
-		u.AuthToken = token
-		u.HasVerifiedEmail = verifiedEmail
-		u.SDKAccountID = a.ID
-		u.PrivateKey = a.PrivateKey
-		u.PublicKey = a.PublicKey
-		u.Seed = a.Seed
-		err = u.InsertG(ctx, boil.Infer())
+		u.ID = id
+		err = u.InsertG(boil.Infer())
 
 		if err != nil {
-			Conn.Logger.LogF(monitor.F{monitor.TokenF: token, "email": email}).Error("error inserting a record, rolling back account", err)
-			_, errDelete := lbrynet.RemoveAccount(email)
-			if errDelete != nil {
-				Conn.Logger.LogF(monitor.F{monitor.TokenF: token, "email": email}).Error("error rolling back account", errDelete)
+			// Check if we encountered a primary key violation, it would means another goroutine created a user before us so we try retrieving it again.
+			//
+			switch baseErr := errors.Cause(err).(type) {
+			case *pq.Error:
+				if baseErr.Code == errUniqueViolation && baseErr.Column == "users_pkey" {
+					logger.Debug("user creation conflict, trying to retrieve local user again")
+					u, retryErr := getLocalUser(id)
+					if retryErr != nil {
+						return u, retryErr
+					}
+				}
+			default:
+				logger.Error("unknown error encountered while creating user: ", err)
+				return nil, err
 			}
-			return nil, err
 		}
-		Conn.Logger.LogF(monitor.F{monitor.TokenF: token, "email": email}).Info("saved a new account to the database")
+
+		newAccount, sdkErr := lbrynet.CreateAccount(id)
+		if sdkErr != nil {
+			switch sdkErr.(type) {
+			case lbrynet.AccountConflict:
+				logger.Info("account creation conflict, proceeding")
+			default:
+				return u, err
+			}
+		} else {
+			err = renderAccountOntoLocalUser(newAccount, u)
+			if err != nil {
+				return nil, err
+			}
+			logger.Info("created an sdk account")
+		}
+	} else if err != nil {
+		return u, err
 	}
 	return u, nil
+}
+
+func getLocalUser(id int) (*models.User, error) {
+	return models.Users(models.UserWhere.ID.EQ(id)).OneG()
+}
+
+func renderAccountOntoLocalUser(a *ljsonrpc.AccountCreateResponse, u *models.User) error {
+	u.SDKAccountID = a.ID
+	u.PrivateKey = a.PrivateKey
+	u.PublicKey = a.PublicKey
+	u.Seed = a.Seed
+	_, err := u.UpdateG(boil.Infer())
+	return err
 }
 
 // GetAccountIDFromRequest retrieves SDK  account_id of a user making a http request

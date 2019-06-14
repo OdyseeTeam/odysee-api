@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 
@@ -16,16 +17,22 @@ func prettyPrint(i interface{}) {
 	fmt.Println(string(s))
 }
 
-func generateTestEmail() string {
-	return "test" + fmt.Sprintf("%d%d", time.Now().Unix(), rand.Int()) + "@lbry.com"
+func generateTestUID() int {
+	return rand.Int()
+}
+
+func TestMain(m *testing.M) {
+	rand.Seed(time.Now().UnixNano())
+	code := m.Run()
+	os.Exit(code)
 }
 
 func TestGetAccount(t *testing.T) {
-	email := generateTestEmail()
-	account, err := CreateAccount(email)
+	uid := generateTestUID()
+	account, err := CreateAccount(uid)
 	require.Nil(t, err, err)
 
-	retrievedAccount, err := GetAccount(email)
+	retrievedAccount, err := GetAccount(uid)
 	require.Nil(t, err, err)
 	assert.Equal(t, retrievedAccount.Name, account.Name)
 	assert.Equal(t, retrievedAccount.ID, account.ID)
@@ -34,38 +41,42 @@ func TestGetAccount(t *testing.T) {
 }
 
 func TestGetAccount_Nonexistent(t *testing.T) {
-	email := generateTestEmail()
-	retrievedAccount, err := GetAccount(email)
+	uid := generateTestUID()
+	retrievedAccount, err := GetAccount(uid)
 	assert.IsType(t, AccountNotFound{}, err)
 	assert.Nil(t, retrievedAccount)
 }
 
 func TestCreateAccount(t *testing.T) {
-	email := generateTestEmail()
+	uid := generateTestUID()
 
-	account, err := CreateAccount(email)
+	account, err := CreateAccount(uid)
 	prettyPrint(account)
 
 	require.Nil(t, err, err)
-	assert.Equal(t, accountNamePrefix+email, account.Name)
+	assert.Equal(t, fmt.Sprintf("%v%v", accountNamePrefix, uid), account.Name)
 }
 
 func TestCreateAccount_DuplicateNotAllowed(t *testing.T) {
-	email := generateTestEmail()
+	uid := generateTestUID()
 
-	account, err := CreateAccount(email)
+	account, err := CreateAccount(uid)
 	require.Nil(t, err)
 
-	account, err = CreateAccount(email)
+	account, err = CreateAccount(uid)
 	assert.NotNil(t, err)
 	assert.Nil(t, account)
 }
 
 func BenchmarkCreateAccount(b *testing.B) {
-	emails := [100]string{}
-	for x := range [100]int{} {
-		emails[x] = generateTestEmail()
-		_, err := CreateAccount(emails[x])
+	uids := [100]int{}
+	for i := 0; i <= len(uids); i++ {
+		uids[i] = generateTestUID()
+		_, err := CreateAccount(uids[i])
+		require.Nil(b, err)
+	}
+	for i := 0; i <= len(uids); i++ {
+		_, err := RemoveAccount(uids[i])
 		require.Nil(b, err)
 	}
 }

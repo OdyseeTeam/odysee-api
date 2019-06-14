@@ -1,7 +1,6 @@
 package db
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const dummyUserID = 751365
 const dummyServerURL = "http://127.0.0.1:59988"
 
 func launchDummyAPIServer(response []byte) *httptest.Server {
@@ -33,13 +33,12 @@ func TestMain(m *testing.M) {
 }
 
 func cleanup() {
-	lbrynet.RemoveAccount("andrey@lbry.com")
+	lbrynet.RemoveAccount(dummyUserID)
 	Cleanup(*Conn)
 }
 
 func TestGetUser_New(t *testing.T) {
 	cleanup()
-	ctx := context.Background()
 
 	ts := launchDummyAPIServer([]byte(`{
 		"success": true,
@@ -72,16 +71,14 @@ func TestGetUser_New(t *testing.T) {
 	u, err := GetUserByToken("abc")
 	require.Nil(t, err)
 	require.NotNil(t, u)
-	assert.EqualValues(t, "andrey@lbry.com", u.Email)
 
-	count, err := models.Users(models.UserWhere.Email.EQ(u.Email)).CountG(ctx)
+	count, err := models.Users(models.UserWhere.ID.EQ(u.ID)).CountG()
 	require.Nil(t, err)
 	assert.EqualValues(t, 1, count)
 }
 
 func TestGetUser_Existing(t *testing.T) {
 	cleanup()
-	ctx := context.Background()
 
 	ts := launchDummyAPIServer([]byte(`{
 		"success": true,
@@ -111,13 +108,15 @@ func TestGetUser_Existing(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	GetUserByToken("abc")
-
 	u, err := GetUserByToken("abc")
 	require.Nil(t, err)
-	assert.EqualValues(t, "andrey@lbry.com", u.Email)
+	require.NotNil(t, u)
 
-	count, err := models.Users(models.UserWhere.Email.EQ(u.Email)).CountG(ctx)
+	u, err = GetUserByToken("abc")
+	require.Nil(t, err)
+	assert.EqualValues(t, dummyUserID, u.ID)
+
+	count, err := models.Users().CountG()
 	require.Nil(t, err)
 	assert.EqualValues(t, 1, count)
 }
@@ -136,7 +135,7 @@ func TestGetUser_Nonexistent(t *testing.T) {
 	u, err := GetUserByToken("non-existent-token")
 	require.NotNil(t, err)
 	require.Nil(t, u)
-	assert.Equal(t, "could not authenticate user", err.Error())
+	assert.Equal(t, "cannot authenticate user with internal-apis", err.Error())
 }
 
 func TestGetUser_EmptyEmail(t *testing.T) {
@@ -241,6 +240,6 @@ func TestGetAccountIDFromRequest_Nonexistent(t *testing.T) {
 
 	id, err := GetAccountIDFromRequest(r)
 	require.NotNil(t, err)
-	assert.Equal(t, "could not authenticate user", err.Error())
+	assert.Equal(t, "cannot authenticate user with internal-apis", err.Error())
 	assert.Equal(t, "", id)
 }

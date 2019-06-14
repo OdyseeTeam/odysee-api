@@ -21,6 +21,7 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
+const dummyUserID = 751365
 const dummyServerURL = "http://127.0.0.1:59999"
 const proxySuffix = "/api/proxy"
 
@@ -49,7 +50,7 @@ func launchDummyAPIServerDelayed(response []byte, delayMsec time.Duration) *http
 }
 
 func cleanup() {
-	lbrynet.RemoveAccount("andrey@lbry.com")
+	lbrynet.RemoveAccount(dummyUserID)
 	db.Cleanup(*db.Conn)
 }
 
@@ -104,7 +105,7 @@ func TestWithValidAuthToken(t *testing.T) {
 	require.Nil(t, response.Error)
 	err = ljsonrpc.Decode(response.Result, &account)
 	require.Nil(t, err)
-	assert.Equal(t, lbrynet.AccountNameFromUID("andrey@lbry.com"), account.Name)
+	assert.Equal(t, lbrynet.MakeAccountName(dummyUserID), account.Name)
 }
 
 func TestWithValidAuthTokenConcurrent(t *testing.T) {
@@ -140,7 +141,7 @@ func TestWithValidAuthTokenConcurrent(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	for w := range [10]int{} {
+	for w := range [20]int{} {
 		wg.Add(1)
 		go func(w int, wg *sync.WaitGroup) {
 			var response jsonrpc.RPCResponse
@@ -198,7 +199,7 @@ func TestWithWrongAuthToken(t *testing.T) {
 func TestWithoutToken(t *testing.T) {
 	cleanup()
 	// Create a dummy account so we have a wallet beside the default one
-	lbrynet.CreateAccount("dummy@email.com")
+	lbrynet.CreateAccount(999)
 
 	var (
 		q        *jsonrpc.RPCRequest

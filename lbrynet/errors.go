@@ -5,17 +5,17 @@ import (
 )
 
 type AccountNotFound struct {
-	Email string
+	UID int
 }
 
 type AccountConflict struct {
-	Email string
+	UID int
 }
 
 func (e AccountNotFound) Error() string {
-	return fmt.Sprintf("couldn't find account for email %s", e.Email)
+	return fmt.Sprintf("couldn't find account for %v in lbrynet", e.UID)
 }
 
 func (e AccountConflict) Error() string {
-	return fmt.Sprintf("account for email %s already exists", e.Email)
+	return fmt.Sprintf("account for %v already registered with lbrynet", e.UID)
 }
