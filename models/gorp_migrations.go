@@ -76,8 +76,8 @@ var GorpMigrationWhere = struct {
 	ID        whereHelperstring
 	AppliedAt whereHelpernull_Time
 }{
-	ID:        whereHelperstring{field: `id`},
-	AppliedAt: whereHelpernull_Time{field: `applied_at`},
+	ID:        whereHelperstring{field: "\"gorp_migrations\".\"id\""},
+	AppliedAt: whereHelpernull_Time{field: "\"gorp_migrations\".\"applied_at\""},
 }
 
 // GorpMigrationRels is where relationship names are stored.
@@ -97,7 +97,7 @@ func (*gorpMigrationR) NewStruct() *gorpMigrationR {
 type gorpMigrationL struct{}
 
 var (
-	gorpMigrationColumns               = []string{"id", "applied_at"}
+	gorpMigrationAllColumns            = []string{"id", "applied_at"}
 	gorpMigrationColumnsWithoutDefault = []string{"id", "applied_at"}
 	gorpMigrationColumnsWithDefault    = []string{}
 	gorpMigrationPrimaryKeyColumns     = []string{"id"}
@@ -426,7 +426,7 @@ func (o *GorpMigration) Insert(exec boil.Executor, columns boil.Columns) error {
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			gorpMigrationColumns,
+			gorpMigrationAllColumns,
 			gorpMigrationColumnsWithDefault,
 			gorpMigrationColumnsWithoutDefault,
 			nzDefaults,
@@ -503,7 +503,7 @@ func (o *GorpMigration) Update(exec boil.Executor, columns boil.Columns) (int64,
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			gorpMigrationColumns,
+			gorpMigrationAllColumns,
 			gorpMigrationPrimaryKeyColumns,
 		)
 
@@ -680,13 +680,13 @@ func (o *GorpMigration) Upsert(exec boil.Executor, updateOnConflict bool, confli
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			gorpMigrationColumns,
+			gorpMigrationAllColumns,
 			gorpMigrationColumnsWithDefault,
 			gorpMigrationColumnsWithoutDefault,
 			nzDefaults,
 		)
 		update := updateColumns.UpdateColumnSet(
-			gorpMigrationColumns,
+			gorpMigrationAllColumns,
 			gorpMigrationPrimaryKeyColumns,
 		)
 
@@ -816,10 +816,6 @@ func (o GorpMigrationSlice) DeleteAllG() (int64, error) {
 
 // DeleteAll deletes all rows in the slice, using an executor.
 func (o GorpMigrationSlice) DeleteAll(exec boil.Executor) (int64, error) {
-	if o == nil {
-		return 0, errors.New("models: no GorpMigration slice provided for delete all")
-	}
-
 	if len(o) == 0 {
 		return 0, nil
 	}

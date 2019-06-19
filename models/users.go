@@ -93,13 +93,13 @@ var UserWhere = struct {
 	PublicKey    whereHelperstring
 	Seed         whereHelperstring
 }{
-	ID:           whereHelperint{field: `id`},
-	CreatedAt:    whereHelpertime_Time{field: `created_at`},
-	UpdatedAt:    whereHelpertime_Time{field: `updated_at`},
-	SDKAccountID: whereHelperstring{field: `sdk_account_id`},
-	PrivateKey:   whereHelperstring{field: `private_key`},
-	PublicKey:    whereHelperstring{field: `public_key`},
-	Seed:         whereHelperstring{field: `seed`},
+	ID:           whereHelperint{field: "\"users\".\"id\""},
+	CreatedAt:    whereHelpertime_Time{field: "\"users\".\"created_at\""},
+	UpdatedAt:    whereHelpertime_Time{field: "\"users\".\"updated_at\""},
+	SDKAccountID: whereHelperstring{field: "\"users\".\"sdk_account_id\""},
+	PrivateKey:   whereHelperstring{field: "\"users\".\"private_key\""},
+	PublicKey:    whereHelperstring{field: "\"users\".\"public_key\""},
+	Seed:         whereHelperstring{field: "\"users\".\"seed\""},
 }
 
 // UserRels is where relationship names are stored.
@@ -119,7 +119,7 @@ func (*userR) NewStruct() *userR {
 type userL struct{}
 
 var (
-	userColumns               = []string{"id", "created_at", "updated_at", "sdk_account_id", "private_key", "public_key", "seed"}
+	userAllColumns            = []string{"id", "created_at", "updated_at", "sdk_account_id", "private_key", "public_key", "seed"}
 	userColumnsWithoutDefault = []string{"id", "sdk_account_id", "private_key", "public_key", "seed"}
 	userColumnsWithDefault    = []string{"created_at", "updated_at"}
 	userPrimaryKeyColumns     = []string{"id"}
@@ -456,7 +456,7 @@ func (o *User) Insert(exec boil.Executor, columns boil.Columns) error {
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			userColumns,
+			userAllColumns,
 			userColumnsWithDefault,
 			userColumnsWithoutDefault,
 			nzDefaults,
@@ -537,7 +537,7 @@ func (o *User) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			userColumns,
+			userAllColumns,
 			userPrimaryKeyColumns,
 		)
 
@@ -720,13 +720,13 @@ func (o *User) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			userColumns,
+			userAllColumns,
 			userColumnsWithDefault,
 			userColumnsWithoutDefault,
 			nzDefaults,
 		)
 		update := updateColumns.UpdateColumnSet(
-			userColumns,
+			userAllColumns,
 			userPrimaryKeyColumns,
 		)
 
@@ -856,10 +856,6 @@ func (o UserSlice) DeleteAllG() (int64, error) {
 
 // DeleteAll deletes all rows in the slice, using an executor.
 func (o UserSlice) DeleteAll(exec boil.Executor) (int64, error) {
-	if o == nil {
-		return 0, errors.New("models: no User slice provided for delete all")
-	}
-
 	if len(o) == 0 {
 		return 0, nil
 	}
