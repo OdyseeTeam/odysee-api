@@ -7,7 +7,7 @@ require (
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/gobuffalo/genny v0.1.1 // indirect
 	github.com/gobuffalo/gogen v0.1.1 // indirect
-	github.com/gobuffalo/packr v1.25.0
+	github.com/gobuffalo/packr v1.25.0 // indirect
 	github.com/gobuffalo/packr/v2 v2.2.0
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/google/go-cmp v0.3.0 // indirect
@@ -15,6 +15,7 @@ require (
 	github.com/jinzhu/gorm v1.9.2
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/karrick/godirwalk v1.10.3 // indirect
+	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
 	github.com/lbryio/lbry.go v1.0.4
 	github.com/lbryio/lbryschema.go v0.0.0-20190504040023-d701bab7f623 // indirect
 
@@ -37,7 +38,7 @@ require (
 	github.com/stretchr/testify v1.3.0
 	github.com/volatiletech/inflect v0.0.0-20170731032912-e7201282ae8d // indirect
 	github.com/volatiletech/null v8.0.0+incompatible
-	github.com/volatiletech/sqlboiler v3.2.0+incompatible
+	github.com/volatiletech/sqlboiler v3.4.0+incompatible
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/crypto v0.0.0-20190530122614-20be4c3c3ed5 // indirect

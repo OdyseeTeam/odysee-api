@@ -19,25 +19,12 @@ CREATE TABLE "users" (
 
     UNIQUE ("sdk_account_id")
 );
-
-CREATE TABLE "users_tokens" (
-    "id" serial PRIMARY KEY,
-
-    "created_at" timestamp NOT NULL DEFAULT now(),
-    "updated_at" timestamp NOT NULL DEFAULT now(),
-
-    "user_id" uinteger REFERENCES users ON DELETE CASCADE,
-    "value" varchar NOT NULL,
-
-    UNIQUE ("value")
-);
 -- +migrate StatementEnd
 
 -- +migrate Down
 
 -- +migrate StatementBegin
 DROP TABLE "users";
-DROP TABLE "users_tokens";
 -- +migrate StatementEnd
 
 -- +migrate StatementBegin

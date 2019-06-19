@@ -34,8 +34,6 @@ func getRemoteUser(token string) map[string]interface{} {
 }
 
 // GetUserByToken retrieves user by internal-api auth_token
-// TODO: Refactor out into logical pieces
-// TODO: Implement different error types for better error messages
 func GetUserByToken(token string) (*models.User, error) {
 	var (
 		u     *models.User
@@ -64,8 +62,8 @@ func GetUserByToken(token string) (*models.User, error) {
 		err = u.InsertG(boil.Infer())
 
 		if err != nil {
-			// Check if we encountered a primary key violation, it would means another goroutine created a user before us so we try retrieving it again.
-			//
+			// Check if we encountered a primary key violation, it would mean another goroutine
+			// has created a user before us so we should try retrieving it again.
 			switch baseErr := errors.Cause(err).(type) {
 			case *pq.Error:
 				if baseErr.Code == errUniqueViolation && baseErr.Column == "users_pkey" {
