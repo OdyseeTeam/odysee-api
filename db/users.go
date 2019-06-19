@@ -26,7 +26,7 @@ func getRemoteUser(token string) map[string]interface{} {
 	c.ServerAddress = config.Settings.GetString("InternalAPIHost")
 	r, err := c.UserMe()
 	if err != nil {
-		Conn.Logger.LogF(monitor.F{monitor.TokenF: token}).Error("internal-api responded with an error")
+		Conn.Logger.LogF(monitor.F{monitor.TokenF: token}).Error("internal-api responded with an error: ", err)
 		// No user found in internal-apis database, give up at this point
 		return nil
 	}

@@ -3,6 +3,8 @@ module github.com/lbryio/lbrytv
 require (
 	github.com/btcsuite/btcd v0.0.0-20190427004231-96897255fd17 // indirect
 	github.com/certifi/gocertifi v0.0.0-20190105021004-abcd57078448 // indirect
+	github.com/denisenkom/go-mssqldb v0.0.0-20190515213511-eb9f6a1743f3 // indirect
+	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
 	github.com/getsentry/raven-go v0.2.0
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/gobuffalo/genny v0.1.1 // indirect
@@ -13,6 +15,8 @@ require (
 	github.com/google/go-cmp v0.3.0 // indirect
 	github.com/gorilla/mux v1.7.1
 	github.com/jinzhu/gorm v1.9.2
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.0.1 // indirect
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/karrick/godirwalk v1.10.3 // indirect
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12

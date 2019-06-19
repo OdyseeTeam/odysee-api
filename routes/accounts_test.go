@@ -193,7 +193,7 @@ func TestWithWrongAuthToken(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, rr.Code)
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.Nil(t, err)
-	assert.Equal(t, "could not authenticate user", response.Error.Message)
+	assert.Equal(t, "cannot authenticate user with internal-apis", response.Error.Message)
 }
 
 func TestWithoutToken(t *testing.T) {
