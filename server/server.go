@@ -44,7 +44,7 @@ func NewConfiguredServer() *Server {
 	}
 	s.DefaultHeaders["Access-Control-Allow-Origin"] = "*"
 	s.DefaultHeaders["Access-Control-Allow-Headers"] = "X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept"
-	s.DefaultHeaders["Server"] = "lbrytv"
+	s.DefaultHeaders["Server"] = "api.lbry.tv"
 	return s
 }
 
