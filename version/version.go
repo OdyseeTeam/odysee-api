@@ -2,9 +2,11 @@ package version
 
 import "fmt"
 
-var version string
-var commit string
-var date string
+var (
+	version string
+	commit  string
+	date    string
+)
 
 // GetVersion returns current application version
 func GetVersion() string {
@@ -14,7 +16,7 @@ func GetVersion() string {
 // GetDevVersion returns current app version plus commit
 func GetDevVersion() string {
 	if commit != "" {
-		return fmt.Sprintf("%v-%v", GetVersion(), commit[:6])
+		return fmt.Sprintf("%v-%v", GetVersion(), commit)
 	}
 	return "unknown"
 }
