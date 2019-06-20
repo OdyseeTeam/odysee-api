@@ -2,8 +2,8 @@ version: 2
 jobs:
   test:
     docker:
-      - image: circleci/golang:1.11
-      - image: lbryweb/lbrynet:latest
+      - image: circleci/golang:1.12
+      - image: lbryweb/lbrynet:0.37.3
       - image: postgres:11-alpine
         environment:
           POSTGRES_DB: lbrytv
@@ -19,7 +19,7 @@ jobs:
             - /go/pkg/mod
   snapshot:
     docker:
-      - image: circleci/golang:1.11
+      - image: circleci/golang:1.12
     steps:
       - checkout
       - restore_cache:
@@ -32,7 +32,7 @@ jobs:
           command: make image
   release:
     docker:
-      - image: circleci/golang:1.11
+      - image: circleci/golang:1.12
     steps:
       - checkout
       - restore_cache:
@@ -42,7 +42,7 @@ jobs:
       - run: make image
   publish-image:
     docker:
-      - image: circleci/golang:1.11
+      - image: circleci/golang:1.12
     steps:
       - checkout
       - run: go get ./...
