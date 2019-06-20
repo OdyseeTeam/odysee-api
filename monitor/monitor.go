@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/version"
 
 	raven "github.com/getsentry/raven-go"
 	"github.com/sirupsen/logrus"
@@ -36,12 +37,15 @@ func init() {
 
 // SetupLogging initializes and sets a few parameters for the logging subsystem.
 func SetupLogging() {
+	var mode string
+
 	configureSentry()
+	SetVersionTag(VersionTag{LbrytvVersion: version.GetVersion()})
 
 	// logrus.AddHook(logrus_stack.StandardHook())
 	// Logger.AddHook(logrus_stack.StandardHook())
 	if config.IsProduction() {
-		Logger.Info("running in production mode")
+		mode = "production"
 		raven.SetEnvironment("production")
 
 		logrus.SetLevel(logrus.InfoLevel)
@@ -49,7 +53,7 @@ func SetupLogging() {
 		logrus.SetFormatter(&logrus.JSONFormatter{})
 		Logger.SetFormatter(&logrus.JSONFormatter{})
 	} else {
-		Logger.Info("running in develop mode")
+		mode = "develop"
 		raven.SetEnvironment("develop")
 
 		logrus.SetLevel(logrus.DebugLevel)
@@ -57,6 +61,9 @@ func SetupLogging() {
 		logrus.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
 		Logger.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
 	}
+
+	Logger.Infof("%v, running in %v mode", version.GetFullBuildName(), mode)
+	Logger.Infof("logging initialized (loglevel=%v)", Logger.Level.String())
 }
 
 // NewModuleLogger creates a new ModuleLogger instance carrying module name

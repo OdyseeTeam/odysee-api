@@ -1,9 +1,8 @@
 package monitor
 
 import (
-	"fmt"
-
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/version"
 
 	"github.com/getsentry/sentry-go"
 )
@@ -20,16 +19,12 @@ func configureSentry() {
 	}
 
 	err := sentry.Init(sentry.ClientOptions{
-		Dsn: dsn,
+		Dsn:     dsn,
+		Release: version.GetDevVersion(),
 	})
 	if err != nil {
-		fmt.Printf("sentry initialization failed: %v", err)
+		Logger.Errorf("sentry initialization failed: %v", err)
 	}
-
-	sentry.ConfigureScope(func(scope *sentry.Scope) {
-		scope.SetTag("lbrytv_version", "1.1.1.1")
-		scope.SetTag("lbrynet_version", "1.1.1.1")
-	})
 }
 
 func SetVersionTag(tag VersionTag) {

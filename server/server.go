@@ -8,10 +8,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/monitor"
 	"github.com/lbryio/lbrytv/routes"
+
+	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -122,10 +123,12 @@ func (s *Server) Shutdown() error {
 // ServeUntilInterrupted is the main module entry point that configures and starts a webserver,
 // which runs until one of OS shutdown signals are received. The function is blocking.
 func ServeUntilInterrupted() {
-	server := NewConfiguredServer()
-	err := server.Start()
+	s := NewConfiguredServer()
+	s.Logger.Info("http server starting...")
+	err := s.Start()
 	if err != nil {
 		log.Fatal(err)
 	}
-	server.ServeUntilShutdown()
+	s.Logger.Info("http server listening on %v", s.Config.Address)
+	s.ServeUntilShutdown()
 }
