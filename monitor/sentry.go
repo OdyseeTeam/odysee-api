@@ -31,7 +31,6 @@ func configureSentry(release, env string) {
 func SetVersionTag(tag VersionTag) {
 	sentry.ConfigureScope(func(scope *sentry.Scope) {
 		if tag.LbrytvVersion != "" {
-			fmt.Println("tagging shit with ", tag.LbrytvVersion)
 			scope.SetTag("lbrytv_version", tag.LbrytvVersion)
 		}
 		if tag.LbrytvVersion != "" {

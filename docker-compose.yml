@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: lbrytv
   lbrynet:
-    image: lbryweb/lbrynet:latest
+    image: lbryweb/lbrynet:0.37.3
     ports:
       - "5579:5279"
     volumes:
@@ -41,8 +41,6 @@ services:
       source: storage
       target: /storage
     - type: bind
-      source: static
-      target: /static
     environment:
       LW_LBRYNET: http://lbrynet:5279/
     depends_on:
@@ -51,4 +49,3 @@ services:
 volumes:
   storage:
   test_storage:
-  static:

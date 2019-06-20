@@ -28,16 +28,14 @@ type Server struct {
 
 // Config holds basic web server settings
 type Config struct {
-	StaticDir string
-	Address   string
+	Address string
 }
 
 // NewConfiguredServer returns a server initialized with settings from global config.
 func NewConfiguredServer() *Server {
 	s := &Server{
 		Config: &Config{
-			StaticDir: config.Settings.GetString("StaticDir"),
-			Address:   config.Settings.GetString("Address"),
+			Address: config.Settings.GetString("Address"),
 		},
 		Logger:         monitor.Logger,
 		InterruptChan:  make(chan os.Signal),
@@ -73,7 +71,6 @@ func (s *Server) configureRouter() *mux.Router {
 	r := mux.NewRouter()
 
 	routes.InstallRoutes(r)
-	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(s.Config.StaticDir))))
 
 	r.Use(monitor.RequestLoggingMiddleware)
 	r.Use(s.defaultHeadersMiddleware)
@@ -83,7 +80,6 @@ func (s *Server) configureRouter() *mux.Router {
 // Start starts a http server and returns immediately.
 func (s *Server) Start() error {
 	s.router = s.configureRouter()
-	s.Logger.Printf("serving %v at /static/", s.Config.StaticDir)
 	s.httpListener = s.configureHTTPListener()
 
 	go func() {
@@ -129,6 +125,6 @@ func ServeUntilInterrupted() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	s.Logger.Info("http server listening on %v", s.Config.Address)
+	s.Logger.Infof("http server listening on %v", s.Config.Address)
 	s.ServeUntilShutdown()
 }

@@ -7,7 +7,6 @@ RUN apk --update upgrade && \
     update-ca-certificates && \
     rm -rf /var/cache/apk/*
 
-RUN mkdir /app /static
 WORKDIR /app
 COPY dist/linux_amd64/lbrytv /app
 COPY lbrytv.docker.yml /app/lbrytv.yml

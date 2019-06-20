@@ -1,4 +1,3 @@
-StaticDir: /static
 BaseContentURL: https://api.lbry.tv/content/
 InternalAPIHost: https://api.lbry.com
 
