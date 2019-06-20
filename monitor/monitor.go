@@ -36,10 +36,7 @@ func init() {
 
 // SetupLogging initializes and sets a few parameters for the logging subsystem.
 func SetupLogging() {
-	dsn := config.Settings.GetString("SentryDSN")
-	if dsn != "" {
-		raven.SetDSN(dsn)
-	}
+	configureSentry()
 
 	// logrus.AddHook(logrus_stack.StandardHook())
 	// Logger.AddHook(logrus_stack.StandardHook())
