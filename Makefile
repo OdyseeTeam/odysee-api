@@ -41,3 +41,8 @@ clean:
 .PHONY: server
 server:
 	LW_DEBUG=1 go run . serve
+
+.PHONY: tag
+tag:
+	git tag -d v$v
+	git tag v$v
