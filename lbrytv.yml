@@ -1,6 +1,9 @@
-Lbrynet: http://localhost:5579/
-Debug: 1
+# Lbrynet: http://localhost:5579/
+Lbrynet: http://localhost:5581/
+Debug: 0
 InternalAPIHost: https://api.lbry.com
+
+SentryDSN: "https://9ef75ef77a844d4aa35d834d78266477@sentry.io/1416147"
 
 DatabaseConnection: postgres://postgres:postgres@localhost
 DatabaseName: lbrytv

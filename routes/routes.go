@@ -3,20 +3,20 @@ package routes
 import (
 	"net/http"
 
-	raven "github.com/getsentry/raven-go"
+	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/gorilla/mux"
 )
 
-// CaptureErrors wraps http handler with raven.RecoveryHandler which captures unhandled exceptions to sentry.io
-func CaptureErrors(handler func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
-	return raven.RecoveryHandler(handler)
+func captureErrors(handler func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
+	sentryHandler := sentryhttp.New(sentryhttp.Options{})
+	return sentryHandler.HandleFunc(handler)
 }
 
 // InstallRoutes sets up global API handlers
 func InstallRoutes(r *mux.Router) {
 	r.HandleFunc("/", Index)
-	r.HandleFunc("/api/proxy", CaptureErrors(Proxy))
-	r.HandleFunc("/api/proxy/", CaptureErrors(Proxy))
-	r.HandleFunc("/content/claims/{uri}/{claim}/{filename}", CaptureErrors(ContentByClaimsURI))
-	r.HandleFunc("/content/url", CaptureErrors(ContentByURL))
+	r.HandleFunc("/api/proxy", captureErrors(Proxy))
+	r.HandleFunc("/api/proxy/", captureErrors(Proxy))
+	r.HandleFunc("/content/claims/{uri}/{claim}/{filename}", captureErrors(ContentByClaimsURI))
+	r.HandleFunc("/content/url", captureErrors(ContentByURL))
 }

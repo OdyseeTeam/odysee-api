@@ -10,10 +10,12 @@ import (
 	"sort"
 	"time"
 
+	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/lbrynet"
+	"github.com/lbryio/lbrytv/monitor"
+
 	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
 	"github.com/lbryio/lbry.go/stream"
-	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/monitor"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -116,21 +118,16 @@ func (s *reflectedStream) URL() string {
 
 func (s *reflectedStream) resolve(client *ljsonrpc.Client) error {
 	if s.URI == "" {
-		return errors.New("stream URI is not set")
+		return errors.New("stream uri is not set")
 	}
 
-	response, err := client.Resolve(s.URI)
+	r, err := lbrynet.Resolve(s.URI)
 	if err != nil {
 		return err
 	}
-	if response == nil {
-		return errors.New("got empty response resolving stream")
-	}
 
-	stream := (*response)[s.URI].Claim.Value.GetStream()
-	if stream == nil {
-		return fmt.Errorf("something's wrong for %v, no stream in %v", s.URI, (*response)[s.URI].Claim.Type)
-	}
+	// TODO: Change when underlying libs are updated for 0.38
+	stream := r.Claim.Value.GetStream()
 	if stream.Fee != nil && stream.Fee.Amount > 0 {
 		return errors.New("paid stream")
 	}

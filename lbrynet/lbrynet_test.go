@@ -68,6 +68,14 @@ func TestCreateAccount_DuplicateNotAllowed(t *testing.T) {
 	assert.Nil(t, account)
 }
 
+func TestResolve(t *testing.T) {
+	r, err := Resolve("what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a")
+	prettyPrint(r)
+
+	require.Nil(t, err)
+	require.NotNil(t, r)
+}
+
 func BenchmarkCreateAccount(b *testing.B) {
 	uids := [100]int{}
 	for i := 0; i <= len(uids); i++ {

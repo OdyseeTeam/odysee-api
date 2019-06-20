@@ -18,6 +18,7 @@ const sizedStreamURL = "known-size#0590f924bbee6627a2e79f7f2ff7dfb50bf2877c"
 func Test_newReflectedStream(t *testing.T) {
 	rs, err := newReflectedStream(streamURL)
 	if err != nil {
+		// If this fails, no point running other tests
 		panic(err)
 	}
 	assert.Equal(t,

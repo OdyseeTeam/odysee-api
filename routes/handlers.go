@@ -33,6 +33,7 @@ func Proxy(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("empty request body"))
 		return
 	}
+
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		log.Panicf("error: %v", err.Error())
@@ -71,8 +72,14 @@ func Proxy(w http.ResponseWriter, req *http.Request) {
 func stream(uri string, w http.ResponseWriter, req *http.Request) {
 	err := player.PlayURI(uri, w, req)
 	// Only output error if player has not pushed anything to the client yet
-	if err != nil && err.Error() == "paid stream" {
-		w.WriteHeader(http.StatusPaymentRequired)
+	if err != nil {
+		if err.Error() == "paid stream" {
+			w.WriteHeader(http.StatusPaymentRequired)
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			monitor.CaptureException(err)
+			w.Write([]byte(err.Error()))
+		}
 	}
 }
 

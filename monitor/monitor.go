@@ -7,7 +7,6 @@ import (
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/version"
 
-	raven "github.com/getsentry/raven-go"
 	"github.com/sirupsen/logrus"
 )
 
@@ -39,14 +38,13 @@ func init() {
 func SetupLogging() {
 	var mode string
 
-	configureSentry()
 	SetVersionTag(VersionTag{LbrytvVersion: version.GetVersion()})
 
 	// logrus.AddHook(logrus_stack.StandardHook())
 	// Logger.AddHook(logrus_stack.StandardHook())
 	if config.IsProduction() {
 		mode = "production"
-		raven.SetEnvironment("production")
+		configureSentry(version.GetDevVersion(), mode)
 
 		logrus.SetLevel(logrus.InfoLevel)
 		Logger.SetLevel(logrus.InfoLevel)
@@ -54,7 +52,6 @@ func SetupLogging() {
 		Logger.SetFormatter(&logrus.JSONFormatter{})
 	} else {
 		mode = "develop"
-		raven.SetEnvironment("develop")
 
 		logrus.SetLevel(logrus.DebugLevel)
 		Logger.SetLevel(logrus.DebugLevel)
@@ -152,14 +149,14 @@ func (w *loggingWriter) IsSuccess() bool {
 
 func RequestLoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		loggingWriter := &loggingWriter{ResponseWriter: writer}
-		next.ServeHTTP(loggingWriter, request)
+		w := &loggingWriter{ResponseWriter: writer}
+		next.ServeHTTP(w, request)
 		fields := logrus.Fields{
 			"url":    request.URL.Path,
-			"status": loggingWriter.Status,
+			"status": w.Status,
 		}
-		if !loggingWriter.IsSuccess() {
-			fields["response"] = loggingWriter.ResponseSnippet
+		if !w.IsSuccess() {
+			fields["response"] = w.ResponseSnippet
 			Logger.WithFields(fields).Error("server responded with error")
 		}
 	})

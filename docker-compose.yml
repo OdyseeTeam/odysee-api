@@ -8,10 +8,19 @@ services:
     environment:
       POSTGRES_DB: lbrytv
   lbrynet:
+    image: lbryweb/lbrynet:latest
+    ports:
+      - "5579:5279"
+    volumes:
+    - type: bind
+      source: storage
+      target: /storage
+    environment:
+      LBRY_DOCKER_CONFIG: /daemon/daemon_settings.yml
+  lbrynet-rc:
     image: lbryweb/lbrynet:latest-rc
     ports:
-      - "5279:5279"
-      - "5579:5279"
+      - "5581:5279"
     volumes:
     - type: bind
       source: storage

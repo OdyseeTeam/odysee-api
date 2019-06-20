@@ -1,6 +1,7 @@
 package lbrynet
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/lbryio/lbrytv/config"
@@ -67,4 +68,20 @@ func RemoveAccount(UID int) (*ljsonrpc.AccountRemoveResponse, error) {
 		return nil, err
 	}
 	return r, nil
+}
+
+// Resolve calls resolve method on the daemon and handles
+// *frequent* SDK response format changes with grace instead of panicking.
+func Resolve(url string) (*ljsonrpc.ResolveResponseItem, error) {
+	r, err := Client.Resolve(url)
+	if err != nil {
+		return nil, err
+	}
+	item := (*r)[url]
+
+	// TODO: Change when underlying libs are updated for 0.38
+	if item.Claim == nil {
+		return nil, errors.New("invalid resolve response structure from sdk client")
+	}
+	return &item, nil
 }
