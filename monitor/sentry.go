@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/version"
 
 	"github.com/getsentry/sentry-go"
 )
@@ -20,7 +21,8 @@ func configureSentry() {
 	}
 
 	err := sentry.Init(sentry.ClientOptions{
-		Dsn: dsn,
+		Dsn:     dsn,
+		Release: version.GetDevVersion(),
 	})
 	if err != nil {
 		fmt.Printf("sentry initialization failed: %v", err)

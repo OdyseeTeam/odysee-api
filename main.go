@@ -6,17 +6,11 @@ import (
 	"os"
 	"time"
 
-	// "github.com/lbryio/lbrytv/assets"
-
 	"github.com/lbryio/lbrytv/db"
 	"github.com/lbryio/lbrytv/server"
-	log "github.com/sirupsen/logrus"
-)
+	"github.com/lbryio/lbrytv/version"
 
-var (
-	version = "dev"
-	commit  = "none"
-	date    = "unknown"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -34,15 +28,15 @@ func main() {
 	command := os.Args[1]
 	switch command {
 	case "version":
-		log.Printf("lbrytv %v, commit %v, built at %v", version, commit, date)
+		log.Print("lbrytv %v", version.GetFullBuildName())
 	case "serve":
-		log.Printf("lbrytv %v starting", version)
+		log.Printf("lbrytv %v starting", version.GetDevVersion())
 		server.ServeUntilInterrupted()
 	case "db_migrate_up":
-		log.Printf("lbrytv %v applying migrations", version)
+		log.Printf("lbrytv %v applying migrations", version.GetDevVersion())
 		db.Init().MigrateUp()
 	case "db_migrate_down":
-		log.Printf("lbrytv %v unapplying migrations", version)
+		log.Printf("lbrytv %v unapplying migrations", version.GetDevVersion())
 		db.Init().MigrateDown()
 	default:
 		log.Errorf("invalid command: '%s'\n", command)
