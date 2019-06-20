@@ -28,7 +28,7 @@ func main() {
 	command := os.Args[1]
 	switch command {
 	case "version":
-		log.Print("lbrytv %v", version.GetFullBuildName())
+		log.Printf("lbrytv %v", version.GetFullBuildName())
 	case "serve":
 		log.Printf("lbrytv %v starting", version.GetDevVersion())
 		server.ServeUntilInterrupted()

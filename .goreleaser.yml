@@ -19,7 +19,7 @@ builds:
     pre: packr2
     post: packr2 clean
   ldflags:
-  - -s -w -X version.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+  - "-s -w -X version.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}"
 
 archive:
   replacements:
