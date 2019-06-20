@@ -1,7 +1,6 @@
 package monitor
 
 import (
-	"fmt"
 	"github.com/lbryio/lbrytv/config"
 
 	"github.com/getsentry/sentry-go"
