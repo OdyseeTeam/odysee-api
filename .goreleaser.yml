@@ -19,7 +19,7 @@ builds:
     pre: packr2
     post: packr2 clean
   ldflags:
-  - '-s -w -X version.version={{.Version}} -X version.commit={{.ShortCommit}} -X version.date={{.Date}}'
+  - '-s -w -X github.com/lbryio/lbrytv/version.version={{.Version}} -X github.com/lbryio/lbrytv/version.commit={{.ShortCommit}} -X github.com/lbryio/lbrytv/version.date={{.Date}} -X'
 
 archive:
   replacements:
