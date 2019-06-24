@@ -127,7 +127,7 @@ func (s *reflectedStream) resolve(client *ljsonrpc.Client) error {
 	}
 
 	// TODO: Change when underlying libs are updated for 0.38
-	stream := r.Claim.Value.GetStream()
+	stream := r.Value.GetStream()
 	if stream.Fee != nil && stream.Fee.Amount > 0 {
 		return errors.New("paid stream")
 	}

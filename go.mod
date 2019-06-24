@@ -25,7 +25,7 @@ require (
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
 	github.com/kisielk/errcheck v1.2.0 // indirect
 	github.com/kr/pty v1.1.5 // indirect
-	github.com/lbryio/lbry.go v1.0.14
+	github.com/lbryio/lbry.go v1.0.15-0.20190624042915-7e445e0cf875
 	github.com/lbryio/lbryschema.go v0.0.0-20190602173230-6d2f69a36f46 // indirect
 
 	github.com/lbryio/types v0.0.0-20190520190754-9ee6922fccc2 // indirect

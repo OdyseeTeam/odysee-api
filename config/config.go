@@ -31,8 +31,6 @@ func read() {
 	Settings.SetDefault("Host", "http://localhost:8080")
 	Settings.SetDefault("BaseContentURL", "http://localhost:8080/content/")
 
-	Settings.SetDefault("StaticURLPrefix", "/static/")
-	Settings.SetDefault("StaticDir", "./assets/static")
 	Settings.SetConfigName("lbrytv") // name of config file (without extension)
 	Settings.AddConfigPath("./")
 	Settings.AddConfigPath("../")
