@@ -13,14 +13,10 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-const mGet = "get"
-const mFileList = "file_list"
-const mAccountList = "account_list"
-
 func processQuery(query *jsonrpc.RPCRequest) (processedQuery *jsonrpc.RPCRequest, err error) {
 	processedQuery = query
 	switch query.Method {
-	case mGet:
+	case methodGet:
 		processedQuery, err = queryProcessorGet(query)
 	}
 	return processedQuery, err
@@ -29,11 +25,11 @@ func processQuery(query *jsonrpc.RPCRequest) (processedQuery *jsonrpc.RPCRequest
 func processResponse(query *jsonrpc.RPCRequest, response *jsonrpc.RPCResponse) (processedResponse *jsonrpc.RPCResponse, err error) {
 	processedResponse = response
 	switch query.Method {
-	case mGet:
+	case methodGet:
 		processedResponse, err = responseProcessorGet(query, response)
-	case mFileList:
+	case methodFileList:
 		processedResponse, err = responseProcessorFileList(query, response)
-	case mAccountList:
+	case methodAccountList:
 		processedResponse, err = responseProcessorAccountList(query, response)
 	}
 	return processedResponse, err

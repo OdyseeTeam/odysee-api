@@ -61,6 +61,16 @@ const ErrInvalidParams int = -32602
 // ErrMethodNotFound means the client-requested method cannot be found
 const ErrMethodNotFound int = -32601
 
+const methodGet = "get"
+const methodFileList = "file_list"
+const methodAccountList = "account_list"
+const methodResolve = "resolve"
+const methodAccountBalance = "account_balance"
+const methodStatus = "status"
+
+const paramAccountID = "account_id"
+const paramUrls = "urls"
+
 // UnmarshalRequest takes a raw json request body and serializes it into RPCRequest struct for further processing.
 func UnmarshalRequest(r []byte) (*jsonrpc.RPCRequest, error) {
 	var ur jsonrpc.RPCRequest
@@ -144,9 +154,8 @@ func preprocessRequest(r *jsonrpc.RPCRequest, accountID string) *jsonrpc.RPCResp
 func NewRequest(method string, params ...interface{}) jsonrpc.RPCRequest {
 	if len(params) > 0 {
 		return *jsonrpc.NewRequest(method, params[0])
-	} else {
-		return *jsonrpc.NewRequest(method)
 	}
+	return *jsonrpc.NewRequest(method)
 }
 
 // RawCall makes an arbitrary jsonrpc request to the SDK
@@ -173,7 +182,7 @@ func ForwardCall(request jsonrpc.RPCRequest) ([]byte, error) {
 			return nil, err
 		}
 		// There will be too many account_balance requests, we don't need to log them
-		if request.Method != "account_balance" {
+		if request.Method != methodAccountBalance {
 			monitor.LogSuccessfulQuery(request.Method, time.Now().Sub(queryStartTime).Seconds())
 		}
 
@@ -194,9 +203,9 @@ func ForwardCall(request jsonrpc.RPCRequest) ([]byte, error) {
 
 // shouldCache returns true if we got a resolve query with more than `cacheResolveLongerThan` urls in it.
 func shouldCache(method string, params interface{}) bool {
-	if method == "resolve" && params != nil {
+	if method == methodResolve && params != nil {
 		paramsMap := params.(map[string]interface{})
-		if urls, ok := paramsMap["urls"].([]interface{}); ok {
+		if urls, ok := paramsMap[paramUrls].([]interface{}); ok {
 			if len(urls) > cacheResolveLongerThan {
 				return true
 			}

@@ -184,7 +184,7 @@ func TestForwardCall_HTTPError(t *testing.T) {
 	config.Override("Lbrynet", "http://127.0.0.1:49999")
 	defer config.RestoreOverridden()
 
-	query := jsonrpc.NewRequest("account_balance")
+	query := jsonrpc.NewRequest(methodAccountBalance)
 	response, err := ForwardCall(*query)
 	assert.NotNil(t, err)
 	assert.Nil(t, response)
@@ -214,7 +214,7 @@ func TestForwardCall_ClientError(t *testing.T) {
 }
 
 func TestForwardCall_InvalidResolveParams(t *testing.T) {
-	r := call(t, "resolve")
+	r := call(t, methodResolve)
 	assert.NotNil(t, r.Error)
 	assert.Equal(t, "jsonrpc_resolve() missing 1 required positional argument: 'urls'", r.Error.Message)
 }
@@ -231,7 +231,7 @@ func TestForwardCall(t *testing.T) {
 	var response jsonrpc.RPCResponse
 	var rawResponse []byte
 
-	query = &jsonrpc.RPCRequest{Method: "account_balance", ID: 123}
+	query = &jsonrpc.RPCRequest{Method: methodAccountBalance, ID: 123}
 	rawResponse, err = ForwardCall(*query)
 	json.Unmarshal(rawResponse, &response)
 	if err != nil {
@@ -251,7 +251,7 @@ func TestForwardCall(t *testing.T) {
 	}
 
 	streamURI := "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
-	query = jsonrpc.NewRequest("resolve", map[string]string{"urls": streamURI})
+	query = jsonrpc.NewRequest(methodResolve, map[string]string{paramUrls: streamURI})
 	queryBody, _ := json.Marshal(query)
 	query, err = UnmarshalRequest(queryBody)
 	rawResponse, err = ForwardCall(*query)
@@ -263,7 +263,7 @@ func TestForwardCall(t *testing.T) {
 		return
 	}
 
-	query = jsonrpc.NewRequest("get", map[string]string{"uri": streamURI})
+	query = jsonrpc.NewRequest(methodGet, map[string]string{"uri": streamURI})
 	_, err = ForwardCall(*query)
 	if err != nil {
 		t.Errorf("failed with an unexpected error: %v", err)
@@ -279,7 +279,7 @@ func TestForwardCall(t *testing.T) {
 	response.GetObject(&resolveResponse)
 	outpoint := fmt.Sprintf("%v:%v", (*resolveResponse)[streamURI].Txid, 0)
 
-	query = jsonrpc.NewRequest("file_list", map[string]string{"outpoint": outpoint})
+	query = jsonrpc.NewRequest(methodFileList, map[string]string{"outpoint": outpoint})
 	rawResponse, err = ForwardCall(*query)
 	if err != nil {
 		t.Errorf("file_list of outpoint %v failed with an unexpected error: %v", outpoint, err)
@@ -307,9 +307,9 @@ func TesProxy_WithCache(t *testing.T) {
 		cachedResolveResponse *ljsonrpc.ResolveResponse
 	)
 
-	resolveArgs := map[string][110]string{"urls": homePageUrls}
+	resolveArgs := map[string][110]string{paramUrls: homePageUrls}
 
-	query = jsonrpc.NewRequest("resolve", resolveArgs)
+	query = jsonrpc.NewRequest(methodResolve, resolveArgs)
 	queryBody, _ := json.Marshal(query)
 	query, err = UnmarshalRequest(queryBody)
 	rawResponse, err = ForwardCall(*query)
@@ -342,7 +342,7 @@ func TesProxy_WithCache(t *testing.T) {
 }
 
 func BenchmarkResolve(b *testing.B) {
-	query := jsonrpc.NewRequest("resolve", map[string][110]string{"urls": homePageUrls})
+	query := jsonrpc.NewRequest(methodResolve, map[string][110]string{paramUrls: homePageUrls})
 
 	wg := sync.WaitGroup{}
 
@@ -367,7 +367,7 @@ func BenchmarkResolve(b *testing.B) {
 
 func BenchmarkDirectResolve(b *testing.B) {
 	rpcClient := jsonrpc.NewClient(config.Settings.GetString("Lbrynet"))
-	query := jsonrpc.NewRequest("resolve", map[string][110]string{"urls": homePageUrls})
+	query := jsonrpc.NewRequest(methodResolve, map[string][110]string{paramUrls: homePageUrls})
 
 	wg := sync.WaitGroup{}
 
