@@ -92,10 +92,6 @@ github.com/gobuffalo/packd v0.2.0 h1:9Mu1TYbSfH75zQIQtZEgHEaYeRR4485U4T9N1OQYrXk
 github.com/gobuffalo/packd v0.2.0/go.mod h1:k2CkHP3bjbqL2GwxwhxUy1DgnlbW644hkLC9iIUvZwY=
 github.com/gobuffalo/packd v0.3.0 h1:eMwymTkA1uXsqxS0Tpoop3Lc0u3kTfiMBE6nKtQU4g4=
 github.com/gobuffalo/packd v0.3.0/go.mod h1:zC7QkmNkYVGKPw4tHpBQ+ml7W/3tIebgeo1b36chA3Q=
-github.com/gobuffalo/packr v1.26.0 h1:XN7H9va1ZPe/xM649E2LCkPT/msiNP32ydHHGtiwSgA=
-github.com/gobuffalo/packr v1.26.0/go.mod h1:xY7Mwux5phie94Jrd5050DJhwsY19NQO9S2jWE7c/2Q=
-github.com/gobuffalo/packr/v2 v2.4.0 h1:FB8CdysPlcECofv3tpH21T4aJDWmv7NFq8m0X6JZMGc=
-github.com/gobuffalo/packr/v2 v2.4.0/go.mod h1:ra341gygw9/61nSjAbfwcwh8IrYL4WmR4IsPkPBhQiY=
 github.com/gobuffalo/packr/v2 v2.5.1 h1:TFOeY2VoGamPjQLiNDT3mn//ytzk236VMO2j7iHxJR4=
 github.com/gobuffalo/packr/v2 v2.5.1/go.mod h1:8f9c96ITobJlPzI44jj+4tHnEKNt0xXWSVlXRN9X1Iw=
 github.com/gobuffalo/syncx v0.0.0-20190224160051-33c29581e754 h1:tpom+2CJmpzAWj5/VEHync2rJGi+epHNIeRSWjzGA+4=

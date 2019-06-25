@@ -8,7 +8,6 @@ require (
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd v0.0.0-20190620071333-e64a0ec8b42a // indirect
 	github.com/getsentry/sentry-go v0.1.0
-	github.com/gobuffalo/packr v1.26.0 // indirect
 	github.com/gobuffalo/packr/v2 v2.5.1
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/golang/mock v1.3.1 // indirect
