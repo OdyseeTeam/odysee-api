@@ -62,6 +62,6 @@ func TestHeaders(t *testing.T) {
 	}
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 	assert.Equal(t, "*", response.Header["Access-Control-Allow-Origin"][0])
-	assert.True(t, strings.Contains(response.Header["Access-Control-Allow-Headers"][0], "X-Lbry-Auth-Token"))
+	assert.Equal(t, "X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept", response.Header["Access-Control-Allow-Headers"][0])
 	server.InterruptChan <- syscall.SIGINT
 }
