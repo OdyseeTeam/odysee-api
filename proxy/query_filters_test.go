@@ -20,3 +20,9 @@ func TestProxy_ForbiddenParamAccountID(t *testing.T) {
 	assert.Equal(t, "Forbidden parameter supplied: account_id", r.Error.Message)
 	assert.Equal(t, -32602, r.Error.Code)
 }
+
+func TestProxy_Status(t *testing.T) {
+	r := call(t, "status")
+	result, _ := r.Result.(map[string]interface{})
+	assert.Equal(t, "lbrytv", result["installation_id"].(string))
+}

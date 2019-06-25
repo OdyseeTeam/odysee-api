@@ -18,6 +18,7 @@ import (
 
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/monitor"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
 )

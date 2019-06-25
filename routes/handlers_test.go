@@ -64,7 +64,7 @@ func TestProxy(t *testing.T) {
 		panic(err)
 	}
 	ljsonrpc.Decode(parsedResponse.Result, &resolveResponse)
-	assert.Equal(t, "what", resolveResponse["what"].Claim.Name)
+	assert.Equal(t, "what", resolveResponse["what"].Name)
 }
 
 func TestContentByURL_NoPayment(t *testing.T) {

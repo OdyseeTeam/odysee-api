@@ -154,6 +154,7 @@ func call(t *testing.T, method string, params ...interface{}) jsonrpc.RPCRespons
 		response jsonrpc.RPCResponse
 		query    *jsonrpc.RPCRequest
 	)
+
 	if len(params) > 0 {
 		query = jsonrpc.NewRequest(method, params[0])
 	} else {
@@ -162,7 +163,7 @@ func call(t *testing.T, method string, params ...interface{}) jsonrpc.RPCRespons
 
 	rawResponse, err := Proxy(query, "")
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal(err, rawResponse)
 	}
 
 	err = json.Unmarshal(rawResponse, &response)
@@ -207,7 +208,7 @@ func TestForwardCall_ClientError(t *testing.T) {
 	config.Override("Lbrynet", "http://localhost:59999")
 	defer config.RestoreOverridden()
 
-	r := call(t, "status")
+	r := call(t, "anymethod")
 	assert.NotNil(t, r.Error)
 	assert.Equal(t, "your ways are wrong", r.Error.Message)
 }
@@ -276,7 +277,7 @@ func TestForwardCall(t *testing.T) {
 	var resolveResponse *ljsonrpc.ResolveResponse
 	json.Unmarshal(rawResponse, &response)
 	response.GetObject(&resolveResponse)
-	outpoint := fmt.Sprintf("%v:%v", (*resolveResponse)[streamURI].Claim.Txid, 0)
+	outpoint := fmt.Sprintf("%v:%v", (*resolveResponse)[streamURI].Txid, 0)
 
 	query = jsonrpc.NewRequest("file_list", map[string]string{"outpoint": outpoint})
 	rawResponse, err = ForwardCall(*query)
