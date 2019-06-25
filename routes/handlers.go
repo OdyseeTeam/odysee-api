@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/db"
 	"github.com/lbryio/lbrytv/monitor"
 	"github.com/lbryio/lbrytv/player"
@@ -24,6 +25,8 @@ func Index(w http.ResponseWriter, req *http.Request) {
 
 // Proxy takes client request body and feeds it to the proxy module
 func Proxy(w http.ResponseWriter, req *http.Request) {
+	var accountID string
+
 	if req.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
 		return
@@ -47,12 +50,16 @@ func Proxy(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	accountID, err := db.GetAccountIDFromRequest(req)
-	if err != nil {
-		response, _ := json.Marshal(proxy.NewErrorResponse(err.Error(), proxy.ErrProxyAuthFailed))
-		w.WriteHeader(http.StatusForbidden)
-		w.Write(response)
-		return
+	if config.IsAccountV1Enabled() {
+		accountID, err = db.GetAccountIDFromRequest(req)
+		if err != nil {
+			response, _ := json.Marshal(proxy.NewErrorResponse(err.Error(), proxy.ErrProxyAuthFailed))
+			w.WriteHeader(http.StatusForbidden)
+			w.Write(response)
+			return
+		}
+	} else {
+		accountID = ""
 	}
 
 	lbrynetResponse, err := proxy.Proxy(ur, accountID)
@@ -77,7 +84,7 @@ func stream(uri string, w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusPaymentRequired)
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			monitor.CaptureException(err)
+			monitor.CaptureException(err, map[string]string{"uri": uri})
 			w.Write([]byte(err.Error()))
 		}
 	}

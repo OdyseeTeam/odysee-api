@@ -31,6 +31,8 @@ func read() {
 	Settings.SetDefault("Host", "http://localhost:8080")
 	Settings.SetDefault("BaseContentURL", "http://localhost:8080/content/")
 
+	Settings.SetDefault("IsAccountV1Enabled", true)
+
 	Settings.SetConfigName("lbrytv") // name of config file (without extension)
 	Settings.AddConfigPath("./")
 	Settings.AddConfigPath("../")
@@ -74,4 +76,11 @@ func RestoreOverridden() {
 		Settings.Set(k, v)
 	}
 	overriddenValues = make(map[string]interface{})
+}
+
+// Concrete settings variables go here
+
+// IsAccountV1Enabled enables or disables Account Subsystem V1 (database + plain auth_token)
+func IsAccountV1Enabled() bool {
+	return Settings.GetBool("IsAccountV1Enabled")
 }

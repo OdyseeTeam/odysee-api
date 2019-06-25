@@ -27,6 +27,8 @@ const proxySuffix = "/api/proxy"
 
 func TestMain(m *testing.M) {
 	// call flag.Parse() here if TestMain uses flags
+	config.Override("IsAccountV1Enabled", 1)
+	defer config.RestoreOverridden()
 	code := m.Run()
 	cleanup()
 	os.Exit(code)

@@ -33,6 +33,7 @@ require (
 	github.com/onsi/gomega v1.5.0 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pelletier/go-toml v1.4.0 // indirect
+	github.com/pingcap/errors v0.11.4 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/common v0.6.0 // indirect
 	github.com/rogpeppe/fastuuid v1.1.0 // indirect

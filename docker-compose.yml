@@ -6,7 +6,8 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: lbrytv
+     POSTGRES_USER: lbrytv
+     POSTGRES_PASSWORD: lbrytv
   lbrynet:
     image: lbryweb/lbrynet:0.37.3
     ports:
