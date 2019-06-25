@@ -2,7 +2,7 @@ version: 2
 jobs:
   test:
     docker:
-      - image: circleci/golang:1.12
+      - image: lbry/lbrytv-ci:latest
       - image: lbryweb/lbrynet:latest-rc
       - image: postgres:11-alpine
         environment:
