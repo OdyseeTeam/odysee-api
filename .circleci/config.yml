@@ -6,7 +6,8 @@ jobs:
       - image: lbryweb/lbrynet:latest-rc
       - image: postgres:11-alpine
         environment:
-          POSTGRES_DB: lbrytv
+          POSTGRES_USER: lbrytv
+          POSTGRES_PASSWORD: lbrytv
     steps:
       - checkout
       - restore_cache:
