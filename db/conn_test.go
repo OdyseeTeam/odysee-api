@@ -53,11 +53,11 @@ func TestMigrate(t *testing.T) {
 func TestGetDSN(t *testing.T) {
 	assert.Equal(t,
 		GetDSN(ConnParams{}),
-		"postgres://postgres:postgres@localhost/lbrytv?sslmode=disable",
+		"postgres://lbrytv:lbrytv@localhost/lbrytv?sslmode=disable",
 	)
 	assert.Equal(t,
 		GetDSN(ConnParams{DatabaseName: "test"}),
-		"postgres://postgres:postgres@localhost/test?sslmode=disable",
+		"postgres://lbrytv:lbrytv@localhost/test?sslmode=disable",
 	)
 	assert.Equal(t,
 		GetDSN(ConnParams{DatabaseConnection: "postgres://pg:pg@db", DatabaseName: "test"}),
@@ -65,7 +65,7 @@ func TestGetDSN(t *testing.T) {
 	)
 	assert.Equal(t,
 		GetDSN(ConnParams{DatabaseOptions: "sslmode=enable"}),
-		"postgres://postgres:postgres@localhost/lbrytv?sslmode=enable",
+		"postgres://lbrytv:lbrytv@localhost/lbrytv?sslmode=enable",
 	)
 
 }
