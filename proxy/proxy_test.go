@@ -11,10 +11,12 @@ import (
 	"testing"
 	"time"
 
-	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/monitor"
+
+	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
 	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"
@@ -217,6 +219,15 @@ func TestForwardCall_InvalidResolveParams(t *testing.T) {
 	r := call(t, methodResolve)
 	assert.NotNil(t, r.Error)
 	assert.Equal(t, "jsonrpc_resolve() missing 1 required positional argument: 'urls'", r.Error.Message)
+}
+
+func TestForwardCall_shouldLog(t *testing.T) {
+	hook := test.NewLocal(monitor.Logger)
+
+	call(t, methodResolve, map[string]interface{}{"urls": "what"})
+	assert.Equal(t, methodResolve, hook.LastEntry().Data["method"])
+	call(t, methodAccountBalance)
+	assert.Equal(t, methodResolve, hook.LastEntry().Data["method"])
 }
 
 func TestUnmarshalRequest(t *testing.T) {

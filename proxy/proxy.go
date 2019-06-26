@@ -71,6 +71,11 @@ const methodStatus = "status"
 const paramAccountID = "account_id"
 const paramUrls = "urls"
 
+var ignoreLog = []string{
+	methodAccountBalance,
+	methodStatus,
+}
+
 // UnmarshalRequest takes a raw json request body and serializes it into RPCRequest struct for further processing.
 func UnmarshalRequest(r []byte) (*jsonrpc.RPCRequest, error) {
 	var ur jsonrpc.RPCRequest
@@ -113,9 +118,6 @@ func preprocessRequest(r *jsonrpc.RPCRequest, accountID string) *jsonrpc.RPCResp
 
 	resp = getPreconditionedQueryResponse(r.Method, r.Params)
 	if resp != nil {
-		monitor.Logger.WithFields(log.Fields{
-			"method": r.Method, "params": r.Params,
-		}).Info("got a preconditioned query response")
 		return resp
 	}
 
@@ -181,8 +183,8 @@ func ForwardCall(request jsonrpc.RPCRequest) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		// There will be too many account_balance requests, we don't need to log them
-		if request.Method != methodAccountBalance {
+
+		if shouldLog(request.Method) {
 			monitor.LogSuccessfulQuery(request.Method, time.Now().Sub(queryStartTime).Seconds())
 		}
 
@@ -212,6 +214,15 @@ func shouldCache(method string, params interface{}) bool {
 		}
 	}
 	return false
+}
+
+func shouldLog(method string) bool {
+	for _, m := range ignoreLog {
+		if m == method {
+			return false
+		}
+	}
+	return true
 }
 
 func getQueryParams(query *jsonrpc.RPCRequest) (queryParams map[string]interface{}, err error) {
