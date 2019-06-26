@@ -2,7 +2,7 @@
   dbname = "lbrytv"
   host   = "localhost"
   port   = 5432
-  user   = "postgres"
-  pass   = ""
+  user   = "lbrytv"
+  pass   = "lbrytv"
   blacklist = ["migrations", "other"]
   sslmode = "disable"
