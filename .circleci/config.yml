@@ -3,7 +3,7 @@ jobs:
   test:
     docker:
       - image: lbry/lbrytv-ci:latest
-      - image: lbryweb/lbrynet:latest-rc
+      - image: lbryweb/lbrynet:0.38
       - image: postgres:11-alpine
         environment:
           POSTGRES_USER: lbrytv
