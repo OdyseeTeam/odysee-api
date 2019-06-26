@@ -2,7 +2,6 @@ package server
 
 import (
 	"net/http"
-	"strings"
 	"syscall"
 	"testing"
 	"time"
