@@ -23,7 +23,7 @@ const errUniqueViolation = "23505"
 
 func getRemoteUser(token string) map[string]interface{} {
 	c := lbryinc.NewClient(token)
-	c.ServerAddress = config.Settings.GetString("InternalAPIHost")
+	c.ServerAddress = config.GetInternalAPIHost()
 	r, err := c.UserMe()
 	if err != nil {
 		Conn.Logger.LogF(monitor.F{monitor.TokenF: token}).Error("internal-api responded with an error: ", err)

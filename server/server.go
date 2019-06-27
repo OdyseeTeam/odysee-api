@@ -35,7 +35,7 @@ type Config struct {
 func NewConfiguredServer() *Server {
 	s := &Server{
 		Config: &Config{
-			Address: config.Settings.GetString("Address"),
+			Address: config.GetAddress(),
 		},
 		Logger:         monitor.Logger,
 		InterruptChan:  make(chan os.Signal),

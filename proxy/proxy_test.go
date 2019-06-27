@@ -377,7 +377,7 @@ func BenchmarkResolve(b *testing.B) {
 }
 
 func BenchmarkDirectResolve(b *testing.B) {
-	rpcClient := jsonrpc.NewClient(config.Settings.GetString("Lbrynet"))
+	rpcClient := jsonrpc.NewClient(config.GetLbrynet())
 	query := jsonrpc.NewRequest(methodResolve, map[string][110]string{paramUrls: homePageUrls})
 
 	wg := sync.WaitGroup{}

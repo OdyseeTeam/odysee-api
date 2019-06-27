@@ -14,7 +14,7 @@ const accountNamePrefix string = "lbry#user#id:"
 const accountNameTemplate string = accountNamePrefix + "%v"
 
 // Client is a LBRY SDK jsonrpc client instance
-var Client = ljsonrpc.NewClient(config.Settings.GetString("Lbrynet"))
+var Client = ljsonrpc.NewClient(config.GetLbrynet())
 
 var logger = monitor.NewModuleLogger("lbrynet")
 

@@ -53,13 +53,13 @@ func Init() *ConnData {
 // GetDSN generates DSN string from config parameters, which can be overridden in params.
 func GetDSN(params ConnParams) string {
 	if params.DatabaseConnection == "" {
-		params.DatabaseConnection = config.Settings.GetString("DatabaseConnection")
+		params.DatabaseConnection = config.GetDatabaseConnection()
 	}
 	if params.DatabaseName == "" {
-		params.DatabaseName = config.Settings.GetString("DatabaseName")
+		params.DatabaseName = config.GetDatabaseName()
 	}
 	if params.DatabaseOptions == "" {
-		params.DatabaseOptions = config.Settings.GetString("DatabaseOptions")
+		params.DatabaseOptions = config.GetDatabaseOptions()
 	}
 	return fmt.Sprintf(
 		"%v/%v?%v",

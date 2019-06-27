@@ -84,3 +84,38 @@ func RestoreOverridden() {
 func IsAccountV1Enabled() bool {
 	return Settings.GetBool("IsAccountV1Enabled")
 }
+
+// GetAddress determines address to bind http API server to
+func GetAddress() string {
+	return Settings.GetString("Address")
+}
+
+// GetLbrynet returns the address of SDK server to use
+func GetLbrynet() string {
+	return Settings.GetString("Lbrynet")
+}
+
+// GetInternalAPIHost returns the address of internal-api server
+func GetInternalAPIHost() string {
+	return Settings.GetString("InternalAPIHost")
+}
+
+// GetDatabaseConnection returns a url of database connection (postgres://lbrytv:lbrytv@localhost)
+func GetDatabaseConnection() string {
+	return Settings.GetString("DatabaseConnection")
+}
+
+// GetDatabaseName returns database name
+func GetDatabaseName() string {
+	return Settings.GetString("DatabaseName")
+}
+
+// GetDatabaseOptions returns additional database options passed to the driver (sslmode=disable)
+func GetDatabaseOptions() string {
+	return Settings.GetString("DatabaseOptions")
+}
+
+// GetSentryDSN returns sentry.io service DSN
+func GetSentryDSN() string {
+	return Settings.GetString("SentryDSN")
+}

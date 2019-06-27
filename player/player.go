@@ -57,7 +57,7 @@ func PlayURI(uri string, w http.ResponseWriter, req *http.Request) (err error) {
 }
 
 func newReflectedStream(uri string) (rs *reflectedStream, err error) {
-	client := ljsonrpc.NewClient(config.Settings.GetString("Lbrynet"))
+	client := ljsonrpc.NewClient(config.GetLbrynet())
 	rs = &reflectedStream{URI: uri}
 	err = rs.resolve(client)
 	return rs, err
