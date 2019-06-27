@@ -48,7 +48,7 @@ func CreateAccount(UID int) (*ljsonrpc.AccountCreateResponse, error) {
 		logger.LogF(monitor.F{"uid": UID, "account_id": account.ID}).Error("account is already registered with lbrynet")
 		return nil, AccountConflict{UID: UID}
 	}
-	r, err := Client.AccountCreate(accountName, false)
+	r, err := Client.AccountCreate(accountName, true)
 	if err != nil {
 		return nil, err
 	}

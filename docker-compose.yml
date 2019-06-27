@@ -18,8 +18,8 @@ services:
       target: /storage
     environment:
       LBRY_DOCKER_CONFIG: /daemon/daemon_settings.yml
-  lbrynet-rc:
-    image: lbryweb/lbrynet:latest-rc
+  lbrynet-38:
+    image: lbryweb/lbrynet:0.38
     ports:
       - "5581:5279"
     volumes:
