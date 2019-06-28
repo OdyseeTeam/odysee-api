@@ -19,7 +19,7 @@ services:
     environment:
       LBRY_DOCKER_CONFIG: /daemon/daemon_settings.yml
   lbrynet-38:
-    image: lbryweb/lbrynet:0.38
+    image: lbryweb/lbrynet:0.38.0
     ports:
       - "5581:5279"
     volumes:
@@ -27,7 +27,22 @@ services:
       source: storage
       target: /storage
     environment:
-      LBRY_DOCKER_CONFIG: /daemon/daemon_settings.yml
+      SDK_CONFIG: /daemon/daemon_settings.yml
+      SDK_LBRYUM_SERVERS: wallet:50001
+      # SDK_LBRYUM_SERVERS: 54.226.124.145:50001
+    depends_on:
+      - wallet
+  wallet:
+    image: lbry/wallet-server:latest
+    command: lbrynet.wallet.server.coin.LBC
+    volumes:
+    - type: bind
+      source: wallet
+      target: /wallet
+    environment:
+      # DAEMON_URL: http://lbry:lbry@127.0.0.1:9245
+      DAEMON_URL: http://lbry:lbry@127.0.0.1:11337
+      DB_DIRECTORY: /wallet
   watchtower:
     image: v2tec/watchtower
     command: --interval 30 --cleanup
@@ -50,3 +65,4 @@ services:
 volumes:
   storage:
   test_storage:
+  wallet:
