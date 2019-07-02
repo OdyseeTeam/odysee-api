@@ -1,4 +1,4 @@
-package routes
+package api
 
 import (
 	"bytes"
@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/db"
-	"github.com/lbryio/lbrytv/lbrynet"
-	"github.com/lbryio/lbrytv/monitor"
+	"github.com/lbryio/lbrytv/internal/storage"
+	"github.com/lbryio/lbrytv/internal/lbrynet"
+	"github.com/lbryio/lbrytv/internal/monitor"
 
 	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
 	"github.com/stretchr/testify/assert"

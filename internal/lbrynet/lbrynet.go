@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/monitor"
+	"github.com/lbryio/lbrytv/internal/monitor"
 
 	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
 )

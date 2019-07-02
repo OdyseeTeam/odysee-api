@@ -1,6 +1,0 @@
-data_dir: /storage/data
-download_directory: /storage/downloads
-wallet_dir: /storage/lbryum
-
-delete_blobs_on_remove: True
-use_upnp: False

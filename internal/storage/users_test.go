@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/lbrynet"
+	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/models"
 
 	"github.com/stretchr/testify/assert"

@@ -75,7 +75,7 @@ func NewModuleLogger(moduleName string) ModuleLogger {
 // LogF returns a new log entry containing additional info provided by fields,
 // which can be called upon with a corresponding logLevel.
 // Example:
-//  LogF("db", F{"query": "..."}).Info("query error")
+//  LogF("storage", F{"query": "..."}).Info("query error")
 func (l ModuleLogger) LogF(fields F) *logrus.Entry {
 	logFields := logrus.Fields{}
 	logFields["module"] = l.ModuleName

@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/lbryio/lbrytv/db"
+	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/server"
 	"github.com/lbryio/lbrytv/version"
 

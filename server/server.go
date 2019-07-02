@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/monitor"
-	"github.com/lbryio/lbrytv/routes"
+	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/lbryio/lbrytv/api"
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -70,7 +70,7 @@ func (s *Server) defaultHeadersMiddleware(next http.Handler) http.Handler {
 func (s *Server) configureRouter() *mux.Router {
 	r := mux.NewRouter()
 
-	routes.InstallRoutes(r)
+	api.InstallRoutes(r)
 
 	r.Use(monitor.RequestLoggingMiddleware)
 	r.Use(s.defaultHeadersMiddleware)

@@ -1,4 +1,4 @@
-package routes
+package api
 
 import (
 	"encoding/json"
@@ -7,16 +7,16 @@ import (
 	"net/http"
 
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/db"
-	"github.com/lbryio/lbrytv/monitor"
-	"github.com/lbryio/lbrytv/player"
-	"github.com/lbryio/lbrytv/proxy"
+	"github.com/lbryio/lbrytv/internal/storage"
+	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/lbryio/lbrytv/app/player"
+	"github.com/lbryio/lbrytv/app/proxy"
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
-var logger = monitor.NewModuleLogger("db")
+var logger = monitor.NewModuleLogger("storage")
 
 // Index just serves a blank home page
 func Index(w http.ResponseWriter, req *http.Request) {

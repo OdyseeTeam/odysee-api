@@ -49,12 +49,12 @@ func TestLogFailedQuery(t *testing.T) {
 func TestModuleLoggerLogF(t *testing.T) {
 	hook := test.NewLocal(Logger)
 
-	l := NewModuleLogger("db")
+	l := NewModuleLogger("storage")
 	l.LogF(F{"number": 1}).Info("error!")
 	require.Equal(t, 1, len(hook.Entries))
 	require.Equal(t, log.InfoLevel, hook.LastEntry().Level)
 	require.Equal(t, 1, hook.LastEntry().Data["number"])
-	require.Equal(t, "db", hook.LastEntry().Data["module"])
+	require.Equal(t, "storage", hook.LastEntry().Data["module"])
 	require.Equal(t, "error!", hook.LastEntry().Message)
 
 	hook.Reset()
@@ -63,11 +63,11 @@ func TestModuleLoggerLogF(t *testing.T) {
 func TestModuleLoggerLog(t *testing.T) {
 	hook := test.NewLocal(Logger)
 
-	l := NewModuleLogger("db")
+	l := NewModuleLogger("storage")
 	l.Log().Info("error!")
 	require.Equal(t, 1, len(hook.Entries))
 	require.Equal(t, log.InfoLevel, hook.LastEntry().Level)
-	require.Equal(t, "db", hook.LastEntry().Data["module"])
+	require.Equal(t, "storage", hook.LastEntry().Data["module"])
 	require.Equal(t, "error!", hook.LastEntry().Message)
 
 	hook.Reset()

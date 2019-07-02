@@ -28,7 +28,11 @@ snapshot:
 
 .PHONY: image
 image:
-	docker build -t lbryweb/lbryweb-go:$(VERSION) -t lbryweb/lbryweb-go:latest .
+	docker build -t lbry/lbrytv:$(VERSION) -t lbry/lbrytv:latest ./deployments/docker/app
+
+.PHONY: dev_image
+dev_image:
+	docker build -t lbry/lbrytv:$(VERSION) -t lbry/lbrytv:latest ./deployments/docker/app
 
 .PHONY: publish_image
 publish_image:

@@ -1,0 +1,17 @@
+FROM lbry/wallet-server:latest
+
+EXPOSE 50001
+
+ARG host=0.0.0.0
+ARG tcp_port=50001
+ARG daemon_url=http://lbry:lbry@lbrycrd:9245/
+ENV TCP_PORT=$tcp_port
+ENV HOST=$host
+ENV DAEMON_URL=$daemon_url
+# ENV DB_DIRECTORY=$db_dir
+ENV BANDWIDTH_LIMIT=1000000000000000000000000000000000000000000
+ENV MAX_SESSIONS=1000000000
+ENV MAX_SEND=1000000000000000000
+ENV EVENT_LOOP_POLICY=uvloop
+
+CMD ["/home/lbry/.local/bin/torba-server"]

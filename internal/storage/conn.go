@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/monitor"
+	"github.com/lbryio/lbrytv/internal/monitor"
 
 	"github.com/gobuffalo/packr/v2"
 	_ "github.com/jinzhu/gorm/dialects/postgres" // Dialect import
@@ -76,7 +76,7 @@ func GetDefaultDSN() string {
 
 // NewConnection sets up a database object, panics if unable to connect.
 func NewConnection(dsn string) *ConnData {
-	c := ConnData{dialect: "postgres", Logger: monitor.NewModuleLogger("db")}
+	c := ConnData{dialect: "postgres", Logger: monitor.NewModuleLogger("storage")}
 	c.Logger.LogF(monitor.F{"dsn": dsn}).Info("connecting to the database")
 	db, err := connect(c.dialect, dsn)
 	if err != nil {

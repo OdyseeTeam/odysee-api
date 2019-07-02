@@ -8,7 +8,7 @@ services:
     environment:
      POSTGRES_USER: lbrytv
      POSTGRES_PASSWORD: lbrytv
-  lbrynet:
+  lbrynet37:
     image: lbryweb/lbrynet:0.37.3
     ports:
       - "5579:5279"
@@ -18,7 +18,7 @@ services:
       target: /storage
     environment:
       LBRY_DOCKER_CONFIG: /daemon/daemon_settings.yml
-  lbrynet-38:
+  lbrynet:
     image: lbryweb/lbrynet:0.38.0
     ports:
       - "5581:5279"
@@ -33,7 +33,7 @@ services:
     depends_on:
       - wallet
   wallet:
-    image: lbry/wallet-server:latest
+    image: lbry/lbrytv-wallet:latest
     command: lbrynet.wallet.server.coin.LBC
     volumes:
     - type: bind
@@ -41,15 +41,24 @@ services:
       target: /wallet
     environment:
       # DAEMON_URL: http://lbry:lbry@127.0.0.1:9245
-      DAEMON_URL: http://lbry:lbry@127.0.0.1:11337
+      DAEMON_URL: http://lbry:lbry@lbrycrd:9245
       DB_DIRECTORY: /wallet
+    depends_on:
+      - lbrycrd
+  lbrycrd:
+    image: lbry/lbrycrd:linux-x86_64-production
+    environment:
+      RPC_USER: lbry
+      RPC_PASSWORD: lbry
+      RUN_MODE: default # Available options are testnet, regtest, chainquery, default, and reindex
+      RPC_ALLOW_IP: 0.0.0.0/0
   watchtower:
     image: v2tec/watchtower
     command: --interval 30 --cleanup
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
   app:
-    image: lbryweb/lbryweb-go:latest-dev
+    image: lbry/lbrytv:latest-dev
     ports:
       - "8080:8080"
     volumes:
