@@ -20,7 +20,7 @@ builds:
     post: packr2 clean
   ldflags:
   - '-s -w -X github.com/lbryio/lbrytv/version.version={{.Version}} -X github.com/lbryio/lbrytv/version.commit={{.ShortCommit}} -X github.com/lbryio/lbrytv/version.date={{.Date}}'
-  main: ./cmd/lbrytv/main.go
+  main: ./main.go
 
 archive:
   replacements:
