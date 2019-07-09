@@ -12,6 +12,7 @@ type VersionTag struct {
 }
 
 func configureSentry(release, env string) {
+	config.InitConfig()
 	dsn := config.GetSentryDSN()
 	if dsn == "" {
 		return

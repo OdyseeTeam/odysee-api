@@ -50,7 +50,7 @@ func TestProxy(t *testing.T) {
 	var parsedResponse jsonrpc.RPCResponse
 	resolveResponse := make(ljsonrpc.ResolveResponse)
 
-	query = jsonrpc.NewRequest("resolve", map[string]string{"urls": "what"})
+	query = jsonrpc.NewRequest("resolve", map[string]string{"urls": "one"})
 	queryBody, _ = json.Marshal(query)
 	request, _ := http.NewRequest("POST", "/api/proxy", bytes.NewBuffer(queryBody))
 	rr := httptest.NewRecorder()
@@ -64,7 +64,7 @@ func TestProxy(t *testing.T) {
 		panic(err)
 	}
 	ljsonrpc.Decode(parsedResponse.Result, &resolveResponse)
-	assert.Equal(t, "what", resolveResponse["what"].Name)
+	assert.Equal(t, "one", resolveResponse["one"].Name)
 }
 
 func TestContentByURL_NoPayment(t *testing.T) {

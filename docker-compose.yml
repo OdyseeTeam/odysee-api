@@ -30,28 +30,43 @@ services:
       SDK_CONFIG: /daemon/daemon_settings.yml
       SDK_LBRYUM_SERVERS: wallet:50001
       # SDK_LBRYUM_SERVERS: 54.226.124.145:50001
+      # SDK_LBRYUM_SERVERS: spv1.lbry.com:50001
     depends_on:
       - wallet
+
   wallet:
-    image: lbry/lbrytv-wallet:latest
-    command: lbrynet.wallet.server.coin.LBC
+    # image: lbry/wallet-server:master
+    image: lbry/wallet-server:lbrytv-latest
+    # command: lbry.wallet.server.coin.LBC
+    ports:
+      - "50001:50001"
     volumes:
     - type: bind
       source: wallet
       target: /wallet
     environment:
       # DAEMON_URL: http://lbry:lbry@127.0.0.1:9245
+      TCP_PORT: 50001
+      HOST: 0.0.0.0
       DAEMON_URL: http://lbry:lbry@lbrycrd:9245
       DB_DIRECTORY: /wallet
+      MAX_SUBS: 1000000000000
+      BANDWIDTH_LIMIT: 80000000000
+      SESSION_TIMEOUT: 10000000000000000000000000
     depends_on:
       - lbrycrd
   lbrycrd:
     image: lbry/lbrycrd:linux-x86_64-production
+    volumes:
+    - type: bind
+      source: lbrycrd
+      target: /data
     environment:
       RPC_USER: lbry
       RPC_PASSWORD: lbry
       RUN_MODE: default # Available options are testnet, regtest, chainquery, default, and reindex
       RPC_ALLOW_IP: 0.0.0.0/0
+      TCP_PORT: 50001
   watchtower:
     image: v2tec/watchtower
     command: --interval 30 --cleanup
@@ -75,3 +90,4 @@ volumes:
   storage:
   test_storage:
   wallet:
+  lbrycrd:

@@ -1,52 +1,84 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/spf13/viper"
 )
 
-// Settings stores project settings such as download paths, host prefix for URLs and so on
-var Settings = viper.New()
+type ConfigWrapper struct {
+	viper      *viper.Viper
+	overridden map[string]interface{}
+	ReadDone   bool
+}
 
-// overriddenValues stores overridden settings values
+var once sync.Once
+var Config *ConfigWrapper
+
+// overriddenValues stores overridden v values
 // and is initialized as an empty map in the read method
 var overriddenValues map[string]interface{}
 
-func init() {
-	read()
+func GetConfig() *ConfigWrapper {
+	once.Do(func() {
+		Config = &ConfigWrapper{}
+		Config.Init()
+		Config.Read()
+	})
+	return Config
 }
 
-// read parses `lbrytv.yml`
-func read() {
-	Settings.SetEnvPrefix("LW")
-	Settings.BindEnv("Debug")
-	Settings.SetDefault("Debug", false)
-	Settings.BindEnv("Lbrynet")
-	Settings.SetDefault("Lbrynet", "http://localhost:5279/")
+func InitConfig() {
+	GetConfig()
+}
 
-	Settings.SetDefault("Address", ":8080")
-	Settings.SetDefault("Host", "http://localhost:8080")
-	Settings.SetDefault("BaseContentURL", "http://localhost:8080/content/")
+func Viper() *viper.Viper {
+	return GetConfig().Viper()
+}
 
-	Settings.SetDefault("IsAccountV1Enabled", true)
+func (c *ConfigWrapper) Viper() *viper.Viper {
+	return c.viper
+}
 
-	Settings.SetConfigName("lbrytv") // name of config file (without extension)
-	Settings.AddConfigPath("./")
-	Settings.AddConfigPath("../")
-	Settings.AddConfigPath("$HOME/.lbrytv")
-	err := Settings.ReadInConfig()
+func (c *ConfigWrapper) Init() {
+	c.overridden = make(map[string]interface{})
+	c.viper = viper.New()
+
+	c.Viper().SetEnvPrefix("LW")
+	c.Viper().BindEnv("Debug")
+	c.Viper().SetDefault("Debug", false)
+	c.Viper().BindEnv("Lbrynet")
+	c.Viper().SetDefault("Lbrynet", "http://localhost:5279/")
+
+	c.Viper().SetDefault("Address", ":8080")
+	c.Viper().SetDefault("Host", "http://localhost:8080")
+	c.Viper().SetDefault("BaseContentURL", "http://localhost:8080/content/")
+
+	c.Viper().SetDefault("IsAccountV1Enabled", true)
+
+	c.Viper().SetConfigName("lbrytv") // name of config file (without extension)
+
+	c.Viper().AddConfigPath(os.Getenv("LBRYTV_CONFIG_DIR"))
+	c.Viper().AddConfigPath(ProjectRoot())
+	c.Viper().AddConfigPath(".")
+	c.Viper().AddConfigPath("..")
+	c.Viper().AddConfigPath("../..")
+	c.Viper().AddConfigPath("$HOME/.lbrytv")
+}
+
+func (c *ConfigWrapper) Read() {
+	err := c.Viper().ReadInConfig()
 	if err != nil {
-		panic(fmt.Errorf("fatal error reading config file: %s", err))
+		panic(err)
 	}
-	overriddenValues = make(map[string]interface{})
+	c.ReadDone = true
 }
 
 // IsProduction is true if we are running in a production environment
 func IsProduction() bool {
-	return !Settings.GetBool("Debug")
+	return !Viper().GetBool("Debug")
 }
 
 func ProjectRoot() string {
@@ -63,59 +95,63 @@ func ProjectRoot() string {
 //	defer config.RestoreOverridden()
 //	...
 func Override(key string, value interface{}) {
-	overriddenValues[key] = Settings.Get(key)
-	Settings.Set(key, value)
+	c := GetConfig()
+	c.overridden[key] = c.Viper().Get(key)
+	c.Viper().Set(key, value)
 }
 
-// RestoreOverridden restores original settings values overridden by Override
+// RestoreOverridden restores original v values overridden by Override
 func RestoreOverridden() {
-	if len(overriddenValues) == 0 {
+	c := GetConfig()
+	v := c.Viper()
+	if len(c.overridden) == 0 {
 		return
 	}
-	for k, v := range overriddenValues {
-		Settings.Set(k, v)
+	for k, val := range c.overridden {
+		v.Set(k, val)
 	}
-	overriddenValues = make(map[string]interface{})
+	c.overridden = make(map[string]interface{})
 }
 
-// Concrete settings variables go here
+// Concrete v variables go here
 
 // IsAccountV1Enabled enables or disables Account Subsystem V1 (database + plain auth_token)
 func IsAccountV1Enabled() bool {
-	return Settings.GetBool("IsAccountV1Enabled")
+
+	return Viper().GetBool("IsAccountV1Enabled")
 }
 
 // GetAddress determines address to bind http API server to
 func GetAddress() string {
-	return Settings.GetString("Address")
+	return Viper().GetString("Address")
 }
 
 // GetLbrynet returns the address of SDK server to use
 func GetLbrynet() string {
-	return Settings.GetString("Lbrynet")
+	return Viper().GetString("Lbrynet")
 }
 
 // GetInternalAPIHost returns the address of internal-api server
 func GetInternalAPIHost() string {
-	return Settings.GetString("InternalAPIHost")
+	return Viper().GetString("InternalAPIHost")
 }
 
 // GetDatabaseConnection returns a url of database connection (postgres://lbrytv:lbrytv@localhost)
 func GetDatabaseConnection() string {
-	return Settings.GetString("DatabaseConnection")
+	return Viper().GetString("DatabaseConnection")
 }
 
 // GetDatabaseName returns database name
 func GetDatabaseName() string {
-	return Settings.GetString("DatabaseName")
+	return Viper().GetString("DatabaseName")
 }
 
 // GetDatabaseOptions returns additional database options passed to the driver (sslmode=disable)
 func GetDatabaseOptions() string {
-	return Settings.GetString("DatabaseOptions")
+	return Viper().GetString("DatabaseOptions")
 }
 
 // GetSentryDSN returns sentry.io service DSN
 func GetSentryDSN() string {
-	return Settings.GetString("SentryDSN")
+	return Viper().GetString("SentryDSN")
 }
