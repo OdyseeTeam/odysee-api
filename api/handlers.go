@@ -7,16 +7,16 @@ import (
 	"net/http"
 
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/app/player"
 	"github.com/lbryio/lbrytv/app/proxy"
+	"github.com/lbryio/lbrytv/app/users"
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
-var logger = monitor.NewModuleLogger("storage")
+var logger = monitor.NewModuleLogger("api")
 
 // Index just serves a blank home page
 func Index(w http.ResponseWriter, req *http.Request) {
@@ -51,7 +51,7 @@ func Proxy(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if config.IsAccountV1Enabled() {
-		accountID, err = db.GetAccountIDFromRequest(req)
+		accountID, err = users.GetAccountIDFromRequest(req)
 		if err != nil {
 			response, _ := json.Marshal(proxy.NewErrorResponse(err.Error(), proxy.ErrProxyAuthFailed))
 			w.WriteHeader(http.StatusForbidden)

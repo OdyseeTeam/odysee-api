@@ -1,4 +1,4 @@
-package db
+package storage
 
 import (
 	"fmt"
@@ -7,10 +7,7 @@ import (
 	"github.com/volatiletech/sqlboiler/queries"
 )
 
-var tables = []string{
-	"users",
-}
 
-func Cleanup(c ConnData) {
+func Cleanup(c ConnData, tables []string) {
 	queries.Raw(fmt.Sprintf("TRUNCATE %s CASCADE;", strings.Join(tables, ", "))).Exec(c.DB)
 }

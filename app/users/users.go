@@ -1,4 +1,4 @@
-package db
+package users
 
 import (
 	"database/sql"
@@ -16,6 +16,10 @@ import (
 	"github.com/volatiletech/sqlboiler/boil"
 )
 
+type UserService struct {
+	logger  monitor.ModuleLogger
+}
+
 // TokenHeader is the name of HTTP header which is supplied by client and should contain internal-api auth_token
 const TokenHeader string = "X-Lbry-Auth-Token"
 const idPrefix string = "id:"
@@ -26,7 +30,7 @@ func getRemoteUser(token string) map[string]interface{} {
 	c.ServerAddress = config.GetInternalAPIHost()
 	r, err := c.UserMe()
 	if err != nil {
-		Conn.Logger.LogF(monitor.F{monitor.TokenF: token}).Error("internal-api responded with an error: ", err)
+		// Conn.Logger.LogF(monitor.F{monitor.TokenF: token}).Error("internal-api responded with an error: ", err)
 		// No user found in internal-apis database, give up at this point
 		return nil
 	}
@@ -43,7 +47,7 @@ func GetUserByToken(token string) (*models.User, error) {
 
 	rUser := getRemoteUser(token)
 	if rUser == nil {
-		Conn.Logger.LogF(monitor.F{monitor.TokenF: token}).Info("couldn't authenticate user with internal-apis")
+		// Conn.Logger.LogF(monitor.F{monitor.TokenF: token}).Info("couldn't authenticate user with internal-apis")
 		return nil, errors.New("cannot authenticate user with internal-apis")
 	}
 	id = int(rUser["id"].(float64))
@@ -52,7 +56,7 @@ func GetUserByToken(token string) (*models.User, error) {
 		email = rUser["primary_email"].(string)
 	}
 
-	logger := Conn.Logger.LogF(monitor.F{monitor.TokenF: token, "id": id, "email": email})
+	logger := monitor.NewModuleLogger("users").LogF(monitor.F{monitor.TokenF: token, "id": id, "email": email})
 
 	u, err := getLocalUser(id)
 

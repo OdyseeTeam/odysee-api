@@ -53,7 +53,7 @@ func launchDummyAPIServerDelayed(response []byte, delayMsec time.Duration) *http
 
 func cleanup() {
 	lbrynet.RemoveAccount(dummyUserID)
-	db.Cleanup(*db.Conn)
+	storage.Cleanup(*storage.Conn, []string{"users"})
 }
 
 func TestWithValidAuthToken(t *testing.T) {

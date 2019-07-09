@@ -1,4 +1,4 @@
-package db
+package users
 
 import (
 	"net/http"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
+	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/models"
 
 	"github.com/stretchr/testify/assert"
@@ -34,7 +35,9 @@ func TestMain(m *testing.M) {
 
 func cleanup() {
 	lbrynet.RemoveAccount(dummyUserID)
-	Cleanup(*Conn)
+	storage.Cleanup(*storage.Conn, []string{
+		"users",
+	})
 }
 
 func TestGetUser_New(t *testing.T) {
