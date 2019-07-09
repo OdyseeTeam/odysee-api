@@ -71,7 +71,7 @@ func TestGetUser_New(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	u, err := GetUserByToken("abc")
+	u, err := NewUserService("abc").GetUser()
 	require.Nil(t, err)
 	require.NotNil(t, u)
 
@@ -111,11 +111,13 @@ func TestGetUser_Existing(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	u, err := GetUserByToken("abc")
+	s := NewUserService("abc")
+
+	u, err := s.GetUser()
 	require.Nil(t, err)
 	require.NotNil(t, u)
 
-	u, err = GetUserByToken("abc")
+	u, err = s.GetUser()
 	require.Nil(t, err)
 	assert.EqualValues(t, dummyUserID, u.ID)
 
@@ -135,13 +137,13 @@ func TestGetUser_Nonexistent(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	u, err := GetUserByToken("non-existent-token")
+	u, err := NewUserService("non-existent-token").GetUser()
 	require.NotNil(t, err)
 	require.Nil(t, u)
-	assert.Equal(t, "cannot authenticate user with internal-apis", err.Error())
+	assert.Equal(t, "cannot authenticate user with internal-apis: could not authenticate user", err.Error())
 }
 
-func TestGetUser_EmptyEmail(t *testing.T) {
+func TestGetUser_EmptyEmail_NoUser(t *testing.T) {
 	cleanup()
 	ts := launchDummyAPIServer([]byte(`{
 		"success": true,
@@ -171,9 +173,9 @@ func TestGetUser_EmptyEmail(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	u, err := GetUserByToken("abc")
-	require.Nil(t, err)
-	require.NotNil(t, u)
+	u, err := NewUserService("abc").GetUser()
+	assert.Nil(t, u)
+	assert.EqualError(t, err, "cannot authenticate user: email is empty/not confirmed")
 }
 
 func TestGetAccountIDFromRequest_NoToken(t *testing.T) {
@@ -221,7 +223,7 @@ func TestGetAccountIDFromRequest_Existing(t *testing.T) {
 	id, err := GetAccountIDFromRequest(r)
 	require.Nil(t, err)
 
-	u, err := GetUserByToken("abc")
+	u, err := NewUserService("abc").GetUser()
 	require.Nil(t, err)
 
 	assert.EqualValues(t, u.SDKAccountID, id)
@@ -243,6 +245,6 @@ func TestGetAccountIDFromRequest_Nonexistent(t *testing.T) {
 
 	id, err := GetAccountIDFromRequest(r)
 	require.NotNil(t, err)
-	assert.Equal(t, "cannot authenticate user with internal-apis", err.Error())
+	assert.Equal(t, "cannot authenticate user with internal-apis: could not authenticate user", err.Error())
 	assert.Equal(t, "", id)
 }

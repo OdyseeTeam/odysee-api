@@ -4,111 +4,127 @@ import (
 	"database/sql"
 	"net/http"
 
-	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
-	"github.com/lbryio/lbrytv/models"
 	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/lbryio/lbrytv/models"
 
 	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
-	"github.com/lbryio/lbry.go/extras/lbryinc"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/volatiletech/sqlboiler/boil"
 )
 
+// UserService stores manipulated user data
 type UserService struct {
-	logger  monitor.ModuleLogger
+	token string
+	log   *logrus.Entry
 }
 
-// TokenHeader is the name of HTTP header which is supplied by client and should contain internal-api auth_token
+// TokenHeader is the name of HTTP header which is supplied by client and should contain internal-api auth_token.
 const TokenHeader string = "X-Lbry-Auth-Token"
 const idPrefix string = "id:"
 const errUniqueViolation = "23505"
 
-func getRemoteUser(token string) map[string]interface{} {
-	c := lbryinc.NewClient(token)
-	c.ServerAddress = config.GetInternalAPIHost()
-	r, err := c.UserMe()
-	if err != nil {
-		// Conn.Logger.LogF(monitor.F{monitor.TokenF: token}).Error("internal-api responded with an error: ", err)
-		// No user found in internal-apis database, give up at this point
-		return nil
+// NewUserService returns UserService instance for retrieving or creating user records and accounts.
+func NewUserService(token string) *UserService {
+	s := &UserService{
+		token: token,
 	}
-	return r
+	s.updateLogger(monitor.F{})
+	return s
 }
 
-// GetUserByToken retrieves user by internal-api auth_token
-func GetUserByToken(token string) (*models.User, error) {
-	var (
-		u     *models.User
-		id    int
-		email string
-	)
+func (s *UserService) updateLogger(fields monitor.F) {
+	fields[monitor.TokenF] = s.token
+	s.log = monitor.NewModuleLogger("users").LogF(fields)
+}
 
-	rUser := getRemoteUser(token)
-	if rUser == nil {
-		// Conn.Logger.LogF(monitor.F{monitor.TokenF: token}).Info("couldn't authenticate user with internal-apis")
-		return nil, errors.New("cannot authenticate user with internal-apis")
-	}
-	id = int(rUser["id"].(float64))
+func (s *UserService) getLocalUser(id int) (*models.User, error) {
+	return models.Users(models.UserWhere.ID.EQ(id)).OneG()
+}
 
-	if rUser["primary_email"] != nil {
-		email = rUser["primary_email"].(string)
-	}
+func (s *UserService) createLocalUser(id int) (*models.User, error) {
+	u := new(models.User)
+	u.ID = id
+	err := u.InsertG(boil.Infer())
 
-	logger := monitor.NewModuleLogger("users").LogF(monitor.F{monitor.TokenF: token, "id": id, "email": email})
-
-	u, err := getLocalUser(id)
-
-	if err == sql.ErrNoRows {
-		u = new(models.User)
-		u.ID = id
-		err = u.InsertG(boil.Infer())
-
-		if err != nil {
-			// Check if we encountered a primary key violation, it would mean another goroutine
-			// has created a user before us so we should try retrieving it again.
-			switch baseErr := errors.Cause(err).(type) {
-			case *pq.Error:
-				if baseErr.Code == errUniqueViolation && baseErr.Column == "users_pkey" {
-					logger.Debug("user creation conflict, trying to retrieve local user again")
-					u, retryErr := getLocalUser(id)
-					if retryErr != nil {
-						return u, retryErr
-					}
+	if err != nil {
+		// Check if we encountered a primary key violation, it would mean another routine
+		// fired from another request has managed to create a user before us so we should try retrieving it again.
+		switch baseErr := errors.Cause(err).(type) {
+		case *pq.Error:
+			if baseErr.Code == errUniqueViolation && baseErr.Column == "users_pkey" {
+				s.log.Debug("user creation conflict, trying to retrieve local user again")
+				u, retryErr := s.getLocalUser(id)
+				if retryErr != nil {
+					return nil, retryErr
 				}
-			default:
-				logger.Error("unknown error encountered while creating user: ", err)
-				return nil, err
+				return u, nil
 			}
+		default:
+			s.log.Error("unknown error encountered while creating user: ", err)
+			return nil, err
 		}
-
-		newAccount, sdkErr := lbrynet.CreateAccount(id)
-		if sdkErr != nil {
-			switch sdkErr.(type) {
-			case lbrynet.AccountConflict:
-				logger.Info("account creation conflict, proceeding")
-			default:
-				return u, err
-			}
-		} else {
-			err = renderAccountOntoLocalUser(newAccount, u)
-			if err != nil {
-				return nil, err
-			}
-			logger.Info("created an sdk account")
-		}
-	} else if err != nil {
-		return u, err
 	}
 	return u, nil
 }
 
-func getLocalUser(id int) (*models.User, error) {
-	return models.Users(models.UserWhere.ID.EQ(id)).OneG()
+// GetUser authenticates user with internal-api and retrieves/creates locally stored user.
+func (s *UserService) GetUser() (*models.User, error) {
+	var localUser *models.User
+
+	remoteUser, err := getRemoteUser(s.token)
+	if err != nil {
+		s.log.Info("couldn't authenticate user with internal-apis")
+		return nil, errors.Errorf("cannot authenticate user with internal-apis: %v", err)
+	}
+
+	s.updateLogger(monitor.F{"id": remoteUser.ID, "email": remoteUser.Email})
+
+	if remoteUser.Email == "" {
+		s.log.Info("empty email for internal-api user")
+		return nil, errors.New("cannot authenticate user: email is empty/not confirmed")
+	}
+
+	localUser, errStorage := s.getLocalUser(remoteUser.ID)
+	if errStorage == sql.ErrNoRows {
+		localUser, err = s.createLocalUser(remoteUser.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		err = s.createSDKAccount(localUser)
+		if err != nil {
+			return nil, err
+		}
+	} else if errStorage != nil {
+		return nil, errStorage
+	}
+
+	return localUser, nil
 }
 
-func renderAccountOntoLocalUser(a *ljsonrpc.AccountCreateResponse, u *models.User) error {
+func (s *UserService) createSDKAccount(u *models.User) error {
+	newAccount, err := lbrynet.CreateAccount(u.ID)
+	if err != nil {
+		switch err.(type) {
+		case lbrynet.AccountConflict:
+			s.log.Info("account creation conflict, proceeding")
+		default:
+			return err
+		}
+	} else {
+		err = s.saveSDKFields(newAccount, u)
+		if err != nil {
+			return err
+		}
+		s.log.Info("created an sdk account")
+	}
+	return nil
+}
+
+func (s *UserService) saveSDKFields(a *ljsonrpc.AccountCreateResponse, u *models.User) error {
 	u.SDKAccountID = a.ID
 	u.PrivateKey = a.PrivateKey
 	u.PublicKey = a.PublicKey
@@ -118,10 +134,11 @@ func renderAccountOntoLocalUser(a *ljsonrpc.AccountCreateResponse, u *models.Use
 }
 
 // GetAccountIDFromRequest retrieves SDK  account_id of a user making a http request
-// by a header provided by the http client
+// by a header provided by http client.
 func GetAccountIDFromRequest(req *http.Request) (string, error) {
 	if token, ok := req.Header[TokenHeader]; ok {
-		u, err := GetUserByToken(token[0])
+		s := NewUserService(token[0])
+		u, err := s.GetUser()
 		if err != nil {
 			return "", err
 		}

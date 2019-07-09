@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/lbryio/lbrytv/internal/storage"
 
 	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
 	"github.com/stretchr/testify/assert"
@@ -195,7 +195,7 @@ func TestWithWrongAuthToken(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, rr.Code)
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.Nil(t, err)
-	assert.Equal(t, "cannot authenticate user with internal-apis", response.Error.Message)
+	assert.Equal(t, "cannot authenticate user with internal-apis: could not authenticate user", response.Error.Message)
 }
 
 func TestWithoutToken(t *testing.T) {
