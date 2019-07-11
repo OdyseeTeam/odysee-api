@@ -14,6 +14,12 @@ type ConfigWrapper struct {
 	ReadDone   bool
 }
 
+type DBConfig struct {
+	Connection string
+	DBName     string
+	Options    string
+}
+
 var once sync.Once
 var Config *ConfigWrapper
 
@@ -136,19 +142,11 @@ func GetInternalAPIHost() string {
 	return Viper().GetString("InternalAPIHost")
 }
 
-// GetDatabaseConnection returns a url of database connection (postgres://lbrytv:lbrytv@localhost)
-func GetDatabaseConnection() string {
-	return Viper().GetString("DatabaseConnection")
-}
-
-// GetDatabaseName returns database name
-func GetDatabaseName() string {
-	return Viper().GetString("DatabaseName")
-}
-
-// GetDatabaseOptions returns additional database options passed to the driver (sslmode=disable)
-func GetDatabaseOptions() string {
-	return Viper().GetString("DatabaseOptions")
+// GetDatabase returns postgresql database server connection config
+func GetDatabase() DBConfig {
+	var config DBConfig
+	Viper().UnmarshalKey("Database", &config)
+	return config
 }
 
 // GetSentryDSN returns sentry.io service DSN

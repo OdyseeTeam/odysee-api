@@ -3,133 +3,92 @@ package storage
 import (
 	"fmt"
 
-	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
-	"github.com/gobuffalo/packr/v2"
 	_ "github.com/jinzhu/gorm/dialects/postgres" // Dialect import
 	"github.com/jmoiron/sqlx"
-	"github.com/lib/pq"
-	migrate "github.com/rubenv/sql-migrate"
 	"github.com/volatiletech/sqlboiler/boil"
 )
 
-// Connection implements the app database handler.
-type Connection interface {
+// Handler implements the app database handler.
+type Handler interface {
 	MigrateUp()
 	MigrateDown()
+	Connect()
 }
 
-// ConnData holds connection data.
-type ConnData struct {
+// Connection holds connection data.
+type Connection struct {
 	DB      *sqlx.DB
 	dialect string
-	Logger  monitor.ModuleLogger
+	params  ConnParams
+	logger  monitor.ModuleLogger
 }
 
-// ConnParams holds database server parameters.
+// ConnParams are accepted by InitConn, containing database server parameters.
 type ConnParams struct {
-	DatabaseConnection string
-	DatabaseName       string
-	DatabaseOptions    string
+	Connection string
+	DBName     string
+	Options    string
 }
 
-// Conn is a module-level connection-holding variable
-var Conn *ConnData
+// Conn holds a global database connection.
+var Conn *Connection
 
-func init() {
-	Init()
-}
-
-// Init initializes a module-level connection object
-func Init() *ConnData {
-	if Conn == nil {
-		Conn = NewConnection(GetDefaultDSN())
-	}
-	boil.SetDB(Conn.DB)
-	return Conn
-}
-
-// GetDSN generates DSN string from config parameters, which can be overridden in params.
-func GetDSN(params ConnParams) string {
-	if params.DatabaseConnection == "" {
-		params.DatabaseConnection = config.GetDatabaseConnection()
-	}
-	if params.DatabaseName == "" {
-		params.DatabaseName = config.GetDatabaseName()
-	}
-	if params.DatabaseOptions == "" {
-		params.DatabaseOptions = config.GetDatabaseOptions()
-	}
+// MakeDSN generates DSN string from ConnParams.
+func MakeDSN(params ConnParams) string {
 	return fmt.Sprintf(
 		"%v/%v?%v",
-		params.DatabaseConnection,
-		params.DatabaseName,
-		params.DatabaseOptions,
+		params.Connection,
+		params.DBName,
+		params.Options,
 	)
 }
 
-// GetDefaultDSN is a wrapper for GetDSN without params.
-func GetDefaultDSN() string {
-	return GetDSN(ConnParams{})
+// InitConn initializes a module-level connection object.
+func InitConn(params ConnParams) *Connection {
+	c := &Connection{
+		dialect: "postgres",
+		logger:  monitor.NewModuleLogger("storage"),
+		params:  params,
+	}
+	return c
 }
 
-// NewConnection sets up a database object, panics if unable to connect.
-func NewConnection(dsn string) *ConnData {
-	c := ConnData{dialect: "postgres", Logger: monitor.NewModuleLogger("storage")}
-	c.Logger.LogF(monitor.F{"dsn": dsn}).Info("connecting to the database")
-	db, err := connect(c.dialect, dsn)
+// Connect initiates a connection to the database server defined in c.params.
+func (c *Connection) Connect() error {
+	dsn := MakeDSN(c.params)
+	c.logger.LogF(monitor.F{"dsn": dsn}).Info("connecting to the DB")
+	db, err := sqlx.Connect(c.dialect, dsn)
 	if err != nil {
-		panic(err)
+		c.logger.LogF(monitor.F{"dsn": dsn}).Info("DB connection failed")
+		return err
 	}
-
 	c.DB = db
-	return &c
+	return nil
 }
 
-func connect(dialect, dsn string) (*sqlx.DB, error) {
-	conn, err := sqlx.Connect(dialect, dsn)
-	return conn, err
+// SetDefaultConnection sets global database connection object that other packages can import and utilize.
+// You want to call that once in your main.go (or another entrypoint) after the physical
+// DB connection has been established.
+func (c *Connection) SetDefaultConnection() {
+	boil.SetDB(c.DB)
+	Conn = c
 }
 
-// MigrateUp executes forward migrations.
-func (c ConnData) MigrateUp() {
-	migrations := &migrate.PackrMigrationSource{
-		Box: packr.New("migrations", "./migrations"),
-		Dir: ".",
-	}
-	n, err := migrate.Exec(c.DB.DB, c.dialect, migrations, migrate.Up)
+// Close terminates the database server connection.
+func (c *Connection) Close() error {
+	err := c.DB.Close()
 	if err != nil {
-		c.Logger.Log().Panicf("failed to migrate the database up: %v", err)
+		c.logger.Log().Errorf("error closing connection to %s: %v", c.params.DBName, err)
 	}
-	c.Logger.LogF(monitor.F{"migrations_number": n}).Info("migrated the database up")
-}
-
-// MigrateDown undoes the previous migration.
-func (c ConnData) MigrateDown() {
-	migrations := &migrate.PackrMigrationSource{
-		Box: packr.New("migrations", "./migrations"),
-		Dir: ".",
-	}
-	n, err := migrate.Exec(c.DB.DB, c.dialect, migrations, migrate.Down)
-	if err != nil {
-		c.Logger.Log().Panicf("failed to migrate the database down: %v", err)
-	}
-	c.Logger.LogF(monitor.F{"migrations_number": n}).Info("migrated the database down")
-}
-
-// CreateDB creates the requested database.
-func CreateDB(dbName string) (err error) {
-	c := NewConnection(GetDSN(ConnParams{DatabaseName: "postgres"}))
-	// fmt.Sprintf is used instead of query placeholders because postgres does not
-	// handle them in schema-modifying queries
-	_, err = c.DB.Exec(fmt.Sprintf("create database %s;", pq.QuoteIdentifier(dbName)))
 	return err
 }
 
-// DropDB drops the requested database.
-func DropDB(dbName string) (err error) {
-	c := NewConnection(GetDSN(ConnParams{DatabaseName: "postgres"}))
-	_, err = c.DB.Exec(fmt.Sprintf("drop database %s;", pq.QuoteIdentifier(dbName)))
-	return err
+// SpawnConn creates a connection to another database on the same server.
+func (c *Connection) SpawnConn(dbName string) (*Connection, error) {
+	p := c.params
+	p.DBName = dbName
+	cSpawn := InitConn(p)
+	return cSpawn, cSpawn.Connect()
 }

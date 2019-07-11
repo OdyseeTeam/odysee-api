@@ -25,12 +25,27 @@ const dummyUserID = 751365
 const dummyServerURL = "http://127.0.0.1:59999"
 const proxySuffix = "/api/proxy"
 
+var dbConfig config.DBConfig
+var params storage.ConnParams
+
 func TestMain(m *testing.M) {
 	// call flag.Parse() here if TestMain uses flags
 	config.Override("IsAccountV1Enabled", 1)
 	defer config.RestoreOverridden()
+
+	dbConfig = config.GetDatabase()
+	params = storage.ConnParams{
+		Connection: dbConfig.Connection,
+		DBName:     dbConfig.DBName,
+		Options:    dbConfig.Options,
+	}
+	c, connCleanup := storage.CreateTestConn(params)
+	c.SetDefaultConnection()
+	defer connCleanup()
+	defer lbrynet.RemoveAccount(dummyUserID)
+
 	code := m.Run()
-	cleanup()
+
 	os.Exit(code)
 }
 
@@ -51,14 +66,7 @@ func launchDummyAPIServerDelayed(response []byte, delayMsec time.Duration) *http
 	}))
 }
 
-func cleanup() {
-	lbrynet.RemoveAccount(dummyUserID)
-	storage.Cleanup(*storage.Conn, []string{"users"})
-}
-
 func TestWithValidAuthToken(t *testing.T) {
-	cleanup()
-
 	var (
 		q        *jsonrpc.RPCRequest
 		qBody    []byte
@@ -111,8 +119,6 @@ func TestWithValidAuthToken(t *testing.T) {
 }
 
 func TestWithValidAuthTokenConcurrent(t *testing.T) {
-	cleanup()
-
 	var wg sync.WaitGroup
 
 	ts := launchDummyAPIServerDelayed([]byte(`{
@@ -168,8 +174,6 @@ func TestWithValidAuthTokenConcurrent(t *testing.T) {
 }
 
 func TestWithWrongAuthToken(t *testing.T) {
-	cleanup()
-
 	var (
 		q        *jsonrpc.RPCRequest
 		qBody    []byte
@@ -199,7 +203,6 @@ func TestWithWrongAuthToken(t *testing.T) {
 }
 
 func TestWithoutToken(t *testing.T) {
-	cleanup()
 	// Create a dummy account so we have a wallet beside the default one
 	lbrynet.CreateAccount(999)
 

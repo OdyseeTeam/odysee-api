@@ -28,12 +28,9 @@ services:
       target: /storage
     environment:
       SDK_CONFIG: /daemon/daemon_settings.yml
-      SDK_LBRYUM_SERVERS: wallet:50001
+      # SDK_LBRYUM_SERVERS: wallet:50001
       # SDK_LBRYUM_SERVERS: 54.226.124.145:50001
-      # SDK_LBRYUM_SERVERS: spv1.lbry.com:50001
-    depends_on:
-      - wallet
-
+      SDK_LBRYUM_SERVERS: spv1.lbry.com:50001
   wallet:
     # image: lbry/wallet-server:master
     image: lbry/wallet-server:lbrytv-latest

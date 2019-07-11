@@ -14,6 +14,6 @@ var dbMigrateDown = &cobra.Command{
 	Use:   "db_migrate_down",
 	Short: "Unapply database migrations (rewind back to the initial state)",
 	Run: func(cmd *cobra.Command, args []string) {
-		storage.Init().MigrateDown()
+		storage.Conn.MigrateDown()
 	},
 }

@@ -2,9 +2,11 @@ package storage
 
 import (
 	"database/sql"
+	"os"
 	"testing"
 
 	"github.com/lbryio/lbry.go/extras/crypto"
+	"github.com/lbryio/lbrytv/config"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,9 +14,39 @@ import (
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+var testConn *Connection
+
+func TestMain(m *testing.M) {
+	dbConfig := config.GetDatabase()
+	testConn = InitConn(ConnParams{
+		Connection: dbConfig.Connection,
+		DBName:     dbConfig.DBName,
+		Options:    dbConfig.Options,
+	})
+	testConn.Connect()
+	defer testConn.Close()
+
+	code := m.Run()
+
+	os.Exit(code)
+}
+
 func TestInit(t *testing.T) {
-	c := NewConnection(GetDSN(ConnParams{}))
-	err := c.DB.Ping()
+	dbConfig := config.GetDatabase()
+	params := ConnParams{
+		Connection: dbConfig.Connection,
+		DBName:     dbConfig.DBName,
+		Options:    dbConfig.Options,
+	}
+	conn := InitConn(params)
+	assert.Equal(t, params, conn.params)
+
+	err := conn.Connect()
+	require.Nil(t, err)
+	assert.NotNil(t, conn.DB)
+	defer conn.Close()
+
+	err = conn.DB.Ping()
 	require.Nil(t, err)
 }
 
@@ -22,11 +54,17 @@ func TestMigrate(t *testing.T) {
 	var err error
 	var rows *sql.Rows
 	tempDbName := crypto.RandString(24)
-	err = CreateDB(tempDbName)
+	err = testConn.CreateDB(tempDbName)
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := NewConnection(GetDSN(ConnParams{DatabaseName: tempDbName}))
+	defer testConn.DropDB(tempDbName)
+
+	c, err := testConn.SpawnConn(tempDbName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
 
 	rows, err = c.DB.Query("SELECT id FROM users")
 	require.NotNil(t, err)
@@ -40,32 +78,11 @@ func TestMigrate(t *testing.T) {
 	rows, err = c.DB.Query("SELECT id FROM users")
 	require.NotNil(t, err)
 	require.Nil(t, rows)
-
-	if err = c.DB.Close(); err != nil {
-		t.Fatal(err)
-	}
-	err = DropDB(tempDbName)
-	if err != nil {
-		t.Fatal(err)
-	}
 }
 
-func TestGetDSN(t *testing.T) {
+func TestMakeDSN(t *testing.T) {
 	assert.Equal(t,
-		GetDSN(ConnParams{}),
-		"postgres://lbrytv:lbrytv@localhost/lbrytv?sslmode=disable",
-	)
-	assert.Equal(t,
-		GetDSN(ConnParams{DatabaseName: "test"}),
-		"postgres://lbrytv:lbrytv@localhost/test?sslmode=disable",
-	)
-	assert.Equal(t,
-		GetDSN(ConnParams{DatabaseConnection: "postgres://pg:pg@db", DatabaseName: "test"}),
+		MakeDSN(ConnParams{Connection: "postgres://pg:pg@db", DBName: "test", Options: "sslmode=disable"}),
 		"postgres://pg:pg@db/test?sslmode=disable",
 	)
-	assert.Equal(t,
-		GetDSN(ConnParams{DatabaseOptions: "sslmode=enable"}),
-		"postgres://lbrytv:lbrytv@localhost/lbrytv?sslmode=enable",
-	)
-
 }

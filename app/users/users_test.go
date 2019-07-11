@@ -35,9 +35,7 @@ func TestMain(m *testing.M) {
 
 func cleanup() {
 	lbrynet.RemoveAccount(dummyUserID)
-	storage.Cleanup(*storage.Conn, []string{
-		"users",
-	})
+	storage.Conn.Truncate([]string{"users"})
 }
 
 func TestGetUser_New(t *testing.T) {

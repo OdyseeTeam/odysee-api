@@ -14,6 +14,6 @@ var dbMigrateUp = &cobra.Command{
 	Use:   "db_migrate_up",
 	Short: "Apply unapplied database migrations",
 	Run: func(cmd *cobra.Command, args []string) {
-		storage.Init().MigrateUp()
+		storage.Conn.MigrateUp()
 	},
 }
