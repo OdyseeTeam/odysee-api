@@ -27,19 +27,27 @@ func launchDummyAPIServer(response []byte) *httptest.Server {
 }
 
 func TestMain(m *testing.M) {
-	// call flag.Parse() here if TestMain uses flags
+	dbConfig := config.GetDatabase()
+	params := storage.ConnParams{
+		Connection: dbConfig.Connection,
+		DBName:     dbConfig.DBName,
+		Options:    dbConfig.Options,
+	}
+	c, connCleanup := storage.CreateTestConn(params)
+	c.SetDefaultConnection()
+	defer connCleanup()
+	defer lbrynet.RemoveAccount(dummyUserID)
+
 	code := m.Run()
-	cleanup()
 	os.Exit(code)
 }
 
-func cleanup() {
+func testFuncSetup() {
 	lbrynet.RemoveAccount(dummyUserID)
-	storage.Conn.Truncate([]string{"users"})
 }
 
 func TestGetUser_New(t *testing.T) {
-	cleanup()
+	testFuncSetup()
 
 	ts := launchDummyAPIServer([]byte(`{
 		"success": true,
@@ -79,7 +87,7 @@ func TestGetUser_New(t *testing.T) {
 }
 
 func TestGetUser_Existing(t *testing.T) {
-	cleanup()
+	testFuncSetup()
 
 	ts := launchDummyAPIServer([]byte(`{
 		"success": true,
@@ -125,7 +133,8 @@ func TestGetUser_Existing(t *testing.T) {
 }
 
 func TestGetUser_Nonexistent(t *testing.T) {
-	cleanup()
+	testFuncSetup()
+
 	ts := launchDummyAPIServer([]byte(`{
 		"success": false,
 		"error": "could not authenticate user",
@@ -142,7 +151,8 @@ func TestGetUser_Nonexistent(t *testing.T) {
 }
 
 func TestGetUser_EmptyEmail_NoUser(t *testing.T) {
-	cleanup()
+	testFuncSetup()
+
 	ts := launchDummyAPIServer([]byte(`{
 		"success": true,
 		"error": null,
@@ -185,7 +195,7 @@ func TestGetAccountIDFromRequest_NoToken(t *testing.T) {
 }
 
 func TestGetAccountIDFromRequest_Existing(t *testing.T) {
-	cleanup()
+	testFuncSetup()
 
 	ts := launchDummyAPIServer([]byte(`{
 		"success": true,
@@ -228,7 +238,8 @@ func TestGetAccountIDFromRequest_Existing(t *testing.T) {
 }
 
 func TestGetAccountIDFromRequest_Nonexistent(t *testing.T) {
-	cleanup()
+	testFuncSetup()
+
 	ts := launchDummyAPIServer([]byte(`{
 		"success": false,
 		"error": "could not authenticate user",
