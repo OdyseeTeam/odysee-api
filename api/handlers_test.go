@@ -14,7 +14,7 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func TestProxy_Options(t *testing.T) {
+func TestProxyOptions(t *testing.T) {
 	request, _ := http.NewRequest("OPTIONS", "/api/proxy", nil)
 	rr := httptest.NewRecorder()
 	http.HandlerFunc(Proxy).ServeHTTP(rr, request)

@@ -24,6 +24,7 @@ import (
 const dummyUserID = 751365
 const dummyServerURL = "http://127.0.0.1:59999"
 const proxySuffix = "/api/proxy"
+const testSetupWait = 200 * time.Millisecond
 
 func TestMain(m *testing.M) {
 	// call flag.Parse() here if TestMain uses flags
@@ -47,6 +48,11 @@ func TestMain(m *testing.M) {
 }
 
 func testFuncSetup() {
+	time.Sleep(testSetupWait)
+	lbrynet.RemoveAccount(dummyUserID)
+}
+
+func testFuncTeardown() {
 	lbrynet.RemoveAccount(dummyUserID)
 }
 
@@ -69,6 +75,7 @@ func launchDummyAPIServerDelayed(response []byte, delayMsec time.Duration) *http
 
 func TestWithValidAuthToken(t *testing.T) {
 	testFuncSetup()
+	defer testFuncTeardown()
 
 	var (
 		q        *jsonrpc.RPCRequest
@@ -122,7 +129,8 @@ func TestWithValidAuthToken(t *testing.T) {
 }
 
 func TestWithValidAuthTokenConcurrent(t *testing.T) {
-	defer lbrynet.RemoveAccount(123)
+	testFuncSetup()
+	defer testFuncTeardown()
 
 	var wg sync.WaitGroup
 
@@ -130,7 +138,7 @@ func TestWithValidAuthTokenConcurrent(t *testing.T) {
 		"success": true,
 		"error": null,
 		"data": {
-		  "id": 123,
+		  "id": 751365,
 		  "language": "en",
 		  "given_name": null,
 		  "family_name": null,
@@ -165,12 +173,10 @@ func TestWithValidAuthTokenConcurrent(t *testing.T) {
 			r.Header.Add("X-Lbry-Auth-Token", "d94ab9865f8416d107935d2ca644509c")
 			rr := httptest.NewRecorder()
 
-			monitor.Logger.Debugf("request %v about to start", w)
-
 			http.HandlerFunc(Proxy).ServeHTTP(rr, r)
-			assert.Equal(t, http.StatusOK, rr.Code)
+			require.Equal(t, http.StatusOK, rr.Code)
 			json.Unmarshal(rr.Body.Bytes(), &response)
-			assert.Nil(t, response.Error)
+			require.Nil(t, response.Error)
 			monitor.Logger.Debugf("request %v done", w)
 			wg.Done()
 		}(w, &wg)
@@ -180,6 +186,7 @@ func TestWithValidAuthTokenConcurrent(t *testing.T) {
 
 func TestWithWrongAuthToken(t *testing.T) {
 	testFuncSetup()
+	defer testFuncTeardown()
 
 	var (
 		q        *jsonrpc.RPCRequest
@@ -211,9 +218,11 @@ func TestWithWrongAuthToken(t *testing.T) {
 
 func TestWithoutToken(t *testing.T) {
 	testFuncSetup()
+	defer testFuncTeardown()
 
 	// Create a dummy account so we have a wallet beside the default one
 	lbrynet.CreateAccount(999)
+	defer lbrynet.RemoveAccount(999)
 
 	var (
 		q        *jsonrpc.RPCRequest

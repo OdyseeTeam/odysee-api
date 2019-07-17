@@ -62,7 +62,7 @@ func RemoveAccount(UID int) (*ljsonrpc.AccountRemoveResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger.Log().Infof("removing account %v", UID)
+	logger.LogF(monitor.F{"uid": UID, "account_id": acc.ID}).Warn("removing account from lbrynet")
 	r, err := Client.AccountRemove(acc.ID)
 	if err != nil {
 		return nil, err
