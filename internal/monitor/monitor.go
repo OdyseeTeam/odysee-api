@@ -80,8 +80,6 @@ func (l ModuleLogger) LogF(fields F) *logrus.Entry {
 	logFields := logrus.Fields{}
 	logFields["module"] = l.ModuleName
 	for k, v := range fields {
-		// Replace sensitive data with astericks if it's not empty to signify
-		// that some value has actually been provided
 		if k == TokenF && v != "" && config.IsProduction() {
 			logFields[k] = masked
 		} else {

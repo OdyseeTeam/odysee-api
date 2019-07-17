@@ -76,11 +76,13 @@ func TestModuleLoggerLog(t *testing.T) {
 func TestModuleLoggerLogF_LogTokensDisabled(t *testing.T) {
 	hook := test.NewLocal(Logger)
 
-	config.Override("Debug", 0)
+	// fmt.Println(config.IsProduction())
+	config.Override("Debug", false)
 	defer config.RestoreOverridden()
+	// fmt.Println(config.IsProduction())
 
 	l := NewModuleLogger("auth")
-	l.LogF(F{"token": "secret", "email": "abc@abc.com"}).Info("something happened")
+	l.LogF(F{"token": "SecRetT0Ken", "email": "abc@abc.com"}).Info("something happened")
 	require.Equal(t, "abc@abc.com", hook.LastEntry().Data["email"])
 	require.Equal(t, masked, hook.LastEntry().Data["token"])
 

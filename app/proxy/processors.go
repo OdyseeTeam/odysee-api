@@ -55,7 +55,7 @@ func responseProcessorGet(query *jsonrpc.RPCRequest, response *jsonrpc.RPCRespon
 		return response, err
 	}
 	result["download_path"] = fmt.Sprintf(
-		"%s%s/%s", config.GetConfig().Viper().GetString("BaseContentURL"), queryParams["uri"], result["outpoint"])
+		"%s%s/%s", config.GetConfig().Viper.GetString("BaseContentURL"), queryParams["uri"], result["outpoint"])
 	response.Result = result
 	return response, nil
 }
@@ -72,7 +72,7 @@ func responseProcessorFileList(query *jsonrpc.RPCRequest, response *jsonrpc.RPCR
 	if len(resultArray) != 0 {
 		resultArray[0]["download_path"] = fmt.Sprintf(
 			"%sclaims/%s/%s/%s",
-			config.GetConfig().Viper().GetString("BaseContentURL"),
+			config.GetConfig().Viper.GetString("BaseContentURL"),
 			resultArray[0]["claim_name"], resultArray[0]["claim_id"],
 			resultArray[0]["file_name"])
 	}

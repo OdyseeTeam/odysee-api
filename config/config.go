@@ -9,7 +9,7 @@ import (
 )
 
 type ConfigWrapper struct {
-	viper      *viper.Viper
+	Viper      *viper.Viper
 	overridden map[string]interface{}
 	ReadDone   bool
 }
@@ -27,55 +27,52 @@ var Config *ConfigWrapper
 // and is initialized as an empty map in the read method
 var overriddenValues map[string]interface{}
 
+func init() {
+	Config = GetConfig()
+}
+
 func GetConfig() *ConfigWrapper {
 	once.Do(func() {
-		Config = &ConfigWrapper{}
-		Config.Init()
-		Config.Read()
+		Config = NewConfig()
 	})
 	return Config
 }
 
-func InitConfig() {
-	GetConfig()
-}
-
-func Viper() *viper.Viper {
-	return GetConfig().Viper()
-}
-
-func (c *ConfigWrapper) Viper() *viper.Viper {
-	return c.viper
+func NewConfig() *ConfigWrapper {
+	c := &ConfigWrapper{}
+	c.Init()
+	c.Read()
+	return c
 }
 
 func (c *ConfigWrapper) Init() {
 	c.overridden = make(map[string]interface{})
-	c.viper = viper.New()
+	c.Viper = viper.New()
 
-	c.Viper().SetEnvPrefix("LW")
-	c.Viper().BindEnv("Debug")
-	c.Viper().SetDefault("Debug", false)
-	c.Viper().BindEnv("Lbrynet")
-	c.Viper().SetDefault("Lbrynet", "http://localhost:5279/")
+	c.Viper.SetEnvPrefix("LW")
+	c.Viper.BindEnv("Debug")
+	c.Viper.SetDefault("Debug", false)
+	c.Viper.BindEnv("Lbrynet")
+	c.Viper.SetDefault("Lbrynet", "http://localhost:5279/")
 
-	c.Viper().SetDefault("Address", ":8080")
-	c.Viper().SetDefault("Host", "http://localhost:8080")
-	c.Viper().SetDefault("BaseContentURL", "http://localhost:8080/content/")
+	c.Viper.SetDefault("Address", ":8080")
+	c.Viper.SetDefault("Host", "http://localhost:8080")
+	c.Viper.SetDefault("BaseContentURL", "http://localhost:8080/content/")
 
-	c.Viper().SetDefault("IsAccountV1Enabled", true)
+	c.Viper.SetDefault("IsAccountV1Enabled", true)
 
-	c.Viper().SetConfigName("lbrytv") // name of config file (without extension)
+	c.Viper.SetConfigName("lbrytv") // name of config file (without extension)
 
-	c.Viper().AddConfigPath(os.Getenv("LBRYTV_CONFIG_DIR"))
-	c.Viper().AddConfigPath(ProjectRoot())
-	c.Viper().AddConfigPath(".")
-	c.Viper().AddConfigPath("..")
-	c.Viper().AddConfigPath("../..")
-	c.Viper().AddConfigPath("$HOME/.lbrytv")
+	c.Viper.AddConfigPath(os.Getenv("LBRYTV_CONFIG_DIR"))
+	c.Viper.AddConfigPath(ProjectRoot())
+	c.Viper.AddConfigPath(".")
+	c.Viper.AddConfigPath("..")
+	c.Viper.AddConfigPath("../..")
+	c.Viper.AddConfigPath("$HOME/.lbrytv")
 }
 
 func (c *ConfigWrapper) Read() {
-	err := c.Viper().ReadInConfig()
+	err := c.Viper.ReadInConfig()
 	if err != nil {
 		panic(err)
 	}
@@ -84,7 +81,7 @@ func (c *ConfigWrapper) Read() {
 
 // IsProduction is true if we are running in a production environment
 func IsProduction() bool {
-	return !Viper().GetBool("Debug")
+	return !Config.Viper.GetBool("Debug")
 }
 
 func ProjectRoot() string {
@@ -101,15 +98,14 @@ func ProjectRoot() string {
 //	defer config.RestoreOverridden()
 //	...
 func Override(key string, value interface{}) {
-	c := GetConfig()
-	c.overridden[key] = c.Viper().Get(key)
-	c.Viper().Set(key, value)
+	Config.overridden[key] = Config.Viper.Get(key)
+	Config.Viper.Set(key, value)
 }
 
 // RestoreOverridden restores original v values overridden by Override
 func RestoreOverridden() {
 	c := GetConfig()
-	v := c.Viper()
+	v := c.Viper
 	if len(c.overridden) == 0 {
 		return
 	}
@@ -124,32 +120,32 @@ func RestoreOverridden() {
 // IsAccountV1Enabled enables or disables Account Subsystem V1 (database + plain auth_token)
 func IsAccountV1Enabled() bool {
 
-	return Viper().GetBool("IsAccountV1Enabled")
+	return Config.Viper.GetBool("IsAccountV1Enabled")
 }
 
 // GetAddress determines address to bind http API server to
 func GetAddress() string {
-	return Viper().GetString("Address")
+	return Config.Viper.GetString("Address")
 }
 
 // GetLbrynet returns the address of SDK server to use
 func GetLbrynet() string {
-	return Viper().GetString("Lbrynet")
+	return Config.Viper.GetString("Lbrynet")
 }
 
 // GetInternalAPIHost returns the address of internal-api server
 func GetInternalAPIHost() string {
-	return Viper().GetString("InternalAPIHost")
+	return Config.Viper.GetString("InternalAPIHost")
 }
 
 // GetDatabase returns postgresql database server connection config
 func GetDatabase() DBConfig {
 	var config DBConfig
-	Viper().UnmarshalKey("Database", &config)
+	Config.Viper.UnmarshalKey("Database", &config)
 	return config
 }
 
 // GetSentryDSN returns sentry.io service DSN
 func GetSentryDSN() string {
-	return Viper().GetString("SentryDSN")
+	return Config.Viper.GetString("SentryDSN")
 }

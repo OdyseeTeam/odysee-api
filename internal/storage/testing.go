@@ -2,6 +2,8 @@ package storage
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
 
 	"github.com/lbryio/lbry.go/extras/crypto"
 )
@@ -10,6 +12,8 @@ import (
 // plus a cleanup callback that should be deferredly called by function caller for properly getting rid
 // of this temporary database.
 func CreateTestConn(params ConnParams) (*Connection, func()) {
+	rand.Seed(time.Now().UnixNano())
+
 	conn := InitConn(params)
 	err := conn.Connect()
 	if err != nil {
