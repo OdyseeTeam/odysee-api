@@ -113,12 +113,14 @@ func LogCachedQuery(method string) {
 }
 
 // LogFailedQuery takes a method name, query params, response error object and logs it
-func LogFailedQuery(method string, query interface{}, error interface{}) {
+func LogFailedQuery(method string, query interface{}, errorResponse interface{}) {
 	Logger.WithFields(logrus.Fields{
 		"method":   method,
 		"query":    query,
-		"response": error,
-	}).Error("server responded with error")
+		"response": errorResponse,
+	}).Error("daemon responded with an error")
+
+	captureFailedQuery(method, query, errorResponse)
 }
 
 // loggingWriter mimics http.ResponseWriter but stores a snippet of response, status code

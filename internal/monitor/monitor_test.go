@@ -41,7 +41,7 @@ func TestLogFailedQuery(t *testing.T) {
 	require.Equal(t, "unknown_method", hook.LastEntry().Data["method"])
 	require.Equal(t, queryParams, hook.LastEntry().Data["query"])
 	require.Equal(t, response, hook.LastEntry().Data["response"])
-	require.Equal(t, "server responded with error", hook.LastEntry().Message)
+	require.Equal(t, "daemon responded with an error", hook.LastEntry().Message)
 
 	hook.Reset()
 }
@@ -73,7 +73,7 @@ func TestModuleLoggerLog(t *testing.T) {
 	hook.Reset()
 }
 
-func TestModuleLoggerLogF_LogTokensDisabled(t *testing.T) {
+func TestModuleLoggerMasksTokens(t *testing.T) {
 	hook := test.NewLocal(Logger)
 
 	// fmt.Println(config.IsProduction())

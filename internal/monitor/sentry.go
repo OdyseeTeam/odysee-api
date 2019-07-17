@@ -1,6 +1,8 @@
 package monitor
 
 import (
+	"fmt"
+
 	"github.com/lbryio/lbrytv/config"
 
 	"github.com/getsentry/sentry-go"
@@ -27,6 +29,8 @@ func configureSentry(release, env string) {
 	}
 }
 
+// SetVersionTag sets version info for Sentry messages so they can be filtered by SDK or lbrytv version.
+// This should be called when monitor module is initialized.
 func SetVersionTag(tag VersionTag) {
 	sentry.ConfigureScope(func(scope *sentry.Scope) {
 		if tag.LbrytvVersion != "" {
@@ -38,6 +42,7 @@ func SetVersionTag(tag VersionTag) {
 	})
 }
 
+// CaptureException sends to Sentry general exception info with some extra provided detail (like user email, claim url etc)
 func CaptureException(err error, params ...map[string]string) {
 	var extra map[string]string
 	if len(params) > 0 {
@@ -51,5 +56,15 @@ func CaptureException(err error, params ...map[string]string) {
 			scope.SetExtra(k, v)
 		}
 		sentry.CaptureException(err)
+	})
+}
+
+// captureFailedQuery sends to Sentry details of a failed daemon call.
+func captureFailedQuery(method string, query interface{}, errorResponse interface{}) {
+	sentry.ConfigureScope(func(scope *sentry.Scope) {
+		scope.SetExtra("method", method)
+		scope.SetExtra("query", fmt.Sprintf("%v", query))
+		scope.SetExtra("response", fmt.Sprintf("%v", errorResponse))
+		sentry.CaptureMessage("Daemon responded with an error")
 	})
 }
