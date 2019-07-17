@@ -6,13 +6,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"sync"
 	"testing"
 	"time"
+	"sync"
 
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
-	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/storage"
 
 	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
@@ -48,8 +47,8 @@ func TestMain(m *testing.M) {
 }
 
 func testFuncSetup() {
-	time.Sleep(testSetupWait)
 	lbrynet.RemoveAccount(dummyUserID)
+	time.Sleep(testSetupWait)
 }
 
 func testFuncTeardown() {
@@ -129,8 +128,9 @@ func TestWithValidAuthToken(t *testing.T) {
 }
 
 func TestWithValidAuthTokenConcurrent(t *testing.T) {
-	testFuncSetup()
-	defer testFuncTeardown()
+	// This test requires its own dummy account ID
+	lbrynet.RemoveAccount(123123)
+	defer lbrynet.RemoveAccount(123123)
 
 	var wg sync.WaitGroup
 
@@ -138,7 +138,7 @@ func TestWithValidAuthTokenConcurrent(t *testing.T) {
 		"success": true,
 		"error": null,
 		"data": {
-		  "id": 751365,
+		  "id": 123123,
 		  "language": "en",
 		  "given_name": null,
 		  "family_name": null,
@@ -162,7 +162,7 @@ func TestWithValidAuthTokenConcurrent(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	for w := range [20]int{} {
+	for w := range [10]int{} {
 		wg.Add(1)
 		go func(w int, wg *sync.WaitGroup) {
 			var response jsonrpc.RPCResponse
@@ -177,7 +177,6 @@ func TestWithValidAuthTokenConcurrent(t *testing.T) {
 			require.Equal(t, http.StatusOK, rr.Code)
 			json.Unmarshal(rr.Body.Bytes(), &response)
 			require.Nil(t, response.Error)
-			monitor.Logger.Debugf("request %v done", w)
 			wg.Done()
 		}(w, &wg)
 	}
