@@ -16,6 +16,7 @@ test_circleci:
 	scripts/wait_for_wallet.sh
 	go get golang.org/x/tools/cmd/cover
 	go get github.com/mattn/goveralls
+	go run . db_migrate_up
 	go test -covermode=count -coverprofile=coverage.out ./...
 	goveralls -coverprofile=coverage.out -service=circle-ci -repotoken $(COVERALLS_TOKEN)
 
@@ -27,14 +28,15 @@ snapshot:
 
 .PHONY: image
 image:
-	docker build -t lbryweb/lbryweb-go:$(VERSION) -t lbryweb/lbryweb-go:latest .
+	docker build -t lbry/lbrytv:$(VERSION) -t lbry/lbrytv:latest -f ./deployments/docker/app/Dockerfile .
+
+.PHONY: dev_image
+dev_image:
+	docker build -t lbry/lbrytv:$(VERSION) -t lbry/lbrytv:latest-dev -f ./deployments/docker/app/Dockerfile .
 
 .PHONY: publish_image
 publish_image:
 	docker push lbryweb/lbryweb-go
-
-embed:
-	rice embed-go -i ./routes
 
 clean:
 	find . -name rice-box.go | xargs rm
@@ -43,3 +45,8 @@ clean:
 .PHONY: server
 server:
 	LW_DEBUG=1 go run . serve
+
+.PHONY: tag
+tag:
+	git tag -d v$v
+	git tag v$v

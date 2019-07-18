@@ -1,13 +1,11 @@
-# Lbrynet: http://localhost:5579/
-Lbrynet: http://localhost:5581/
-Debug: 1
+BaseContentURL: https://api.lbry.tv/content/
 InternalAPIHost: https://api.lbry.com
 
 SentryDSN: "https://9ef75ef77a844d4aa35d834d78266477@sentry.io/1416147"
 
 Database:
-  Connection: postgres://lbrytv:lbrytv@localhost
+  Connection: postgres://lbrytv:lbrytv@postgres
   DBName: lbrytv
   Options: sslmode=disable
 
-IsAccountV1Enabled: 1
+IsAccountV1Enabled: 0

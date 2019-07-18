@@ -3,44 +3,32 @@ package main
 import (
 	"math/rand"
 	"net/http"
-	"os"
 	"time"
 
-	// "github.com/lbryio/lbrytv/assets"
-
-	"github.com/lbryio/lbrytv/monitor"
-	"github.com/lbryio/lbrytv/server"
-	log "github.com/sirupsen/logrus"
-)
-
-var (
-	version = "dev"
-	commit  = "none"
-	date    = "unknown"
+	"github.com/lbryio/lbrytv/cmd"
+	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/storage"
 )
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	monitor.SetupLogging()
-
 	// this is a *client-side* timeout (for when we make http requests, not when we serve them)
 	//https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
 	http.DefaultClient.Timeout = 20 * time.Second
 
-	if len(os.Args) < 2 {
-		log.Errorf("usage: %s COMMAND", os.Args[0])
-		return
+	dbConfig := config.GetDatabase()
+	conn := storage.InitConn(storage.ConnParams{
+		Connection: dbConfig.Connection,
+		DBName:     dbConfig.DBName,
+		Options:    dbConfig.Options,
+	})
+	err := conn.Connect()
+	if err != nil {
+		panic(err)
 	}
+	defer conn.Close()
+	conn.SetDefaultConnection()
 
-	command := os.Args[1]
-	switch command {
-	case "version":
-		log.Printf("lbrytv %v, commit %v, built at %v", version, commit, date)
-	case "serve":
-		log.Printf("lbrytv %v starting", version)
-		server.ServeUntilInterrupted()
-	default:
-		log.Errorf("invalid command: '%s'\n", command)
-	}
+	cmd.Execute()
 }

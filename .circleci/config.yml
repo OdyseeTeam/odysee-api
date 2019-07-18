@@ -2,9 +2,12 @@ version: 2
 jobs:
   test:
     docker:
-      - image: circleci/golang:1.11
-      - image: lbryweb/lbrynet:latest
+      - image: lbry/lbrytv-ci:latest
+      - image: lbryweb/lbrynet:0.38
       - image: postgres:11-alpine
+        environment:
+          POSTGRES_USER: lbrytv
+          POSTGRES_PASSWORD: lbrytv
     steps:
       - checkout
       - restore_cache:
@@ -17,39 +20,33 @@ jobs:
             - /go/pkg/mod
   snapshot:
     docker:
-      - image: circleci/golang:1.11
+      - image: circleci/golang:1.12
     steps:
       - checkout
       - restore_cache:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
       - run: go get ./...
-      - run: go get github.com/GeertJohan/go.rice/rice
-      - run: make embed
       - run: GOARCH=amd64 GOOS=linux go build -o dist/linux_amd64/lbrytv main.go
-      # - setup_remote_docker
       - run:
           name: Build Docker image
           command: make image
   release:
     docker:
-      - image: circleci/golang:1.11
+      - image: circleci/golang:1.12
     steps:
       - checkout
       - restore_cache:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
-      # - setup_remote_docker
       - run: curl -sL https://git.io/goreleaser | bash
       - run: make image
   publish-image:
     docker:
-      - image: circleci/golang:1.11
+      - image: circleci/golang:1.12
     steps:
       - checkout
       - run: go get ./...
-      - run: go get github.com/GeertJohan/go.rice/rice
-      - run: make embed
       - run: CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -a -o dist/linux_amd64/lbrytv .
       - setup_remote_docker
       - run:

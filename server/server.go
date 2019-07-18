@@ -8,10 +8,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/monitor"
-	"github.com/lbryio/lbrytv/routes"
+	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/lbryio/lbrytv/api"
+
+	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -27,16 +28,14 @@ type Server struct {
 
 // Config holds basic web server settings
 type Config struct {
-	StaticDir string
-	Address   string
+	Address string
 }
 
 // NewConfiguredServer returns a server initialized with settings from global config.
 func NewConfiguredServer() *Server {
 	s := &Server{
 		Config: &Config{
-			StaticDir: config.Settings.GetString("StaticDir"),
-			Address:   config.Settings.GetString("Address"),
+			Address: config.GetAddress(),
 		},
 		Logger:         monitor.Logger,
 		InterruptChan:  make(chan os.Signal),
@@ -71,8 +70,7 @@ func (s *Server) defaultHeadersMiddleware(next http.Handler) http.Handler {
 func (s *Server) configureRouter() *mux.Router {
 	r := mux.NewRouter()
 
-	routes.InstallRoutes(r)
-	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(s.Config.StaticDir))))
+	api.InstallRoutes(r)
 
 	r.Use(monitor.RequestLoggingMiddleware)
 	r.Use(s.defaultHeadersMiddleware)
@@ -82,7 +80,6 @@ func (s *Server) configureRouter() *mux.Router {
 // Start starts a http server and returns immediately.
 func (s *Server) Start() error {
 	s.router = s.configureRouter()
-	s.Logger.Printf("serving %v at /static/", s.Config.StaticDir)
 	s.httpListener = s.configureHTTPListener()
 
 	go func() {
@@ -122,10 +119,12 @@ func (s *Server) Shutdown() error {
 // ServeUntilInterrupted is the main module entry point that configures and starts a webserver,
 // which runs until one of OS shutdown signals are received. The function is blocking.
 func ServeUntilInterrupted() {
-	server := NewConfiguredServer()
-	err := server.Start()
+	s := NewConfiguredServer()
+	s.Logger.Info("http server starting...")
+	err := s.Start()
 	if err != nil {
 		log.Fatal(err)
 	}
-	server.ServeUntilShutdown()
+	s.Logger.Infof("http server listening on %v", s.Config.Address)
+	s.ServeUntilShutdown()
 }

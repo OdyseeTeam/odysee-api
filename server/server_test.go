@@ -35,6 +35,7 @@ func TestStartAndServeUntilShutdown(t *testing.T) {
 	}
 	assert.Error(t, err)
 }
+
 func TestHeaders(t *testing.T) {
 	var (
 		err      error
