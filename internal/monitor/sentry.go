@@ -8,11 +8,6 @@ import (
 	"github.com/getsentry/sentry-go"
 )
 
-type VersionTag struct {
-	LbrytvVersion string
-	SDKVersion    string
-}
-
 func configureSentry(release, env string) {
 	dsn := config.GetSentryDSN()
 	if dsn == "" {
@@ -20,26 +15,14 @@ func configureSentry(release, env string) {
 	}
 
 	err := sentry.Init(sentry.ClientOptions{
-		Dsn:         dsn,
-		Release:     release,
-		Environment: env,
+		Dsn:              dsn,
+		Release:          release,
+		Environment:      env,
+		AttachStacktrace: true,
 	})
 	if err != nil {
 		Logger.Errorf("sentry initialization failed: %v", err)
 	}
-}
-
-// SetVersionTag sets version info for Sentry messages so they can be filtered by SDK or lbrytv version.
-// This should be called when monitor module is initialized.
-func SetVersionTag(tag VersionTag) {
-	sentry.ConfigureScope(func(scope *sentry.Scope) {
-		if tag.LbrytvVersion != "" {
-			scope.SetTag("lbrytv_version", tag.LbrytvVersion)
-		}
-		if tag.LbrytvVersion != "" {
-			scope.SetTag("lbrysdk_version", tag.SDKVersion)
-		}
-	})
 }
 
 // CaptureException sends to Sentry general exception info with some extra provided detail (like user email, claim url etc)

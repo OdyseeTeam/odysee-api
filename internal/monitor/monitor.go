@@ -38,8 +38,6 @@ func init() {
 func SetupLogging() {
 	var mode string
 
-	SetVersionTag(VersionTag{LbrytvVersion: version.GetVersion()})
-
 	// logrus.AddHook(logrus_stack.StandardHook())
 	// Logger.AddHook(logrus_stack.StandardHook())
 	if config.IsProduction() {

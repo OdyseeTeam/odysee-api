@@ -8,7 +8,7 @@ require (
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd v0.0.0-20190620071333-e64a0ec8b42a // indirect
 	github.com/cosiner/argv v0.0.1 // indirect
-	github.com/getsentry/sentry-go v0.1.0
+	github.com/getsentry/sentry-go v0.1.3
 	github.com/go-delve/delve v1.2.0 // indirect
 	github.com/go-kit/kit v0.9.0 // indirect
 	github.com/gobuffalo/packr v1.30.1 // indirect
