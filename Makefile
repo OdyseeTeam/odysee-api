@@ -28,11 +28,11 @@ snapshot:
 
 .PHONY: image
 image:
-	docker build -t lbry/lbrytv:$(VERSION) -t lbry/lbrytv:latest ./deployments/docker/app
+	docker build -t lbry/lbrytv:$(VERSION) -t lbry/lbrytv:latest -f ./deployments/docker/app/Dockerfile .
 
 .PHONY: dev_image
 dev_image:
-	docker build -t lbry/lbrytv:$(VERSION) -t lbry/lbrytv:latest ./deployments/docker/app
+	docker build -t lbry/lbrytv:$(VERSION) -t lbry/lbrytv:latest-dev -f ./deployments/docker/app/Dockerfile .
 
 .PHONY: publish_image
 publish_image:
