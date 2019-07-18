@@ -24,5 +24,7 @@ func TestProxy_ForbiddenParamAccountID(t *testing.T) {
 func TestProxy_Status(t *testing.T) {
 	r := call(t, "status")
 	result, _ := r.Result.(map[string]interface{})
-	assert.Equal(t, "lbrytv", result["installation_id"].(string))
+	assert.Equal(t,
+		"692EAWhtoqDuAfQ6KHMXxFxt8tkhmt7sfprEMHWKjy5hf6PwZcHDV542VHqRnFnTCD",
+		result["installation_id"].(string))
 }

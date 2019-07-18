@@ -77,7 +77,7 @@ func getStatusResponse() map[string]interface{} {
 		  "code": "connected",
 		  "message": "No connection problems detected"
 		},
-		"installation_id": "lbrytv",
+		"installation_id": "692EAWhtoqDuAfQ6KHMXxFxt8tkhmt7sfprEMHWKjy5hf6PwZcHDV542VHqRnFnTCD",
 		"is_running": true,
 		"skipped_components": [
 		  "hash_announcer",
