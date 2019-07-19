@@ -185,7 +185,7 @@ func ForwardCall(request jsonrpc.RPCRequest) ([]byte, error) {
 		}
 
 		if shouldLog(request.Method) {
-			monitor.LogSuccessfulQuery(request.Method, time.Now().Sub(queryStartTime).Seconds())
+			monitor.LogSuccessfulQuery(request.Method, time.Now().Sub(queryStartTime).Seconds(), request.Params)
 		}
 
 		if shouldCache(request.Method, request.Params) {
