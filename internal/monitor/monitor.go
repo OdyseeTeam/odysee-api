@@ -95,19 +95,20 @@ func (l ModuleLogger) Log() *logrus.Entry {
 	return Logger.WithFields(logrus.Fields{"module": l.ModuleName})
 }
 
-// LogSuccessfulQuery takes a remote method name and execution time and logs it
-func LogSuccessfulQuery(method string, time float64) {
+// LogSuccessfulQuery takes a remote method name, execution time and params and logs it
+func LogSuccessfulQuery(method string, time float64, params interface{}) {
 	Logger.WithFields(logrus.Fields{
-		"method":          method,
-		"processing_time": time,
-	}).Info("processed a call")
+		"method": method,
+		"time":   time,
+		"params": params,
+	}).Info("call processed")
 }
 
 // LogCachedQuery logs a cache hit for a given method
 func LogCachedQuery(method string) {
 	Logger.WithFields(logrus.Fields{
 		"method": method,
-	}).Info("processed a cached query")
+	}).Info("cached query")
 }
 
 // LogFailedQuery takes a method name, query params, response error object and logs it

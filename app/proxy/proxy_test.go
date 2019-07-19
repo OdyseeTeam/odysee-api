@@ -394,7 +394,7 @@ func BenchmarkDirectResolve(b *testing.B) {
 				return
 			}
 			// monitor.Logger.WithFields(log.Fields{"n": n}).Info("response fully processed")
-			monitor.LogSuccessfulQuery(fmt.Sprintf("processed a call #%v", n), time.Now().Sub(queryStartTime).Seconds())
+			monitor.LogSuccessfulQuery(fmt.Sprintf("processed a call #%v", n), time.Now().Sub(queryStartTime).Seconds(), nil)
 			wg.Done()
 		}(n, &wg)
 	}
