@@ -1,0 +1,49 @@
+version: '3.2'
+
+services:
+  postgres:
+    image: postgres:11-alpine
+    environment:
+     POSTGRES_USER: lbrytv
+     POSTGRES_PASSWORD: lbrytv
+    ports:
+      - "5432:5432"
+  lbrynet:
+    image: lbry/lbrynet-tv:latest
+    ports:
+      - "5579:5279"
+    volumes:
+    - type: bind
+      source: storage
+      target: /storage
+#    logging:
+#      driver: awslogs
+#      options:
+#        awslogs-region: us-east-1
+  watchtower:
+    image: v2tec/watchtower
+    command: --interval 30 --cleanup
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  app:
+    image: lbry/lbrytv:latest
+    ports:
+      - "8080:8080"
+    volumes:
+    - type: bind
+      source: storage
+      target: /storage
+    - type: bind
+      source: static
+      target: /static
+    environment:
+      LW_LBRYNET: http://lbrynet:5279/
+    depends_on:
+      - lbrynet
+      - postgres
+
+volumes:
+  storage:
+  test_storage:
+  static:
+
