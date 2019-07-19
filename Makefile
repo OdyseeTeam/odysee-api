@@ -34,6 +34,10 @@ image:
 dev_image:
 	docker build -t lbry/lbrytv:$(VERSION) -t lbry/lbrytv:latest-dev -f ./deployments/docker/app/Dockerfile .
 
+.PHONY: publish_image
+publish_image:
+	docker push lbry/lbrytv
+
 clean:
 	find . -name rice-box.go | xargs rm
 	rm -rf ./dist
