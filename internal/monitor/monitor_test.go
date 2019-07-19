@@ -14,13 +14,23 @@ import (
 func TestLogSuccessfulQuery(t *testing.T) {
 	hook := test.NewLocal(Logger)
 
-	LogSuccessfulQuery("account_balance", 0.025)
+	LogSuccessfulQuery("resolve", 0.025, map[string]string{"urls": "one"})
 
 	require.Equal(t, 1, len(hook.Entries))
 	require.Equal(t, log.InfoLevel, hook.LastEntry().Level)
+	require.Equal(t, "resolve", hook.LastEntry().Data["method"])
+	require.Equal(t, map[string]string{"urls": "one"}, hook.LastEntry().Data["params"])
+	require.Equal(t, 0.025, hook.LastEntry().Data["time"])
+	require.Equal(t, "call processed", hook.LastEntry().Message)
+
+	LogSuccessfulQuery("account_balance", 0.025, nil)
+
+	require.Equal(t, 2, len(hook.Entries))
+	require.Equal(t, log.InfoLevel, hook.LastEntry().Level)
 	require.Equal(t, "account_balance", hook.LastEntry().Data["method"])
-	require.Equal(t, 0.025, hook.LastEntry().Data["processing_time"])
-	require.Equal(t, "processed a call", hook.LastEntry().Message)
+	require.Equal(t, nil, hook.LastEntry().Data["params"])
+	require.Equal(t, 0.025, hook.LastEntry().Data["time"])
+	require.Equal(t, "call processed", hook.LastEntry().Message)
 
 	hook.Reset()
 }
