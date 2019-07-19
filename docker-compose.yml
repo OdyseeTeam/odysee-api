@@ -19,7 +19,7 @@ services:
     environment:
       LBRY_DOCKER_CONFIG: /daemon/daemon_settings.yml
   lbrynet:
-    image: lbryweb/lbrynet:0.38.1
+    image: lbry/lbrynet-tv:latest
     ports:
       - "5581:5279"
     volumes:
