@@ -34,7 +34,7 @@ services:
       target: /static
     environment:
       LW_LBRYNET: http://lbrynet:5279/
-      LW_IsAccountV1Enabled: 1
+      LW_ACCOUNTSENABLED: 1
     depends_on:
       - lbrynet
       - postgres

@@ -27,7 +27,7 @@ const testSetupWait = 200 * time.Millisecond
 
 func TestMain(m *testing.M) {
 	// call flag.Parse() here if TestMain uses flags
-	config.Override("IsAccountV1Enabled", 1)
+	config.Override("AccountsEnabled", 1)
 	defer config.RestoreOverridden()
 
 	dbConfig := config.GetDatabase()

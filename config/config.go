@@ -59,7 +59,8 @@ func (c *ConfigWrapper) Init() {
 	c.Viper.SetDefault("Host", "http://localhost:8080")
 	c.Viper.SetDefault("BaseContentURL", "http://localhost:8080/content/")
 
-	c.Viper.SetDefault("IsAccountV1Enabled", true)
+	c.Viper.SetDefault("AccountsEnabled", false)
+	c.Viper.BindEnv("AccountsEnabled")
 
 	c.Viper.SetConfigName("lbrytv") // name of config file (without extension)
 
@@ -117,10 +118,9 @@ func RestoreOverridden() {
 
 // Concrete v variables go here
 
-// IsAccountV1Enabled enables or disables Account Subsystem V1 (database + plain auth_token)
-func IsAccountV1Enabled() bool {
-
-	return Config.Viper.GetBool("IsAccountV1Enabled")
+// AccountsEnabled enables or disables accounts subsystem
+func AccountsEnabled() bool {
+	return Config.Viper.GetBool("AccountsEnabled")
 }
 
 // GetAddress determines address to bind http API server to

@@ -6,11 +6,11 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/app/player"
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/users"
+	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/monitor"
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -50,7 +50,7 @@ func Proxy(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if config.IsAccountV1Enabled() {
+	if config.AccountsEnabled() {
 		accountID, err = users.GetAccountIDFromRequest(req)
 		if err != nil {
 			response, _ := json.Marshal(proxy.NewErrorResponse(err.Error(), proxy.ErrProxyAuthFailed))

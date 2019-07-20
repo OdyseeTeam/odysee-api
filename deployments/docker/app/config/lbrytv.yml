@@ -8,4 +8,4 @@ Database:
   DBName: lbrytv
   Options: sslmode=disable
 
-IsAccountV1Enabled: 0
+AccountsEnabled: 0
