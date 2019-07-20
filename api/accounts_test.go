@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 	"time"
-	"sync"
 
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
@@ -27,7 +27,7 @@ const testSetupWait = 200 * time.Millisecond
 
 func TestMain(m *testing.M) {
 	// call flag.Parse() here if TestMain uses flags
-	config.Override("AccountsEnabled", 1)
+	config.Override("AccountsEnabled", true)
 	defer config.RestoreOverridden()
 
 	dbConfig := config.GetDatabase()
@@ -186,7 +186,7 @@ func TestWithValidAuthTokenConcurrent(t *testing.T) {
 func TestWithWrongAuthToken(t *testing.T) {
 	testFuncSetup()
 	defer testFuncTeardown()
-
+	config.Override("AccountsEnabled", true)
 	var (
 		q        *jsonrpc.RPCRequest
 		qBody    []byte
