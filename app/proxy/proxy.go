@@ -27,21 +27,32 @@ const cacheResolveLongerThan = 10
 
 var accountSpecificMethods = []string{
 	"publish",
+
+	"address_unused",
+	"address_list",
+	"address_is_mine",
+
 	"account_list",
 	"account_balance",
+
 	"channel_abandon",
 	"channel_create",
 	"channel_list",
 	"channel_update",
+
 	"claim_list",
+
 	"stream_abandon",
 	"stream_create",
 	"stream_list",
 	"stream_update",
+
 	"support_abandon",
 	"support_create",
 	"support_list",
+
 	"transaction_list",
+
 	"utxo_list",
 	"utxo_release",
 }
