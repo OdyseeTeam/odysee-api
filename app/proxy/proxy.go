@@ -46,27 +46,14 @@ var accountSpecificMethods = []string{
 	"utxo_release",
 }
 
-// ErrProxy is for general errors that originate inside the proxy module
-const ErrProxy int = -32080
-
-// ErrProxyAuthFailed is when supplied auth_token / account_id is not present in the database
-const ErrProxyAuthFailed int = -32085
-
-// ErrInternal is a general server error code
-const ErrInternal int = -32603
-
-// ErrInvalidParams signifies a client-supplied params error
-const ErrInvalidParams int = -32602
-
-// ErrMethodNotFound means the client-requested method cannot be found
-const ErrMethodNotFound int = -32601
-
 const methodGet = "get"
 const methodFileList = "file_list"
 const methodAccountList = "account_list"
-const methodResolve = "resolve"
 const methodAccountBalance = "account_balance"
 const methodStatus = "status"
+const methodResolve = "resolve"
+const methodClaimSearch = "claim_search"
+const methodCommentList = "comment_list"
 
 const paramAccountID = "account_id"
 const paramUrls = "urls"
@@ -75,6 +62,8 @@ var ignoreLog = []string{
 	methodAccountBalance,
 	methodStatus,
 }
+
+var ResolveTime float64
 
 // UnmarshalRequest takes a raw json request body and serializes it into RPCRequest struct for further processing.
 func UnmarshalRequest(r []byte) (*jsonrpc.RPCRequest, error) {
@@ -179,13 +168,19 @@ func ForwardCall(request jsonrpc.RPCRequest) ([]byte, error) {
 		return nil, err
 	}
 	if callResult.Error == nil {
+		execTime := time.Now().Sub(queryStartTime).Seconds()
+
 		processedResponse, err = processResponse(&request, callResult)
 		if err != nil {
 			return nil, err
 		}
 
 		if shouldLog(request.Method) {
-			monitor.LogSuccessfulQuery(request.Method, time.Now().Sub(queryStartTime).Seconds(), request.Params)
+			monitor.LogSuccessfulQuery(request.Method, execTime, request.Params)
+		}
+
+		if request.Method == "resolve" {
+			ResolveTime = execTime
 		}
 
 		if shouldCache(request.Method, request.Params) {

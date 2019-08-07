@@ -53,7 +53,7 @@ func Proxy(w http.ResponseWriter, req *http.Request) {
 	if config.AccountsEnabled() {
 		accountID, err = users.GetAccountIDFromRequest(req)
 		if err != nil {
-			response, _ := json.Marshal(proxy.NewErrorResponse(err.Error(), proxy.ErrProxyAuthFailed))
+			response, _ := json.Marshal(proxy.NewErrorResponse(err.Error(), proxy.ErrAuthFailed))
 			w.WriteHeader(http.StatusForbidden)
 			w.Write(response)
 			return
