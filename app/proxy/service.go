@@ -13,7 +13,9 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-type ProxyService struct {
+// Service generates Caller objects and keeps execution time metrics
+// for all calls proxied through those objects.
+type Service struct {
 	*metrics.ExecTimeMetrics
 }
 
@@ -21,7 +23,7 @@ type Caller struct {
 	accountID string
 	query     *jsonrpc.RPCRequest
 	client    jsonrpc.RPCClient
-	service   *ProxyService
+	service   *Service
 }
 
 type Query struct {
@@ -29,13 +31,17 @@ type Query struct {
 	Request    *jsonrpc.RPCRequest
 }
 
-func NewProxyService() *ProxyService {
-	s := ProxyService{
+// NewService is the entry point to proxy module.
+// Normally only one instance of Service should be created per running server.
+func NewService() *Service {
+	s := Service{
 		metrics.NewMetrics(),
 	}
 	return &s
 }
 
+// NewQuery initializes Query object with JSON-RPC request supplied as bytes.
+// The object is immediately usable and returns error in case request parsing fails.
 func NewQuery(r []byte) (*Query, error) {
 	q := &Query{r, &jsonrpc.RPCRequest{}}
 	err := q.unmarshal()
@@ -54,14 +60,17 @@ func (q *Query) unmarshal() error {
 	return nil
 }
 
+// Method is a shortcut for query method
 func (q *Query) Method() string {
 	return q.Request.Method
 }
 
+// Params is a shortcut for query params
 func (q *Query) Params() interface{} {
 	return q.Request.Params
 }
 
+// ParamsAsMap returns query params converted to plain map
 func (q *Query) ParamsAsMap() map[string]interface{} {
 	if paramsMap, ok := q.Params().(map[string]interface{}); ok {
 		return paramsMap
@@ -89,8 +98,10 @@ func (q *Query) newResponse() *jsonrpc.RPCResponse {
 	return &r
 }
 
+// attachAccountID gets called every time by Caller so it's up to Query to decide if it is account-specific
+// and if account_id should be added to request params accordingly.
 func (q *Query) attachAccountID(id string) {
-	if id != "" && methodInList(q.Method(), accountSpecificMethods) {
+	if methodInList(q.Method(), accountSpecificMethods) {
 		// monitor.Logger.WithFields(log.Fields{
 		// 	"method": r.Method, "params": r.Params,
 		// }).Info("got an account-specific method call")
@@ -102,7 +113,6 @@ func (q *Query) attachAccountID(id string) {
 			q.Request.Params = map[string]string{"account_id": id}
 		}
 	}
-
 }
 
 func (q *Query) cacheHit() *jsonrpc.RPCResponse {
@@ -144,14 +154,23 @@ func (q *Query) validate() CallError {
 	return nil
 }
 
-// NewCaller returns an instance of Caller ready to proxy requests with the supplied account ID
-func (ps *ProxyService) NewCaller(accountID string) *Caller {
+// NewCaller returns an instance of Caller ready to proxy requests.
+// Note that `SetAccountID` needs to be called if authenticated user is making this call.
+func (ps *Service) NewCaller() *Caller {
 	c := Caller{
-		accountID: accountID,
-		client:    jsonrpc.NewClient(config.GetLbrynet()),
-		service:   ps,
+		client:  jsonrpc.NewClient(config.GetLbrynet()),
+		service: ps,
 	}
 	return &c
+}
+
+// SetAccountID sets accountID for the current instance of Caller
+func (c *Caller) SetAccountID(id string) {
+	c.accountID = id
+}
+
+func (c *Caller) AccountID() string {
+	return c.accountID
 }
 
 func (c *Caller) marshal(r *jsonrpc.RPCResponse) ([]byte, CallError) {
@@ -187,7 +206,9 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 		return nil, err
 	}
 
-	q.attachAccountID(c.accountID)
+	if c.AccountID() != "" {
+		q.attachAccountID(c.AccountID())
+	}
 
 	if cachedResponse := q.cacheHit(); cachedResponse != nil {
 		return cachedResponse, nil

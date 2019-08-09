@@ -13,10 +13,10 @@ import (
 )
 
 type Server struct {
-	proxy *proxy.ProxyService
+	proxy *proxy.Service
 }
 
-func NewServer(p *proxy.ProxyService) *Server {
+func NewServer(p *proxy.Service) *Server {
 	return &Server{p}
 }
 
