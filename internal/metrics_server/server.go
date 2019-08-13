@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"runtime"
+	"sync"
 
 	"github.com/lbryio/lbrytv/app/proxy"
 
@@ -11,6 +12,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	// "github.com/prometheus/client_golang/prometheus/promauto"
 )
+
+var once sync.Once
 
 type Server struct {
 	proxy *proxy.Service
@@ -21,6 +24,17 @@ func NewServer(p *proxy.Service) *Server {
 }
 
 func (s *Server) Serve() {
+	once.Do(func() {
+		s.registerMetrics()
+
+		go func() {
+			http.Handle("/metrics", promhttp.Handler())
+			http.ListenAndServe(":2112", nil)
+		}()
+	})
+}
+
+func (s *Server) registerMetrics() {
 	if err := prometheus.Register(prometheus.NewGaugeFunc(
 		prometheus.GaugeOpts{
 			Subsystem: "proxy",
@@ -53,9 +67,4 @@ func (s *Server) Serve() {
 	)); err == nil {
 		fmt.Println("GaugeFunc 'goroutines_count' registered.")
 	}
-
-	go func() {
-		http.Handle("/metrics", promhttp.Handler())
-		http.ListenAndServe(":2112", nil)
-	}()
 }
