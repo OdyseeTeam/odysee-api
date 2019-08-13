@@ -54,9 +54,6 @@ func NewServer(address string) *Server {
 	s.router = s.configureRouter()
 	s.listener = s.configureListener()
 
-	ms := metrics_server.NewServer(s.ProxyService)
-	ms.Serve()
-
 	return s
 }
 
@@ -93,7 +90,6 @@ func (s *Server) configureRouter() *mux.Router {
 // Start starts a http server and returns immediately.
 func (s *Server) Start() error {
 	go func() {
-		s.Log().Info("http server starting...")
 		err := s.listener.ListenAndServe()
 		if err != nil {
 			// Normal graceful shutdown error

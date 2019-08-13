@@ -1,12 +1,12 @@
 package metrics_server
 
 import (
-	"fmt"
 	"net/http"
 	"runtime"
 	"sync"
 
 	"github.com/lbryio/lbrytv/app/proxy"
+	"github.com/lbryio/lbrytv/internal/monitor"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -16,11 +16,15 @@ import (
 var once sync.Once
 
 type Server struct {
-	proxy *proxy.Service
+	monitor.ModuleLogger
+
+	proxy   *proxy.Service
+	Address string
+	Path    string
 }
 
-func NewServer(p *proxy.Service) *Server {
-	return &Server{p}
+func NewServer(address string, path string, p *proxy.Service) *Server {
+	return &Server{monitor.NewModuleLogger("metrics_server"), p, address, path}
 }
 
 func (s *Server) Serve() {
@@ -28,9 +32,10 @@ func (s *Server) Serve() {
 		s.registerMetrics()
 
 		go func() {
-			http.Handle("/metrics", promhttp.Handler())
-			http.ListenAndServe(":2112", nil)
+			http.Handle(s.Path, promhttp.Handler())
+			http.ListenAndServe(s.Address, nil)
 		}()
+		s.Log().Infof("metrics server listening on %v%v", s.Address, s.Path)
 	})
 }
 
@@ -43,7 +48,18 @@ func (s *Server) registerMetrics() {
 		},
 		func() float64 { return s.proxy.GetExecTimeMetrics("resolve").ExecTime },
 	)); err == nil {
-		fmt.Println("GaugeFunc 'proxy_resolve_time' registered.")
+		s.Log().Info("gauge 'proxy_resolve_time' registered")
+	}
+
+	if err := prometheus.Register(prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Subsystem: "proxy",
+			Name:      "claim_search_time",
+			Help:      "Time to serve a claim_search call.",
+		},
+		func() float64 { return s.proxy.GetExecTimeMetrics("claim_search").ExecTime },
+	)); err == nil {
+		s.Log().Info("gauge 'proxy_claim_search' registered")
 	}
 
 	if err := prometheus.Register(prometheus.NewGaugeFunc(
@@ -54,7 +70,7 @@ func (s *Server) registerMetrics() {
 		},
 		func() float64 { return 0.0 },
 	)); err == nil {
-		fmt.Println("GaugeFunc 'player_serving_streams_count' registered.")
+		s.Log().Info("gauge 'player_serving_streams_count' registered")
 	}
 
 	if err := prometheus.Register(prometheus.NewGaugeFunc(
@@ -65,6 +81,6 @@ func (s *Server) registerMetrics() {
 		},
 		func() float64 { return float64(runtime.NumGoroutine()) },
 	)); err == nil {
-		fmt.Println("GaugeFunc 'goroutines_count' registered.")
+		s.Log().Info("gauge 'goroutines_count' registered")
 	}
 }

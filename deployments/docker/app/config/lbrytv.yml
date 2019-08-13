@@ -9,3 +9,6 @@ Database:
   Options: sslmode=disable
 
 AccountsEnabled: 0
+
+MetricsAddress: :2112
+MetricsPath: /metrics

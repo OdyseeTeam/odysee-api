@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/metrics_server"
 	"github.com/lbryio/lbrytv/server"
 
 	"github.com/spf13/cobra"
@@ -20,6 +21,8 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
+		ms := metrics_server.NewServer(config.MetricsAddress(), config.MetricsPath(), s.ProxyService)
+		ms.Serve()
 		s.ServeUntilShutdown()
 	},
 }
