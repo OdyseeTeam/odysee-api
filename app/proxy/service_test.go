@@ -69,13 +69,15 @@ func (c DummyClient) CallBatchRaw(requests jsonrpc.RPCRequests) (jsonrpc.RPCResp
 
 func TestNewCaller(t *testing.T) {
 	srv := NewService()
-	c := Caller{
-		client:  DummyClient{},
-		service: srv,
-	}
-	assert.Equal(t, "abc", c.accountID)
-	assert.Equal(t, DummyClient{}, c.client)
+	c := srv.NewCaller()
 	assert.Equal(t, srv, c.service)
+}
+
+func TestSetAccountID(t *testing.T) {
+	srv := NewService()
+	c := srv.NewCaller()
+	c.SetAccountID("abc")
+	assert.Equal(t, "abc", c.accountID)
 }
 
 func TestCallerMetrics(t *testing.T) {

@@ -53,7 +53,6 @@ func NewQuery(r []byte) (*Query, error) {
 
 func (q *Query) unmarshal() error {
 	err := json.Unmarshal(q.rawRequest, q.Request)
-	fmt.Println(string(q.rawRequest))
 	if err != nil {
 		return err
 	}
