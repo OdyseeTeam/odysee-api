@@ -120,8 +120,6 @@ func TestCallBalance(t *testing.T) {
 	request := newRawRequest(t, "account_list", nil)
 	rawCallReponse := c.Call(request)
 	parseRawResponse(t, rawCallReponse, &accResponse)
-
-	prettyPrint(accResponse)
 	assert.Equal(t, acc.ID, accResponse.ID)
 	assert.True(t, srv.GetExecTimeMetrics("account_list").ExecTime > 0)
 }

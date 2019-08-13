@@ -14,5 +14,5 @@ type Player struct {
 }
 
 func (ps *PlayerService) NewPlayer(uri string) *Player {
-	var p Player
+	return &Player{URI: uri}
 }

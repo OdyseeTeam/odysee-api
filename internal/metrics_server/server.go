@@ -1,4 +1,4 @@
-package metrics_export
+package metrics_server
 
 import (
 	"fmt"

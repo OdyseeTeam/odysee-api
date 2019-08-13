@@ -8,9 +8,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/api"
+	"github.com/lbryio/lbrytv/app/proxy"
+	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/environment"
+	"github.com/lbryio/lbrytv/internal/metrics_server"
+	"github.com/lbryio/lbrytv/internal/monitor"
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -21,9 +24,12 @@ type Server struct {
 	Config         *Config
 	Logger         *log.Logger
 	router         *mux.Router
-	httpListener   *http.Server
+	listener       *http.Server
 	InterruptChan  chan os.Signal
 	DefaultHeaders map[string]string
+	Environment    *environment.Env
+	MetricsServer  *metrics_server.Server
+	ProxyService   *proxy.Service
 }
 
 // Config holds basic web server settings
@@ -40,14 +46,22 @@ func NewConfiguredServer() *Server {
 		Logger:         monitor.Logger,
 		InterruptChan:  make(chan os.Signal),
 		DefaultHeaders: make(map[string]string),
+		ProxyService:   proxy.NewService(),
 	}
 	s.DefaultHeaders["Access-Control-Allow-Origin"] = "*"
 	s.DefaultHeaders["Access-Control-Allow-Headers"] = "X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept"
 	s.DefaultHeaders["Server"] = "api.lbry.tv"
+
+	s.router = s.configureRouter()
+	s.listener = s.configureListener()
+
+	ms := metrics_server.NewServer(s.ProxyService)
+	ms.Serve()
+
 	return s
 }
 
-func (s *Server) configureHTTPListener() *http.Server {
+func (s *Server) configureListener() *http.Server {
 	return &http.Server{
 		Addr:        s.Config.Address,
 		Handler:     s.router,
@@ -70,7 +84,7 @@ func (s *Server) defaultHeadersMiddleware(next http.Handler) http.Handler {
 func (s *Server) configureRouter() *mux.Router {
 	r := mux.NewRouter()
 
-	api.InstallRoutes(r)
+	api.InstallRoutes(s.ProxyService, r)
 
 	r.Use(monitor.RequestLoggingMiddleware)
 	r.Use(s.defaultHeadersMiddleware)
@@ -79,13 +93,10 @@ func (s *Server) configureRouter() *mux.Router {
 
 // Start starts a http server and returns immediately.
 func (s *Server) Start() error {
-	s.router = s.configureRouter()
-	s.httpListener = s.configureHTTPListener()
-
 	go func() {
-		err := s.httpListener.ListenAndServe()
+		err := s.listener.ListenAndServe()
 		if err != nil {
-			//Normal graceful shutdown error
+			// Normal graceful shutdown error
 			if err.Error() == "http: Server closed" {
 				s.Logger.Info(err)
 			} else {
@@ -112,7 +123,7 @@ func (s *Server) ServeUntilShutdown() {
 
 // Shutdown gracefully shuts down the peer server.
 func (s *Server) Shutdown() error {
-	err := s.httpListener.Shutdown(context.Background())
+	err := s.listener.Shutdown(context.Background())
 	return err
 }
 
