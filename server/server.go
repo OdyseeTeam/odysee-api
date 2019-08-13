@@ -10,19 +10,18 @@ import (
 
 	"github.com/lbryio/lbrytv/api"
 	"github.com/lbryio/lbrytv/app/proxy"
-	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/environment"
 	"github.com/lbryio/lbrytv/internal/metrics_server"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 )
 
 // Server holds entities that can be used to control the web server
 type Server struct {
+	monitor.ModuleLogger
+
 	Config         *Config
-	Logger         *log.Logger
 	router         *mux.Router
 	listener       *http.Server
 	InterruptChan  chan os.Signal
@@ -37,13 +36,13 @@ type Config struct {
 	Address string
 }
 
-// NewConfiguredServer returns a server initialized with settings from global config.
-func NewConfiguredServer() *Server {
+// NewServer returns a server initialized with settings from global config.
+func NewServer(address string) *Server {
 	s := &Server{
+		ModuleLogger: monitor.NewModuleLogger("server"),
 		Config: &Config{
-			Address: config.GetAddress(),
+			Address: address,
 		},
-		Logger:         monitor.Logger,
 		InterruptChan:  make(chan os.Signal),
 		DefaultHeaders: make(map[string]string),
 		ProxyService:   proxy.NewService(),
@@ -94,17 +93,18 @@ func (s *Server) configureRouter() *mux.Router {
 // Start starts a http server and returns immediately.
 func (s *Server) Start() error {
 	go func() {
+		s.Log().Info("http server starting...")
 		err := s.listener.ListenAndServe()
 		if err != nil {
 			// Normal graceful shutdown error
 			if err.Error() == "http: Server closed" {
-				s.Logger.Info(err)
+				s.Log().Info(err)
 			} else {
-				s.Logger.Fatal(err)
+				s.Log().Fatal(err)
 			}
 		}
 	}()
-	s.Logger.Printf("listening on %v", s.Config.Address)
+	s.Log().Infof("http server listening on %v", s.Config.Address)
 	return nil
 }
 
@@ -112,12 +112,12 @@ func (s *Server) Start() error {
 func (s *Server) ServeUntilShutdown() {
 	signal.Notify(s.InterruptChan, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT)
 	sig := <-s.InterruptChan
-	s.Logger.Printf("caught a signal (%v), shutting down http server...", sig)
+	s.Log().Printf("caught a signal (%v), shutting down http server...", sig)
 	err := s.Shutdown()
 	if err != nil {
-		s.Logger.Error("error shutting down server: ", err)
+		s.Log().Error("error shutting down server: ", err)
 	} else {
-		s.Logger.Info("http server shut down")
+		s.Log().Info("http server shut down")
 	}
 }
 
@@ -125,17 +125,4 @@ func (s *Server) ServeUntilShutdown() {
 func (s *Server) Shutdown() error {
 	err := s.listener.Shutdown(context.Background())
 	return err
-}
-
-// ServeUntilInterrupted is the main module entry point that configures and starts a webserver,
-// which runs until one of OS shutdown signals are received. The function is blocking.
-func ServeUntilInterrupted() {
-	s := NewConfiguredServer()
-	s.Logger.Info("http server starting...")
-	err := s.Start()
-	if err != nil {
-		log.Fatal(err)
-	}
-	s.Logger.Infof("http server listening on %v", s.Config.Address)
-	s.ServeUntilShutdown()
 }
