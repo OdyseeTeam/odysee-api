@@ -1,4 +1,4 @@
-package api
+package proxy
 
 import (
 	"bytes"
@@ -25,8 +25,13 @@ const dummyServerURL = "http://127.0.0.1:59999"
 const proxySuffix = "/api/proxy"
 const testSetupWait = 200 * time.Millisecond
 
+var svc *Service
+
 func TestMain(m *testing.M) {
 	// call flag.Parse() here if TestMain uses flags
+	go launchGrumpyServer()
+	svc = NewService(config.GetLbrynet())
+
 	config.Override("AccountsEnabled", true)
 	defer config.RestoreOverridden()
 
@@ -38,6 +43,7 @@ func TestMain(m *testing.M) {
 	}
 	c, connCleanup := storage.CreateTestConn(params)
 	c.SetDefaultConnection()
+
 	defer connCleanup()
 	defer lbrynet.RemoveAccount(dummyUserID)
 
@@ -117,7 +123,8 @@ func TestWithValidAuthToken(t *testing.T) {
 	r.Header.Add("X-Lbry-Auth-Token", "d94ab9865f8416d107935d2ca644509c")
 
 	rr := httptest.NewRecorder()
-	http.HandlerFunc(Proxy).ServeHTTP(rr, r)
+	handler := &RequestHandler{svc}
+	handler.Handle(rr, r)
 	require.Equal(t, http.StatusOK, rr.Code)
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.Nil(t, err)
@@ -171,9 +178,11 @@ func TestWithValidAuthTokenConcurrent(t *testing.T) {
 			qBody, _ := json.Marshal(q)
 			r, _ := http.NewRequest("POST", proxySuffix, bytes.NewBuffer(qBody))
 			r.Header.Add("X-Lbry-Auth-Token", "d94ab9865f8416d107935d2ca644509c")
-			rr := httptest.NewRecorder()
 
-			http.HandlerFunc(Proxy).ServeHTTP(rr, r)
+			rr := httptest.NewRecorder()
+			handler := &RequestHandler{svc}
+			handler.Handle(rr, r)
+
 			require.Equal(t, http.StatusOK, rr.Code)
 			json.Unmarshal(rr.Body.Bytes(), &response)
 			require.Nil(t, response.Error)
@@ -208,7 +217,9 @@ func TestWithWrongAuthToken(t *testing.T) {
 	r.Header.Add("X-Lbry-Auth-Token", "xXxXxXx")
 
 	rr := httptest.NewRecorder()
-	http.HandlerFunc(Proxy).ServeHTTP(rr, r)
+	handler := &RequestHandler{svc}
+	handler.Handle(rr, r)
+
 	assert.Equal(t, http.StatusForbidden, rr.Code)
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.Nil(t, err)
@@ -235,7 +246,9 @@ func TestWithoutToken(t *testing.T) {
 	r, _ := http.NewRequest("POST", proxySuffix, bytes.NewBuffer(qBody))
 
 	rr := httptest.NewRecorder()
-	http.HandlerFunc(Proxy).ServeHTTP(rr, r)
+	handler := &RequestHandler{svc}
+	handler.Handle(rr, r)
+
 	require.Equal(t, http.StatusOK, rr.Code)
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 
