@@ -62,7 +62,7 @@ services:
   app:
     image: lbry/lbrytv:latest-dev
     ports:
-      - "8080:8080"
+      - 8080:8080
     volumes:
     - type: bind
       source: storage
@@ -72,6 +72,12 @@ services:
       LW_LBRYNET: http://lbrynet:5279/
     depends_on:
       - lbrynet
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - 9090:9090
+    volumes:
+      - ${PWD}/deployments/docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
 
 volumes:
   storage:
