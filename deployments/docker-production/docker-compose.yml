@@ -42,6 +42,12 @@ services:
     depends_on:
       - lbrynet
       - postgres
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - 9090:9090
+    volumes:
+      - ${PWD}/prometheus.yml:/etc/prometheus/prometheus.yml
 
 volumes:
   storage:
