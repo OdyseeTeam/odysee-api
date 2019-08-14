@@ -11,7 +11,6 @@ import (
 	"github.com/lbryio/lbrytv/api"
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/internal/environment"
-	"github.com/lbryio/lbrytv/internal/metrics_server"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
 	"github.com/gorilla/mux"
@@ -21,31 +20,30 @@ import (
 type Server struct {
 	monitor.ModuleLogger
 
-	Config         *Config
-	router         *mux.Router
-	listener       *http.Server
 	InterruptChan  chan os.Signal
 	DefaultHeaders map[string]string
 	Environment    *environment.Env
-	MetricsServer  *metrics_server.Server
 	ProxyService   *proxy.Service
+
+	address  string
+	router   *mux.Router
+	listener *http.Server
 }
 
-// Config holds basic web server settings
-type Config struct {
-	Address string
+// ServerOpts holds basic web server settings
+type ServerOpts struct {
+	Address      string
+	ProxyService *proxy.Service
 }
 
 // NewServer returns a server initialized with settings from global config.
-func NewServer(address string) *Server {
+func NewServer(opts ServerOpts) *Server {
 	s := &Server{
-		ModuleLogger: monitor.NewModuleLogger("server"),
-		Config: &Config{
-			Address: address,
-		},
+		ModuleLogger:   monitor.NewModuleLogger("server"),
 		InterruptChan:  make(chan os.Signal),
 		DefaultHeaders: make(map[string]string),
-		ProxyService:   proxy.NewService(),
+		ProxyService:   opts.ProxyService,
+		address:        opts.Address,
 	}
 	s.DefaultHeaders["Access-Control-Allow-Origin"] = "*"
 	s.DefaultHeaders["Access-Control-Allow-Headers"] = "X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept"
@@ -59,7 +57,7 @@ func NewServer(address string) *Server {
 
 func (s *Server) configureListener() *http.Server {
 	return &http.Server{
-		Addr:        s.Config.Address,
+		Addr:        s.address,
 		Handler:     s.router,
 		ReadTimeout: 5 * time.Second,
 		// WriteTimeout: 30 * time.Second,
@@ -100,7 +98,7 @@ func (s *Server) Start() error {
 			}
 		}
 	}()
-	s.Log().Infof("http server listening on %v", s.Config.Address)
+	s.Log().Infof("http server listening on %v", s.address)
 	return nil
 }
 

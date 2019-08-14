@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
@@ -17,6 +16,8 @@ import (
 // for all calls proxied through those objects.
 type Service struct {
 	*metrics.ExecTimeMetrics
+	TargetEndpoint string
+	logger         monitor.QueryMonitor
 }
 
 type Caller struct {
@@ -33,11 +34,23 @@ type Query struct {
 
 // NewService is the entry point to proxy module.
 // Normally only one instance of Service should be created per running server.
-func NewService() *Service {
+func NewService(targetEndpoint string) *Service {
 	s := Service{
-		metrics.NewMetrics(),
+		ExecTimeMetrics: metrics.NewMetrics(),
+		TargetEndpoint:  targetEndpoint,
+		logger:          monitor.NewProxyLogger(),
 	}
 	return &s
+}
+
+// NewCaller returns an instance of Caller ready to proxy requests.
+// Note that `SetAccountID` needs to be called if authenticated user is making this call.
+func (ps *Service) NewCaller() *Caller {
+	c := Caller{
+		client:  jsonrpc.NewClient(ps.TargetEndpoint),
+		service: ps,
+	}
+	return &c
 }
 
 // NewQuery initializes Query object with JSON-RPC request supplied as bytes.
@@ -153,16 +166,6 @@ func (q *Query) validate() CallError {
 	return nil
 }
 
-// NewCaller returns an instance of Caller ready to proxy requests.
-// Note that `SetAccountID` needs to be called if authenticated user is making this call.
-func (ps *Service) NewCaller() *Caller {
-	c := Caller{
-		client:  jsonrpc.NewClient(config.GetLbrynet()),
-		service: ps,
-	}
-	return &c
-}
-
 // SetAccountID sets accountID for the current instance of Caller
 func (c *Caller) SetAccountID(id string) {
 	c.accountID = id
@@ -199,6 +202,7 @@ func (c *Caller) sendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 	q, err := NewQuery(rawQuery)
 	if err != nil {
+		c.service.logger.Errorf("malformed JSON from client: %s", err.Error())
 		return nil, NewParseError(err)
 	}
 	if err := q.validate(); err != nil {
@@ -222,7 +226,14 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 		return nil, NewInternalError(err)
 	}
 	execTime := time.Now().Sub(queryStartTime).Seconds()
+
 	c.service.LogExecTime(q.Method(), execTime, q.Params())
+
+	if r.Error == nil {
+		c.service.logger.LogSuccessfulQuery(q.Method(), execTime, q.Params())
+	} else {
+		c.service.logger.LogFailedQuery(q.Method(), q.Params(), r.Error)
+	}
 
 	r, err = processResponse(q.Request, r)
 
@@ -237,7 +248,6 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 func (c *Caller) Call(rawQuery []byte) []byte {
 	r, err := c.call(rawQuery)
 	if err != nil {
-		fmt.Println(err)
 		return c.marshalError(err)
 	}
 	serialized, err := c.marshal(r)

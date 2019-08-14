@@ -160,3 +160,54 @@ func RequestLoggingMiddleware(next http.Handler) http.Handler {
 		}
 	})
 }
+
+type QueryMonitor interface {
+	LogSuccessfulQuery(method string, time float64, params interface{})
+	LogFailedQuery(method string, params interface{}, errorResponse interface{})
+	Error(message string)
+	Errorf(message string, args ...interface{})
+	Logger() *logrus.Logger
+}
+
+type ProxyLogger struct {
+	logger *logrus.Logger
+	entry  *logrus.Entry
+}
+
+func NewProxyLogger() *ProxyLogger {
+	l := ProxyLogger{
+		logger: logrus.New(),
+	}
+	l.entry = l.logger.WithFields(logrus.Fields{"module": "proxy"})
+	return &l
+}
+
+func (l *ProxyLogger) LogSuccessfulQuery(method string, time float64, params interface{}) {
+	l.entry.WithFields(logrus.Fields{
+		"method":    method,
+		"exec_time": time,
+		"params":    params,
+	}).Info("call proxied")
+}
+
+func (l *ProxyLogger) LogFailedQuery(method string, params interface{}, errorResponse interface{}) {
+	l.entry.WithFields(logrus.Fields{
+		"method":   method,
+		"params":   params,
+		"response": errorResponse,
+	}).Error("error from the target endpoint")
+
+	captureFailedQuery(method, params, errorResponse)
+}
+
+func (l *ProxyLogger) Error(message string) {
+	l.entry.Error(message)
+}
+
+func (l *ProxyLogger) Errorf(message string, args ...interface{}) {
+	l.entry.Errorf(message, args...)
+}
+
+func (l *ProxyLogger) Logger() *logrus.Logger {
+	return l.logger
+}

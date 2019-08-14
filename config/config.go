@@ -50,8 +50,9 @@ func (c *ConfigWrapper) Init() {
 	c.Viper = viper.New()
 
 	c.Viper.SetEnvPrefix("LW")
-	c.Viper.BindEnv("Debug")
 	c.Viper.SetDefault("Debug", false)
+
+	c.Viper.BindEnv("Debug")
 	c.Viper.BindEnv("Lbrynet")
 	c.Viper.SetDefault("Lbrynet", "http://localhost:5279/")
 

@@ -41,10 +41,13 @@ type GenericError struct {
 
 // AsRPCResponse returns error as jsonrpc.RPCResponse
 func (e GenericError) AsRPCResponse() *jsonrpc.RPCResponse {
-	return &jsonrpc.RPCResponse{Error: &jsonrpc.RPCError{
-		Code:    e.Code(),
-		Message: e.Error(),
-	}}
+	return &jsonrpc.RPCResponse{
+		Error: &jsonrpc.RPCError{
+			Code:    e.Code(),
+			Message: e.Error(),
+		},
+		JSONRPC: "2.0",
+	}
 }
 
 // AuthFailed is for authentication failures when jsonrpc client has provided a token

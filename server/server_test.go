@@ -6,11 +6,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lbryio/lbrytv/app/proxy"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStartAndServeUntilShutdown(t *testing.T) {
-	server := NewServer("localhost:40080")
+	server := NewServer(ServerOpts{
+		Address:      "localhost:40080",
+		ProxyService: proxy.NewService(""),
+	})
 	server.Start()
 	go server.ServeUntilShutdown()
 
@@ -38,7 +43,10 @@ func TestHeaders(t *testing.T) {
 		response *http.Response
 	)
 
-	server := NewServer("localhost:40080")
+	server := NewServer(ServerOpts{
+		Address:      "localhost:40080",
+		ProxyService: proxy.NewService(""),
+	})
 	server.Start()
 	go server.ServeUntilShutdown()
 
