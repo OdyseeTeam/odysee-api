@@ -1,3 +1,7 @@
+// Service/Caller/Query is a refactoring/improvement over the previous version of proxy module
+// currently contained in proxy.go. The old code should be gradually removed and replaced
+// by the following approach.
+
 package proxy
 
 import (
@@ -20,6 +24,8 @@ type Service struct {
 	logger         monitor.QueryMonitor
 }
 
+// Caller patches through JSON-RPC requests from clients, doing pre/post-processing,
+// account processing and validation.
 type Caller struct {
 	accountID string
 	query     *jsonrpc.RPCRequest
@@ -27,6 +33,7 @@ type Caller struct {
 	service   *Service
 }
 
+// Query is a wrapper around client JSON-RPC query for easier (un)marshaling and processing.
 type Query struct {
 	rawRequest []byte
 	Request    *jsonrpc.RPCRequest
@@ -44,7 +51,7 @@ func NewService(targetEndpoint string) *Service {
 }
 
 // NewCaller returns an instance of Caller ready to proxy requests.
-// Note that `SetAccountID` needs to be called if authenticated user is making this call.
+// Note that `SetAccountID` needs to be called if an authenticated user is making this call.
 func (ps *Service) NewCaller() *Caller {
 	c := Caller{
 		client:  jsonrpc.NewClient(ps.TargetEndpoint),
@@ -54,7 +61,7 @@ func (ps *Service) NewCaller() *Caller {
 }
 
 // NewQuery initializes Query object with JSON-RPC request supplied as bytes.
-// The object is immediately usable and returns error in case request parsing fails.
+// The object is immediately usable and returns an error in case request parsing fails.
 func NewQuery(r []byte) (*Query, error) {
 	q := &Query{r, &jsonrpc.RPCRequest{}}
 	err := q.unmarshal()
@@ -72,17 +79,17 @@ func (q *Query) unmarshal() error {
 	return nil
 }
 
-// Method is a shortcut for query method
+// Method is a shortcut for query method.
 func (q *Query) Method() string {
 	return q.Request.Method
 }
 
-// Params is a shortcut for query params
+// Params is a shortcut for query params.
 func (q *Query) Params() interface{} {
 	return q.Request.Params
 }
 
-// ParamsAsMap returns query params converted to plain map
+// ParamsAsMap returns query params converted to plain map.
 func (q *Query) ParamsAsMap() map[string]interface{} {
 	if paramsMap, ok := q.Params().(map[string]interface{}); ok {
 		return paramsMap
@@ -127,6 +134,7 @@ func (q *Query) attachAccountID(id string) {
 	}
 }
 
+// cacheHit returns cached response or nil in case it's a miss or query shouldn't be cacheable.
 func (q *Query) cacheHit() *jsonrpc.RPCResponse {
 	if q.isCacheable() {
 		if cached := responseCache.Retrieve(q.Method(), q.Params()); cached != nil {
@@ -171,6 +179,7 @@ func (c *Caller) SetAccountID(id string) {
 	c.accountID = id
 }
 
+// AccountID is an SDK account ID for the client this caller instance is serving.
 func (c *Caller) AccountID() string {
 	return c.accountID
 }

@@ -10,10 +10,12 @@ import (
 	"github.com/lbryio/lbrytv/config"
 )
 
+// RequestHandler is a wrapper for passing proxy.Service instance to proxy HTTP handler.
 type RequestHandler struct {
 	*Service
 }
 
+// Handle forwards client JSON-RPC request to proxy.
 func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	var accountID string
 
