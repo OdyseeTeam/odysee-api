@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -241,25 +240,6 @@ func TestForwardCall(t *testing.T) {
 	var query *jsonrpc.RPCRequest
 	var response jsonrpc.RPCResponse
 	var rawResponse []byte
-
-	query = &jsonrpc.RPCRequest{Method: methodAccountBalance, ID: 123}
-	rawResponse, err = ForwardCall(*query)
-	json.Unmarshal(rawResponse, &response)
-	if err != nil {
-		t.Errorf("failed with an unexpected error: %v", err)
-		return
-	} else if response.Error != nil {
-		t.Errorf("daemon unexpectedly errored: %v", response.Error.Message)
-	}
-
-	balanceResult, ok := response.Result.(string)
-	if !ok {
-		t.Errorf("unexpected balance result from daemon: %v", response.Result)
-	}
-	_, err = strconv.ParseFloat(balanceResult, 32)
-	if err != nil {
-		t.Errorf("error parsing result from daemon: %q", response.Result)
-	}
 
 	streamURI := "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
 	query = jsonrpc.NewRequest(methodResolve, map[string]string{paramUrls: streamURI})

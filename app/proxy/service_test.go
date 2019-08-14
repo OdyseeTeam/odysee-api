@@ -119,7 +119,7 @@ func TestCallResolve(t *testing.T) {
 	assert.True(t, svc.GetExecTimeMetrics("resolve").ExecTime > 0)
 }
 
-func TestCallBalance(t *testing.T) {
+func TestCallAccountList(t *testing.T) {
 	var accResponse ljsonrpc.Account
 
 	rand.Seed(time.Now().UnixNano())
