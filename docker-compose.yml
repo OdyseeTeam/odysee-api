@@ -67,11 +67,11 @@ services:
     - type: bind
       source: storage
       target: /storage
-    - type: bind
     environment:
       LW_LBRYNET: http://lbrynet:5279/
     depends_on:
       - lbrynet
+      - postgres
   prometheus:
     image: prom/prometheus:latest
     ports:
