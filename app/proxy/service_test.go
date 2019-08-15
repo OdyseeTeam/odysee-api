@@ -119,6 +119,28 @@ func TestCallResolve(t *testing.T) {
 	assert.True(t, svc.GetExecTimeMetrics("resolve").ExecTime > 0)
 }
 
+func TestCallAccountBalance(t *testing.T) {
+	// TODO: Add actual account balance response check after 0.39 support is added to lbry.go
+	// var accountBalanceResponse ljsonrpc.AccountBalanceResponse
+
+	rand.Seed(time.Now().UnixNano())
+	dummyAccountID := rand.Int()
+
+	acc, _ := lbrynet.CreateAccount(dummyAccountID)
+	defer lbrynet.RemoveAccount(dummyAccountID)
+
+	svc := NewService(config.GetLbrynet())
+	c := svc.NewCaller()
+	c.SetAccountID(acc.ID)
+
+	request := newRawRequest(t, "account_balance", nil)
+	hook := logrus_test.NewLocal(svc.logger.Logger())
+	c.Call(request)
+
+	assert.Equal(t, map[string]interface{}{"account_id": "****"}, hook.LastEntry().Data["params"])
+	assert.Equal(t, "account_balance", hook.LastEntry().Data["method"])
+}
+
 func TestCallAccountList(t *testing.T) {
 	var accResponse ljsonrpc.Account
 

@@ -91,10 +91,26 @@ func (q *Query) Params() interface{} {
 
 // ParamsAsMap returns query params converted to plain map.
 func (q *Query) ParamsAsMap() map[string]interface{} {
-	if paramsMap, ok := q.Params().(map[string]interface{}); ok {
+	paramsMap := make(map[string]interface{})
+	if paramsStrings, ok := q.Params().(map[string]string); ok {
+		for k, v := range paramsStrings {
+			paramsMap[k] = v
+		}
+		return paramsMap
+	} else if paramsMap, ok := q.Params().(map[string]interface{}); ok {
 		return paramsMap
 	}
 	return nil
+}
+
+func (q *Query) paramsForLog() map[string]interface{} {
+	params := q.ParamsAsMap()
+	for k := range params {
+		if k == paramAccountID {
+			params[k] = monitor.ValueMask
+		}
+	}
+	return params
 }
 
 // cacheHit returns true if we got a resolve query with more than `cacheResolveLongerThan` urls in it.
@@ -239,9 +255,9 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 	c.service.LogExecTime(q.Method(), execTime, q.Params())
 
 	if r.Error == nil {
-		c.service.logger.LogSuccessfulQuery(q.Method(), execTime, q.Params())
+		c.service.logger.LogSuccessfulQuery(q.Method(), execTime, q.paramsForLog())
 	} else {
-		c.service.logger.LogFailedQuery(q.Method(), q.Params(), r.Error)
+		c.service.logger.LogFailedQuery(q.Method(), q.paramsForLog(), r.Error)
 	}
 
 	r, err = processResponse(q.Request, r)

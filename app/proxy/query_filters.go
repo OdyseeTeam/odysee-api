@@ -22,7 +22,7 @@ var forbiddenMethods = []string{
 	"sync_apply",
 }
 
-const forbiddenParam = "account_id"
+const forbiddenParam = paramAccountID
 
 func MethodRequiresAccountID(method string) bool {
 	return methodInList(method, accountSpecificMethods)

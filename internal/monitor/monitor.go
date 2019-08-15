@@ -13,10 +13,11 @@ import (
 // Logger is a global instance of logrus object.
 var Logger = logrus.New()
 
-// TokenF is a token field name that will be stripped from logs in production mode
+// TokenF is a token field name that will be stripped from logs in production mode.
 const TokenF = "token"
 
-const masked = "****"
+// ValueMask is what replaces sensitive fields contents in logs.
+const ValueMask = "****"
 
 // ModuleLogger contains module-specific logger details.
 type ModuleLogger struct {
@@ -79,7 +80,7 @@ func (l ModuleLogger) LogF(fields F) *logrus.Entry {
 	logFields["module"] = l.ModuleName
 	for k, v := range fields {
 		if k == TokenF && v != "" && config.IsProduction() {
-			logFields[k] = masked
+			logFields[k] = ValueMask
 		} else {
 			logFields[k] = v
 		}
@@ -169,16 +170,30 @@ type QueryMonitor interface {
 	Logger() *logrus.Logger
 }
 
+func getBaseLogger() *logrus.Logger {
+	logger := logrus.New()
+	if config.IsProduction() {
+		logger.SetLevel(logrus.InfoLevel)
+		logger.SetFormatter(&logrus.JSONFormatter{})
+	} else {
+		logger.SetLevel(logrus.DebugLevel)
+		logger.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
+	}
+	return logger
+}
+
 type ProxyLogger struct {
 	logger *logrus.Logger
 	entry  *logrus.Entry
 }
 
 func NewProxyLogger() *ProxyLogger {
+	logger := getBaseLogger()
+
 	l := ProxyLogger{
-		logger: logrus.New(),
+		logger: logger,
+		entry:  logger.WithFields(logrus.Fields{"module": "proxy"}),
 	}
-	l.entry = l.logger.WithFields(logrus.Fields{"module": "proxy"})
 	return &l
 }
 
@@ -193,8 +208,8 @@ func (l *ProxyLogger) LogSuccessfulQuery(method string, time float64, params int
 func (l *ProxyLogger) LogFailedQuery(method string, params interface{}, errorResponse interface{}) {
 	l.entry.WithFields(logrus.Fields{
 		"method":   method,
-		"params":   params,
 		"response": errorResponse,
+		"params":   params,
 	}).Error("error from the target endpoint")
 
 	captureFailedQuery(method, params, errorResponse)
