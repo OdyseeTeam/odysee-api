@@ -19,7 +19,7 @@ import (
 // Service generates Caller objects and keeps execution time metrics
 // for all calls proxied through those objects.
 type Service struct {
-	*metrics.MetricsValues
+	*metrics.Collector
 	TargetEndpoint string
 	logger         monitor.QueryMonitor
 }
@@ -43,7 +43,7 @@ type Query struct {
 // Normally only one instance of Service should be created per running server.
 func NewService(targetEndpoint string) *Service {
 	s := Service{
-		MetricsValues:  metrics.NewMetrics(),
+		Collector:      metrics.NewCollector(),
 		TargetEndpoint: targetEndpoint,
 		logger:         monitor.NewProxyLogger(),
 	}
