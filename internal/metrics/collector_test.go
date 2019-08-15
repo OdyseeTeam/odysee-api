@@ -17,6 +17,12 @@ func TestSetMetricsValue(t *testing.T) {
 	assert.Equal(t, 0.1, math.Round(m.GetMetricsValue("resolve").Value*100)/100)
 }
 
+func TestGetMetricsValue(t *testing.T) {
+	m := NewCollector()
+
+	assert.Equal(t, 0., m.GetMetricsValue("resolve").Value)
+}
+
 func TestMetricsIncrementDecrement(t *testing.T) {
 	m := NewCollector()
 

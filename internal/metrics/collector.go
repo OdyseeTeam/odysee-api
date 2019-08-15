@@ -20,6 +20,9 @@ const opSet = 1
 const opIncrement = 2
 const opDecrement = 3
 
+// One is a constant to be used in MetricsIncrement / MetricsDecrement calls
+const One = 1
+
 type op struct {
 	kind uint
 	item *Item
@@ -43,7 +46,11 @@ func NewCollector() *Collector {
 		for {
 			select {
 			case query := <-metrics.queries:
-				query.responseChannel <- *metrics.data[query.name]
+				item := metrics.data[query.name]
+				if item == nil {
+					item = &Item{Name: query.name}
+				}
+				query.responseChannel <- *item
 			case m := <-metrics.operations:
 				if metrics.data[m.item.Name] == nil {
 					metrics.data[m.item.Name] = &Item{}
