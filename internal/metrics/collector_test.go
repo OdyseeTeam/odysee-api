@@ -7,8 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewMetrics(t *testing.T) {
+func TestSetMetricsValue(t *testing.T) {
 	m := NewMetrics()
-	m.LogExecTime("resolve", 0.25, nil)
-	assert.Equal(t, 0.25, math.Round(m.GetExecTimeMetrics("resolve").ExecTime*100)/100)
+
+	m.SetMetricsValue("resolve", 0.25, nil)
+	assert.Equal(t, 0.25, math.Round(m.GetMetricsValue("resolve").Value*100)/100)
+
+	m.SetMetricsValue("resolve", 0.1, nil)
+	assert.Equal(t, 0.1, math.Round(m.GetMetricsValue("resolve").Value*100)/100)
 }

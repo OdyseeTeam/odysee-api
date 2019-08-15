@@ -46,7 +46,7 @@ func (s *Server) registerMetrics() {
 			Name:      "resolve_time",
 			Help:      "Time to serve a single resolve call.",
 		},
-		func() float64 { return s.proxy.GetExecTimeMetrics("resolve").ExecTime },
+		func() float64 { return s.proxy.GetMetricsValue("resolve").Value },
 	)); err == nil {
 		s.Log().Info("gauge 'proxy_resolve_time' registered")
 	}
@@ -57,7 +57,7 @@ func (s *Server) registerMetrics() {
 			Name:      "claim_search_time",
 			Help:      "Time to serve a claim_search call.",
 		},
-		func() float64 { return s.proxy.GetExecTimeMetrics("claim_search").ExecTime },
+		func() float64 { return s.proxy.GetMetricsValue("claim_search").Value },
 	)); err == nil {
 		s.Log().Info("gauge 'proxy_claim_search' registered")
 	}

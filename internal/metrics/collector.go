@@ -1,26 +1,26 @@
 package metrics
 
-type ExecTimeMetricsItem struct {
-	Name     string
-	ExecTime float64
-	Params   interface{}
+type MetricsItem struct {
+	Name   string
+	Value  float64
+	Params interface{}
 }
 
-type ExecTimeMetrics struct {
-	data      map[string]ExecTimeMetricsItem
-	collector chan ExecTimeMetricsItem
+type MetricsValues struct {
+	data      map[string]MetricsItem
+	collector chan MetricsItem
 	queries   chan metricsQuery
 }
 
 type metricsQuery struct {
 	name            string
-	responseChannel chan ExecTimeMetricsItem
+	responseChannel chan MetricsItem
 }
 
-func NewMetrics() *ExecTimeMetrics {
-	metrics := ExecTimeMetrics{
-		map[string]ExecTimeMetricsItem{},
-		make(chan ExecTimeMetricsItem),
+func NewMetrics() *MetricsValues {
+	metrics := MetricsValues{
+		map[string]MetricsItem{},
+		make(chan MetricsItem),
 		make(chan metricsQuery),
 	}
 	go func() {
@@ -36,12 +36,12 @@ func NewMetrics() *ExecTimeMetrics {
 	return &metrics
 }
 
-func (m *ExecTimeMetrics) LogExecTime(name string, time float64, params interface{}) {
-	m.collector <- ExecTimeMetricsItem{name, time, params}
+func (m *MetricsValues) SetMetricsValue(name string, time float64, params interface{}) {
+	m.collector <- MetricsItem{name, time, params}
 }
 
-func (m *ExecTimeMetrics) GetExecTimeMetrics(name string) ExecTimeMetricsItem {
-	response := make(chan ExecTimeMetricsItem)
+func (m *MetricsValues) GetMetricsValue(name string) MetricsItem {
+	response := make(chan MetricsItem)
 	m.queries <- metricsQuery{name, response}
 	return <-response
 }
