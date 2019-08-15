@@ -42,7 +42,7 @@ type reflectedStream struct {
 // - Seek simply implements io.Seeker
 // - Read calculates boundaries and finds blobs that contain the requested stream range,
 // then calls streamBlobs, which sequentially downloads and decrypts requested blobs
-func PlayURI(uri string, w http.ResponseWriter, req *http.Request) (err error) {
+func PlayURI(uri string, w http.ResponseWriter, req *http.Request) error {
 	rs, err := newReflectedStream(uri)
 	if err != nil {
 		return err

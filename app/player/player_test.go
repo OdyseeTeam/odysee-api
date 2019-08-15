@@ -15,7 +15,7 @@ const streamURL = "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
 // An MP4 file, size: 128791189 bytes, blobs: 63
 const sizedStreamURL = "known-size#0590f924bbee6627a2e79f7f2ff7dfb50bf2877c"
 
-func Test_newReflectedStream(t *testing.T) {
+func TestNewReflectedStream(t *testing.T) {
 	rs, err := newReflectedStream(streamURL)
 	if err != nil {
 		// If this fails, no point running other tests
@@ -26,12 +26,12 @@ func Test_newReflectedStream(t *testing.T) {
 		rs.SdHash)
 }
 
-func Test_newReflectedStream_emptyURL(t *testing.T) {
+func TestNewReflectedStreamWithEmptyURL(t *testing.T) {
 	_, err := newReflectedStream("")
 	assert.NotNil(t, err)
 }
 
-func TestReflectedStream_fetchData(t *testing.T) {
+func TestNewReflectedStreamFetchData(t *testing.T) {
 	rs, err := newReflectedStream(streamURL)
 	err = rs.fetchData()
 	if err != nil {
@@ -42,7 +42,7 @@ func TestReflectedStream_fetchData(t *testing.T) {
 	assert.Equal(t, 38, rs.SDBlob.BlobInfos[38].BlobNum)
 }
 
-func TestPlayURI_0B_52B(t *testing.T) {
+func TestPlayURIFromByte0ToByte52(t *testing.T) {
 	var err error
 	r, _ := http.NewRequest("", "", nil)
 	r.Header.Add("Range", "bytes=0-52")
@@ -73,7 +73,7 @@ func TestPlayURI_0B_52B(t *testing.T) {
 	assert.Equal(t, first52, responseFirst52)
 }
 
-func TestPlayURI_156B_259B(t *testing.T) {
+func TestPlayURIFromByte156ToByte259(t *testing.T) {
 	var err error
 	r, _ := http.NewRequest("", "", nil)
 	r.Header.Add("Range", "bytes=156-259")
@@ -108,7 +108,7 @@ func TestPlayURI_156B_259B(t *testing.T) {
 	assert.Equal(t, responseData[104:], emptyData)
 }
 
-func TestPlayURI_4MB_4MB105B(t *testing.T) {
+func TestPlayURI104BytesFrom4thMB(t *testing.T) {
 	var err error
 	r, _ := http.NewRequest("", "", nil)
 	r.Header.Add("Range", "bytes=4000000-4000104")
@@ -143,7 +143,7 @@ func TestPlayURI_4MB_4MB105B(t *testing.T) {
 	assert.Equal(t, responseData[106:], emptyData)
 }
 
-func TestPlayURI_LastBytes(t *testing.T) {
+func TestPlayURILastBytes(t *testing.T) {
 	var err error
 	r, _ := http.NewRequest("", "", nil)
 	r.Header.Add("Range", "bytes=128791089-")
@@ -174,7 +174,7 @@ func TestPlayURI_LastBytes(t *testing.T) {
 	assert.Equal(t, expectedData, responseData)
 }
 
-func TestPlayURI_Big(t *testing.T) {
+func TestPlayURIFromZeroTo100KB(t *testing.T) {
 	var err error
 	r, _ := http.NewRequest("", "", nil)
 	r.Header.Add("Range", "bytes=0-100000")

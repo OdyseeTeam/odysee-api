@@ -6,15 +6,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/app/proxy"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStartAndServeUntilShutdown(t *testing.T) {
-	config.Override("Address", "localhost:40080")
-	defer config.RestoreOverridden()
-
-	server := NewConfiguredServer()
+	server := NewServer(ServerOpts{
+		Address:      "localhost:40080",
+		ProxyService: proxy.NewService(""),
+	})
 	server.Start()
 	go server.ServeUntilShutdown()
 
@@ -41,10 +42,11 @@ func TestHeaders(t *testing.T) {
 		err      error
 		response *http.Response
 	)
-	config.Override("Address", "localhost:40080")
-	defer config.RestoreOverridden()
 
-	server := NewConfiguredServer()
+	server := NewServer(ServerOpts{
+		Address:      "localhost:40080",
+		ProxyService: proxy.NewService(""),
+	})
 	server.Start()
 	go server.ServeUntilShutdown()
 

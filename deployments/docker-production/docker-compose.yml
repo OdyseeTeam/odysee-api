@@ -38,10 +38,16 @@ services:
       target: /static
     environment:
       LW_LBRYNET: http://lbrynet:5279/
-      LW_ACCOUNTSENABLED: 0
+      LW_ACCOUNTSENABLED: 1
     depends_on:
       - lbrynet
       - postgres
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - 9090:9090
+    volumes:
+      - ${PWD}/prometheus.yml:/etc/prometheus/prometheus.yml
 
 volumes:
   storage:

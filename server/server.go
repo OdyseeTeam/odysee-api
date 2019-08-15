@@ -8,48 +8,56 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/api"
+	"github.com/lbryio/lbrytv/app/proxy"
+	"github.com/lbryio/lbrytv/internal/environment"
+	"github.com/lbryio/lbrytv/internal/monitor"
 
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 )
 
 // Server holds entities that can be used to control the web server
 type Server struct {
-	Config         *Config
-	Logger         *log.Logger
-	router         *mux.Router
-	httpListener   *http.Server
+	monitor.ModuleLogger
+
 	InterruptChan  chan os.Signal
 	DefaultHeaders map[string]string
+	Environment    *environment.Env
+	ProxyService   *proxy.Service
+
+	address  string
+	router   *mux.Router
+	listener *http.Server
 }
 
-// Config holds basic web server settings
-type Config struct {
-	Address string
+// ServerOpts holds basic web server settings
+type ServerOpts struct {
+	Address      string
+	ProxyService *proxy.Service
 }
 
-// NewConfiguredServer returns a server initialized with settings from global config.
-func NewConfiguredServer() *Server {
+// NewServer returns a server initialized with settings from global config.
+func NewServer(opts ServerOpts) *Server {
 	s := &Server{
-		Config: &Config{
-			Address: config.GetAddress(),
-		},
-		Logger:         monitor.Logger,
+		ModuleLogger:   monitor.NewModuleLogger("server"),
 		InterruptChan:  make(chan os.Signal),
 		DefaultHeaders: make(map[string]string),
+		ProxyService:   opts.ProxyService,
+		address:        opts.Address,
 	}
 	s.DefaultHeaders["Access-Control-Allow-Origin"] = "*"
 	s.DefaultHeaders["Access-Control-Allow-Headers"] = "X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept"
 	s.DefaultHeaders["Server"] = "api.lbry.tv"
+
+	s.router = s.configureRouter()
+	s.listener = s.configureListener()
+
 	return s
 }
 
-func (s *Server) configureHTTPListener() *http.Server {
+func (s *Server) configureListener() *http.Server {
 	return &http.Server{
-		Addr:        s.Config.Address,
+		Addr:        s.address,
 		Handler:     s.router,
 		ReadTimeout: 5 * time.Second,
 		// WriteTimeout: 30 * time.Second,
@@ -70,7 +78,7 @@ func (s *Server) defaultHeadersMiddleware(next http.Handler) http.Handler {
 func (s *Server) configureRouter() *mux.Router {
 	r := mux.NewRouter()
 
-	api.InstallRoutes(r)
+	api.InstallRoutes(s.ProxyService, r)
 
 	r.Use(monitor.RequestLoggingMiddleware)
 	r.Use(s.defaultHeadersMiddleware)
@@ -79,21 +87,18 @@ func (s *Server) configureRouter() *mux.Router {
 
 // Start starts a http server and returns immediately.
 func (s *Server) Start() error {
-	s.router = s.configureRouter()
-	s.httpListener = s.configureHTTPListener()
-
 	go func() {
-		err := s.httpListener.ListenAndServe()
+		err := s.listener.ListenAndServe()
 		if err != nil {
-			//Normal graceful shutdown error
+			// Normal graceful shutdown error
 			if err.Error() == "http: Server closed" {
-				s.Logger.Info(err)
+				s.Log().Info(err)
 			} else {
-				s.Logger.Fatal(err)
+				s.Log().Fatal(err)
 			}
 		}
 	}()
-	s.Logger.Printf("listening on %v", s.Config.Address)
+	s.Log().Infof("http server listening on %v", s.address)
 	return nil
 }
 
@@ -101,30 +106,17 @@ func (s *Server) Start() error {
 func (s *Server) ServeUntilShutdown() {
 	signal.Notify(s.InterruptChan, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT)
 	sig := <-s.InterruptChan
-	s.Logger.Printf("caught a signal (%v), shutting down http server...", sig)
+	s.Log().Printf("caught a signal (%v), shutting down http server...", sig)
 	err := s.Shutdown()
 	if err != nil {
-		s.Logger.Error("error shutting down server: ", err)
+		s.Log().Error("error shutting down server: ", err)
 	} else {
-		s.Logger.Info("http server shut down")
+		s.Log().Info("http server shut down")
 	}
 }
 
 // Shutdown gracefully shuts down the peer server.
 func (s *Server) Shutdown() error {
-	err := s.httpListener.Shutdown(context.Background())
+	err := s.listener.Shutdown(context.Background())
 	return err
-}
-
-// ServeUntilInterrupted is the main module entry point that configures and starts a webserver,
-// which runs until one of OS shutdown signals are received. The function is blocking.
-func ServeUntilInterrupted() {
-	s := NewConfiguredServer()
-	s.Logger.Info("http server starting...")
-	err := s.Start()
-	if err != nil {
-		log.Fatal(err)
-	}
-	s.Logger.Infof("http server listening on %v", s.Config.Address)
-	s.ServeUntilShutdown()
 }

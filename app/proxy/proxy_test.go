@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -176,11 +174,6 @@ func call(t *testing.T, method string, params ...interface{}) jsonrpc.RPCRespons
 	return response
 }
 
-func TestMain(m *testing.M) {
-	go launchGrumpyServer()
-	os.Exit(m.Run())
-}
-
 // TestForwardCallWithHTTPError tests for HTTP level error connecting to a port that no server is listening on
 func TestForwardCall_HTTPError(t *testing.T) {
 	config.Override("Lbrynet", "http://127.0.0.1:49999")
@@ -236,79 +229,7 @@ func TestUnmarshalRequest(t *testing.T) {
 	assert.True(t, strings.HasPrefix(err.Error(), "client json parse error: invalid character 'y'"))
 }
 
-func TestForwardCall(t *testing.T) {
-	var err error
-	var query *jsonrpc.RPCRequest
-	var response jsonrpc.RPCResponse
-	var rawResponse []byte
-
-	query = &jsonrpc.RPCRequest{Method: methodAccountBalance, ID: 123}
-	rawResponse, err = ForwardCall(*query)
-	json.Unmarshal(rawResponse, &response)
-	if err != nil {
-		t.Errorf("failed with an unexpected error: %v", err)
-		return
-	} else if response.Error != nil {
-		t.Errorf("daemon unexpectedly errored: %v", response.Error.Message)
-	}
-
-	balanceResult, ok := response.Result.(string)
-	if !ok {
-		t.Errorf("unexpected balance result from daemon: %v", response.Result)
-	}
-	_, err = strconv.ParseFloat(balanceResult, 32)
-	if err != nil {
-		t.Errorf("error parsing result from daemon: %q", response.Result)
-	}
-
-	streamURI := "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
-	query = jsonrpc.NewRequest(methodResolve, map[string]string{paramUrls: streamURI})
-	queryBody, _ := json.Marshal(query)
-	query, err = UnmarshalRequest(queryBody)
-	rawResponse, err = ForwardCall(*query)
-	if err != nil {
-		t.Errorf("failed with an unexpected error: %v", err)
-		return
-	} else if response.Error != nil {
-		t.Errorf("daemon errored: %v", response.Error.Message)
-		return
-	}
-
-	query = jsonrpc.NewRequest(methodGet, map[string]string{"uri": streamURI})
-	_, err = ForwardCall(*query)
-	if err != nil {
-		t.Errorf("failed with an unexpected error: %v", err)
-		return
-	}
-	if response.Error != nil {
-		t.Errorf("daemon errored: %v", response.Error.Message)
-		return
-	}
-
-	var resolveResponse *ljsonrpc.ResolveResponse
-	json.Unmarshal(rawResponse, &response)
-	response.GetObject(&resolveResponse)
-	outpoint := fmt.Sprintf("%v:%v", (*resolveResponse)[streamURI].Txid, 0)
-
-	query = jsonrpc.NewRequest(methodFileList, map[string]string{"outpoint": outpoint})
-	rawResponse, err = ForwardCall(*query)
-	if err != nil {
-		t.Errorf("file_list of outpoint %v failed with an unexpected error: %v", outpoint, err)
-		return
-	}
-
-	var fileListResponse *ljsonrpc.FileListResponse
-	json.Unmarshal(rawResponse, &response)
-	assert.Nil(t, response.Error)
-	response.GetObject(&fileListResponse)
-
-	if len(*fileListResponse) == 0 {
-		t.Errorf("not enough results, daemon responded with %v", fileListResponse)
-		return
-	}
-}
-
-func TesProxy_WithCache(t *testing.T) {
+func TesProxyWithCache(t *testing.T) {
 	var (
 		err                   error
 		query                 *jsonrpc.RPCRequest

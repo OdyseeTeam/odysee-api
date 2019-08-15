@@ -8,16 +8,6 @@ services:
     environment:
      POSTGRES_USER: lbrytv
      POSTGRES_PASSWORD: lbrytv
-  lbrynet37:
-    image: lbryweb/lbrynet:0.37.3
-    ports:
-      - "5579:5279"
-    volumes:
-    - type: bind
-      source: storage
-      target: /storage
-    environment:
-      LBRY_DOCKER_CONFIG: /daemon/daemon_settings.yml
   lbrynet:
     image: lbry/lbrynet-tv:latest
     ports:
@@ -72,16 +62,22 @@ services:
   app:
     image: lbry/lbrytv:latest-dev
     ports:
-      - "8080:8080"
+      - 8080:8080
     volumes:
     - type: bind
       source: storage
       target: /storage
-    - type: bind
     environment:
       LW_LBRYNET: http://lbrynet:5279/
     depends_on:
       - lbrynet
+      - postgres
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - 9090:9090
+    volumes:
+      - ${PWD}/deployments/docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
 
 volumes:
   storage:

@@ -1,4 +1,3 @@
-# Lbrynet: http://localhost:5579/
 Lbrynet: http://localhost:5581/
 Debug: 1
 InternalAPIHost: https://api.lbry.com
@@ -11,3 +10,6 @@ Database:
   Options: sslmode=disable
 
 AccountsEnabled: 0
+
+MetricsAddress: :2112
+MetricsPath: /metrics
