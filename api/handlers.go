@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/lbryio/lbrytv/app/player"
+	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
 	"github.com/gorilla/mux"
@@ -12,13 +13,17 @@ import (
 
 var logger = monitor.NewModuleLogger("api")
 
+var Collector = metrics.NewCollector()
+
 // Index serves a blank home page
 func Index(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
 func stream(uri string, w http.ResponseWriter, req *http.Request) {
+	Collector.MetricsIncrement("player_instances_count", metrics.One)
 	err := player.PlayURI(uri, w, req)
+	Collector.MetricsDecrement("player_instances_count", metrics.One)
 	// Only output error if player has not pushed anything to the client yet
 	if err != nil {
 		if err.Error() == "paid stream" {

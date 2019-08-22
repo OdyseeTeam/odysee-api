@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/lbryio/lbrytv/api"
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
@@ -65,12 +66,12 @@ func (s *Server) registerMetrics() {
 	if err := prometheus.Register(prometheus.NewGaugeFunc(
 		prometheus.GaugeOpts{
 			Subsystem: "player",
-			Name:      "serving_streams_count",
+			Name:      "instances_count",
 			Help:      "Number of blob streams currently being served.",
 		},
-		func() float64 { return 0.0 },
+		func() float64 { return api.Collector.GetMetricsValue("player_instances_count").Value },
 	)); err == nil {
-		s.Log().Info("gauge 'player_serving_streams_count' registered")
+		s.Log().Info("gauge 'player_instances_count' registered")
 	}
 
 	if err := prometheus.Register(prometheus.NewGaugeFunc(
