@@ -9,7 +9,7 @@ services:
      POSTGRES_USER: lbrytv
      POSTGRES_PASSWORD: lbrytv
   lbrynet:
-    image: lbry/lbrynet-tv:latest-rc
+    image: lbry/lbrynet-tv:latest
     ports:
       - "5579:5279"
     volumes:

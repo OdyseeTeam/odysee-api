@@ -19,7 +19,7 @@ import (
 // Service generates Caller objects and keeps execution time metrics
 // for all calls proxied through those objects.
 type Service struct {
-	*metrics.ExecTimeMetrics
+	*metrics.Collector
 	TargetEndpoint string
 	logger         monitor.QueryMonitor
 }
@@ -43,9 +43,9 @@ type Query struct {
 // Normally only one instance of Service should be created per running server.
 func NewService(targetEndpoint string) *Service {
 	s := Service{
-		ExecTimeMetrics: metrics.NewMetrics(),
-		TargetEndpoint:  targetEndpoint,
-		logger:          monitor.NewProxyLogger(),
+		Collector:      metrics.NewCollector(),
+		TargetEndpoint: targetEndpoint,
+		logger:         monitor.NewProxyLogger(),
 	}
 	return &s
 }
@@ -97,6 +97,16 @@ func (q *Query) ParamsAsMap() map[string]interface{} {
 	return nil
 }
 
+func (q *Query) paramsForLog() map[string]interface{} {
+	params := q.ParamsAsMap()
+	for k := range params {
+		if k == paramAccountID {
+			params[k] = monitor.ValueMask
+		}
+	}
+	return params
+}
+
 // cacheHit returns true if we got a resolve query with more than `cacheResolveLongerThan` urls in it.
 func (q *Query) isCacheable() bool {
 	if q.Method() == methodResolve && q.Params() != nil {
@@ -129,7 +139,7 @@ func (q *Query) attachAccountID(id string) {
 			p[paramAccountID] = id
 			q.Request.Params = p
 		} else {
-			q.Request.Params = map[string]string{"account_id": id}
+			q.Request.Params = map[string]interface{}{"account_id": id}
 		}
 	}
 }
@@ -232,16 +242,16 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 	queryStartTime := time.Now()
 	r, err := c.sendQuery(q)
 	if err != nil {
-		return nil, NewInternalError(err)
+		return r, NewInternalError(err)
 	}
 	execTime := time.Now().Sub(queryStartTime).Seconds()
 
-	c.service.LogExecTime(q.Method(), execTime, q.Params())
+	c.service.SetMetricsValue(q.Method(), execTime, q.Params())
 
-	if r.Error == nil {
-		c.service.logger.LogSuccessfulQuery(q.Method(), execTime, q.Params())
+	if r.Error != nil {
+		c.service.logger.LogFailedQuery(q.Method(), q.paramsForLog(), r.Error)
 	} else {
-		c.service.logger.LogFailedQuery(q.Method(), q.Params(), r.Error)
+		c.service.logger.LogSuccessfulQuery(q.Method(), execTime, q.paramsForLog())
 	}
 
 	r, err = processResponse(q.Request, r)
@@ -257,10 +267,12 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 func (c *Caller) Call(rawQuery []byte) []byte {
 	r, err := c.call(rawQuery)
 	if err != nil {
+		monitor.CaptureException(err, map[string]string{"query": string(rawQuery), "response": fmt.Sprintf("%v", r)})
 		return c.marshalError(err)
 	}
 	serialized, err := c.marshal(r)
 	if err != nil {
+		monitor.CaptureException(err)
 		return c.marshalError(err)
 	}
 	return serialized

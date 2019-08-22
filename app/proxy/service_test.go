@@ -100,7 +100,7 @@ func TestCallerMetrics(t *testing.T) {
 		service: svc,
 	}
 	c.Call([]byte(newRawRequest(t, "resolve", map[string]string{"urls": "what"})))
-	assert.Equal(t, 0.25, math.Round(svc.GetExecTimeMetrics("resolve").ExecTime*100)/100)
+	assert.Equal(t, 0.25, math.Round(svc.GetMetricsValue("resolve").Value*100)/100)
 }
 
 func TestCallResolve(t *testing.T) {
@@ -116,7 +116,29 @@ func TestCallResolve(t *testing.T) {
 	rawCallReponse := c.Call(request)
 	parseRawResponse(t, rawCallReponse, &resolveResponse)
 	assert.Equal(t, resolvedClaimID, resolveResponse[resolvedURL].ClaimID)
-	assert.True(t, svc.GetExecTimeMetrics("resolve").ExecTime > 0)
+	assert.True(t, svc.GetMetricsValue("resolve").Value > 0)
+}
+
+func TestCallAccountBalance(t *testing.T) {
+	// TODO: Add actual account balance response check after 0.39 support is added to lbry.go
+	// var accountBalanceResponse ljsonrpc.AccountBalanceResponse
+
+	rand.Seed(time.Now().UnixNano())
+	dummyAccountID := rand.Int()
+
+	acc, _ := lbrynet.CreateAccount(dummyAccountID)
+	defer lbrynet.RemoveAccount(dummyAccountID)
+
+	svc := NewService(config.GetLbrynet())
+	c := svc.NewCaller()
+	c.SetAccountID(acc.ID)
+
+	request := newRawRequest(t, "account_balance", nil)
+	hook := logrus_test.NewLocal(svc.logger.Logger())
+	c.Call(request)
+
+	assert.Equal(t, map[string]interface{}{"account_id": "****"}, hook.LastEntry().Data["params"])
+	assert.Equal(t, "account_balance", hook.LastEntry().Data["method"])
 }
 
 func TestCallAccountList(t *testing.T) {
@@ -136,7 +158,7 @@ func TestCallAccountList(t *testing.T) {
 	rawCallReponse := c.Call(request)
 	parseRawResponse(t, rawCallReponse, &accResponse)
 	assert.Equal(t, acc.ID, accResponse.ID)
-	assert.True(t, svc.GetExecTimeMetrics("account_list").ExecTime > 0)
+	assert.True(t, svc.GetMetricsValue("account_list").Value > 0)
 }
 
 func TestCallSDKError(t *testing.T) {
@@ -203,4 +225,27 @@ func TestCallClientJSONError(t *testing.T) {
 	assert.Equal(t, ErrJSONParse, rpcResponse.Error.Code)
 	assert.Equal(t, "unexpected end of JSON input", rpcResponse.Error.Message)
 	assert.Equal(t, "malformed JSON from client: unexpected end of JSON input", hook.LastEntry().Message)
+}
+
+func TestParamsAsMap(t *testing.T) {
+	var q *Query
+
+	q, _ = NewQuery(newRawRequest(t, "version", nil))
+	assert.Nil(t, q.ParamsAsMap())
+
+	q, _ = NewQuery(newRawRequest(t, "resolve", map[string]string{"urls": "what"}))
+	assert.Equal(t, map[string]interface{}{"urls": "what"}, q.ParamsAsMap())
+
+	q, _ = NewQuery(newRawRequest(t, "account_balance", nil))
+	q.attachAccountID("123")
+	assert.Equal(t, map[string]interface{}{"account_id": "123"}, q.ParamsAsMap())
+
+	searchParams := map[string]interface{}{
+		"any_tags": []interface{}{
+			"art", "automotive", "blockchain", "comedy", "economics", "education",
+			"gaming", "music", "news", "science", "sports", "technology",
+		},
+	}
+	q, _ = NewQuery(newRawRequest(t, "claim_search", searchParams))
+	assert.Equal(t, searchParams, q.ParamsAsMap())
 }
