@@ -91,13 +91,7 @@ func (q *Query) Params() interface{} {
 
 // ParamsAsMap returns query params converted to plain map.
 func (q *Query) ParamsAsMap() map[string]interface{} {
-	paramsMap := make(map[string]interface{})
-	if paramsStrings, ok := q.Params().(map[string]string); ok {
-		for k, v := range paramsStrings {
-			paramsMap[k] = v
-		}
-		return paramsMap
-	} else if paramsMap, ok := q.Params().(map[string]interface{}); ok {
+	if paramsMap, ok := q.Params().(map[string]interface{}); ok {
 		return paramsMap
 	}
 	return nil
@@ -145,7 +139,7 @@ func (q *Query) attachAccountID(id string) {
 			p[paramAccountID] = id
 			q.Request.Params = p
 		} else {
-			q.Request.Params = map[string]string{"account_id": id}
+			q.Request.Params = map[string]interface{}{"account_id": id}
 		}
 	}
 }
