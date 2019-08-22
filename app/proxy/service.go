@@ -248,10 +248,10 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 
 	c.service.SetMetricsValue(q.Method(), execTime, q.Params())
 
-	if r.Error == nil {
-		c.service.logger.LogSuccessfulQuery(q.Method(), execTime, q.paramsForLog())
-	} else {
+	if r.Error != nil {
 		c.service.logger.LogFailedQuery(q.Method(), q.paramsForLog(), r.Error)
+	} else {
+		c.service.logger.LogSuccessfulQuery(q.Method(), execTime, q.paramsForLog())
 	}
 
 	r, err = processResponse(q.Request, r)

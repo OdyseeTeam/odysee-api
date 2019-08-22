@@ -208,8 +208,8 @@ func (l *ProxyLogger) LogSuccessfulQuery(method string, time float64, params int
 func (l *ProxyLogger) LogFailedQuery(method string, params interface{}, errorResponse interface{}) {
 	l.entry.WithFields(logrus.Fields{
 		"method":   method,
-		"response": errorResponse,
 		"params":   params,
+		"response": errorResponse,
 	}).Error("error from the target endpoint")
 
 	captureFailedQuery(method, params, errorResponse)
