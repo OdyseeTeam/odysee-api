@@ -139,7 +139,6 @@ func TestCallAccountBalance(t *testing.T) {
 
 	assert.Equal(t, map[string]interface{}{"account_id": "****"}, hook.LastEntry().Data["params"])
 	assert.Equal(t, "account_balance", hook.LastEntry().Data["method"])
-	assert.True(t, false)
 }
 
 func TestCallAccountList(t *testing.T) {

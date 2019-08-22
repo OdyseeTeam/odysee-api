@@ -242,7 +242,7 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 	queryStartTime := time.Now()
 	r, err := c.sendQuery(q)
 	if err != nil {
-		return nil, NewInternalError(err)
+		return r, NewInternalError(err)
 	}
 	execTime := time.Now().Sub(queryStartTime).Seconds()
 
@@ -267,10 +267,12 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 func (c *Caller) Call(rawQuery []byte) []byte {
 	r, err := c.call(rawQuery)
 	if err != nil {
+		monitor.CaptureException(err, map[string]string{"query": string(rawQuery), "response": fmt.Sprintf("%v", r)})
 		return c.marshalError(err)
 	}
 	serialized, err := c.marshal(r)
 	if err != nil {
+		monitor.CaptureException(err)
 		return c.marshalError(err)
 	}
 	return serialized
