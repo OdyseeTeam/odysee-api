@@ -16,6 +16,7 @@ jobs:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
       - run: make test_circleci
+      - run: git reset --hard HEAD
       - save_cache:
           key: go-mod-cache-{{ checksum "go.sum" }}
           paths:
