@@ -224,7 +224,7 @@ func TestCallClientJSONError(t *testing.T) {
 	assert.Equal(t, "2.0", rpcResponse.JSONRPC)
 	assert.Equal(t, ErrJSONParse, rpcResponse.Error.Code)
 	assert.Equal(t, "unexpected end of JSON input", rpcResponse.Error.Message)
-	assert.Equal(t, "malformed JSON from client: unexpected end of JSON input", hook.LastEntry().Message)
+	assert.Equal(t, "error calling lbrynet: unexpected end of JSON input, query: {\"method\":\"version}", hook.LastEntry().Message)
 }
 
 func TestParamsAsMap(t *testing.T) {
