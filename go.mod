@@ -2,7 +2,7 @@ module github.com/lbryio/lbrytv
 
 require (
 	github.com/btcsuite/btcd v0.0.0-20190614013741-962a206e94e9 // indirect
-	github.com/getsentry/sentry-go v0.1.3
+	github.com/getsentry/sentry-go v0.2.1
 	github.com/gobuffalo/packr v1.30.1 // indirect
 	github.com/gobuffalo/packr/v2 v2.5.1
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
