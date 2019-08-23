@@ -52,7 +52,7 @@ jobs:
     steps:
       - checkout
       - run: go get ./...
-      - run: CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -a -o dist/linux_amd64/lbrytv .
+      - run: make snapshot
       - setup_remote_docker
       - run:
           name: Build Docker image
