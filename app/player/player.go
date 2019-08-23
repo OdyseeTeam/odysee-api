@@ -226,6 +226,13 @@ func (s *reflectedStream) streamBlob(blobNum int, startOffsetInBlob int64, dest 
 		"time_elapsed": time.Since(start),
 	}).Debug("done downloading a blob")
 
+	if blobNum == 0 {
+		monitor.Logger.WithFields(log.Fields{
+			"stream":          s.URI,
+			"first_blob_time": time.Since(start),
+		}).Info("stream playback requested")
+	}
+
 	if resp.StatusCode == http.StatusOK {
 		start := time.Now()
 
