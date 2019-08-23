@@ -29,7 +29,7 @@ jobs:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
       - run: go get ./...
-      - run: GOARCH=amd64 GOOS=linux go build -o dist/linux_amd64/lbrytv main.go
+      - run: make snapshot
       - run:
           name: Build Docker image
           command: make image
@@ -42,7 +42,10 @@ jobs:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
       - run: curl -sL https://git.io/goreleaser | bash
-      - run: make image
+      - run: make snapshot
+      - run:
+          name: Build Docker image
+          command: make image
   publish-image:
     docker:
       - image: circleci/golang:1.12
@@ -66,8 +69,6 @@ workflows:
     jobs:
       - test
       - publish-image:
-          requires:
-            - test
           filters:
             branches:
               only: master
