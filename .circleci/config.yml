@@ -52,8 +52,11 @@ jobs:
       - image: circleci/golang:1.12
     steps:
       - checkout
-      - run: go get ./...
+      - restore_cache:
+          keys:
+            - go-mod-cache-{{ checksum "go.sum" }}
       - run: curl -sLO https://git.io/goreleaser && chmod +x goreleaser
+      - run: go get -u github.com/gobuffalo/packr/v2/packr2
       - run: ./goreleaser --rm-dist --snapshot
       - setup_remote_docker
       - run:
