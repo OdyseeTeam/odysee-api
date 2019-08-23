@@ -9,7 +9,7 @@ RUN apk --update upgrade && \
     rm -rf /var/cache/apk/*
 
 WORKDIR /app
-COPY dist/linux_amd64/lbrytv /app
+COPY dist/lbrytv_linux_amd64/lbrytv /app
 COPY ./deployments/docker/app/config/lbrytv.yml ./
 COPY ./deployments/docker/app/scripts/launcher.sh ./
 
