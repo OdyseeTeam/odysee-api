@@ -29,6 +29,7 @@ jobs:
           keys:
             - go-mod-cache-{{ checksum "go.sum" }}
       - run: go get ./...
+      - run: curl -sL https://git.io/goreleaser | bash
       - run: make snapshot
       - run:
           name: Build Docker image
@@ -52,6 +53,7 @@ jobs:
     steps:
       - checkout
       - run: go get ./...
+      - run: curl -sL https://git.io/goreleaser | bash
       - run: make snapshot
       - setup_remote_docker
       - run:
@@ -69,6 +71,8 @@ workflows:
     jobs:
       - test
       - publish-image:
+          requires:
+            - test
           filters:
             branches:
               only: master
