@@ -268,11 +268,13 @@ func (c *Caller) Call(rawQuery []byte) []byte {
 	r, err := c.call(rawQuery)
 	if err != nil {
 		monitor.CaptureException(err, map[string]string{"query": string(rawQuery), "response": fmt.Sprintf("%v", r)})
+		c.service.logger.Errorf("error calling lbrynet: %v, query: %s", err, rawQuery)
 		return c.marshalError(err)
 	}
 	serialized, err := c.marshal(r)
 	if err != nil {
 		monitor.CaptureException(err)
+		c.service.logger.Errorf("error marshaling response: %v", err)
 		return c.marshalError(err)
 	}
 	return serialized
