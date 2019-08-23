@@ -53,8 +53,8 @@ jobs:
     steps:
       - checkout
       - run: go get ./...
-      - run: curl -sL https://git.io/goreleaser | bash
-      - run: make snapshot
+      - run: curl -sLO https://git.io/goreleaser && chmod +x goreleaser
+      - run: ./goreleaser --rm-dist --snapshot
       - setup_remote_docker
       - run:
           name: Build Docker image
