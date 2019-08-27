@@ -16,7 +16,7 @@ import (
 func processQuery(query *jsonrpc.RPCRequest) (processedQuery *jsonrpc.RPCRequest, err error) {
 	processedQuery = query
 	switch query.Method {
-	case methodGet:
+	case MethodGet:
 		processedQuery, err = queryProcessorGet(query)
 	}
 	return processedQuery, err
@@ -25,11 +25,11 @@ func processQuery(query *jsonrpc.RPCRequest) (processedQuery *jsonrpc.RPCRequest
 func processResponse(query *jsonrpc.RPCRequest, response *jsonrpc.RPCResponse) (processedResponse *jsonrpc.RPCResponse, err error) {
 	processedResponse = response
 	switch query.Method {
-	case methodGet:
+	case MethodGet:
 		processedResponse, err = responseProcessorGet(query, response)
-	case methodFileList:
+	case MethodFileList:
 		processedResponse, err = responseProcessorFileList(query, response)
-	case methodAccountList:
+	case MethodAccountList:
 		processedResponse, err = responseProcessorAccountList(query, response)
 	}
 	return processedResponse, err

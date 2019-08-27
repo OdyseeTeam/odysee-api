@@ -109,7 +109,7 @@ func (q *Query) paramsForLog() map[string]interface{} {
 
 // cacheHit returns true if we got a resolve query with more than `cacheResolveLongerThan` urls in it.
 func (q *Query) isCacheable() bool {
-	if q.Method() == methodResolve && q.Params() != nil {
+	if q.Method() == MethodResolve && q.Params() != nil {
 		paramsMap := q.Params().(map[string]interface{})
 		if urls, ok := paramsMap[paramUrls].([]interface{}); ok {
 			if len(urls) > cacheResolveLongerThan {
@@ -163,7 +163,7 @@ func (q *Query) cacheHit() *jsonrpc.RPCResponse {
 }
 
 func (q *Query) predefinedResponse() *jsonrpc.RPCResponse {
-	if q.Method() == methodStatus {
+	if q.Method() == MethodStatus {
 		response := q.newResponse()
 		response.Result = getStatusResponse()
 		return response

@@ -179,7 +179,7 @@ func TestForwardCall_HTTPError(t *testing.T) {
 	config.Override("Lbrynet", "http://127.0.0.1:49999")
 	defer config.RestoreOverridden()
 
-	query := jsonrpc.NewRequest(methodAccountBalance)
+	query := jsonrpc.NewRequest(MethodAccountBalance)
 	response, err := ForwardCall(*query)
 	assert.NotNil(t, err)
 	assert.Nil(t, response)
@@ -209,7 +209,7 @@ func TestForwardCall_ClientError(t *testing.T) {
 }
 
 func TestForwardCall_InvalidResolveParams(t *testing.T) {
-	r := call(t, methodResolve)
+	r := call(t, MethodResolve)
 	assert.NotNil(t, r.Error)
 	assert.Equal(t, "jsonrpc_resolve() missing 1 required positional argument: 'urls'", r.Error.Message)
 }
@@ -217,10 +217,10 @@ func TestForwardCall_InvalidResolveParams(t *testing.T) {
 func TestForwardCall_shouldLog(t *testing.T) {
 	hook := test.NewLocal(monitor.Logger)
 
-	call(t, methodResolve, map[string]interface{}{"urls": "what"})
-	assert.Equal(t, methodResolve, hook.LastEntry().Data["method"])
-	call(t, methodAccountBalance)
-	assert.Equal(t, methodResolve, hook.LastEntry().Data["method"])
+	call(t, MethodResolve, map[string]interface{}{"urls": "what"})
+	assert.Equal(t, MethodResolve, hook.LastEntry().Data["method"])
+	call(t, MethodAccountBalance)
+	assert.Equal(t, MethodResolve, hook.LastEntry().Data["method"])
 }
 
 func TestUnmarshalRequest(t *testing.T) {
@@ -241,7 +241,7 @@ func TesProxyWithCache(t *testing.T) {
 
 	resolveArgs := map[string][110]string{paramUrls: homePageUrls}
 
-	query = jsonrpc.NewRequest(methodResolve, resolveArgs)
+	query = jsonrpc.NewRequest(MethodResolve, resolveArgs)
 	queryBody, _ := json.Marshal(query)
 	query, err = UnmarshalRequest(queryBody)
 	rawResponse, err = ForwardCall(*query)
@@ -274,7 +274,7 @@ func TesProxyWithCache(t *testing.T) {
 }
 
 func BenchmarkResolve(b *testing.B) {
-	query := jsonrpc.NewRequest(methodResolve, map[string][110]string{paramUrls: homePageUrls})
+	query := jsonrpc.NewRequest(MethodResolve, map[string][110]string{paramUrls: homePageUrls})
 
 	wg := sync.WaitGroup{}
 
@@ -299,7 +299,7 @@ func BenchmarkResolve(b *testing.B) {
 
 func BenchmarkDirectResolve(b *testing.B) {
 	rpcClient := jsonrpc.NewClient(config.GetLbrynet())
-	query := jsonrpc.NewRequest(methodResolve, map[string][110]string{paramUrls: homePageUrls})
+	query := jsonrpc.NewRequest(MethodResolve, map[string][110]string{paramUrls: homePageUrls})
 
 	wg := sync.WaitGroup{}
 
