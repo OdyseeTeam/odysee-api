@@ -1,6 +1,7 @@
 package metrics_server
 
 import (
+	"fmt"
 	"net/http"
 	"runtime"
 	"sync"
@@ -15,6 +16,15 @@ import (
 )
 
 var once sync.Once
+
+var monitoredProxyCalls = []string{
+	proxy.MethodClaimSearch,
+	proxy.MethodResolve,
+	proxy.MethodAccountBalance,
+	proxy.MethodAccountList,
+	proxy.MethodGet,
+	proxy.MethodFileList,
+}
 
 type Server struct {
 	monitor.ModuleLogger
@@ -41,26 +51,18 @@ func (s *Server) Serve() {
 }
 
 func (s *Server) registerMetrics() {
-	if err := prometheus.Register(prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{
-			Subsystem: "proxy",
-			Name:      "resolve_time",
-			Help:      "Time to serve a single resolve call.",
-		},
-		func() float64 { return s.proxy.GetMetricsValue("resolve").Value },
-	)); err == nil {
-		s.Log().Info("gauge 'proxy_resolve_time' registered")
-	}
-
-	if err := prometheus.Register(prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{
-			Subsystem: "proxy",
-			Name:      "claim_search_time",
-			Help:      "Time to serve a claim_search call.",
-		},
-		func() float64 { return s.proxy.GetMetricsValue("claim_search").Value },
-	)); err == nil {
-		s.Log().Info("gauge 'proxy_claim_search' registered")
+	for _, m := range monitoredProxyCalls {
+		m := m
+		if err := prometheus.Register(prometheus.NewGaugeFunc(
+			prometheus.GaugeOpts{
+				Subsystem: "proxy",
+				Name:      fmt.Sprintf("%v_time", m),
+				Help:      "Time to serve a single resolve call.",
+			},
+			func() float64 { return s.proxy.GetMetricsValue(m).Value },
+		)); err == nil {
+			s.Log().Infof("gauge 'proxy_%v_time' registered", m)
+		}
 	}
 
 	if err := prometheus.Register(prometheus.NewGaugeFunc(

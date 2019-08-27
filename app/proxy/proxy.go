@@ -57,21 +57,21 @@ var accountSpecificMethods = []string{
 	"utxo_release",
 }
 
-const methodGet = "get"
-const methodFileList = "file_list"
-const methodAccountList = "account_list"
-const methodAccountBalance = "account_balance"
-const methodStatus = "status"
-const methodResolve = "resolve"
-const methodClaimSearch = "claim_search"
-const methodCommentList = "comment_list"
+const MethodGet = "get"
+const MethodFileList = "file_list"
+const MethodAccountList = "account_list"
+const MethodAccountBalance = "account_balance"
+const MethodStatus = "status"
+const MethodResolve = "resolve"
+const MethodClaimSearch = "claim_search"
+const MethodCommentList = "comment_list"
 
 const paramAccountID = "account_id"
 const paramUrls = "urls"
 
 var ignoreLog = []string{
-	methodAccountBalance,
-	methodStatus,
+	MethodAccountBalance,
+	MethodStatus,
 }
 
 var ResolveTime float64
@@ -211,7 +211,7 @@ func ForwardCall(request jsonrpc.RPCRequest) ([]byte, error) {
 
 // shouldCache returns true if we got a resolve query with more than `cacheResolveLongerThan` urls in it.
 func shouldCache(method string, params interface{}) bool {
-	if method == methodResolve && params != nil {
+	if method == MethodResolve && params != nil {
 		paramsMap := params.(map[string]interface{})
 		if urls, ok := paramsMap[paramUrls].([]interface{}); ok {
 			if len(urls) > cacheResolveLongerThan {

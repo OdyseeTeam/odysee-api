@@ -49,7 +49,7 @@ func getPreconditionedQueryResponse(method string, params interface{}) *jsonrpc.
 		}
 	}
 
-	if method == methodStatus {
+	if method == MethodStatus {
 		var r jsonrpc.RPCResponse
 		r.Result = getStatusResponse()
 		return &r
