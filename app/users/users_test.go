@@ -46,7 +46,7 @@ func testFuncSetup() {
 	lbrynet.RemoveAccount(dummyUserID)
 }
 
-func TestGetUser_New(t *testing.T) {
+func TestRetrieve_New(t *testing.T) {
 	testFuncSetup()
 
 	ts := launchDummyAPIServer([]byte(`{
@@ -77,7 +77,7 @@ func TestGetUser_New(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	u, err := NewUserService("abc").GetUser()
+	u, err := NewUserService().Retrieve("abc")
 	require.Nil(t, err)
 	require.NotNil(t, u)
 
@@ -86,7 +86,7 @@ func TestGetUser_New(t *testing.T) {
 	assert.EqualValues(t, 1, count)
 }
 
-func TestGetUser_Existing(t *testing.T) {
+func TestRetrieve_Existing(t *testing.T) {
 	testFuncSetup()
 
 	ts := launchDummyAPIServer([]byte(`{
@@ -117,13 +117,13 @@ func TestGetUser_Existing(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	s := NewUserService("abc")
+	s := NewUserService()
 
-	u, err := s.GetUser()
+	u, err := s.Retrieve("abc")
 	require.Nil(t, err)
 	require.NotNil(t, u)
 
-	u, err = s.GetUser()
+	u, err = s.Retrieve("abc")
 	require.Nil(t, err)
 	assert.EqualValues(t, dummyUserID, u.ID)
 
@@ -132,7 +132,7 @@ func TestGetUser_Existing(t *testing.T) {
 	assert.EqualValues(t, 1, count)
 }
 
-func TestGetUser_Nonexistent(t *testing.T) {
+func TestRetrieve_Nonexistent(t *testing.T) {
 	testFuncSetup()
 
 	ts := launchDummyAPIServer([]byte(`{
@@ -144,13 +144,13 @@ func TestGetUser_Nonexistent(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	u, err := NewUserService("non-existent-token").GetUser()
+	u, err := NewUserService().Retrieve("non-existent-token")
 	require.NotNil(t, err)
 	require.Nil(t, u)
 	assert.Equal(t, "cannot authenticate user with internal-apis: could not authenticate user", err.Error())
 }
 
-func TestGetUser_EmptyEmail_NoUser(t *testing.T) {
+func TestRetrieve_EmptyEmail_NoUser(t *testing.T) {
 	testFuncSetup()
 
 	ts := launchDummyAPIServer([]byte(`{
@@ -181,7 +181,7 @@ func TestGetUser_EmptyEmail_NoUser(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	u, err := NewUserService("abc").GetUser()
+	u, err := NewUserService().Retrieve("abc")
 	assert.Nil(t, u)
 	assert.EqualError(t, err, "cannot authenticate user: email is empty/not confirmed")
 }
@@ -231,7 +231,7 @@ func TestGetAccountIDFromRequest_Existing(t *testing.T) {
 	id, err := GetAccountIDFromRequest(r)
 	require.Nil(t, err)
 
-	u, err := NewUserService("abc").GetUser()
+	u, err := NewUserService().Retrieve("abc")
 	require.Nil(t, err)
 
 	assert.EqualValues(t, u.SDKAccountID, id)

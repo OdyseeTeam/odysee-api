@@ -41,7 +41,8 @@ func (rh *RequestServer) Handle(w http.ResponseWriter, r *http.Request) {
 	c := rh.Service.NewCaller()
 
 	if config.AccountsEnabled() {
-		accountID, err = users.GetAccountIDFromRequest(r)
+		retriever := users.NewUserService()
+		accountID, err = users.GetAccountIDFromRequest(r, retriever)
 
 		// TODO: Refactor response creation out of this function
 		if err != nil {
