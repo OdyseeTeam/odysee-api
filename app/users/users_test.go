@@ -186,15 +186,16 @@ func TestRetrieve_EmptyEmail_NoUser(t *testing.T) {
 	assert.EqualError(t, err, "cannot authenticate user: email is empty/not confirmed")
 }
 
-func TestGetAccountIDFromRequest_NoToken(t *testing.T) {
+func TestGetAccountIDFromRequestNoToken(t *testing.T) {
 	r, _ := http.NewRequest("POST", "/", nil)
 
-	id, err := GetAccountIDFromRequest(r)
+	svc := NewUserService()
+	id, err := GetAccountIDFromRequest(r, svc)
 	require.Nil(t, err)
 	assert.Equal(t, "", id)
 }
 
-func TestGetAccountIDFromRequest_Existing(t *testing.T) {
+func TestGetAccountIDFromRequestExisting(t *testing.T) {
 	testFuncSetup()
 
 	ts := launchDummyAPIServer([]byte(`{
@@ -228,16 +229,17 @@ func TestGetAccountIDFromRequest_Existing(t *testing.T) {
 	r, _ := http.NewRequest("POST", "/", nil)
 	r.Header.Add(TokenHeader, "abc")
 
-	id, err := GetAccountIDFromRequest(r)
+	svc := NewUserService()
+	id, err := GetAccountIDFromRequest(r, svc)
 	require.Nil(t, err)
 
-	u, err := NewUserService().Retrieve("abc")
+	u, err := svc.Retrieve("abc")
 	require.Nil(t, err)
 
 	assert.EqualValues(t, u.SDKAccountID, id)
 }
 
-func TestGetAccountIDFromRequest_Nonexistent(t *testing.T) {
+func TestGetAccountIDFromRequestNonexistent(t *testing.T) {
 	testFuncSetup()
 
 	ts := launchDummyAPIServer([]byte(`{
@@ -248,11 +250,12 @@ func TestGetAccountIDFromRequest_Nonexistent(t *testing.T) {
 	defer ts.Close()
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
+	svc := NewUserService()
 
 	r, _ := http.NewRequest("POST", "/", nil)
 	r.Header.Add(TokenHeader, "abc")
 
-	id, err := GetAccountIDFromRequest(r)
+	id, err := GetAccountIDFromRequest(r, svc)
 	require.NotNil(t, err)
 	assert.Equal(t, "cannot authenticate user with internal-apis: could not authenticate user", err.Error())
 	assert.Equal(t, "", id)
