@@ -50,10 +50,13 @@ func TestHeaders(t *testing.T) {
 	server.Start()
 	go server.ServeUntilShutdown()
 
+	request, _ := http.NewRequest("OPTIONS", "http://localhost:40080/api/proxy", nil)
+	client := http.Client{}
+
 	// Retry 10 times to give the server a chance to start
 	for range [10]int{} {
 		time.Sleep(100 * time.Millisecond)
-		response, err = http.Get("http://localhost:40080/")
+		response, err = client.Do(request)
 		if err == nil {
 			break
 		}
