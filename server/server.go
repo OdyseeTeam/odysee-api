@@ -57,12 +57,12 @@ func NewServer(opts ServerOpts) *Server {
 
 func (s *Server) configureListener() *http.Server {
 	return &http.Server{
-		Addr:        s.address,
-		Handler:     s.router,
-		ReadTimeout: 5 * time.Second,
-		// WriteTimeout: 30 * time.Second,
-		WriteTimeout: 0,
-		IdleTimeout:  120 * time.Second,
+		Addr:    s.address,
+		Handler: s.router,
+		// Can't have WriteTimeout set for streaming endpoints
+		WriteTimeout: time.Second * 0,
+		ReadTimeout:  time.Second * 15,
+		IdleTimeout:  time.Second * 60,
 	}
 }
 

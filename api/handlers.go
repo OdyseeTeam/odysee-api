@@ -17,7 +17,7 @@ var Collector = metrics.NewCollector()
 
 // Index serves a blank home page
 func Index(w http.ResponseWriter, req *http.Request) {
-	w.WriteHeader(http.StatusOK)
+	http.Redirect(w, req, "https://lbry.tv/", http.StatusSeeOther)
 }
 
 func stream(uri string, w http.ResponseWriter, req *http.Request) {
