@@ -16,7 +16,7 @@ type RequestServer struct {
 }
 
 func NewRequestServer(svc *Service) *RequestServer {
-	return NewRequestServer(svc)
+	return &RequestServer{svc}
 }
 
 // Handle forwards client JSON-RPC request to proxy.
