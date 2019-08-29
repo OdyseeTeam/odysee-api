@@ -160,3 +160,8 @@ func GetDatabase() DBConfig {
 func GetSentryDSN() string {
 	return Config.Viper.GetString("SentryDSN")
 }
+
+// GetProjectURL returns publicly accessible URL for the project
+func GetProjectURL() string {
+	return Config.Viper.GetString("ProjectURL")
+}
