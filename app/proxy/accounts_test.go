@@ -123,7 +123,7 @@ func TestWithValidAuthToken(t *testing.T) {
 	r.Header.Add("X-Lbry-Auth-Token", "d94ab9865f8416d107935d2ca644509c")
 
 	rr := httptest.NewRecorder()
-	handler := &RequestHandler{svc}
+	handler := NewRequestServer(svc)
 	handler.Handle(rr, r)
 	require.Equal(t, http.StatusOK, rr.Code)
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
@@ -180,7 +180,7 @@ func TestWithValidAuthTokenConcurrent(t *testing.T) {
 			r.Header.Add("X-Lbry-Auth-Token", "d94ab9865f8416d107935d2ca644509c")
 
 			rr := httptest.NewRecorder()
-			handler := &RequestHandler{svc}
+			handler := NewRequestServer(svc)
 			handler.Handle(rr, r)
 
 			require.Equal(t, http.StatusOK, rr.Code)
@@ -217,7 +217,7 @@ func TestWithWrongAuthToken(t *testing.T) {
 	r.Header.Add("X-Lbry-Auth-Token", "xXxXxXx")
 
 	rr := httptest.NewRecorder()
-	handler := &RequestHandler{svc}
+	handler := NewRequestServer(svc)
 	handler.Handle(rr, r)
 
 	assert.Equal(t, http.StatusForbidden, rr.Code)
@@ -246,7 +246,7 @@ func TestWithoutToken(t *testing.T) {
 	r, _ := http.NewRequest("POST", proxySuffix, bytes.NewBuffer(qBody))
 
 	rr := httptest.NewRecorder()
-	handler := &RequestHandler{svc}
+	handler := NewRequestServer(svc)
 	handler.Handle(rr, r)
 
 	require.Equal(t, http.StatusOK, rr.Code)

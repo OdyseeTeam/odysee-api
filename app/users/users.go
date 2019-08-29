@@ -26,11 +26,13 @@ const TokenHeader string = "X-Lbry-Auth-Token"
 const idPrefix string = "id:"
 const errUniqueViolation = "23505"
 
+type Retriever interface {
+	Retrieve(token string) (*models.User, error)
+}
+
 // NewUserService returns UserService instance for retrieving or creating user records and accounts.
-func NewUserService(token string) *UserService {
-	s := &UserService{
-		token: token,
-	}
+func NewUserService() *UserService {
+	s := &UserService{}
 	s.updateLogger(monitor.F{})
 	return s
 }
@@ -70,8 +72,8 @@ func (s *UserService) createLocalUser(id int) (*models.User, error) {
 	return u, nil
 }
 
-// GetUser authenticates user with internal-api and retrieves/creates locally stored user.
-func (s *UserService) GetUser() (*models.User, error) {
+// Retrieve authenticates user with internal-api and retrieves/creates locally stored user.
+func (s *UserService) Retrieve(token string) (*models.User, error) {
 	var localUser *models.User
 
 	remoteUser, err := getRemoteUser(s.token)
@@ -135,10 +137,9 @@ func (s *UserService) saveSDKFields(a *ljsonrpc.AccountCreateResponse, u *models
 
 // GetAccountIDFromRequest retrieves SDK  account_id of a user making a http request
 // by a header provided by http client.
-func GetAccountIDFromRequest(req *http.Request) (string, error) {
+func GetAccountIDFromRequest(req *http.Request, retriever Retriever) (string, error) {
 	if token, ok := req.Header[TokenHeader]; ok {
-		s := NewUserService(token[0])
-		u, err := s.GetUser()
+		u, err := retriever.Retrieve(token[0])
 		if err != nil {
 			return "", err
 		}
