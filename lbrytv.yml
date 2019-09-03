@@ -14,3 +14,5 @@ AccountsEnabled: 1
 
 MetricsAddress: :2112
 MetricsPath: /metrics
+
+PublishDir: ./.lbrynet/publish

@@ -2,6 +2,9 @@ package api
 
 import (
 	"github.com/lbryio/lbrytv/app/proxy"
+	"github.com/lbryio/lbrytv/app/publish"
+	"github.com/lbryio/lbrytv/app/users"
+	"github.com/lbryio/lbrytv/config"
 
 	"github.com/gorilla/mux"
 )
@@ -17,8 +20,9 @@ func InstallRoutes(ps *proxy.Service, r *mux.Router) {
 	r.HandleFunc("/content/claims/{uri}/{claim}/{filename}", captureErrors(ContentByClaimsURI))
 	r.HandleFunc("/content/url", captureErrors(ContentByURL))
 
-	// actionsRouter := r.Path("/api/v1/actions").Subrouter()
-	// authenticator := users.NewAuthenticator(users.NewUserService())
-	// uploadHandler := publish.NewUploadHandler()
-	// actionsRouter.HandleFunc("/publish", authenticator.Wrap(uploadHandler.Handle)).Headers(users.TokenHeader, "")
+	actionsRouter := r.Path("/api/v1/actions").Subrouter()
+	authenticator := users.NewAuthenticator(users.NewUserService())
+	lbrynetPublisher := &publish.LbrynetPublisher{}
+	uploadHandler := publish.NewUploadHandler(config.GetPublishDir(), lbrynetPublisher)
+	actionsRouter.HandleFunc("/publish", authenticator.Wrap(uploadHandler.Handle)).Headers(users.TokenHeader, "")
 }

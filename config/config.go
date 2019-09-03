@@ -165,3 +165,9 @@ func GetSentryDSN() string {
 func GetProjectURL() string {
 	return Config.Viper.GetString("ProjectURL")
 }
+
+// GetPublishDir returns directory for storing published files before they're uploaded to lbrynet.
+// The directory needs to be accessed by the running SDK instance.
+func GetPublishDir() string {
+	return Config.Viper.GetString("PublishDir")
+}
