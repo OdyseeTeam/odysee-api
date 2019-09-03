@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
@@ -95,6 +96,11 @@ func (q *Query) ParamsAsMap() map[string]interface{} {
 		return paramsMap
 	}
 	return nil
+}
+
+// ParamsToStruct returns query params parsed into a supplied structure
+func (q *Query) ParamsToStruct(targetStruct interface{}) error {
+	return ljsonrpc.Decode(q.Params(), targetStruct)
 }
 
 func (q *Query) paramsForLog() map[string]interface{} {

@@ -16,4 +16,9 @@ func InstallRoutes(ps *proxy.Service, r *mux.Router) {
 	r.HandleFunc("/api/proxy/", captureErrors(proxyServer.Handle))
 	r.HandleFunc("/content/claims/{uri}/{claim}/{filename}", captureErrors(ContentByClaimsURI))
 	r.HandleFunc("/content/url", captureErrors(ContentByURL))
+
+	// actionsRouter := r.Path("/api/v1/actions").Subrouter()
+	// authenticator := users.NewAuthenticator(users.NewUserService())
+	// uploadHandler := publish.NewUploadHandler()
+	// actionsRouter.HandleFunc("/publish", authenticator.Wrap(uploadHandler.Handle)).Headers(users.TokenHeader, "")
 }
