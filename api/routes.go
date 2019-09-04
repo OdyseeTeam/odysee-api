@@ -23,6 +23,6 @@ func InstallRoutes(ps *proxy.Service, r *mux.Router) {
 	actionsRouter := r.Path("/api/v1/actions").Subrouter()
 	authenticator := users.NewAuthenticator(users.NewUserService())
 	lbrynetPublisher := &publish.LbrynetPublisher{}
-	uploadHandler := publish.NewUploadHandler(config.GetPublishDir(), lbrynetPublisher)
-	actionsRouter.HandleFunc("/publish", authenticator.Wrap(uploadHandler.Handle)).Headers(users.TokenHeader, "")
+	UploadHandler := publish.NewUploadHandler(config.GetPublishDir(), lbrynetPublisher)
+	actionsRouter.HandleFunc("/publish", authenticator.Wrap(UploadHandler.Handle)).Headers(users.TokenHeader, "")
 }
