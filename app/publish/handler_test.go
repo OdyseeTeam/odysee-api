@@ -35,7 +35,7 @@ func (p *DummyPublisher) Publish(filePath, accountID string, rawQuery []byte) ([
 	return []byte(lbrynet.ExampleStreamCreateResponse), nil
 }
 
-func TestPublish(t *testing.T) {
+func TestUploadHandler(t *testing.T) {
 	// hook := test.NewLocal(monitor.Logger)
 
 	data := []byte("test file")
@@ -81,7 +81,7 @@ func TestPublish(t *testing.T) {
 	// assert.Equal(t, "lbry_auth_test_file", logEntry.Data["file_name"])
 }
 
-func TestPublishAuthRequired(t *testing.T) {
+func TestUploadHandlerAuthRequired(t *testing.T) {
 	// hook := test.NewLocal(monitor.Logger)
 	var rpcResponse jsonrpc.RPCResponse
 
