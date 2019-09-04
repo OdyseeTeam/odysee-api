@@ -2,6 +2,7 @@ package publish
 
 import (
 	"encoding/json"
+
 	"github.com/lbryio/lbrytv/app/proxy"
 
 	"github.com/ybbus/jsonrpc"
@@ -39,4 +40,8 @@ var ErrUnauthorized = Error{code: proxy.ErrProxy, message: "authentication requi
 
 func NewAuthError(err error) Error {
 	return Error{code: proxy.ErrAuthFailed, message: err.Error()}
+}
+
+func NewInternalError(err error) Error {
+	return Error{code: proxy.ErrInternal, message: err.Error()}
 }

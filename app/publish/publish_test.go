@@ -129,7 +129,7 @@ func TestLbrynetPublisher(t *testing.T) {
 		"id": 1567580184168
 	}`)
 
-	rawResp, err := p.Publish(path.Join("/storage", path.Base(f.Name())), u.SDKAccountID, query)
+	rawResp := p.Publish(path.Join("/storage", path.Base(f.Name())), u.SDKAccountID, query)
 
 	// This is all we can check for now without running on testnet or crediting some funds to the test account
 	assert.Regexp(t, "Not enough funds to cover this transaction", string(rawResp))

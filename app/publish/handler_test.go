@@ -27,17 +27,15 @@ type DummyPublisher struct {
 	rawQuery  []byte
 }
 
-func (p *DummyPublisher) Publish(filePath, accountID string, rawQuery []byte) ([]byte, error) {
+func (p *DummyPublisher) Publish(filePath, accountID string, rawQuery []byte) []byte {
 	p.called = true
 	p.filePath = filePath
 	p.accountID = accountID
 	p.rawQuery = rawQuery
-	return []byte(lbrynet.ExampleStreamCreateResponse), nil
+	return []byte(lbrynet.ExampleStreamCreateResponse)
 }
 
 func TestUploadHandler(t *testing.T) {
-	// hook := test.NewLocal(monitor.Logger)
-
 	data := []byte("test file")
 	readSeeker := bytes.NewReader(data)
 	body := &bytes.Buffer{}
@@ -77,12 +75,9 @@ func TestUploadHandler(t *testing.T) {
 	assert.Regexp(t, expectedPath, publisher.filePath)
 	assert.Equal(t, "UPldrAcc", publisher.accountID)
 	assert.Equal(t, lbrynet.ExampleStreamCreateRequest, string(publisher.rawQuery))
-	// logEntry := hook.LastEntry()
-	// assert.Equal(t, "lbry_auth_test_file", logEntry.Data["file_name"])
 }
 
 func TestUploadHandlerAuthRequired(t *testing.T) {
-	// hook := test.NewLocal(monitor.Logger)
 	var rpcResponse jsonrpc.RPCResponse
 
 	data := []byte("test file")
@@ -104,7 +99,6 @@ func TestUploadHandlerAuthRequired(t *testing.T) {
 	req, err := http.NewRequest("POST", "/", bytes.NewReader(body.Bytes()))
 	require.Nil(t, err)
 
-	// req.Header.Set(users.TokenHeader, "uPldrToken")
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	rr := httptest.NewRecorder()
@@ -120,6 +114,45 @@ func TestUploadHandlerAuthRequired(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, "authentication required", rpcResponse.Error.Message)
 	require.False(t, publisher.called)
-	// logEntry := hook.LastEntry()
-	// assert.Equal(t, "lbry_auth_test_file", logEntry.Data["file_name"])
+}
+
+func TestUploadHandlerSystemError(t *testing.T) {
+	var rpcResponse jsonrpc.RPCResponse
+
+	data := []byte("test file")
+	readSeeker := bytes.NewReader(data)
+	body := &bytes.Buffer{}
+
+	writer := multipart.NewWriter(body)
+
+	fileBody, err := writer.CreateFormFile(fileField, "lbry_auto_test_file")
+	require.Nil(t, err)
+	io.Copy(fileBody, readSeeker)
+
+	jsonPayload, err := writer.CreateFormField(jsonrpcPayloadField)
+	require.Nil(t, err)
+	jsonPayload.Write([]byte(lbrynet.ExampleStreamCreateRequest))
+
+	// Not calling writer.Close() here to create unexpected EOF
+
+	req, err := http.NewRequest("POST", "/", bytes.NewReader(body.Bytes()))
+	require.Nil(t, err)
+
+	req.Header.Set(users.TokenHeader, "uPldrToken")
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	rr := httptest.NewRecorder()
+	authenticator := users.NewAuthenticator(&users.TestUserRetriever{AccountID: "UPldrAcc", Token: "uPldrToken"})
+	publisher := &DummyPublisher{}
+	pubHandler := NewUploadHandler(os.TempDir(), publisher)
+
+	http.HandlerFunc(authenticator.Wrap(pubHandler.Handle)).ServeHTTP(rr, req)
+	response := rr.Result()
+
+	require.False(t, publisher.called)
+	assert.Equal(t, http.StatusOK, response.StatusCode)
+	err = json.Unmarshal(rr.Body.Bytes(), &rpcResponse)
+	require.Nil(t, err)
+	assert.Equal(t, "unexpected EOF", rpcResponse.Error.Message)
+	require.False(t, publisher.called)
 }

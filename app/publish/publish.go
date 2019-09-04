@@ -25,7 +25,7 @@ var logger = monitor.NewModuleLogger("publish")
 // Publisher is responsible for sending data to lbrynet
 // and should take file path, account ID and client query as a slice of bytes.
 type Publisher interface {
-	Publish(string, string, []byte) ([]byte, error)
+	Publish(string, string, []byte) []byte
 }
 
 // LbrynetPublisher is an implementation of SDK publisher.
@@ -50,7 +50,7 @@ func NewUploadHandler(uploadPath string, publisher Publisher) UploadHandler {
 // Publish takes a file path, account ID and client JSON-RPC query,
 // patches the query and sends it to the SDK for processing.
 // Resulting response is then returned back as a slice of bytes.
-func (p *LbrynetPublisher) Publish(filePath, accountID string, rawQuery []byte) ([]byte, error) {
+func (p *LbrynetPublisher) Publish(filePath, accountID string, rawQuery []byte) []byte {
 	c := p.Service.NewCaller()
 	c.SetAccountID(accountID)
 	c.SetPreprocessor(func(q *proxy.Query) {
@@ -59,13 +59,36 @@ func (p *LbrynetPublisher) Publish(filePath, accountID string, rawQuery []byte) 
 		q.Request.Params = params
 	})
 	r := c.Call(rawQuery)
-	return r, nil
+	return r
+}
+
+func (h UploadHandler) handleUpload(r *users.AuthenticatedRequest) (*os.File, error) {
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	f, err := h.CreateFile(r.AccountID, header.Filename)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := io.Copy(f, file); err != nil {
+		return nil, err
+	}
+	if err := f.Close(); err != nil {
+		return nil, err
+	}
+	return f, nil
 }
 
 // Handle is where HTTP upload is handled and passed on to Publisher.
 // It should be wrapped with users.Authenticator.Wrap before it can be used
 // in a mux.Router.
 func (h UploadHandler) Handle(w http.ResponseWriter, r *users.AuthenticatedRequest) {
+	w.WriteHeader(http.StatusOK)
+
 	if !r.IsAuthenticated() {
 		var authErr Error
 		if r.AuthFailed() {
@@ -73,35 +96,17 @@ func (h UploadHandler) Handle(w http.ResponseWriter, r *users.AuthenticatedReque
 		} else {
 			authErr = ErrUnauthorized
 		}
-		w.WriteHeader(http.StatusOK)
 		w.Write(authErr.AsBytes())
 		return
 	}
-	file, header, err := r.FormFile("file")
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
 
-	f, err := h.CreateFile(r.AccountID, header.Filename)
+	f, err := h.handleUpload(r)
 	if err != nil {
-		panic(err)
+		w.Write(NewInternalError(err).AsBytes())
+		return
 	}
 
-	if num, err := io.Copy(f, file); err != nil {
-		panic(err)
-	} else {
-		fmt.Println(num)
-	}
-	if err := f.Close(); err != nil {
-		panic(err)
-	}
-
-	response, err := h.Publisher.Publish(f.Name(), r.AccountID, []byte(r.FormValue(jsonrpcPayloadField)))
-	if err != nil {
-		panic(err)
-	}
-	w.WriteHeader(http.StatusOK)
+	response := h.Publisher.Publish(f.Name(), r.AccountID, []byte(r.FormValue(jsonrpcPayloadField)))
 	w.Write(response)
 }
 
