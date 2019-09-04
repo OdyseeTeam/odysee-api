@@ -17,6 +17,8 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
+type Preprocessor func(q *Query)
+
 // Service generates Caller objects and keeps execution time metrics
 // for all calls proxied through those objects.
 type Service struct {
@@ -28,10 +30,11 @@ type Service struct {
 // Caller patches through JSON-RPC requests from clients, doing pre/post-processing,
 // account processing and validation.
 type Caller struct {
-	accountID string
-	query     *jsonrpc.RPCRequest
-	client    jsonrpc.RPCClient
-	service   *Service
+	accountID    string
+	query        *jsonrpc.RPCRequest
+	client       jsonrpc.RPCClient
+	service      *Service
+	preprocessor Preprocessor
 }
 
 // Query is a wrapper around client JSON-RPC query for easier (un)marshaling and processing.
@@ -98,7 +101,7 @@ func (q *Query) ParamsAsMap() map[string]interface{} {
 	return nil
 }
 
-// ParamsToStruct returns query params parsed into a supplied structure
+// ParamsToStruct returns query params parsed into a supplied structure.
 func (q *Query) ParamsToStruct(targetStruct interface{}) error {
 	return ljsonrpc.Decode(q.Params(), targetStruct)
 }
@@ -190,7 +193,12 @@ func (q *Query) validate() CallError {
 	return nil
 }
 
-// SetAccountID sets accountID for the current instance of Caller
+// SetPreprocessor applies provided function to query before it's sent to the SDK.
+func (c *Caller) SetPreprocessor(p Preprocessor) {
+	c.preprocessor = p
+}
+
+// SetAccountID sets accountID for the current instance of Caller.
 func (c *Caller) SetAccountID(id string) {
 	c.accountID = id
 }
@@ -243,6 +251,10 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 	}
 	if predefinedResponse := q.predefinedResponse(); predefinedResponse != nil {
 		return predefinedResponse, nil
+	}
+
+	if c.preprocessor != nil {
+		c.preprocessor(q)
 	}
 
 	queryStartTime := time.Now()

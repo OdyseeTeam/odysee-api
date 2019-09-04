@@ -161,6 +161,34 @@ func TestCallAccountList(t *testing.T) {
 	assert.True(t, svc.GetMetricsValue("account_list").Value > 0)
 }
 
+func TestCallerSetPreprocessor(t *testing.T) {
+	var accResponse ljsonrpc.Account
+
+	rand.Seed(time.Now().UnixNano())
+	dummyAccountID := rand.Int()
+
+	acc, _ := lbrynet.CreateAccount(dummyAccountID)
+	defer lbrynet.RemoveAccount(dummyAccountID)
+
+	svc := NewService(config.GetLbrynet())
+	c := svc.NewCaller()
+	c.SetPreprocessor(func(q *Query) {
+		params := q.ParamsAsMap()
+		if params == nil {
+			q.Request.Params = map[string]string{paramAccountID: acc.ID}
+		} else {
+			params[paramAccountID] = acc.ID
+			q.Request.Params = params
+		}
+	})
+
+	request := newRawRequest(t, "account_list", nil)
+	rawCallReponse := c.Call(request)
+	parseRawResponse(t, rawCallReponse, &accResponse)
+	assert.Equal(t, acc.ID, accResponse.ID)
+	assert.True(t, svc.GetMetricsValue("account_list").Value > 0)
+}
+
 func TestCallSDKError(t *testing.T) {
 	var rpcResponse jsonrpc.RPCResponse
 
