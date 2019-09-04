@@ -1,27 +1,26 @@
 package publish
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
-	"strconv"
 
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/users"
-	"github.com/lbryio/lbrytv/internal/lbrynet"
-
-	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
-	"github.com/ybbus/jsonrpc"
+	"github.com/lbryio/lbrytv/internal/monitor"
 )
 
 const uploadPath = "/tmp"
 
 const fileField = "file"
 const jsonrpcPayloadField = "json_payload"
+
+const fileNameParam = "file_path"
+
+var logger = monitor.NewModuleLogger("publish")
 
 // Publisher is responsible for sending data to lbrynet
 // and should take file path, account ID and client query as a slice of bytes.
@@ -30,9 +29,11 @@ type Publisher interface {
 }
 
 // LbrynetPublisher is an implementation of SDK publisher.
-type LbrynetPublisher struct{}
+type LbrynetPublisher struct {
+	*proxy.Service
+}
 
-// UploadHandler glues HTTP uploads to the Publisher
+// UploadHandler glues HTTP uploads to the Publisher.
 type UploadHandler struct {
 	Publisher  Publisher
 	uploadPath string
@@ -50,46 +51,15 @@ func NewUploadHandler(uploadPath string, publisher Publisher) UploadHandler {
 // patches the query and sends it to the SDK for processing.
 // Resulting response is then returned back as a slice of bytes.
 func (p *LbrynetPublisher) Publish(filePath, accountID string, rawQuery []byte) ([]byte, error) {
-	// var rpcParams *lbrynet.PublishParams
-	// var rpcParams *ljsonrpc.StreamCreateOptions
-	rpcParams := struct {
-		Name                          string  `json:"name"`
-		Bid                           string  `json:"bid"`
-		FilePath                      string  `json:"file_path,omitempty"`
-		FileSize                      *string `json:"file_size,omitempty"`
-		IncludeProtoBuf               bool    `json:"include_protobuf"`
-		Blocking                      bool    `json:"blocking"`
-		*ljsonrpc.StreamCreateOptions `json:",flatten"`
-	}{}
-
-	query, err := proxy.NewQuery(rawQuery)
-	if err != nil {
-		panic(err)
-	}
-
-	if err := query.ParamsToStruct(&rpcParams); err != nil {
-		panic(err)
-	}
-
-	if rpcParams.FilePath != "__POST_FILE__" {
-		panic("unknown file_path content")
-	}
-
-	bid, err := strconv.ParseFloat(rpcParams.Bid, 64)
-	rpcParams.FilePath = filePath
-	rpcParams.AccountID = &accountID
-
-	result, err := lbrynet.Client.StreamCreate(rpcParams.Name, filePath, bid, *rpcParams.StreamCreateOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	rpcResponse := jsonrpc.RPCResponse{Result: result}
-	serialized, err := json.MarshalIndent(rpcResponse, "", "  ")
-	if err != nil {
-		return nil, err
-	}
-	return serialized, nil
+	c := p.Service.NewCaller()
+	c.SetAccountID(accountID)
+	c.SetPreprocessor(func(q *proxy.Query) {
+		params := q.ParamsAsMap()
+		params[fileNameParam] = filePath
+		q.Request.Params = params
+	})
+	r := c.Call(rawQuery)
+	return r, nil
 }
 
 // Handle is where HTTP upload is handled and passed on to Publisher.
