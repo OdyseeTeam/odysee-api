@@ -35,7 +35,7 @@ func prettyPrint(i interface{}) {
 func copyToDocker(t *testing.T, fileName string) {
 	cmd := fmt.Sprintf(`docker cp %v lbrytv_lbrynet_1:/storage`, fileName)
 	if _, err := exec.Command("bash", "-c", cmd).Output(); err != nil {
-		t.Fatalf("cannot copy %v to docker container: %v", fileName, err)
+		t.Skipf("skipping TestLbrynetPublisher (cannot copy %v to docker container: %v)", fileName, err)
 	}
 }
 
@@ -70,7 +70,7 @@ func launchDummyAPIServer() *httptest.Server {
 	}))
 }
 
-func TestPublish(t *testing.T) {
+func TestLbrynetPublisher(t *testing.T) {
 	dummyUserID := 751365
 	authToken := "zzz"
 
