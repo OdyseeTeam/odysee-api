@@ -1,6 +1,7 @@
 package users
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -26,34 +27,12 @@ func launchDummyAPIServer(response []byte) *httptest.Server {
 	}))
 }
 
-func TestMain(m *testing.M) {
-	dbConfig := config.GetDatabase()
-	params := storage.ConnParams{
-		Connection: dbConfig.Connection,
-		DBName:     dbConfig.DBName,
-		Options:    dbConfig.Options,
-	}
-	c, connCleanup := storage.CreateTestConn(params)
-	c.SetDefaultConnection()
-	defer connCleanup()
-	defer lbrynet.RemoveAccount(dummyUserID)
-
-	code := m.Run()
-	os.Exit(code)
-}
-
-func testFuncSetup() {
-	lbrynet.RemoveAccount(dummyUserID)
-}
-
-func TestRetrieve_New(t *testing.T) {
-	testFuncSetup()
-
-	ts := launchDummyAPIServer([]byte(`{
+func launchAuthenticatingAPIServer(userID int) *httptest.Server {
+	return launchDummyAPIServer([]byte(fmt.Sprintf(`{
 		"success": true,
 		"error": null,
 		"data": {
-		  "id": 751365,
+		  "id": %v,
 		  "language": "en",
 		  "given_name": null,
 		  "family_name": null,
@@ -66,13 +45,41 @@ func TestRetrieve_New(t *testing.T) {
 		  "is_email_enabled": true,
 		  "manual_approval_user_id": 837139,
 		  "reward_status_change_trigger": "manual",
-		  "primary_email": "andrey@lbry.com",
+		  "primary_email": "user@domain.com",
 		  "has_verified_email": true,
 		  "is_identity_verified": false,
 		  "is_reward_approved": true,
 		  "groups": []
 		}
-	}`))
+	}`, userID)))
+}
+
+func TestMain(m *testing.M) {
+	dbConfig := config.GetDatabase()
+	params := storage.ConnParams{
+		Connection: dbConfig.Connection,
+		DBName:     dbConfig.DBName,
+		Options:    dbConfig.Options,
+	}
+	dbConn, connCleanup := storage.CreateTestConn(params)
+	dbConn.SetDefaultConnection()
+	defer connCleanup()
+	defer lbrynet.RemoveAccount(dummyUserID)
+
+	code := m.Run()
+
+	os.Exit(code)
+}
+
+func testFuncSetup() {
+	lbrynet.RemoveAccount(dummyUserID)
+	storage.Conn.Truncate([]string{"users"})
+}
+
+func TestRetrieve_New(t *testing.T) {
+	testFuncSetup()
+
+	ts := launchAuthenticatingAPIServer(dummyUserID)
 	defer ts.Close()
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
@@ -89,30 +96,7 @@ func TestRetrieve_New(t *testing.T) {
 func TestRetrieve_Existing(t *testing.T) {
 	testFuncSetup()
 
-	ts := launchDummyAPIServer([]byte(`{
-		"success": true,
-		"error": null,
-		"data": {
-		  "id": 751365,
-		  "language": "en",
-		  "given_name": null,
-		  "family_name": null,
-		  "created_at": "2019-01-17T12:13:06Z",
-		  "updated_at": "2019-05-02T13:57:59Z",
-		  "invited_by_id": null,
-		  "invited_at": null,
-		  "invites_remaining": 0,
-		  "invite_reward_claimed": false,
-		  "is_email_enabled": true,
-		  "manual_approval_user_id": 837139,
-		  "reward_status_change_trigger": "manual",
-		  "primary_email": "andrey@lbry.com",
-		  "has_verified_email": true,
-		  "is_identity_verified": false,
-		  "is_reward_approved": true,
-		  "groups": []
-		}
-	}`))
+	ts := launchAuthenticatingAPIServer(dummyUserID)
 	defer ts.Close()
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
@@ -153,28 +137,29 @@ func TestRetrieve_Nonexistent(t *testing.T) {
 func TestRetrieve_EmptyEmail_NoUser(t *testing.T) {
 	testFuncSetup()
 
+	// API server returns empty email
 	ts := launchDummyAPIServer([]byte(`{
 		"success": true,
 		"error": null,
 		"data": {
-			"id": 1000985,
-			"language": "en",
-			"given_name": null,
-			"family_name": null,
-			"created_at": "2019-05-30T13:24:57Z",
-			"updated_at": "2019-05-30T13:31:07Z",
-			"invited_by_id": 756576,
-			"invited_at": null,
-			"invites_remaining": 0,
-			"invite_reward_claimed": false,
-			"is_email_enabled": true,
-			"manual_approval_user_id": null,
-			"reward_status_change_trigger": null,
-			"primary_email": null,
-			"has_verified_email": false,
-			"is_identity_verified": false,
-			"is_reward_approved": false,
-			"groups": []
+		  "id": 111111111,
+		  "language": "en",
+		  "given_name": null,
+		  "family_name": null,
+		  "created_at": "2019-01-17T12:13:06Z",
+		  "updated_at": "2019-05-02T13:57:59Z",
+		  "invited_by_id": null,
+		  "invited_at": null,
+		  "invites_remaining": 0,
+		  "invite_reward_claimed": false,
+		  "is_email_enabled": true,
+		  "manual_approval_user_id": 837139,
+		  "reward_status_change_trigger": "manual",
+		  "primary_email": null,
+		  "has_verified_email": true,
+		  "is_identity_verified": false,
+		  "is_reward_approved": true,
+		  "groups": []
 		}
 	}`))
 	defer ts.Close()
@@ -183,7 +168,7 @@ func TestRetrieve_EmptyEmail_NoUser(t *testing.T) {
 
 	u, err := NewUserService().Retrieve("abc")
 	assert.Nil(t, u)
-	assert.EqualError(t, err, "cannot authenticate user: email is empty/not confirmed")
+	assert.EqualError(t, err, "cannot authenticate user: email not confirmed")
 }
 
 func TestGetAccountIDFromRequestNoToken(t *testing.T) {
@@ -198,30 +183,7 @@ func TestGetAccountIDFromRequestNoToken(t *testing.T) {
 func TestGetAccountIDFromRequestExisting(t *testing.T) {
 	testFuncSetup()
 
-	ts := launchDummyAPIServer([]byte(`{
-		"success": true,
-		"error": null,
-		"data": {
-		  "id": 751365,
-		  "language": "en",
-		  "given_name": null,
-		  "family_name": null,
-		  "created_at": "2019-01-17T12:13:06Z",
-		  "updated_at": "2019-05-02T13:57:59Z",
-		  "invited_by_id": null,
-		  "invited_at": null,
-		  "invites_remaining": 0,
-		  "invite_reward_claimed": false,
-		  "is_email_enabled": true,
-		  "manual_approval_user_id": 837139,
-		  "reward_status_change_trigger": "manual",
-		  "primary_email": "andrey@lbry.com",
-		  "has_verified_email": true,
-		  "is_identity_verified": false,
-		  "is_reward_approved": true,
-		  "groups": []
-		}
-	}`))
+	ts := launchAuthenticatingAPIServer(dummyUserID)
 	defer ts.Close()
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
@@ -259,4 +221,34 @@ func TestGetAccountIDFromRequestNonexistent(t *testing.T) {
 	require.NotNil(t, err)
 	assert.Equal(t, "cannot authenticate user with internal-apis: could not authenticate user", err.Error())
 	assert.Equal(t, "", id)
+}
+
+func TestCreateDBUserForExistingSDKAccount(t *testing.T) {
+	testFuncSetup()
+
+	ts := launchAuthenticatingAPIServer(dummyUserID)
+	defer ts.Close()
+	config.Override("InternalAPIHost", ts.URL)
+	defer config.RestoreOverridden()
+
+	acc, err := lbrynet.CreateAccount(dummyUserID)
+	require.Nil(t, err)
+
+	r, _ := http.NewRequest("POST", "/", nil)
+	r.Header.Add(TokenHeader, "abc")
+
+	svc := NewUserService()
+	id, err := GetAccountIDFromRequest(r, svc)
+	require.Nil(t, err)
+
+	u, err := svc.Retrieve("abc")
+	require.Nil(t, err)
+
+	assert.EqualValues(t, u.SDKAccountID, acc.ID)
+	assert.EqualValues(t, u.SDKAccountID, id)
+
+	uRetrieved, err := svc.getDBUser(u.ID)
+	require.Nil(t, err)
+
+	assert.EqualValues(t, uRetrieved.SDKAccountID, acc.ID)
 }
