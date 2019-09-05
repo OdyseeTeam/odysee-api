@@ -1,6 +1,7 @@
 Lbrynet: http://localhost:5581/
 Debug: 1
 InternalAPIHost: https://api.lbry.com
+ProjectURL: https://beta.lbry.tv
 
 SentryDSN: "https://9ef75ef77a844d4aa35d834d78266477@sentry.io/1416147"
 
@@ -13,3 +14,5 @@ AccountsEnabled: 1
 
 MetricsAddress: :2112
 MetricsPath: /metrics
+
+PublishDir: ./.lbrynet/publish

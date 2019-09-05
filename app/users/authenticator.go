@@ -5,6 +5,8 @@ import (
 	"net/http"
 )
 
+const GenericRetrievalErr = "unable to retrieve user"
+
 type Authenticator struct {
 	retriever Retriever
 }
@@ -32,7 +34,7 @@ func (a *Authenticator) GetAccountID(r *http.Request) (string, error) {
 			return "", err
 		}
 		if u == nil {
-			return "", errors.New("unable to retrieve user")
+			return "", errors.New(GenericRetrievalErr)
 		}
 		return u.SDKAccountID, nil
 	}
@@ -52,6 +54,11 @@ func (a *Authenticator) Wrap(wrapped AuthenticatedFunc) http.HandlerFunc {
 		}
 		wrapped(w, ar)
 	}
+}
+
+// AuthFailed is a helper to see if there was an error authenticating user.
+func (r *AuthenticatedRequest) AuthFailed() bool {
+	return r.AuthError != nil
 }
 
 // IsAuthenticated is a helper to see if a user was authenticated.

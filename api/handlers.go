@@ -7,6 +7,7 @@ import (
 	"github.com/lbryio/lbrytv/app/player"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/lbryio/lbrytv/config"
 
 	"github.com/gorilla/mux"
 )
@@ -17,7 +18,7 @@ var Collector = metrics.NewCollector()
 
 // Index serves a blank home page
 func Index(w http.ResponseWriter, req *http.Request) {
-	http.Redirect(w, req, "https://lbry.tv/", http.StatusSeeOther)
+	http.Redirect(w, req, config.GetProjectURL(), http.StatusSeeOther)
 }
 
 func stream(uri string, w http.ResponseWriter, req *http.Request) {
