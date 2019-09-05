@@ -24,6 +24,7 @@ const TokenHeader string = "X-Lbry-Auth-Token"
 const idPrefix string = "id:"
 const errUniqueViolation = "23505"
 
+// Retriever is an interface for user retrieval by internal-apis auth token
 type Retriever interface {
 	Retrieve(token string) (*models.User, error)
 }
@@ -31,14 +32,8 @@ type Retriever interface {
 // NewUserService returns UserService instance for retrieving or creating user records and accounts.
 func NewUserService() *UserService {
 	s := &UserService{logger: monitor.NewModuleLogger("users")}
-	// s.updateLogger(monitor.F{})
 	return s
 }
-
-// func (s *UserService) updateLogger(fields monitor.F) {
-// 	fields[monitor.TokenF] = s.token
-// 	s.log = monitor.NewModuleLogger("users").LogF(fields)
-// }
 
 func (s *UserService) getLocalUser(id int) (*models.User, error) {
 	return models.Users(models.UserWhere.ID.EQ(id)).OneG()
@@ -47,7 +42,7 @@ func (s *UserService) getLocalUser(id int) (*models.User, error) {
 func (s *UserService) createLocalUser(id int) (*models.User, error) {
 	log := s.logger.LogF(monitor.F{"id": id})
 
-	u := new(models.User)
+	u := &models.User{}
 	u.ID = id
 	err := u.InsertG(boil.Infer())
 

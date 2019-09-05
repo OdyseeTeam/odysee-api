@@ -44,7 +44,8 @@ func TestUploadHandler(t *testing.T) {
 
 	fileBody, err := writer.CreateFormFile(fileField, "lbry_auto_test_file")
 	require.Nil(t, err)
-	io.Copy(fileBody, readSeeker)
+	_, err = io.Copy(fileBody, readSeeker)
+	require.Nil(t, err)
 
 	jsonPayload, err := writer.CreateFormField(jsonrpcPayloadField)
 	require.Nil(t, err)
