@@ -8,7 +8,6 @@ import (
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
 
-	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"github.com/volatiletech/sqlboiler/boil"
@@ -23,6 +22,11 @@ type UserService struct {
 const TokenHeader string = "X-Lbry-Auth-Token"
 const idPrefix string = "id:"
 const errUniqueViolation = "23505"
+
+type savedAccFields struct {
+	ID        string
+	PublicKey string
+}
 
 // Retriever is an interface for user retrieval by internal-apis auth token
 type Retriever interface {
@@ -87,6 +91,7 @@ func (s *UserService) Retrieve(token string) (*models.User, error) {
 
 	localUser, errStorage := s.getDBUser(remoteUser.ID)
 	if errStorage == sql.ErrNoRows {
+		log.Infof("user ID=%v not found in the database, creating", remoteUser.ID)
 		localUser, err = s.createDBUser(remoteUser.ID)
 		if err != nil {
 			return nil, err
@@ -98,6 +103,17 @@ func (s *UserService) Retrieve(token string) (*models.User, error) {
 		}
 	} else if errStorage != nil {
 		return nil, errStorage
+	}
+
+	if localUser.SDKAccountID == "" {
+		log.Warnf("user ID=%v has empty fields in the database, retrieving from the SDK", remoteUser.ID)
+		acc, err := lbrynet.GetAccount(remoteUser.ID)
+		if err != nil {
+			monitor.CaptureException(err, map[string]string{"internal-api-id": string(remoteUser.ID)})
+			log.Errorf("could not retrieve user ID=%v from the SDK: %v", remoteUser.ID, err)
+			return nil, err
+		}
+		err = s.saveAccFields(savedAccFields{ID: acc.ID, PublicKey: acc.PublicKey}, localUser)
 	}
 
 	return localUser, nil
@@ -113,7 +129,7 @@ func (s *UserService) createSDKAccount(u *models.User) error {
 			return err
 		}
 	} else {
-		err = s.saveSDKFields(newAccount, u)
+		err = s.saveAccFields(savedAccFields{ID: newAccount.ID, PublicKey: newAccount.PublicKey}, u)
 		if err != nil {
 			return err
 		}
@@ -122,11 +138,9 @@ func (s *UserService) createSDKAccount(u *models.User) error {
 	return nil
 }
 
-func (s *UserService) saveSDKFields(a *ljsonrpc.AccountCreateResponse, u *models.User) error {
-	u.SDKAccountID = a.ID
-	u.PrivateKey = a.PrivateKey
-	u.PublicKey = a.PublicKey
-	u.Seed = a.Seed
+func (s *UserService) saveAccFields(accFields savedAccFields, u *models.User) error {
+	u.SDKAccountID = accFields.ID
+	u.PublicKey = accFields.PublicKey
 	_, err := u.UpdateG(boil.Infer())
 	return err
 }
