@@ -35,11 +35,11 @@ func NewUserService() *UserService {
 	return s
 }
 
-func (s *UserService) getLocalUser(id int) (*models.User, error) {
+func (s *UserService) getDBUser(id int) (*models.User, error) {
 	return models.Users(models.UserWhere.ID.EQ(id)).OneG()
 }
 
-func (s *UserService) createLocalUser(id int) (*models.User, error) {
+func (s *UserService) createDBUser(id int) (*models.User, error) {
 	log := s.logger.LogF(monitor.F{"id": id})
 
 	u := &models.User{}
@@ -53,7 +53,7 @@ func (s *UserService) createLocalUser(id int) (*models.User, error) {
 		case *pq.Error:
 			if baseErr.Code == errUniqueViolation && baseErr.Column == "users_pkey" {
 				log.Debug("user creation conflict, trying to retrieve local user again")
-				u, retryErr := s.getLocalUser(id)
+				u, retryErr := s.getDBUser(id)
 				if retryErr != nil {
 					return nil, retryErr
 				}
@@ -81,13 +81,13 @@ func (s *UserService) Retrieve(token string) (*models.User, error) {
 	log = s.logger.LogF(monitor.F{"token": token, "id": remoteUser.ID, "email": remoteUser.Email})
 
 	if remoteUser.Email == "" {
-		log.Info("empty email for internal-api user")
-		return nil, errors.New("cannot authenticate user: email is empty/not confirmed")
+		log.Info("cannot authenticate internal-api user: email not confirmed")
+		return nil, errors.New("cannot authenticate user: email not confirmed")
 	}
 
-	localUser, errStorage := s.getLocalUser(remoteUser.ID)
+	localUser, errStorage := s.getDBUser(remoteUser.ID)
 	if errStorage == sql.ErrNoRows {
-		localUser, err = s.createLocalUser(remoteUser.ID)
+		localUser, err = s.createDBUser(remoteUser.ID)
 		if err != nil {
 			return nil, err
 		}
