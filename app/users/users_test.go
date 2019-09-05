@@ -61,17 +61,19 @@ func TestMain(m *testing.M) {
 		DBName:     dbConfig.DBName,
 		Options:    dbConfig.Options,
 	}
-	c, connCleanup := storage.CreateTestConn(params)
-	c.SetDefaultConnection()
+	dbConn, connCleanup := storage.CreateTestConn(params)
+	dbConn.SetDefaultConnection()
 	defer connCleanup()
 	defer lbrynet.RemoveAccount(dummyUserID)
 
 	code := m.Run()
+
 	os.Exit(code)
 }
 
 func testFuncSetup() {
 	lbrynet.RemoveAccount(dummyUserID)
+	storage.Conn.Truncate([]string{"users"})
 }
 
 func TestRetrieve_New(t *testing.T) {
@@ -135,14 +137,38 @@ func TestRetrieve_Nonexistent(t *testing.T) {
 func TestRetrieve_EmptyEmail_NoUser(t *testing.T) {
 	testFuncSetup()
 
-	ts := launchAuthenticatingAPIServer(1000985)
+	// API server returns empty email
+	ts := launchDummyAPIServer([]byte(`{
+		"success": true,
+		"error": null,
+		"data": {
+		  "id": 111111111,
+		  "language": "en",
+		  "given_name": null,
+		  "family_name": null,
+		  "created_at": "2019-01-17T12:13:06Z",
+		  "updated_at": "2019-05-02T13:57:59Z",
+		  "invited_by_id": null,
+		  "invited_at": null,
+		  "invites_remaining": 0,
+		  "invite_reward_claimed": false,
+		  "is_email_enabled": true,
+		  "manual_approval_user_id": 837139,
+		  "reward_status_change_trigger": "manual",
+		  "primary_email": null,
+		  "has_verified_email": true,
+		  "is_identity_verified": false,
+		  "is_reward_approved": true,
+		  "groups": []
+		}
+	}`))
 	defer ts.Close()
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
 	u, err := NewUserService().Retrieve("abc")
 	assert.Nil(t, u)
-	assert.EqualError(t, err, "cannot authenticate user: email is empty/not confirmed")
+	assert.EqualError(t, err, "cannot authenticate user: email not confirmed")
 }
 
 func TestGetAccountIDFromRequestNoToken(t *testing.T) {

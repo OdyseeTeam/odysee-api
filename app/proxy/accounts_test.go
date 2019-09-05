@@ -54,6 +54,7 @@ func TestMain(m *testing.M) {
 
 func testFuncSetup() {
 	lbrynet.RemoveAccount(dummyUserID)
+	storage.Conn.Truncate([]string{"users"})
 	time.Sleep(testSetupWait)
 }
 
