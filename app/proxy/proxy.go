@@ -57,6 +57,15 @@ var accountSpecificMethods = []string{
 	"utxo_release",
 }
 
+var accountFundingSpecificMethods = []string{
+	"channel_create",
+	"channel_update",
+	"publish",
+	"stream_create",
+	"stream_update",
+	"support_create",
+}
+
 const MethodGet = "get"
 const MethodFileList = "file_list"
 const MethodAccountList = "account_list"
@@ -67,6 +76,7 @@ const MethodClaimSearch = "claim_search"
 const MethodCommentList = "comment_list"
 
 const paramAccountID = "account_id"
+const paramFundingAccountIDs = "funding_account_ids"
 const paramUrls = "urls"
 
 var ignoreLog = []string{

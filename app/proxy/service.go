@@ -106,16 +106,6 @@ func (q *Query) ParamsToStruct(targetStruct interface{}) error {
 	return ljsonrpc.Decode(q.Params(), targetStruct)
 }
 
-func (q *Query) paramsForLog() map[string]interface{} {
-	params := q.ParamsAsMap()
-	for k := range params {
-		if k == paramAccountID {
-			params[k] = monitor.ValueMask
-		}
-	}
-	return params
-}
-
 // cacheHit returns true if we got a resolve query with more than `cacheResolveLongerThan` urls in it.
 func (q *Query) isCacheable() bool {
 	if q.Method() == MethodResolve && q.Params() != nil {
@@ -140,15 +130,19 @@ func (q *Query) newResponse() *jsonrpc.RPCResponse {
 // and if account_id should be added to request params accordingly.
 func (q *Query) attachAccountID(id string) {
 	if methodInList(q.Method(), accountSpecificMethods) {
-		// monitor.Logger.WithFields(log.Fields{
-		// 	"method": r.Method, "params": r.Params,
-		// }).Info("got an account-specific method call")
-
 		if p := q.ParamsAsMap(); p != nil {
 			p[paramAccountID] = id
 			q.Request.Params = p
 		} else {
-			q.Request.Params = map[string]interface{}{"account_id": id}
+			q.Request.Params = map[string]interface{}{paramAccountID: id}
+		}
+	}
+	if methodInList(q.Method(), accountFundingSpecificMethods) {
+		if p := q.ParamsAsMap(); p != nil {
+			p[paramFundingAccountIDs] = []string{id}
+			q.Request.Params = p
+		} else {
+			q.Request.Params = map[string]interface{}{paramFundingAccountIDs: []string{id}}
 		}
 	}
 }
@@ -267,9 +261,9 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 	c.service.SetMetricsValue(q.Method(), execTime, q.Params())
 
 	if r.Error != nil {
-		c.service.logger.LogFailedQuery(q.Method(), q.paramsForLog(), r.Error)
+		c.service.logger.LogFailedQuery(q.Method(), q.Params(), r.Error)
 	} else {
-		c.service.logger.LogSuccessfulQuery(q.Method(), execTime, q.paramsForLog())
+		c.service.logger.LogSuccessfulQuery(q.Method(), execTime, q.Params())
 	}
 
 	r, err = processResponse(q.Request, r)

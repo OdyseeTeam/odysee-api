@@ -140,6 +140,8 @@ func TestWithValidAuthTokenConcurrent(t *testing.T) {
 	lbrynet.RemoveAccount(123123)
 	defer lbrynet.RemoveAccount(123123)
 
+	http.DefaultClient.Timeout = 10 * time.Second
+
 	var wg sync.WaitGroup
 
 	ts := launchDummyAPIServerDelayed([]byte(`{

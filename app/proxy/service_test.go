@@ -51,32 +51,36 @@ func parseRawResponse(t *testing.T, rawCallReponse []byte, destinationVar interf
 	rpcResponse.GetObject(destinationVar)
 }
 
-type DummyClient struct{}
+type ClientMock struct {
+	Delay       time.Duration
+	LastRequest jsonrpc.RPCRequest
+}
 
-func (c DummyClient) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse, error) {
+func (c ClientMock) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse, error) {
 	return &jsonrpc.RPCResponse{
 		JSONRPC: "2.0",
 		Result:  "0.0",
 	}, nil
 }
 
-func (c DummyClient) CallRaw(request *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
-	time.Sleep(250 * time.Millisecond)
+func (c *ClientMock) CallRaw(request *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
+	c.LastRequest = *request
+	time.Sleep(c.Delay)
 	return &jsonrpc.RPCResponse{
 		JSONRPC: "2.0",
 		Result:  "0.0",
 	}, nil
 }
 
-func (c DummyClient) CallFor(out interface{}, method string, params ...interface{}) error {
+func (c ClientMock) CallFor(out interface{}, method string, params ...interface{}) error {
 	return nil
 }
 
-func (c DummyClient) CallBatch(requests jsonrpc.RPCRequests) (jsonrpc.RPCResponses, error) {
+func (c ClientMock) CallBatch(requests jsonrpc.RPCRequests) (jsonrpc.RPCResponses, error) {
 	return nil, nil
 }
 
-func (c DummyClient) CallBatchRaw(requests jsonrpc.RPCRequests) (jsonrpc.RPCResponses, error) {
+func (c ClientMock) CallBatchRaw(requests jsonrpc.RPCRequests) (jsonrpc.RPCResponses, error) {
 	return nil, nil
 }
 
@@ -96,7 +100,7 @@ func TestSetAccountID(t *testing.T) {
 func TestCallerMetrics(t *testing.T) {
 	svc := NewService(endpoint)
 	c := Caller{
-		client:  DummyClient{},
+		client:  &ClientMock{Delay: 250 * time.Millisecond},
 		service: svc,
 	}
 	c.Call([]byte(newRawRequest(t, "resolve", map[string]string{"urls": "what"})))
@@ -137,28 +141,34 @@ func TestCallAccountBalance(t *testing.T) {
 	hook := logrus_test.NewLocal(svc.logger.Logger())
 	c.Call(request)
 
-	assert.Equal(t, map[string]interface{}{"account_id": "****"}, hook.LastEntry().Data["params"])
+	assert.Equal(t, map[string]interface{}{"account_id": fmt.Sprintf("%v", acc.ID)}, hook.LastEntry().Data["params"])
 	assert.Equal(t, "account_balance", hook.LastEntry().Data["method"])
 }
 
-func TestCallAccountList(t *testing.T) {
-	var accResponse ljsonrpc.Account
+func TestCallAttachesAccountId(t *testing.T) {
+	mockClient := &ClientMock{}
 
 	rand.Seed(time.Now().UnixNano())
-	dummyAccountID := rand.Int()
+	dummyAccountID := "abc123321"
 
-	acc, _ := lbrynet.CreateAccount(dummyAccountID)
-	defer lbrynet.RemoveAccount(dummyAccountID)
-
-	svc := NewService(config.GetLbrynet())
-	c := svc.NewCaller()
-	c.SetAccountID(acc.ID)
-
-	request := newRawRequest(t, "account_list", nil)
-	rawCallReponse := c.Call(request)
-	parseRawResponse(t, rawCallReponse, &accResponse)
-	assert.Equal(t, acc.ID, accResponse.ID)
-	assert.True(t, svc.GetMetricsValue("account_list").Value > 0)
+	svc := NewService(endpoint)
+	c := Caller{
+		client:  mockClient,
+		service: svc,
+	}
+	c.SetAccountID(dummyAccountID)
+	c.Call([]byte(newRawRequest(t, "channel_create", map[string]string{"name": "test", "bid": "0.1"})))
+	expectedRequest := jsonrpc.RPCRequest{
+		Method: "channel_create",
+		Params: map[string]interface{}{
+			"name":                "test",
+			"bid":                 "0.1",
+			"account_id":          dummyAccountID,
+			"funding_account_ids": []string{dummyAccountID},
+		},
+		JSONRPC: "2.0",
+	}
+	assert.EqualValues(t, expectedRequest, mockClient.LastRequest)
 }
 
 func TestCallerSetPreprocessor(t *testing.T) {
