@@ -63,6 +63,7 @@ func (p *LbrynetPublisher) Publish(filePath, accountID string, rawQuery []byte) 
 }
 
 func (h UploadHandler) handleUpload(r *users.AuthenticatedRequest) (*os.File, error) {
+	log := logger.LogF(monitor.F{"account_id": r.AccountID})
 	file, header, err := r.FormFile("file")
 	if err != nil {
 		return nil, err
@@ -73,10 +74,14 @@ func (h UploadHandler) handleUpload(r *users.AuthenticatedRequest) (*os.File, er
 	if err != nil {
 		return nil, err
 	}
+	log.Infof("processing uploaded file %v", header.Filename)
 
-	if _, err := io.Copy(f, file); err != nil {
+	numWritten, err := io.Copy(f, file)
+	if err != nil {
 		return nil, err
 	}
+	log.Debugf("saved uploaded file %v (%v bytes written)", f.Name(), numWritten)
+
 	if err := f.Close(); err != nil {
 		return nil, err
 	}
