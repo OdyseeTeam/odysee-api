@@ -15,6 +15,7 @@ import (
 
 var logger = monitor.NewModuleLogger("reflection")
 
+// Manager represents an object for managing and scheduling published data upload to reflectors.
 type Manager struct {
 	uploader *reflector.Uploader
 	client   *ljsonrpc.Client
@@ -23,6 +24,8 @@ type Manager struct {
 	abort    chan bool
 }
 
+// NewManager returns a Manager instance.
+// To initialize a returned instance (connect to the reflector DB), call Initialize() on it.
 func NewManager(rCfg config.ReflectorConfig) *Manager {
 	return &Manager{
 		abort:  make(chan bool),
@@ -30,6 +33,7 @@ func NewManager(rCfg config.ReflectorConfig) *Manager {
 	}
 }
 
+// Initialize connects to the reflector database
 func (r *Manager) Initialize() {
 	db := new(db.SQL)
 	err := db.Connect(r.config.DBConn)
@@ -41,10 +45,13 @@ func (r *Manager) Initialize() {
 	logger.Log().Infof("manager initialized")
 }
 
+// IsInitialized returns true whenever Manager object is ready to use.
 func (r *Manager) IsInitialized() bool {
 	return r.dbHandle != nil
 }
 
+// Start launches blob upload procedure at specified intervals.
+// If upload duration at the end exceeds specified interval, it will just start the upload again after it's done.
 func (r *Manager) Start(interval time.Duration) {
 	if !r.IsInitialized() {
 		return
@@ -68,10 +75,12 @@ func (r *Manager) Start(interval time.Duration) {
 	}()
 }
 
+// Abort resets the upload schedule and cancels current upload.
 func (r *Manager) Abort() {
 	r.abort <- true
 }
 
+// ReflectAll starts an upload process for all blobs in the specified directory.
 func (r *Manager) ReflectAll() {
 	if !r.IsInitialized() {
 		return
@@ -101,6 +110,8 @@ func (r *Manager) ReflectAll() {
 	}
 }
 
-func (r *Manager) cleanupBlobs() {
+// CleanupBlobs checks which of the blobs are present in the reflector database already and removes them
+// both from local SDK instance and from the filesystem.
+func (r *Manager) CleanupBlobs() {
 
 }
