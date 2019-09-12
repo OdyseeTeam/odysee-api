@@ -7,3 +7,4 @@
 coverage.*
 packrd/
 *packr.go
+secrets.env
