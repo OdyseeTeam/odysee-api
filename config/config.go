@@ -20,6 +20,14 @@ type DBConfig struct {
 	Options    string
 }
 
+type ReflectorConfig struct {
+	AWSID     string
+	AWSSecret string
+	Region    string
+	Bucket    string
+	DBConn    string
+}
+
 var once sync.Once
 var Config *ConfigWrapper
 
@@ -62,6 +70,12 @@ func (c *ConfigWrapper) Init() {
 
 	c.Viper.SetDefault("AccountsEnabled", false)
 	c.Viper.BindEnv("AccountsEnabled")
+
+	c.Viper.BindEnv("ReflectorAWSID", "REFLECTOR_AWS_ID")
+	c.Viper.BindEnv("ReflectorAWSSecret", "REFLECTOR_AWS_SECRET")
+	c.Viper.BindEnv("ReflectorBucketRegion", "REFLECTOR_BUCKET_REGION")
+	c.Viper.BindEnv("ReflectorBucketName", "REFLECTOR_BUCKET_NAME")
+	c.Viper.BindEnv("ReflectorDBConn", "REFLECTOR_DB_CONN")
 
 	c.Viper.SetConfigName("lbrytv") // name of config file (without extension)
 
@@ -170,4 +184,24 @@ func GetProjectURL() string {
 // The directory needs to be accessed by the running SDK instance.
 func GetPublishSourceDir() string {
 	return Config.Viper.GetString("PublishSourceDir")
+}
+
+// GetBlobFilesDir returns directory where SDK instance stores blob files.
+func GetBlobFilesDir() string {
+	return Config.Viper.GetString("BlobFilesDir")
+}
+
+func GetReflectorConfig() *ReflectorConfig {
+	v := Config.Viper
+	cfg := ReflectorConfig{
+		AWSID:     v.GetString("ReflectorAWSID"),
+		AWSSecret: v.GetString("ReflectorAWSSecret"),
+		Region:    v.GetString("ReflectorBucketRegion"),
+		Bucket:    v.GetString("ReflectorBucketName"),
+		DBConn:    v.GetString("ReflectorDBConn"),
+	}
+	if cfg.AWSID != "" {
+		return &cfg
+	}
+	return nil
 }
