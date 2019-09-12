@@ -15,4 +15,5 @@ AccountsEnabled: 1
 MetricsAddress: :2112
 MetricsPath: /metrics
 
-PublishSourceDir: ./.lbrynet/publish
+PublishSourceDir: /storage/published
+BlobFilesDir: /storage/lbrynet/blobfiles

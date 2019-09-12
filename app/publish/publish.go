@@ -15,8 +15,8 @@ import (
 
 const uploadPath = "/tmp"
 
-const fileField = "file"
-const jsonrpcPayloadField = "json_payload"
+const FileFieldName = "file"
+const JSONRPCFieldName = "json_payload"
 
 const fileNameParam = "file_path"
 
@@ -80,7 +80,7 @@ func (h UploadHandler) handleUpload(r *users.AuthenticatedRequest) (*os.File, er
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("saved uploaded file %v (%v bytes written)", f.Name(), numWritten)
+	log.Infof("saved uploaded file %v (%v bytes written)", f.Name(), numWritten)
 
 	if err := f.Close(); err != nil {
 		return nil, err
@@ -111,7 +111,7 @@ func (h UploadHandler) Handle(w http.ResponseWriter, r *users.AuthenticatedReque
 		return
 	}
 
-	response := h.Publisher.Publish(f.Name(), r.AccountID, []byte(r.FormValue(jsonrpcPayloadField)))
+	response := h.Publisher.Publish(f.Name(), r.AccountID, []byte(r.FormValue(JSONRPCFieldName)))
 	w.Write(response)
 }
 
