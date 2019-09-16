@@ -16,7 +16,7 @@ func TestProxyOptions(t *testing.T) {
 	r, _ := http.NewRequest("OPTIONS", "/api/proxy", nil)
 
 	rr := httptest.NewRecorder()
-	handler := NewRequestServer(svc)
+	handler := NewRequestHandler(svc)
 	handler.Handle(rr, r)
 
 	response := rr.Result()
@@ -27,7 +27,7 @@ func TestProxyNilQuery(t *testing.T) {
 	r, _ := http.NewRequest("POST", "/api/proxy", nil)
 
 	rr := httptest.NewRecorder()
-	handler := NewRequestServer(svc)
+	handler := NewRequestHandler(svc)
 	handler.Handle(rr, r)
 
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
@@ -40,7 +40,7 @@ func TestProxyInvalidQuery(t *testing.T) {
 	r, _ := http.NewRequest("POST", "/api/proxy", bytes.NewBuffer([]byte("yo")))
 
 	rr := httptest.NewRecorder()
-	handler := NewRequestServer(svc)
+	handler := NewRequestHandler(svc)
 	handler.Handle(rr, r)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -62,7 +62,7 @@ func TestProxy(t *testing.T) {
 	r, _ := http.NewRequest("POST", "/api/proxy", bytes.NewBuffer(queryBody))
 
 	rr := httptest.NewRecorder()
-	handler := NewRequestServer(svc)
+	handler := NewRequestHandler(svc)
 	handler.Handle(rr, r)
 
 	assert.Equal(t, http.StatusOK, rr.Code)

@@ -11,7 +11,7 @@ import (
 
 // InstallRoutes sets up global API handlers
 func InstallRoutes(proxyService *proxy.Service, r *mux.Router) {
-	proxyHandler := proxy.NewRequestServer(proxyService)
+	proxyHandler := proxy.NewRequestHandler(proxyService)
 	authenticator := users.NewAuthenticator(users.NewUserService())
 	lbrynetPublisher := &publish.LbrynetPublisher{Service: proxyService}
 	upHandler := publish.NewUploadHandler(config.GetPublishSourceDir(), lbrynetPublisher)
