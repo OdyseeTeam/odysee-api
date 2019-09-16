@@ -11,6 +11,8 @@ import (
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/internal/monitor"
+
+	"github.com/gorilla/mux"
 )
 
 const uploadPath = "/tmp"
@@ -62,9 +64,9 @@ func (p *LbrynetPublisher) Publish(filePath, accountID string, rawQuery []byte) 
 	return r
 }
 
-func (h UploadHandler) handleUpload(r *users.AuthenticatedRequest) (*os.File, error) {
+func (h UploadHandler) processUploadedFile(r *users.AuthenticatedRequest) (*os.File, error) {
 	log := logger.LogF(monitor.F{"account_id": r.AccountID})
-	file, header, err := r.FormFile("file")
+	file, header, err := r.FormFile(FileFieldName)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +107,7 @@ func (h UploadHandler) Handle(w http.ResponseWriter, r *users.AuthenticatedReque
 		return
 	}
 
-	f, err := h.handleUpload(r)
+	f, err := h.processUploadedFile(r)
 	if err != nil {
 		w.Write(NewInternalError(err).AsBytes())
 		return
@@ -130,4 +132,15 @@ func (h UploadHandler) preparePath(accountID string) (string, error) {
 	path := path.Join(h.uploadPath, accountID)
 	err := os.MkdirAll(path, os.ModePerm)
 	return path, err
+}
+
+// CanHandle checks if http.Request contains POSTed data in an accepted format.
+// Supposed to be used in gorilla mux router MatcherFunc.
+func (h UploadHandler) CanHandle(r *http.Request, _ *mux.RouteMatch) bool {
+	_, _, err := r.FormFile(FileFieldName)
+	payload := r.FormValue(JSONRPCFieldName)
+	if err == http.ErrMissingFile && payload == "" {
+		return false
+	}
+	return true
 }
