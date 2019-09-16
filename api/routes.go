@@ -4,17 +4,15 @@ import (
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
 	"github.com/lbryio/lbrytv/app/users"
-	"github.com/lbryio/lbrytv/config"
 
 	"github.com/gorilla/mux"
 )
 
 // InstallRoutes sets up global API handlers
 func InstallRoutes(proxyService *proxy.Service, r *mux.Router) {
-	proxyHandler := proxy.NewRequestHandler(proxyService)
 	authenticator := users.NewAuthenticator(users.NewUserService())
-	lbrynetPublisher := &publish.LbrynetPublisher{Service: proxyService}
-	upHandler := publish.NewUploadHandler(config.GetPublishSourceDir(), lbrynetPublisher)
+	proxyHandler := proxy.NewRequestHandler(proxyService)
+	upHandler := publish.NewUploadHandler(publish.UploadOpts{ProxyService: proxyService})
 
 	r.HandleFunc("/", Index)
 	v1Router := r.PathPrefix("/api/v1").Subrouter()

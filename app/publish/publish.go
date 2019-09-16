@@ -10,12 +10,13 @@ import (
 
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/users"
+	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
 	"github.com/gorilla/mux"
 )
 
-const uploadPath = "/tmp"
+const UploadPath = "/tmp"
 
 const FileFieldName = "file"
 const JSONRPCFieldName = "json_payload"
@@ -38,14 +39,35 @@ type LbrynetPublisher struct {
 // UploadHandler glues HTTP uploads to the Publisher.
 type UploadHandler struct {
 	Publisher  Publisher
-	uploadPath string
+	UploadPath string
+}
+
+type UploadOpts struct {
+	Path         string
+	Publisher    Publisher
+	ProxyService *proxy.Service
 }
 
 // NewUploadHandler returns a HTTP upload handler object.
-func NewUploadHandler(uploadPath string, publisher Publisher) UploadHandler {
+func NewUploadHandler(opts UploadOpts) UploadHandler {
+	var (
+		publisher  Publisher
+		uploadPath string
+	)
+	if opts.ProxyService != nil {
+		publisher = &LbrynetPublisher{Service: opts.ProxyService}
+	} else if opts.Publisher != nil {
+		publisher = opts.Publisher
+	}
+
+	if opts.Path == "" {
+		uploadPath = config.GetPublishSourceDir()
+	} else {
+		uploadPath = opts.Path
+	}
 	return UploadHandler{
 		Publisher:  publisher,
-		uploadPath: uploadPath,
+		UploadPath: uploadPath,
 	}
 }
 
@@ -95,7 +117,6 @@ func (h UploadHandler) processUploadedFile(r *users.AuthenticatedRequest) (*os.F
 // in a mux.Router.
 func (h UploadHandler) Handle(w http.ResponseWriter, r *users.AuthenticatedRequest) {
 	w.WriteHeader(http.StatusOK)
-
 	if !r.IsAuthenticated() {
 		var authErr Error
 		if r.AuthFailed() {
@@ -129,7 +150,7 @@ func (h UploadHandler) CreateFile(accountID string, origFilename string) (*os.Fi
 }
 
 func (h UploadHandler) preparePath(accountID string) (string, error) {
-	path := path.Join(h.uploadPath, accountID)
+	path := path.Join(h.UploadPath, accountID)
 	err := os.MkdirAll(path, os.ModePerm)
 	return path, err
 }
@@ -139,8 +160,8 @@ func (h UploadHandler) preparePath(accountID string) (string, error) {
 func (h UploadHandler) CanHandle(r *http.Request, _ *mux.RouteMatch) bool {
 	_, _, err := r.FormFile(FileFieldName)
 	payload := r.FormValue(JSONRPCFieldName)
-	if err == http.ErrMissingFile && payload == "" {
-		return false
+	if err != http.ErrMissingFile && payload != "" {
+		return true
 	}
-	return true
+	return false
 }
