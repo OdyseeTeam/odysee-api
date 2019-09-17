@@ -42,7 +42,8 @@ func TestUploadHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 	authenticator := users.NewAuthenticator(&users.TestUserRetriever{AccountID: "UPldrAcc", Token: "uPldrToken"})
 	publisher := &DummyPublisher{}
-	pubHandler := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
+	pubHandler, err := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
+	assert.Nil(t, err)
 
 	http.HandlerFunc(authenticator.Wrap(pubHandler.Handle)).ServeHTTP(rr, req)
 	response := rr.Result()
@@ -65,13 +66,14 @@ func TestUploadHandlerAuthRequired(t *testing.T) {
 	rr := httptest.NewRecorder()
 	authenticator := users.NewAuthenticator(&users.TestUserRetriever{})
 	publisher := &DummyPublisher{}
-	pubHandler := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
+	pubHandler, err := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
+	assert.Nil(t, err)
 
 	http.HandlerFunc(authenticator.Wrap(pubHandler.Handle)).ServeHTTP(rr, req)
 	response := rr.Result()
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
-	err := json.Unmarshal(rr.Body.Bytes(), &rpcResponse)
+	err = json.Unmarshal(rr.Body.Bytes(), &rpcResponse)
 	require.Nil(t, err)
 	assert.Equal(t, "authentication required", rpcResponse.Error.Message)
 	require.False(t, publisher.called)
@@ -106,7 +108,8 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	rr := httptest.NewRecorder()
 	authenticator := users.NewAuthenticator(&users.TestUserRetriever{AccountID: "UPldrAcc", Token: "uPldrToken"})
 	publisher := &DummyPublisher{}
-	pubHandler := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
+	pubHandler, err := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
+	assert.Nil(t, err)
 
 	http.HandlerFunc(authenticator.Wrap(pubHandler.Handle)).ServeHTTP(rr, req)
 	response := rr.Result()

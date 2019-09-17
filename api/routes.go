@@ -12,7 +12,10 @@ import (
 func InstallRoutes(proxyService *proxy.Service, r *mux.Router) {
 	authenticator := users.NewAuthenticator(users.NewUserService())
 	proxyHandler := proxy.NewRequestHandler(proxyService)
-	upHandler := publish.NewUploadHandler(publish.UploadOpts{ProxyService: proxyService})
+	upHandler, err := publish.NewUploadHandler(publish.UploadOpts{ProxyService: proxyService})
+	if err != nil {
+		panic(err)
+	}
 
 	r.HandleFunc("/", Index)
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
