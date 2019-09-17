@@ -57,6 +57,9 @@ func TestUploadHandler(t *testing.T) {
 	assert.Regexp(t, expectedPath, publisher.filePath)
 	assert.Equal(t, "UPldrAcc", publisher.accountID)
 	assert.Equal(t, lbrynet.ExampleStreamCreateRequest, string(publisher.rawQuery))
+
+	_, err = os.Stat(publisher.filePath)
+	assert.True(t, os.IsNotExist(err))
 }
 
 func TestUploadHandlerAuthRequired(t *testing.T) {

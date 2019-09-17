@@ -108,11 +108,17 @@ func (h UploadHandler) Handle(w http.ResponseWriter, r *users.AuthenticatedReque
 
 	f, err := h.saveFile(r)
 	if err != nil {
+		monitor.CaptureException(err, map[string]string{"file_path": f.Name()})
 		w.Write(NewInternalError(err).AsBytes())
 		return
 	}
 
 	response := h.Publisher.Publish(f.Name(), r.AccountID, []byte(r.FormValue(JSONRPCFieldName)))
+
+	if err := os.Remove(f.Name()); err != nil {
+		monitor.CaptureException(err, map[string]string{"file_path": f.Name()})
+	}
+
 	w.Write(response)
 }
 
