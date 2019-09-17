@@ -121,3 +121,9 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	assert.Equal(t, "unexpected EOF", rpcResponse.Error.Message)
 	require.False(t, publisher.called)
 }
+
+func TestNewUploadHandler(t *testing.T) {
+	h, err := NewUploadHandler(UploadOpts{})
+	assert.Error(t, err, "need either a ProxyService or a Publisher instance")
+	assert.Nil(t, h)
+}
