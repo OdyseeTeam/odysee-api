@@ -17,9 +17,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const UploadPath = "/tmp"
-
+// FileFieldName refers to the POST field containing file upload
 const FileFieldName = "file"
+
+// JSONRPCFieldName is a name of the POST field containing JSONRPC request accompanying the uploaded file
 const JSONRPCFieldName = "json_payload"
 
 const fileNameParam = "file_path"
@@ -120,10 +121,7 @@ func (h UploadHandler) Handle(w http.ResponseWriter, r *users.AuthenticatedReque
 func (h UploadHandler) CanHandle(r *http.Request, _ *mux.RouteMatch) bool {
 	_, _, err := r.FormFile(FileFieldName)
 	payload := r.FormValue(JSONRPCFieldName)
-	if err != http.ErrMissingFile && payload != "" {
-		return true
-	}
-	return false
+	return err != http.ErrMissingFile && payload != ""
 }
 
 // createFile opens an empty file for writing inside the account's designated folder.
