@@ -108,7 +108,8 @@ func (h UploadHandler) Handle(w http.ResponseWriter, r *users.AuthenticatedReque
 
 	f, err := h.saveFile(r)
 	if err != nil {
-		monitor.CaptureException(err, map[string]string{"file_path": f.Name()})
+		logger.Log().Error(err)
+		monitor.CaptureException(err)
 		w.Write(NewInternalError(err).AsBytes())
 		return
 	}
