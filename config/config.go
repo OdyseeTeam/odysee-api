@@ -20,14 +20,6 @@ type DBConfig struct {
 	Options    string
 }
 
-type ReflectorConfig struct {
-	AWSID     string
-	AWSSecret string
-	Region    string
-	Bucket    string
-	DBConn    string
-}
-
 var once sync.Once
 var Config *ConfigWrapper
 
