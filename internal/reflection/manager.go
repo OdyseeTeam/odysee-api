@@ -1,53 +1,67 @@
 package reflection
 
 import (
-	"fmt"
+	"io/ioutil"
+	"os"
+	"path"
 	"time"
 
-	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
-	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
-	"github.com/lbryio/reflector.go/db"
+	"github.com/lbryio/lbry.go/extras/errors"
+	"github.com/lbryio/lbry.go/stream"
 	"github.com/lbryio/reflector.go/reflector"
-	"github.com/lbryio/reflector.go/store"
 )
 
 var logger = monitor.NewModuleLogger("reflection")
 
 // Manager represents an object for managing and scheduling published data upload to reflectors.
 type Manager struct {
-	uploader *reflector.Uploader
-	client   *ljsonrpc.Client
-	dbHandle *db.SQL
-	config   config.ReflectorConfig
-	abort    chan bool
+	blobsPath   string
+	reflector   string
+	uploader    *reflector.Client
+	abortTimer  chan bool
+	abortUpload chan bool
+}
+
+// ReflError contains a blob file name and an error
+type ReflError struct {
+	FilePath string
+	Error    error
+}
+
+// RunStats contains stats of blob reflection run, typically a result of ReflectAll call
+type RunStats struct {
+	TotalBlobs     int
+	ReflectedBlobs int
+	Errors         []ReflError
 }
 
 // NewManager returns a Manager instance.
 // To initialize a returned instance (connect to the reflector DB), call Initialize() on it.
-func NewManager(rCfg config.ReflectorConfig) *Manager {
+func NewManager(blobsPath string, reflector string) *Manager {
 	return &Manager{
-		abort:  make(chan bool),
-		config: rCfg,
+		blobsPath:  blobsPath,
+		reflector:  reflector,
+		abortTimer: make(chan bool),
 	}
 }
 
 // Initialize connects to the reflector database
 func (r *Manager) Initialize() {
-	db := new(db.SQL)
-	err := db.Connect(r.config.DBConn)
+	c := reflector.Client{}
+	err := c.Connect(r.reflector)
 	if err != nil {
-		logger.Log().Errorf("reflection was NOT initialized, cannot connect to reflector database: %v", err)
+		logger.Log().Errorf("reflection was NOT initialized, cannot connect to reflector: %v", err)
 		return
 	}
-	r.dbHandle = db
+	r.uploader = &c
 	logger.Log().Infof("manager initialized")
 }
 
 // IsInitialized returns true whenever Manager object is ready to use.
 func (r *Manager) IsInitialized() bool {
-	return r.dbHandle != nil
+	return r.uploader != nil
 }
 
 // Start launches blob upload procedure at specified intervals.
@@ -62,56 +76,88 @@ func (r *Manager) Start(interval time.Duration) {
 	go func() {
 		for {
 			select {
-			case <-r.abort:
+			case <-r.abortTimer:
 				logger.Log().Info("stopping reflection...")
 				ticker.Stop()
-				r.uploader.Stop()
 				logger.Log().Info("stopped")
 				return
 			case <-ticker.C:
-				r.ReflectAll()
+				stats, err := r.ReflectAll()
+				if err != nil {
+					logger.Log().Error("failed to start reflection: ", err)
+				} else {
+					logger.Log().Infof(
+						"total blob: %v, reflected/removed: %v, errors encountered: %v",
+						stats.TotalBlobs, stats.ReflectedBlobs, len(stats.Errors),
+					)
+					for _, e := range stats.Errors {
+						logger.Log().Errorf("blob %v: %v", e.FilePath, e.Error)
+					}
+				}
 			}
 		}
 	}()
 }
 
-// Abort resets the upload schedule and cancels current upload.
+// Abort resets the upload schedule and cancels blob upload
+// after the currently uploading blob is finished.
 func (r *Manager) Abort() {
-	r.abort <- true
+	r.abortTimer <- true
+	r.abortUpload <- true
 }
 
-// ReflectAll starts an upload process for all blobs in the specified directory.
-func (r *Manager) ReflectAll() {
-	if !r.IsInitialized() {
-		return
-	}
+// ReflectAll uploads and then deletes all blobs in the blob directory.
+func (r *Manager) ReflectAll() (*RunStats, error) {
+	pendingFilenames := []string{}
+	stats := &RunStats{}
+	log := logger.Log()
 
-	var err error
-
-	st := store.NewDBBackedS3Store(
-		store.NewS3BlobStore(r.config.AWSID, r.config.AWSSecret, r.config.Region, r.config.Bucket),
-		r.dbHandle)
-
-	uploadWorkers := 10
-	uploader := reflector.NewUploader(r.dbHandle, st, uploadWorkers, false)
-
-	err = uploader.Upload(config.GetBlobFilesDir())
+	log.Debugf("checking %v for blobs...", r.blobsPath)
+	f, err := os.Open(r.blobsPath)
 	if err != nil {
-		logger.Log().Error(err)
-		monitor.CaptureException(err)
+		return nil, err
 	}
 
-	summary := uploader.GetSummary()
-	if summary.Err > 0 {
-		logger.Log().Errorf("some blobs were not uploaded: %v (total: %v)", summary.Err, summary.Total)
-		monitor.CaptureException(fmt.Errorf("some blobs were not uploaded: %v (total: %v)", summary.Err, summary.Total))
-	} else {
-		logger.Log().Infof("uploaded %v blobs", summary.Blob)
+	entries, err := f.Readdir(-1)
+	if err != nil {
+		return nil, err
 	}
-}
+	err = f.Close()
+	if err != nil {
+		return nil, err
+	}
 
-// CleanupBlobs checks which of the blobs are present in the reflector database already and removes them
-// both from local SDK instance and from the filesystem.
-func (r *Manager) CleanupBlobs() {
+	for _, file := range entries {
+		if !file.IsDir() {
+			pendingFilenames = append(pendingFilenames, path.Join(r.blobsPath, file.Name()))
+		}
+	}
+	stats.TotalBlobs = len(pendingFilenames)
+	log.Debugf("%v blobs found", stats.TotalBlobs)
 
+	for _, f := range pendingFilenames {
+		select {
+		case <-r.abortUpload:
+			break
+		default:
+		}
+
+		b, err := ioutil.ReadFile(f)
+		if err != nil {
+			stats.Errors = append(stats.Errors, ReflError{f, err})
+			continue
+		}
+		err = r.uploader.SendBlob(stream.Blob(b))
+		if errors.Is(err, reflector.ErrBlobExists) || err == nil {
+			stats.ReflectedBlobs++
+			if err := os.Remove(f); err != nil {
+				stats.Errors = append(stats.Errors, ReflError{f, err})
+			}
+		} else {
+			stats.Errors = append(stats.Errors, ReflError{f, err})
+		}
+	}
+	log.Debug("reflection run complete")
+
+	return stats, nil
 }

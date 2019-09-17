@@ -71,12 +71,6 @@ func (c *ConfigWrapper) Init() {
 	c.Viper.SetDefault("AccountsEnabled", false)
 	c.Viper.BindEnv("AccountsEnabled")
 
-	c.Viper.BindEnv("ReflectorAWSID", "REFLECTOR_AWS_ID")
-	c.Viper.BindEnv("ReflectorAWSSecret", "REFLECTOR_AWS_SECRET")
-	c.Viper.BindEnv("ReflectorBucketRegion", "REFLECTOR_BUCKET_REGION")
-	c.Viper.BindEnv("ReflectorBucketName", "REFLECTOR_BUCKET_NAME")
-	c.Viper.BindEnv("ReflectorDBConn", "REFLECTOR_DB_CONN")
-
 	c.Viper.SetConfigName("lbrytv") // name of config file (without extension)
 
 	c.Viper.AddConfigPath(os.Getenv("LBRYTV_CONFIG_DIR"))
@@ -191,17 +185,7 @@ func GetBlobFilesDir() string {
 	return Config.Viper.GetString("BlobFilesDir")
 }
 
-func GetReflectorConfig() *ReflectorConfig {
-	v := Config.Viper
-	cfg := ReflectorConfig{
-		AWSID:     v.GetString("ReflectorAWSID"),
-		AWSSecret: v.GetString("ReflectorAWSSecret"),
-		Region:    v.GetString("ReflectorBucketRegion"),
-		Bucket:    v.GetString("ReflectorBucketName"),
-		DBConn:    v.GetString("ReflectorDBConn"),
-	}
-	if cfg.AWSID != "" {
-		return &cfg
-	}
-	return nil
+// GetReflector returns reflector address in the format of host:port.
+func GetReflector() string {
+	return Config.Viper.GetString("Reflector")
 }

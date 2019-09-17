@@ -32,12 +32,9 @@ func main() {
 	defer conn.Close()
 	conn.SetDefaultConnection()
 
-	rCfg := config.GetReflectorConfig()
-	if rCfg != nil {
-		rMgr := reflection.NewManager(*rCfg)
-		rMgr.Initialize()
-		rMgr.Start(time.Minute)
-	}
+	rMgr := reflection.NewManager(config.GetBlobFilesDir(), config.GetReflector())
+	rMgr.Initialize()
+	rMgr.Start(time.Minute)
 
 	cmd.Execute()
 }
