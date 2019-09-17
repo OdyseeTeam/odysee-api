@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestContentByURL_NoPayment(t *testing.T) {
+func TestContentByURLNoPayment(t *testing.T) {
 	r, _ := http.NewRequest("GET", "http://localhost:40080/content/url", nil)
 	r.URL.RawQuery = "pra-onde-vamos-em-2018-seguran-a-online#3a508cce1fda3b7c1a2502cb4323141d40a2cf0b"
 	r.Header.Add("Range", "bytes=0-1023")

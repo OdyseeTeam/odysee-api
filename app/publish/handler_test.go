@@ -36,33 +36,14 @@ func (p *DummyPublisher) Publish(filePath, accountID string, rawQuery []byte) []
 }
 
 func TestUploadHandler(t *testing.T) {
-	data := []byte("test file")
-	readSeeker := bytes.NewReader(data)
-	body := &bytes.Buffer{}
-
-	writer := multipart.NewWriter(body)
-
-	fileBody, err := writer.CreateFormFile(FileFieldName, "lbry_auto_test_file")
-	require.Nil(t, err)
-	_, err = io.Copy(fileBody, readSeeker)
-	require.Nil(t, err)
-
-	jsonPayload, err := writer.CreateFormField(JSONRPCFieldName)
-	require.Nil(t, err)
-	jsonPayload.Write([]byte(lbrynet.ExampleStreamCreateRequest))
-
-	writer.Close()
-
-	req, err := http.NewRequest("POST", "/", bytes.NewReader(body.Bytes()))
-	require.Nil(t, err)
-
+	req := CreatePublishRequest(t, []byte("test file"))
 	req.Header.Set(users.TokenHeader, "uPldrToken")
-	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	rr := httptest.NewRecorder()
 	authenticator := users.NewAuthenticator(&users.TestUserRetriever{AccountID: "UPldrAcc", Token: "uPldrToken"})
 	publisher := &DummyPublisher{}
-	pubHandler := NewUploadHandler(os.TempDir(), publisher)
+	pubHandler, err := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
+	assert.Nil(t, err)
 
 	http.HandlerFunc(authenticator.Wrap(pubHandler.Handle)).ServeHTTP(rr, req)
 	response := rr.Result()
@@ -80,32 +61,13 @@ func TestUploadHandler(t *testing.T) {
 
 func TestUploadHandlerAuthRequired(t *testing.T) {
 	var rpcResponse jsonrpc.RPCResponse
-
-	data := []byte("test file")
-	readSeeker := bytes.NewReader(data)
-	body := &bytes.Buffer{}
-
-	writer := multipart.NewWriter(body)
-
-	fileBody, err := writer.CreateFormFile(FileFieldName, "lbry_auto_test_file")
-	require.Nil(t, err)
-	io.Copy(fileBody, readSeeker)
-
-	jsonPayload, err := writer.CreateFormField(JSONRPCFieldName)
-	require.Nil(t, err)
-	jsonPayload.Write([]byte(lbrynet.ExampleStreamCreateRequest))
-
-	writer.Close()
-
-	req, err := http.NewRequest("POST", "/", bytes.NewReader(body.Bytes()))
-	require.Nil(t, err)
-
-	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req := CreatePublishRequest(t, []byte("test file"))
 
 	rr := httptest.NewRecorder()
 	authenticator := users.NewAuthenticator(&users.TestUserRetriever{})
 	publisher := &DummyPublisher{}
-	pubHandler := NewUploadHandler(os.TempDir(), publisher)
+	pubHandler, err := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
+	assert.Nil(t, err)
 
 	http.HandlerFunc(authenticator.Wrap(pubHandler.Handle)).ServeHTTP(rr, req)
 	response := rr.Result()
@@ -120,6 +82,7 @@ func TestUploadHandlerAuthRequired(t *testing.T) {
 func TestUploadHandlerSystemError(t *testing.T) {
 	var rpcResponse jsonrpc.RPCResponse
 
+	// Creating POST data manually here because we need to avoid writer.Close()
 	data := []byte("test file")
 	readSeeker := bytes.NewReader(data)
 	body := &bytes.Buffer{}
@@ -134,7 +97,7 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	require.Nil(t, err)
 	jsonPayload.Write([]byte(lbrynet.ExampleStreamCreateRequest))
 
-	// Not calling writer.Close() here to create unexpected EOF
+	// <--- Not calling writer.Close() here to create an unexpected EOF
 
 	req, err := http.NewRequest("POST", "/", bytes.NewReader(body.Bytes()))
 	require.Nil(t, err)
@@ -145,7 +108,8 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	rr := httptest.NewRecorder()
 	authenticator := users.NewAuthenticator(&users.TestUserRetriever{AccountID: "UPldrAcc", Token: "uPldrToken"})
 	publisher := &DummyPublisher{}
-	pubHandler := NewUploadHandler(os.TempDir(), publisher)
+	pubHandler, err := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
+	assert.Nil(t, err)
 
 	http.HandlerFunc(authenticator.Wrap(pubHandler.Handle)).ServeHTTP(rr, req)
 	response := rr.Result()
@@ -156,4 +120,10 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, "unexpected EOF", rpcResponse.Error.Message)
 	require.False(t, publisher.called)
+}
+
+func TestNewUploadHandler(t *testing.T) {
+	h, err := NewUploadHandler(UploadOpts{})
+	assert.Error(t, err, "need either a ProxyService or a Publisher instance")
+	assert.Nil(t, h)
 }
