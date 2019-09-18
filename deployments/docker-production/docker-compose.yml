@@ -39,6 +39,7 @@ services:
     environment:
       LW_LBRYNET: http://lbrynet:5279/
       LW_ACCOUNTSENABLED: 1
+    env_file: secrets.env
     depends_on:
       - lbrynet
       - postgres

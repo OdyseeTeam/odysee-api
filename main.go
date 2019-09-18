@@ -7,6 +7,7 @@ import (
 
 	"github.com/lbryio/lbrytv/cmd"
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/reflection"
 	"github.com/lbryio/lbrytv/internal/storage"
 )
 
@@ -23,12 +24,17 @@ func main() {
 		DBName:     dbConfig.DBName,
 		Options:    dbConfig.Options,
 	})
+
 	err := conn.Connect()
 	if err != nil {
 		panic(err)
 	}
 	defer conn.Close()
 	conn.SetDefaultConnection()
+
+	rMgr := reflection.NewManager(config.GetBlobFilesDir(), config.GetReflectorAddress())
+	rMgr.Initialize()
+	rMgr.Start(time.Minute)
 
 	cmd.Execute()
 }

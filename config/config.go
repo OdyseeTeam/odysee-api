@@ -171,3 +171,13 @@ func GetProjectURL() string {
 func GetPublishSourceDir() string {
 	return Config.Viper.GetString("PublishSourceDir")
 }
+
+// GetBlobFilesDir returns directory where SDK instance stores blob files.
+func GetBlobFilesDir() string {
+	return Config.Viper.GetString("BlobFilesDir")
+}
+
+// GetReflectorAddress returns reflector address in the format of host:port.
+func GetReflectorAddress() string {
+	return Config.Viper.GetString("ReflectorAddress")
+}
