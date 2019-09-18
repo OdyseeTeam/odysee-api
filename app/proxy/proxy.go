@@ -34,6 +34,7 @@ var accountSpecificMethods = []string{
 
 	"account_list",
 	"account_balance",
+	"account_send",
 
 	"channel_abandon",
 	"channel_create",
