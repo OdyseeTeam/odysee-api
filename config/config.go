@@ -177,7 +177,7 @@ func GetBlobFilesDir() string {
 	return Config.Viper.GetString("BlobFilesDir")
 }
 
-// GetReflector returns reflector address in the format of host:port.
-func GetReflector() string {
-	return Config.Viper.GetString("Reflector")
+// GetReflectorAddress returns reflector address in the format of host:port.
+func GetReflectorAddress() string {
+	return Config.Viper.GetString("ReflectorAddress")
 }

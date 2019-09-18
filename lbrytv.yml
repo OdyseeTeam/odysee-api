@@ -18,4 +18,4 @@ MetricsPath: /metrics
 PublishSourceDir: /storage/published
 BlobFilesDir: /storage/lbrynet/blobfiles
 
-Reflector: reflector.lbry.com:5566
+ReflectorAddress: reflector.lbry.com:5566
