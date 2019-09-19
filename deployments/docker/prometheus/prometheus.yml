@@ -1,13 +1,21 @@
 global:
-  scrape_interval: 15s
+  scrape_interval: 1m
 
   # Attach these labels to any time series or alerts when communicating with
   # external systems (federation, remote storage, Alertmanager).
   external_labels:
     monitor: 'codelab-monitor'
 
+rule_files:
+  - rules.yml
+
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - alertmanager:9093
+
 scrape_configs:
   - job_name: 'app'
-    scrape_interval: 1s
     static_configs:
       - targets: ['app:2112']

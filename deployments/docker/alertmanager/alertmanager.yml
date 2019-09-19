@@ -1,0 +1,12 @@
+global:
+  # The smarthost and SMTP sender used for mail notifications.
+  smtp_smarthost: 'smtp:25'
+  smtp_from: 'andrey@lbry.com'
+  smtp_require_tls: false
+route:
+  receiver: lbrytv-devops
+
+receivers:
+  - name: lbrytv-devops
+    email_configs:
+    - to: 'andrey@lbry.com'
