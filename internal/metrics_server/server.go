@@ -76,8 +76,8 @@ func (s *Server) registerMetrics() {
 		s.Log().Info("gauge 'player_instances_count' registered")
 	}
 
-	if err := prometheus.Register(prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
 			Subsystem: "player",
 			Name:      "streams_total",
 			Help:      "Number of streams requested.",
