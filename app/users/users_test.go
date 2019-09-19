@@ -84,7 +84,7 @@ func TestRetrieve_New(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	u, err := NewUserService().Retrieve("abc")
+	u, err := NewUserService().Retrieve(Query{Token: "abc"})
 	require.Nil(t, err)
 	require.NotNil(t, u)
 
@@ -103,11 +103,11 @@ func TestRetrieve_Existing(t *testing.T) {
 
 	s := NewUserService()
 
-	u, err := s.Retrieve("abc")
+	u, err := s.Retrieve(Query{Token: "abc"})
 	require.Nil(t, err)
 	require.NotNil(t, u)
 
-	u, err = s.Retrieve("abc")
+	u, err = s.Retrieve(Query{Token: "abc"})
 	require.Nil(t, err)
 	assert.EqualValues(t, dummyUserID, u.ID)
 
@@ -128,7 +128,7 @@ func TestRetrieve_Nonexistent(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	u, err := NewUserService().Retrieve("non-existent-token")
+	u, err := NewUserService().Retrieve(Query{Token: "non-existent-token"})
 	require.NotNil(t, err)
 	require.Nil(t, u)
 	assert.Equal(t, "cannot authenticate user with internal-apis: could not authenticate user", err.Error())
@@ -166,7 +166,7 @@ func TestRetrieve_EmptyEmail_NoUser(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	u, err := NewUserService().Retrieve("abc")
+	u, err := NewUserService().Retrieve(Query{Token: "abc"})
 	assert.Nil(t, u)
 	assert.EqualError(t, err, "cannot authenticate user: email not confirmed")
 }
@@ -195,7 +195,7 @@ func TestGetAccountIDFromRequestExisting(t *testing.T) {
 	id, err := GetAccountIDFromRequest(r, svc)
 	require.Nil(t, err)
 
-	u, err := svc.Retrieve("abc")
+	u, err := svc.Retrieve(Query{Token: "abc"})
 	require.Nil(t, err)
 
 	assert.EqualValues(t, u.SDKAccountID, id)
@@ -241,7 +241,7 @@ func TestCreateDBUserForExistingSDKAccount(t *testing.T) {
 	id, err := GetAccountIDFromRequest(r, svc)
 	require.Nil(t, err)
 
-	u, err := svc.Retrieve("abc")
+	u, err := svc.Retrieve(Query{Token: "abc"})
 	require.Nil(t, err)
 
 	assert.EqualValues(t, u.SDKAccountID, acc.ID)
