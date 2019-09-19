@@ -78,6 +78,17 @@ func (s *Server) registerMetrics() {
 
 	if err := prometheus.Register(prometheus.NewGaugeFunc(
 		prometheus.GaugeOpts{
+			Subsystem: "player",
+			Name:      "streams_total",
+			Help:      "Number of streams requested.",
+		},
+		func() float64 { return api.Collector.GetMetricsValue("player_streams_total").Value },
+	)); err == nil {
+		s.Log().Info("gauge 'player_streams_total' registered")
+	}
+
+	if err := prometheus.Register(prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
 			Subsystem: "runtime",
 			Name:      "goroutines_count",
 			Help:      "Number of goroutines that currently exist.",

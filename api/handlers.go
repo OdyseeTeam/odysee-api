@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/lbryio/lbrytv/app/player"
+	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
-	"github.com/lbryio/lbrytv/config"
 
 	"github.com/gorilla/mux"
 )
@@ -23,6 +23,7 @@ func Index(w http.ResponseWriter, req *http.Request) {
 
 func stream(uri string, w http.ResponseWriter, req *http.Request) {
 	Collector.MetricsIncrement("player_instances_count", metrics.One)
+	Collector.MetricsIncrement("player_streams_total", metrics.One)
 	err := player.PlayURI(uri, w, req)
 	Collector.MetricsDecrement("player_instances_count", metrics.One)
 	// Only output error if player has not pushed anything to the client yet
