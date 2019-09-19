@@ -59,3 +59,11 @@ func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(rawCallReponse)
 }
+
+func (rh *RequestHandler) HandleOptions(w http.ResponseWriter, r *http.Request) {
+	hs := w.Header()
+	hs.Set("Access-Control-Max-Age", "7200")
+	hs.Set("Access-Control-Allow-Origin", "*")
+	hs.Set("Access-Control-Allow-Headers", "X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept")
+	w.WriteHeader(http.StatusOK)
+}

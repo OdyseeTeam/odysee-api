@@ -43,3 +43,39 @@ func TestRoutesPublish(t *testing.T) {
 	// has been dispatched through the publish handler
 	assert.Contains(t, rr.Body.String(), `"code": -32080`)
 }
+
+func TestRoutesOptions(t *testing.T) {
+	r := mux.NewRouter()
+	proxy := proxy.NewService(config.GetLbrynet())
+
+	req, err := http.NewRequest("OPTIONS", "/api/v1/proxy", nil)
+	require.Nil(t, err)
+	rr := httptest.NewRecorder()
+
+	InstallRoutes(proxy, r)
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, []string{"7200"}, rr.HeaderMap["Access-Control-Max-Age"])
+	assert.Equal(t, []string{"*"}, rr.HeaderMap["Access-Control-Allow-Origin"])
+	assert.Equal(
+		t,
+		[]string{"X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept"},
+		rr.HeaderMap["Access-Control-Allow-Headers"],
+	)
+
+	// TODO: Remove after legacy url has been removed
+	req, err = http.NewRequest("OPTIONS", "/api/proxy", nil)
+	require.Nil(t, err)
+	rr = httptest.NewRecorder()
+
+	InstallRoutes(proxy, r)
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, []string{"7200"}, rr.HeaderMap["Access-Control-Max-Age"])
+	assert.Equal(t, []string{"*"}, rr.HeaderMap["Access-Control-Allow-Origin"])
+	assert.Equal(
+		t,
+		[]string{"X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept"},
+		rr.HeaderMap["Access-Control-Allow-Headers"],
+	)
+}

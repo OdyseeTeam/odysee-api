@@ -50,7 +50,7 @@ func TestHeaders(t *testing.T) {
 	server.Start()
 	go server.ServeUntilShutdown()
 
-	request, _ := http.NewRequest("OPTIONS", "http://localhost:40080/api/proxy", nil)
+	request, _ := http.NewRequest("OPTIONS", "http://localhost:40080/api/v1/proxy", nil)
 	client := http.Client{}
 
 	// Retry 10 times to give the server a chance to start
@@ -65,7 +65,5 @@ func TestHeaders(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, http.StatusOK, response.StatusCode)
-	assert.Equal(t, "*", response.Header["Access-Control-Allow-Origin"][0])
-	assert.Equal(t, "X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept", response.Header["Access-Control-Allow-Headers"][0])
 	server.InterruptChan <- syscall.SIGINT
 }
