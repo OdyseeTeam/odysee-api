@@ -3,8 +3,6 @@ package users
 import (
 	"errors"
 	"net/http"
-
-	"github.com/lbryio/internal-apis/app/util"
 )
 
 const GenericRetrievalErr = "unable to retrieve user"
@@ -31,7 +29,7 @@ func NewAuthenticator(retriever Retriever) *Authenticator {
 // an SDK account ID from Retriever.
 func (a *Authenticator) GetAccountID(r *http.Request) (string, error) {
 	if token, ok := r.Header[TokenHeader]; ok {
-		u, err := a.retriever.Retrieve(Query{token[0], util.GetIPAddressForRequest(r)})
+		u, err := a.retriever.Retrieve(Query{token[0], GetIPAddressForRequest(r)})
 		if err != nil {
 			return "", err
 		}

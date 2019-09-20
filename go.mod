@@ -13,15 +13,12 @@ require (
 	github.com/jinzhu/gorm v1.9.9
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
-	github.com/lbryio/internal-apis v0.0.0-20190919021333-d1dfb7a65973
 	github.com/lbryio/lbry.go v0.0.0-20190918110203-a8c339e5b415
 	github.com/lbryio/reflector.go v1.1.0
 
 	github.com/lbryio/types v0.0.0-20190715201353-fe180635eafe // indirect
 	github.com/lib/pq v1.1.1
 	github.com/magiconair/properties v1.8.1 // indirect
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/nlopes/slack v0.6.0 // indirect
 	github.com/onsi/ginkgo v1.10.1 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
@@ -47,10 +44,12 @@ require (
 	github.com/volatiletech/null v8.0.0+incompatible
 	github.com/volatiletech/sqlboiler v3.4.0+incompatible
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
+	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/crypto v0.0.0-20190911031432-227b76d455e7 // indirect
 	golang.org/x/net v0.0.0-20190909003024-a7b16738d86b // indirect
 	golang.org/x/sys v0.0.0-20190910064555-bbd175535a8b // indirect
 	google.golang.org/appengine v1.6.2 // indirect
+	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/gorp.v1 v1.7.2 // indirect
 )

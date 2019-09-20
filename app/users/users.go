@@ -8,7 +8,6 @@ import (
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
 
-	"github.com/lbryio/internal-apis/app/util"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"github.com/volatiletech/sqlboiler/boil"
@@ -157,7 +156,7 @@ func (s *UserService) saveAccFields(accFields savedAccFields, u *models.User) er
 // by a header provided by http client.
 func GetAccountIDFromRequest(r *http.Request, retriever Retriever) (string, error) {
 	if token, ok := r.Header[TokenHeader]; ok {
-		u, err := retriever.Retrieve(Query{token[0], util.GetIPAddressForRequest(r)})
+		u, err := retriever.Retrieve(Query{token[0], GetIPAddressForRequest(r)})
 		if err != nil {
 			return "", err
 		}
