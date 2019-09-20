@@ -25,6 +25,7 @@ func TestRoutesProxy(t *testing.T) {
 
 	InstallRoutes(proxy, r)
 	r.ServeHTTP(rr, req)
+
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Contains(t, rr.Body.String(), `"result":`)
 }
@@ -38,6 +39,7 @@ func TestRoutesPublish(t *testing.T) {
 
 	InstallRoutes(proxy, r)
 	r.ServeHTTP(rr, req)
+
 	assert.Equal(t, http.StatusOK, rr.Code)
 	// Authentication Required error here is enough to see that the request
 	// has been dispatched through the publish handler
@@ -55,12 +57,12 @@ func TestRoutesOptions(t *testing.T) {
 	InstallRoutes(proxy, r)
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Equal(t, []string{"7200"}, rr.HeaderMap["Access-Control-Max-Age"])
-	assert.Equal(t, []string{"*"}, rr.HeaderMap["Access-Control-Allow-Origin"])
+	assert.Equal(t, "7200", rr.HeaderMap.Get("Access-Control-Max-Age"))
+	assert.Equal(t, "*", rr.HeaderMap.Get("Access-Control-Allow-Origin"))
 	assert.Equal(
 		t,
-		[]string{"X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept"},
-		rr.HeaderMap["Access-Control-Allow-Headers"],
+		"X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept",
+		rr.HeaderMap.Get("Access-Control-Allow-Headers"),
 	)
 
 	// TODO: Remove after legacy url has been removed
@@ -71,11 +73,11 @@ func TestRoutesOptions(t *testing.T) {
 	InstallRoutes(proxy, r)
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Equal(t, []string{"7200"}, rr.HeaderMap["Access-Control-Max-Age"])
-	assert.Equal(t, []string{"*"}, rr.HeaderMap["Access-Control-Allow-Origin"])
+	assert.Equal(t, "7200", rr.HeaderMap.Get("Access-Control-Max-Age"))
+	assert.Equal(t, "*", rr.HeaderMap.Get("Access-Control-Allow-Origin"))
 	assert.Equal(
 		t,
-		[]string{"X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept"},
-		rr.HeaderMap["Access-Control-Allow-Headers"],
+		"X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept",
+		rr.HeaderMap.Get("Access-Control-Allow-Headers"),
 	)
 }

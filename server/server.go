@@ -46,6 +46,7 @@ func NewServer(opts ServerOpts) *Server {
 		address:        opts.Address,
 	}
 	s.DefaultHeaders["Server"] = "api.lbry.tv"
+	s.DefaultHeaders["Access-Control-Allow-Origin"] = "*"
 
 	s.router = s.configureRouter()
 	s.listener = s.configureListener()
