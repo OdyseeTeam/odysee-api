@@ -16,10 +16,12 @@ services:
     - type: bind
       source: storage
       target: /storage
-#    logging:
-#      driver: awslogs
-#      options:
-#        awslogs-region: us-east-1
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: lbrytv
+        awslogs-region: us-east-1
+        awslogs-stream: lbrynet
   watchtower:
     image: v2tec/watchtower
     command: --interval 30 --cleanup
@@ -33,25 +35,32 @@ services:
     - type: bind
       source: storage
       target: /storage
-    - type: bind
-      source: static
-      target: /static
     environment:
       LW_LBRYNET: http://lbrynet:5279/
       LW_ACCOUNTSENABLED: 1
-    env_file: secrets.env
     depends_on:
       - lbrynet
       - postgres
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: lbrytv
+        awslogs-region: us-east-1
+        awslogs-stream: app
   prometheus:
     image: prom/prometheus:latest
     ports:
       - 9090:9090
     volumes:
-      - ${PWD}/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ${PWD}/deployments/docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ${PWD}/deployments/docker/prometheus/rules.yml:/etc/prometheus/rules.yml
+  alertmanager:
+    image: prom/alertmanager:latest
+    ports:
+      - 9093:9093
+    volumes:
+      - ${PWD}/deployments/docker/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
 
 volumes:
   storage:
   test_storage:
-  static:
-

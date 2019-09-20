@@ -45,8 +45,6 @@ func NewServer(opts ServerOpts) *Server {
 		ProxyService:   opts.ProxyService,
 		address:        opts.Address,
 	}
-	s.DefaultHeaders["Access-Control-Allow-Origin"] = "*"
-	s.DefaultHeaders["Access-Control-Allow-Headers"] = "X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept"
 	s.DefaultHeaders["Server"] = "api.lbry.tv"
 
 	s.router = s.configureRouter()

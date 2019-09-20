@@ -11,11 +11,11 @@ type RemoteUser struct {
 	Email string
 }
 
-func getRemoteUser(token string) (*RemoteUser, error) {
+func getRemoteUser(token string, remoteIP string) (*RemoteUser, error) {
 	u := &RemoteUser{}
-	c := lbryinc.NewClient(token)
+	c := lbryinc.NewClient(token, &lbryinc.ClientOpts{
+		ServerAddress: config.GetInternalAPIHost(), RemoteIP: remoteIP})
 
-	c.ServerAddress = config.GetInternalAPIHost()
 	r, err := c.UserMe()
 	if err != nil {
 		// Conn.Logger.LogF(monitor.F{monitor.TokenF: token}).Error("internal-api responded with an error: ", err)

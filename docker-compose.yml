@@ -79,6 +79,16 @@ services:
       - 9090:9090
     volumes:
       - ${PWD}/deployments/docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ${PWD}/deployments/docker/prometheus/rules.yml:/etc/prometheus/rules.yml
+  alertmanager:
+    image: prom/alertmanager:latest
+    ports:
+      - 9093:9093
+    volumes:
+      - ${PWD}/deployments/docker/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+  smtp:
+    image: namshi/smtp:latest
+
 
 volumes:
   storage:

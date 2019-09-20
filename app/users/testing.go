@@ -15,8 +15,8 @@ type TestUserRetriever struct {
 
 // Retrieve returns AccountID set during TestUserRetriever creation,
 // checking it against TestUserRetriever's Token field if one was supplied.
-func (r *TestUserRetriever) Retrieve(token string) (*models.User, error) {
-	if r.Token == "" || r.Token == token {
+func (r *TestUserRetriever) Retrieve(q Query) (*models.User, error) {
+	if r.Token == "" || r.Token == q.Token {
 		return &models.User{SDKAccountID: r.AccountID}, nil
 	}
 	return nil, errors.New(GenericRetrievalErr)

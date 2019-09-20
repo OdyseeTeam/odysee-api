@@ -11,10 +11,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type DummyRetriever struct{}
+type DummyRetriever struct {
+	remoteIP string
+}
 
-func (r *DummyRetriever) Retrieve(t string) (*models.User, error) {
-	if t == "XyZ" {
+func (r *DummyRetriever) Retrieve(q Query) (*models.User, error) {
+	r.remoteIP = q.MetaRemoteIP
+	if q.Token == "XyZ" {
 		return &models.User{SDKAccountID: "aBc"}, nil
 	}
 	return nil, errors.New("cannot authenticate")
@@ -31,16 +34,20 @@ func AuthenticatedHandler(w http.ResponseWriter, r *AuthenticatedRequest) {
 }
 
 func TestAuthenticator(t *testing.T) {
+	retriever := &DummyRetriever{}
 	r, _ := http.NewRequest("GET", "/api/proxy", nil)
 	r.Header.Set(TokenHeader, "XyZ")
+	r.Header.Set("X-Forwarded-For", "8.8.8.8")
+
 	rr := httptest.NewRecorder()
-	authenticator := NewAuthenticator(&DummyRetriever{})
+	authenticator := NewAuthenticator(retriever)
 
 	http.HandlerFunc(authenticator.Wrap(AuthenticatedHandler)).ServeHTTP(rr, r)
 
 	response := rr.Result()
 	body, _ := ioutil.ReadAll(response.Body)
 	assert.Equal(t, "aBc", string(body))
+	assert.Equal(t, "8.8.8.8", retriever.remoteIP)
 }
 
 func TestAuthenticatorFailure(t *testing.T) {

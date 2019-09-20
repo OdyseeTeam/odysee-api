@@ -30,7 +30,13 @@ type savedAccFields struct {
 
 // Retriever is an interface for user retrieval by internal-apis auth token
 type Retriever interface {
-	Retrieve(token string) (*models.User, error)
+	Retrieve(query Query) (*models.User, error)
+}
+
+// Query contains queried user details and optional metadata about the request
+type Query struct {
+	Token        string
+	MetaRemoteIP string
 }
 
 // NewUserService returns UserService instance for retrieving or creating user records and accounts.
@@ -72,11 +78,12 @@ func (s *UserService) createDBUser(id int) (*models.User, error) {
 }
 
 // Retrieve authenticates user with internal-api and retrieves/creates locally stored user.
-func (s *UserService) Retrieve(token string) (*models.User, error) {
+func (s *UserService) Retrieve(q Query) (*models.User, error) {
+	token := q.Token
 	log := s.logger.LogF(monitor.F{"token": token})
 	var localUser *models.User
 
-	remoteUser, err := getRemoteUser(token)
+	remoteUser, err := getRemoteUser(token, q.MetaRemoteIP)
 	if err != nil {
 		log.Info("couldn't authenticate user with internal-apis")
 		return nil, errors.Errorf("cannot authenticate user with internal-apis: %v", err)
@@ -147,9 +154,9 @@ func (s *UserService) saveAccFields(accFields savedAccFields, u *models.User) er
 
 // GetAccountIDFromRequest retrieves SDK  account_id of a user making a http request
 // by a header provided by http client.
-func GetAccountIDFromRequest(req *http.Request, retriever Retriever) (string, error) {
-	if token, ok := req.Header[TokenHeader]; ok {
-		u, err := retriever.Retrieve(token[0])
+func GetAccountIDFromRequest(r *http.Request, retriever Retriever) (string, error) {
+	if token, ok := r.Header[TokenHeader]; ok {
+		u, err := retriever.Retrieve(Query{token[0], GetIPAddressForRequest(r)})
 		if err != nil {
 			return "", err
 		}
