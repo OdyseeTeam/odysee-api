@@ -95,7 +95,7 @@ func TestLbrynetPublisher(t *testing.T) {
 	userSvc := users.NewUserService()
 	u, err := userSvc.Retrieve(users.Query{Token: authToken})
 	// Required for the account to settle down in the SDK
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 	require.Nil(t, err)
 
 	data := []byte("test file")

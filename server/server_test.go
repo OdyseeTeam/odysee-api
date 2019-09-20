@@ -9,6 +9,7 @@ import (
 	"github.com/lbryio/lbrytv/app/proxy"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStartAndServeUntilShutdown(t *testing.T) {
@@ -61,9 +62,11 @@ func TestHeaders(t *testing.T) {
 			break
 		}
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+
+	require.Nil(t, err)
+
 	assert.Equal(t, http.StatusOK, response.StatusCode)
+	assert.Equal(t, "*", response.Header.Get("Access-Control-Allow-Origin"))
+
 	server.InterruptChan <- syscall.SIGINT
 }
