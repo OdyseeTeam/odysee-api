@@ -21,6 +21,10 @@ func NewRequestHandler(svc *Service) *RequestHandler {
 
 // Handle forwards client JSON-RPC request to proxy.
 func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	if r.Body == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("empty request body"))
