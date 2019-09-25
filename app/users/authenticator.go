@@ -3,9 +3,13 @@ package users
 import (
 	"errors"
 	"net/http"
+
+	"github.com/lbryio/lbrytv/internal/monitor"
 )
 
 const GenericRetrievalErr = "unable to retrieve user"
+
+var logger = monitor.NewModuleLogger("auth")
 
 type Authenticator struct {
 	retriever Retriever
@@ -29,13 +33,18 @@ func NewAuthenticator(retriever Retriever) *Authenticator {
 // an SDK account ID from Retriever.
 func (a *Authenticator) GetAccountID(r *http.Request) (string, error) {
 	if token, ok := r.Header[TokenHeader]; ok {
-		u, err := a.retriever.Retrieve(Query{token[0], GetIPAddressForRequest(r)})
+		ip := GetIPAddressForRequest(r)
+		u, err := a.retriever.Retrieve(Query{Token: token[0], MetaRemoteIP: ip})
+		log := logger.LogF(monitor.F{"ip": ip})
 		if err != nil {
+			log.Debugf("failed to authenticate user")
 			return "", err
 		}
 		if u == nil {
+			log.Debugf("user is nil")
 			return "", errors.New(GenericRetrievalErr)
 		}
+		log.Debugf("authenticated user")
 		return u.SDKAccountID, nil
 	}
 	return "", nil
