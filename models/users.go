@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/volatiletech/null"
 	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/volatiletech/sqlboiler/queries"
 	"github.com/volatiletech/sqlboiler/queries/qm"
@@ -22,13 +23,11 @@ import (
 
 // User is an object representing the database table.
 type User struct {
-	ID           int       `boil:"id" json:"id" toml:"id" yaml:"id"`
-	CreatedAt    time.Time `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt    time.Time `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	SDKAccountID string    `boil:"sdk_account_id" json:"sdk_account_id" toml:"sdk_account_id" yaml:"sdk_account_id"`
-	PrivateKey   string    `boil:"private_key" json:"private_key" toml:"private_key" yaml:"private_key"`
-	PublicKey    string    `boil:"public_key" json:"public_key" toml:"public_key" yaml:"public_key"`
-	Seed         string    `boil:"seed" json:"seed" toml:"seed" yaml:"seed"`
+	ID           int         `boil:"id" json:"id" toml:"id" yaml:"id"`
+	CreatedAt    time.Time   `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt    time.Time   `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	SDKAccountID null.String `boil:"sdk_account_id" json:"sdk_account_id,omitempty" toml:"sdk_account_id" yaml:"sdk_account_id,omitempty"`
+	WalletID     string      `boil:"wallet_id" json:"wallet_id" toml:"wallet_id" yaml:"wallet_id"`
 
 	R *userR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -39,17 +38,13 @@ var UserColumns = struct {
 	CreatedAt    string
 	UpdatedAt    string
 	SDKAccountID string
-	PrivateKey   string
-	PublicKey    string
-	Seed         string
+	WalletID     string
 }{
 	ID:           "id",
 	CreatedAt:    "created_at",
 	UpdatedAt:    "updated_at",
 	SDKAccountID: "sdk_account_id",
-	PrivateKey:   "private_key",
-	PublicKey:    "public_key",
-	Seed:         "seed",
+	WalletID:     "wallet_id",
 }
 
 // Generated where
@@ -84,22 +79,41 @@ func (w whereHelpertime_Time) GTE(x time.Time) qm.QueryMod {
 	return qmhelper.Where(w.field, qmhelper.GTE, x)
 }
 
+type whereHelpernull_String struct{ field string }
+
+func (w whereHelpernull_String) EQ(x null.String) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_String) NEQ(x null.String) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_String) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_String) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
+func (w whereHelpernull_String) LT(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_String) LTE(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_String) GT(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_String) GTE(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
 var UserWhere = struct {
 	ID           whereHelperint
 	CreatedAt    whereHelpertime_Time
 	UpdatedAt    whereHelpertime_Time
-	SDKAccountID whereHelperstring
-	PrivateKey   whereHelperstring
-	PublicKey    whereHelperstring
-	Seed         whereHelperstring
+	SDKAccountID whereHelpernull_String
+	WalletID     whereHelperstring
 }{
 	ID:           whereHelperint{field: "\"users\".\"id\""},
 	CreatedAt:    whereHelpertime_Time{field: "\"users\".\"created_at\""},
 	UpdatedAt:    whereHelpertime_Time{field: "\"users\".\"updated_at\""},
-	SDKAccountID: whereHelperstring{field: "\"users\".\"sdk_account_id\""},
-	PrivateKey:   whereHelperstring{field: "\"users\".\"private_key\""},
-	PublicKey:    whereHelperstring{field: "\"users\".\"public_key\""},
-	Seed:         whereHelperstring{field: "\"users\".\"seed\""},
+	SDKAccountID: whereHelpernull_String{field: "\"users\".\"sdk_account_id\""},
+	WalletID:     whereHelperstring{field: "\"users\".\"wallet_id\""},
 }
 
 // UserRels is where relationship names are stored.
@@ -119,9 +133,9 @@ func (*userR) NewStruct() *userR {
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"id", "created_at", "updated_at", "sdk_account_id", "private_key", "public_key", "seed"}
-	userColumnsWithoutDefault = []string{"id", "sdk_account_id", "private_key", "public_key", "seed"}
-	userColumnsWithDefault    = []string{"created_at", "updated_at"}
+	userAllColumns            = []string{"id", "created_at", "updated_at", "sdk_account_id", "wallet_id"}
+	userColumnsWithoutDefault = []string{"id", "sdk_account_id"}
+	userColumnsWithDefault    = []string{"created_at", "updated_at", "wallet_id"}
 	userPrimaryKeyColumns     = []string{"id"}
 )
 
