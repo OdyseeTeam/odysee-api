@@ -178,31 +178,18 @@ func TestCallAttachesAccountId(t *testing.T) {
 }
 
 func TestCallerSetPreprocessor(t *testing.T) {
-	var accResponse ljsonrpc.Account
-
-	rand.Seed(time.Now().UnixNano())
-	dummyAccountID := rand.Int()
-
-	acc, _ := lbrynet.CreateAccount(dummyAccountID)
-	defer lbrynet.RemoveAccount(dummyAccountID)
+	var resolveResponse ljsonrpc.ResolveResponse
 
 	svc := NewService(config.GetLbrynet())
 	c := svc.NewCaller()
 	c.SetPreprocessor(func(q *Query) {
-		params := q.ParamsAsMap()
-		if params == nil {
-			q.Request.Params = map[string]string{paramAccountID: acc.ID}
-		} else {
-			params[paramAccountID] = acc.ID
-			q.Request.Params = params
-		}
+		q.Request.Params = map[string]interface{}{"urls": "one"}
 	})
 
-	request := newRawRequest(t, "account_list", nil)
+	request := newRawRequest(t, "resolve", nil)
 	rawCallReponse := c.Call(request)
-	parseRawResponse(t, rawCallReponse, &accResponse)
-	assert.Equal(t, acc.ID, accResponse.ID)
-	assert.True(t, svc.GetMetricsValue("account_list").Value > 0)
+	parseRawResponse(t, rawCallReponse, &resolveResponse)
+	assert.Contains(t, resolveResponse, "one")
 }
 
 func TestCallSDKError(t *testing.T) {
