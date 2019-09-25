@@ -70,7 +70,7 @@ func NewMethodError(e error) GenericError {
 	return GenericError{e, ErrMethodUnavailable}
 }
 
-// NewParamsError creates a call method error
+// NewParamsError signifies an error in method parameters
 func NewParamsError(e error) GenericError {
 	return GenericError{e, ErrInvalidParams}
 }
