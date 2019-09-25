@@ -176,7 +176,7 @@ func TestWithValidAuthTokenConcurrent(t *testing.T) {
 		wg.Add(1)
 		go func(w int, wg *sync.WaitGroup) {
 			var response jsonrpc.RPCResponse
-			q := jsonrpc.NewRequest("account_list")
+			q := jsonrpc.NewRequest("account_balance")
 
 			qBody, _ := json.Marshal(q)
 			r, _ := http.NewRequest("POST", proxySuffix, bytes.NewBuffer(qBody))
