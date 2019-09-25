@@ -238,7 +238,8 @@ func TestCreateDBUserForExistingSDKAccount(t *testing.T) {
 	r.Header.Add(TokenHeader, "abc")
 
 	svc := NewUserService()
-	id, err := GetAccountIDFromRequest(r, svc)
+	auth := NewAuthenticator(svc)
+	id, err := auth.GetAccountID(r)
 	require.Nil(t, err)
 
 	u, err := svc.Retrieve(Query{Token: "abc"})
