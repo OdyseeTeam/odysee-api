@@ -134,8 +134,8 @@ type userL struct{}
 
 var (
 	userAllColumns            = []string{"id", "created_at", "updated_at", "sdk_account_id", "wallet_id"}
-	userColumnsWithoutDefault = []string{"id", "sdk_account_id"}
-	userColumnsWithDefault    = []string{"created_at", "updated_at", "wallet_id"}
+	userColumnsWithoutDefault = []string{"id", "sdk_account_id", "wallet_id"}
+	userColumnsWithDefault    = []string{"created_at", "updated_at"}
 	userPrimaryKeyColumns     = []string{"id"}
 )
 

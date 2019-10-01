@@ -6,7 +6,7 @@ ALTER TABLE "users"
     DROP COLUMN "public_key",
     DROP COLUMN "seed",
 
-    ADD COLUMN "wallet_id" varchar NOT NULL DEFAULT '',
+    ADD COLUMN "wallet_id" varchar NOT NULL,
 
     ADD CONSTRAINT wallet_id_unique UNIQUE ("wallet_id"),
     ALTER COLUMN "sdk_account_id" DROP NOT NULL;
