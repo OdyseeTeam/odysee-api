@@ -16,6 +16,7 @@ import (
 	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
 	logrus_test "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -137,11 +138,17 @@ func TestCallAccountBalance(t *testing.T) {
 	c.SetWalletID(wid)
 
 	request := newRawRequest(t, "account_balance", nil)
+	result := c.Call(request)
+
+	assert.Contains(t, string(result), `"message": "account identificator required"`)
+
+	request = newRawRequest(t, "account_balance", nil)
 	hook := logrus_test.NewLocal(svc.logger.Logger())
 	c.Call(request)
 
 	assert.Equal(t, map[string]interface{}{"wallet_id": fmt.Sprintf("%v", wid)}, hook.LastEntry().Data["params"])
 	assert.Equal(t, "account_balance", hook.LastEntry().Data["method"])
+	assert.Contains(t, string(result), `"available": "0.0"`)
 }
 
 func TestCallAttachesAccountId(t *testing.T) {
@@ -272,6 +279,8 @@ func TestParamsAsMap(t *testing.T) {
 
 	q, _ = NewQuery(newRawRequest(t, "account_balance", nil))
 	q.attachWalletID("123")
+	err := q.validate()
+	require.Nil(t, err)
 	assert.Equal(t, map[string]interface{}{"wallet_id": "123"}, q.ParamsAsMap())
 
 	searchParams := map[string]interface{}{

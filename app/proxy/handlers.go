@@ -21,8 +21,6 @@ func NewRequestHandler(svc *Service) *RequestHandler {
 
 // Handle forwards client JSON-RPC request to proxy.
 func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	var accountID string
-
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
 		return
@@ -42,6 +40,7 @@ func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	if config.AccountsEnabled() {
 		retriever := users.NewWalletService()
+		auth := users.NewAuthenticator(retriever)
 		accountID, err = users.GetWalletIDFromRequest(r, retriever)
 
 		// TODO: Refactor response creation out of this function

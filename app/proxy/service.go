@@ -39,8 +39,9 @@ type Caller struct {
 
 // Query is a wrapper around client JSON-RPC query for easier (un)marshaling and processing.
 type Query struct {
-	rawRequest []byte
 	Request    *jsonrpc.RPCRequest
+	rawRequest []byte
+	accountID  string
 }
 
 // NewService is the entry point to proxy module.
@@ -67,7 +68,7 @@ func (ps *Service) NewCaller() *Caller {
 // NewQuery initializes Query object with JSON-RPC request supplied as bytes.
 // The object is immediately usable and returns an error in case request parsing fails.
 func NewQuery(r []byte) (*Query, error) {
-	q := &Query{r, &jsonrpc.RPCRequest{}}
+	q := &Query{rawRequest: r, Request: &jsonrpc.RPCRequest{}}
 	err := q.unmarshal()
 	if err != nil {
 		return nil, err
@@ -135,8 +136,6 @@ func (q *Query) attachWalletID(id string) {
 			q.Request.Params = p
 		} else {
 			q.Request.Params = map[string]interface{}{paramWalletID: id}
-		}
-	}
 }
 
 // cacheHit returns cached response or nil in case it's a miss or query shouldn't be cacheable.
@@ -170,12 +169,35 @@ func (q *Query) validate() CallError {
 	if methodInList(q.Method(), forbiddenMethods) {
 		return NewMethodError(errors.New("forbidden method"))
 	}
-
 	if q.ParamsAsMap() != nil {
 		if _, ok := q.ParamsAsMap()[forbiddenParam]; ok {
 			return NewParamsError(fmt.Errorf("forbidden parameter supplied: %v", forbiddenParam))
 		}
 	}
+
+	if methodInList(q.Method(), accountSpecificMethods) {
+		if q.accountID == "" {
+			return NewParamsError(errors.New("account identificator required"))
+		}
+		if p := q.ParamsAsMap(); p != nil {
+			p[paramAccountID] = q.accountID
+			q.Request.Params = p
+		} else {
+			q.Request.Params = map[string]interface{}{paramAccountID: q.accountID}
+		}
+	}
+	if methodInList(q.Method(), accountFundingSpecificMethods) {
+		if q.accountID == "" {
+			return NewParamsError(errors.New("account identificator required"))
+		}
+		if p := q.ParamsAsMap(); p != nil {
+			p[paramFundingAccountIDs] = []string{q.accountID}
+			q.Request.Params = p
+		} else {
+			q.Request.Params = map[string]interface{}{paramFundingAccountIDs: []string{q.accountID}}
+		}
+	}
+
 	return nil
 }
 
@@ -224,12 +246,13 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 		c.service.logger.Errorf("malformed JSON from client: %s", err.Error())
 		return nil, NewParseError(err)
 	}
-	if err := q.validate(); err != nil {
-		return nil, err
+
+	if c.AccountID() != "" {
+		q.setAccountID(c.AccountID())
 	}
 
-	if c.WalletID() != "" {
-		q.attachWalletID(c.WalletID())
+	if err := q.validate(); err != nil {
+		return nil, err
 	}
 
 	if cachedResponse := q.cacheHit(); cachedResponse != nil {
