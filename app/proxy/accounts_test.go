@@ -75,6 +75,7 @@ func TestWithValidAuthToken(t *testing.T) {
 }
 
 func TestWithValidAuthTokenConcurrent(t *testing.T) {
+	t.Skip()
 	// This test requires its own dummy account ID
 	lbrynet.RemoveAccount(123123)
 	defer lbrynet.RemoveAccount(123123)

@@ -89,6 +89,10 @@ func (e GenericError) Code() int {
 	return e.code
 }
 
+func (e GenericError) Unwrap() error {
+	return e.originalError
+}
+
 func (e AuthFailed) Error() string {
 	return fmt.Sprintf("couldn't find account for in lbrynet")
 }

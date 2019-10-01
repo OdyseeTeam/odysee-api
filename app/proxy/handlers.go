@@ -41,7 +41,7 @@ func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	if config.AccountsEnabled() {
 		retriever := users.NewWalletService()
 		auth := users.NewAuthenticator(retriever)
-		accountID, err = users.GetWalletIDFromRequest(r, retriever)
+		wid, err := auth.GetWalletID(r)
 
 		// TODO: Refactor response creation out of this function
 		if err != nil {
@@ -50,7 +50,7 @@ func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 			w.Write(response)
 			return
 		}
-		c.SetWalletID(accountID)
+		c.SetWalletID(wid)
 	}
 
 	rawCallReponse := c.Call(body)

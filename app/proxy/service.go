@@ -41,7 +41,7 @@ type Caller struct {
 type Query struct {
 	Request    *jsonrpc.RPCRequest
 	rawRequest []byte
-	accountID  string
+	walletID   string
 }
 
 // NewService is the entry point to proxy module.
@@ -127,15 +127,8 @@ func (q *Query) newResponse() *jsonrpc.RPCResponse {
 	return &r
 }
 
-// attachWalletID gets called every time by Caller so it's up to Query to decide if it is account-specific
-// and if account_id should be added to request params accordingly.
-func (q *Query) attachWalletID(id string) {
-	if methodInList(q.Method(), accountSpecificMethods) {
-		if p := q.ParamsAsMap(); p != nil {
-			p[paramWalletID] = id
-			q.Request.Params = p
-		} else {
-			q.Request.Params = map[string]interface{}{paramWalletID: id}
+func (q *Query) SetWalletID(id string) {
+	q.walletID = id
 }
 
 // cacheHit returns cached response or nil in case it's a miss or query shouldn't be cacheable.
@@ -176,25 +169,14 @@ func (q *Query) validate() CallError {
 	}
 
 	if methodInList(q.Method(), accountSpecificMethods) {
-		if q.accountID == "" {
+		if q.walletID == "" {
 			return NewParamsError(errors.New("account identificator required"))
 		}
 		if p := q.ParamsAsMap(); p != nil {
-			p[paramAccountID] = q.accountID
+			p[paramWalletID] = q.walletID
 			q.Request.Params = p
 		} else {
-			q.Request.Params = map[string]interface{}{paramAccountID: q.accountID}
-		}
-	}
-	if methodInList(q.Method(), accountFundingSpecificMethods) {
-		if q.accountID == "" {
-			return NewParamsError(errors.New("account identificator required"))
-		}
-		if p := q.ParamsAsMap(); p != nil {
-			p[paramFundingAccountIDs] = []string{q.accountID}
-			q.Request.Params = p
-		} else {
-			q.Request.Params = map[string]interface{}{paramFundingAccountIDs: []string{q.accountID}}
+			q.Request.Params = map[string]interface{}{paramWalletID: q.walletID}
 		}
 	}
 
@@ -247,10 +229,11 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 		return nil, NewParseError(err)
 	}
 
-	if c.AccountID() != "" {
-		q.setAccountID(c.AccountID())
+	if c.WalletID() != "" {
+		q.SetWalletID(c.WalletID())
 	}
 
+	// Check for account identificator (wallet ID) for account-specific methods happens here
 	if err := q.validate(); err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -91,7 +92,7 @@ func TestNewCaller(t *testing.T) {
 	assert.Equal(t, svc, c.service)
 }
 
-func TestSetWalletID(t *testing.T) {
+func TestCallerSetWalletID(t *testing.T) {
 	svc := NewService(endpoint)
 	c := svc.NewCaller()
 	c.SetWalletID("abc")
@@ -108,7 +109,7 @@ func TestCallerMetrics(t *testing.T) {
 	assert.Equal(t, 0.25, math.Round(svc.GetMetricsValue("resolve").Value*100)/100)
 }
 
-func TestCallResolve(t *testing.T) {
+func TestCallerCallResolve(t *testing.T) {
 	var resolveResponse ljsonrpc.ResolveResponse
 
 	svc := NewService(config.GetLbrynet())
@@ -124,9 +125,8 @@ func TestCallResolve(t *testing.T) {
 	assert.True(t, svc.GetMetricsValue("resolve").Value > 0)
 }
 
-func TestCallAccountBalance(t *testing.T) {
-	// TODO: Add actual account balance response check after 0.39 support is added to lbry.go
-	// var accountBalanceResponse ljsonrpc.AccountBalanceResponse
+func TestCallerCallAccountBalance(t *testing.T) {
+	var accountBalanceResponse ljsonrpc.AccountBalanceResponse
 
 	rand.Seed(time.Now().UnixNano())
 	dummyUserID := rand.Int()
@@ -135,23 +135,24 @@ func TestCallAccountBalance(t *testing.T) {
 
 	svc := NewService(config.GetLbrynet())
 	c := svc.NewCaller()
-	c.SetWalletID(wid)
 
 	request := newRawRequest(t, "account_balance", nil)
 	result := c.Call(request)
 
 	assert.Contains(t, string(result), `"message": "account identificator required"`)
 
+	c.SetWalletID(wid)
 	request = newRawRequest(t, "account_balance", nil)
 	hook := logrus_test.NewLocal(svc.logger.Logger())
-	c.Call(request)
+	result = c.Call(request)
 
+	parseRawResponse(t, result, &accountBalanceResponse)
+	assert.EqualValues(t, "0", fmt.Sprintf("%v", accountBalanceResponse.Available))
 	assert.Equal(t, map[string]interface{}{"wallet_id": fmt.Sprintf("%v", wid)}, hook.LastEntry().Data["params"])
 	assert.Equal(t, "account_balance", hook.LastEntry().Data["method"])
-	assert.Contains(t, string(result), `"available": "0.0"`)
 }
 
-func TestCallAttachesAccountId(t *testing.T) {
+func TestCallerCallAttachesAccountId(t *testing.T) {
 	mockClient := &ClientMock{}
 
 	rand.Seed(time.Now().UnixNano())
@@ -196,13 +197,13 @@ func TestCallerSetPreprocessor(t *testing.T) {
 		}
 	})
 
-	c.Call([]byte(newRawRequest(t, "account_list", nil)))
+	c.Call([]byte(newRawRequest(t, "imaginary_method", nil)))
 	p, ok := client.LastRequest.Params.(map[string]string)
 	assert.True(t, ok)
 	assert.Equal(t, wid, p[paramWalletID])
 }
 
-func TestCallSDKError(t *testing.T) {
+func TestCallerCallSDKError(t *testing.T) {
 	var rpcResponse jsonrpc.RPCResponse
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -248,7 +249,7 @@ func TestCallSDKError(t *testing.T) {
 	assert.Equal(t, "resolve", hook.LastEntry().Data["method"])
 }
 
-func TestCallClientJSONError(t *testing.T) {
+func TestCallerCallClientJSONError(t *testing.T) {
 	var rpcResponse jsonrpc.RPCResponse
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -268,7 +269,7 @@ func TestCallClientJSONError(t *testing.T) {
 	assert.Equal(t, "error calling lbrynet: unexpected end of JSON input, query: {\"method\":\"version}", hook.LastEntry().Message)
 }
 
-func TestParamsAsMap(t *testing.T) {
+func TestQueryParamsAsMap(t *testing.T) {
 	var q *Query
 
 	q, _ = NewQuery(newRawRequest(t, "version", nil))
@@ -278,9 +279,9 @@ func TestParamsAsMap(t *testing.T) {
 	assert.Equal(t, map[string]interface{}{"urls": "what"}, q.ParamsAsMap())
 
 	q, _ = NewQuery(newRawRequest(t, "account_balance", nil))
-	q.attachWalletID("123")
+	q.SetWalletID("123")
 	err := q.validate()
-	require.Nil(t, err)
+	require.Nil(t, err, errors.Unwrap(err))
 	assert.Equal(t, map[string]interface{}{"wallet_id": "123"}, q.ParamsAsMap())
 
 	searchParams := map[string]interface{}{

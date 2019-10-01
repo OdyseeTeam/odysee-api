@@ -51,5 +51,6 @@ tag:
 	git tag -d v$v
 	git tag v$v
 
+.PHONY: models
 models:
 	sqlboiler --add-global-variants --wipe psql --no-context
