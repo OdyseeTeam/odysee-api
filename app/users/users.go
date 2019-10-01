@@ -2,7 +2,6 @@ package users
 
 import (
 	"database/sql"
-	"net/http"
 
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/monitor"
@@ -10,6 +9,8 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
+	xerrors "github.com/pkg/errors"
+	"github.com/volatiletech/null"
 	"github.com/volatiletech/sqlboiler/boil"
 )
 
@@ -40,6 +41,7 @@ type Query struct {
 }
 
 // NewUserService returns UserService instance for retrieving or creating user records and accounts.
+// Deprecated: NewWalletService should be used instead
 func NewUserService() *UserService {
 	s := &UserService{logger: monitor.NewModuleLogger("users")}
 	return s
@@ -59,7 +61,7 @@ func (s *UserService) createDBUser(id int) (*models.User, error) {
 	if err != nil {
 		// Check if we encountered a primary key violation, it would mean another routine
 		// fired from another request has managed to create a user before us so we should try retrieving it again.
-		switch baseErr := errors.Cause(err).(type) {
+		switch baseErr := xerrors.Cause(err).(type) {
 		case *pq.Error:
 			if baseErr.Code == errUniqueViolation && baseErr.Column == "users_pkey" {
 				log.Debug("user creation conflict, trying to retrieve local user again")
@@ -78,6 +80,7 @@ func (s *UserService) createDBUser(id int) (*models.User, error) {
 }
 
 // Retrieve authenticates user with internal-api and retrieves/creates locally stored user.
+// Deprecated: WalletService.Retrieve should be used instead
 func (s *UserService) Retrieve(q Query) (*models.User, error) {
 	token := q.Token
 	log := s.logger.LogF(monitor.F{"token": token})
@@ -112,7 +115,7 @@ func (s *UserService) Retrieve(q Query) (*models.User, error) {
 		return nil, errStorage
 	}
 
-	if localUser.SDKAccountID == "" {
+	if localUser.SDKAccountID.IsZero() {
 		log.Warnf("user ID=%v has empty fields in the database, retrieving from the SDK", remoteUser.ID)
 		acc, err := lbrynet.GetAccount(remoteUser.ID)
 		if err != nil {
@@ -146,24 +149,7 @@ func (s *UserService) createSDKAccount(u *models.User) error {
 }
 
 func (s *UserService) saveAccFields(accFields savedAccFields, u *models.User) error {
-	u.SDKAccountID = accFields.ID
-	u.PublicKey = accFields.PublicKey
+	u.SDKAccountID = null.NewString(accFields.ID, true)
 	_, err := u.UpdateG(boil.Infer())
 	return err
-}
-
-// GetAccountIDFromRequest retrieves SDK  account_id of a user making a http request
-// by a header provided by http client.
-func GetAccountIDFromRequest(r *http.Request, retriever Retriever) (string, error) {
-	if token, ok := r.Header[TokenHeader]; ok {
-		u, err := retriever.Retrieve(Query{token[0], GetIPAddressForRequest(r)})
-		if err != nil {
-			return "", err
-		}
-		if u == nil {
-			return "", errors.New("unable to retrieve user")
-		}
-		return u.SDKAccountID, nil
-	}
-	return "", nil
 }

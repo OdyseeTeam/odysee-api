@@ -87,7 +87,7 @@ func TestWithValidAuthToken(t *testing.T) {
 		q        *jsonrpc.RPCRequest
 		qBody    []byte
 		response jsonrpc.RPCResponse
-		account  ljsonrpc.Account
+		accounts ljsonrpc.AccountListResponse
 	)
 
 	ts := launchDummyAPIServer([]byte(`{
@@ -130,9 +130,9 @@ func TestWithValidAuthToken(t *testing.T) {
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.Nil(t, err)
 	require.Nil(t, response.Error)
-	err = ljsonrpc.Decode(response.Result, &account)
+	err = ljsonrpc.Decode(response.Result, &accounts)
 	require.Nil(t, err)
-	assert.Equal(t, lbrynet.MakeAccountName(dummyUserID), account.Name)
+	assert.Equal(t, "single-address", accounts.LBCMainnet[0].AddressGenerator.Name)
 }
 
 func TestWithValidAuthTokenConcurrent(t *testing.T) {

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/lbryio/lbrytv/models"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +19,7 @@ type DummyRetriever struct {
 func (r *DummyRetriever) Retrieve(q Query) (*models.User, error) {
 	r.remoteIP = q.MetaRemoteIP
 	if q.Token == "XyZ" {
-		return &models.User{SDKAccountID: "aBc"}, nil
+		return &models.User{WalletID: "aBc"}, nil
 	}
 	return nil, errors.New("cannot authenticate")
 }
@@ -26,7 +27,7 @@ func (r *DummyRetriever) Retrieve(q Query) (*models.User, error) {
 func AuthenticatedHandler(w http.ResponseWriter, r *AuthenticatedRequest) {
 	if r.IsAuthenticated() {
 		w.WriteHeader(http.StatusAccepted)
-		w.Write([]byte(r.AccountID))
+		w.Write([]byte(r.WalletID))
 	} else {
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte(r.AuthError.Error()))

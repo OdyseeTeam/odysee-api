@@ -40,7 +40,7 @@ func TestUploadHandler(t *testing.T) {
 	req.Header.Set(users.TokenHeader, "uPldrToken")
 
 	rr := httptest.NewRecorder()
-	authenticator := users.NewAuthenticator(&users.TestUserRetriever{AccountID: "UPldrAcc", Token: "uPldrToken"})
+	authenticator := users.NewAuthenticator(&users.TestUserRetriever{WalletID: "UPldrAcc", Token: "uPldrToken"})
 	publisher := &DummyPublisher{}
 	pubHandler, err := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
 	assert.Nil(t, err)
@@ -109,7 +109,7 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	rr := httptest.NewRecorder()
-	authenticator := users.NewAuthenticator(&users.TestUserRetriever{AccountID: "UPldrAcc", Token: "uPldrToken"})
+	authenticator := users.NewAuthenticator(&users.TestUserRetriever{WalletID: "UPldrAcc", Token: "uPldrToken"})
 	publisher := &DummyPublisher{}
 	pubHandler, err := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
 	assert.Nil(t, err)

@@ -30,7 +30,7 @@ type Service struct {
 // Caller patches through JSON-RPC requests from clients, doing pre/post-processing,
 // account processing and validation.
 type Caller struct {
-	accountID    string
+	walletID     string
 	query        *jsonrpc.RPCRequest
 	client       jsonrpc.RPCClient
 	service      *Service
@@ -55,7 +55,7 @@ func NewService(targetEndpoint string) *Service {
 }
 
 // NewCaller returns an instance of Caller ready to proxy requests.
-// Note that `SetAccountID` needs to be called if an authenticated user is making this call.
+// Note that `SetWalletID` needs to be called if an authenticated user is making this call.
 func (ps *Service) NewCaller() *Caller {
 	c := Caller{
 		client:  jsonrpc.NewClient(ps.TargetEndpoint),
@@ -126,23 +126,15 @@ func (q *Query) newResponse() *jsonrpc.RPCResponse {
 	return &r
 }
 
-// attachAccountID gets called every time by Caller so it's up to Query to decide if it is account-specific
+// attachWalletID gets called every time by Caller so it's up to Query to decide if it is account-specific
 // and if account_id should be added to request params accordingly.
-func (q *Query) attachAccountID(id string) {
+func (q *Query) attachWalletID(id string) {
 	if methodInList(q.Method(), accountSpecificMethods) {
 		if p := q.ParamsAsMap(); p != nil {
-			p[paramAccountID] = id
+			p[paramWalletID] = id
 			q.Request.Params = p
 		} else {
-			q.Request.Params = map[string]interface{}{paramAccountID: id}
-		}
-	}
-	if methodInList(q.Method(), accountFundingSpecificMethods) {
-		if p := q.ParamsAsMap(); p != nil {
-			p[paramFundingAccountIDs] = []string{id}
-			q.Request.Params = p
-		} else {
-			q.Request.Params = map[string]interface{}{paramFundingAccountIDs: []string{id}}
+			q.Request.Params = map[string]interface{}{paramWalletID: id}
 		}
 	}
 }
@@ -192,14 +184,14 @@ func (c *Caller) SetPreprocessor(p Preprocessor) {
 	c.preprocessor = p
 }
 
-// SetAccountID sets accountID for the current instance of Caller.
-func (c *Caller) SetAccountID(id string) {
-	c.accountID = id
+// SetWalletID sets walletID for the current instance of Caller.
+func (c *Caller) SetWalletID(id string) {
+	c.walletID = id
 }
 
-// AccountID is an SDK account ID for the client this caller instance is serving.
-func (c *Caller) AccountID() string {
-	return c.accountID
+// WalletID is an SDK wallet ID for the client this caller instance is serving.
+func (c *Caller) WalletID() string {
+	return c.walletID
 }
 
 func (c *Caller) marshal(r *jsonrpc.RPCResponse) ([]byte, CallError) {
@@ -236,8 +228,8 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 		return nil, err
 	}
 
-	if c.AccountID() != "" {
-		q.attachAccountID(c.AccountID())
+	if c.WalletID() != "" {
+		q.attachWalletID(c.WalletID())
 	}
 
 	if cachedResponse := q.cacheHit(); cachedResponse != nil {

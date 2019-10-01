@@ -77,6 +77,7 @@ const MethodClaimSearch = "claim_search"
 const MethodCommentList = "comment_list"
 
 const paramAccountID = "account_id"
+const paramWalletID = "wallet_id"
 const paramFundingAccountIDs = "funding_account_ids"
 const paramUrls = "urls"
 

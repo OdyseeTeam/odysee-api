@@ -50,3 +50,6 @@ server:
 tag:
 	git tag -d v$v
 	git tag v$v
+
+models:
+	sqlboiler --add-global-variants --wipe psql --no-context

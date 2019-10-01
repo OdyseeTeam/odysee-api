@@ -90,11 +90,11 @@ func TestNewCaller(t *testing.T) {
 	assert.Equal(t, svc, c.service)
 }
 
-func TestSetAccountID(t *testing.T) {
+func TestSetWalletID(t *testing.T) {
 	svc := NewService(endpoint)
 	c := svc.NewCaller()
-	c.SetAccountID("abc")
-	assert.Equal(t, "abc", c.accountID)
+	c.SetWalletID("abc")
+	assert.Equal(t, "abc", c.walletID)
 }
 
 func TestCallerMetrics(t *testing.T) {
@@ -128,20 +128,19 @@ func TestCallAccountBalance(t *testing.T) {
 	// var accountBalanceResponse ljsonrpc.AccountBalanceResponse
 
 	rand.Seed(time.Now().UnixNano())
-	dummyAccountID := rand.Int()
+	dummyUserID := rand.Int()
 
-	acc, _ := lbrynet.CreateAccount(dummyAccountID)
-	defer lbrynet.RemoveAccount(dummyAccountID)
+	wid, _ := lbrynet.InitializeWallet(dummyUserID)
 
 	svc := NewService(config.GetLbrynet())
 	c := svc.NewCaller()
-	c.SetAccountID(acc.ID)
+	c.SetWalletID(wid)
 
 	request := newRawRequest(t, "account_balance", nil)
 	hook := logrus_test.NewLocal(svc.logger.Logger())
 	c.Call(request)
 
-	assert.Equal(t, map[string]interface{}{"account_id": fmt.Sprintf("%v", acc.ID)}, hook.LastEntry().Data["params"])
+	assert.Equal(t, map[string]interface{}{"wallet_id": fmt.Sprintf("%v", wid)}, hook.LastEntry().Data["params"])
 	assert.Equal(t, "account_balance", hook.LastEntry().Data["method"])
 }
 
@@ -149,22 +148,21 @@ func TestCallAttachesAccountId(t *testing.T) {
 	mockClient := &ClientMock{}
 
 	rand.Seed(time.Now().UnixNano())
-	dummyAccountID := "abc123321"
+	dummyWalletID := "abc123321"
 
 	svc := NewService(endpoint)
 	c := Caller{
 		client:  mockClient,
 		service: svc,
 	}
-	c.SetAccountID(dummyAccountID)
+	c.SetWalletID(dummyWalletID)
 	c.Call([]byte(newRawRequest(t, "channel_create", map[string]string{"name": "test", "bid": "0.1"})))
 	expectedRequest := jsonrpc.RPCRequest{
 		Method: "channel_create",
 		Params: map[string]interface{}{
-			"name":                "test",
-			"bid":                 "0.1",
-			"account_id":          dummyAccountID,
-			"funding_account_ids": []string{dummyAccountID},
+			"name":      "test",
+			"bid":       "0.1",
+			"wallet_id": dummyWalletID,
 		},
 		JSONRPC: "2.0",
 	}
@@ -172,31 +170,29 @@ func TestCallAttachesAccountId(t *testing.T) {
 }
 
 func TestCallerSetPreprocessor(t *testing.T) {
-	var accResponse ljsonrpc.Account
+	wid := "walletId"
 
-	rand.Seed(time.Now().UnixNano())
-	dummyAccountID := rand.Int()
+	svc := NewService("")
+	client := &ClientMock{}
+	c := Caller{
+		client:  client,
+		service: svc,
+	}
 
-	acc, _ := lbrynet.CreateAccount(dummyAccountID)
-	defer lbrynet.RemoveAccount(dummyAccountID)
-
-	svc := NewService(config.GetLbrynet())
-	c := svc.NewCaller()
 	c.SetPreprocessor(func(q *Query) {
 		params := q.ParamsAsMap()
 		if params == nil {
-			q.Request.Params = map[string]string{paramAccountID: acc.ID}
+			q.Request.Params = map[string]string{paramWalletID: wid}
 		} else {
-			params[paramAccountID] = acc.ID
+			params[paramWalletID] = wid
 			q.Request.Params = params
 		}
 	})
 
-	request := newRawRequest(t, "account_list", nil)
-	rawCallReponse := c.Call(request)
-	parseRawResponse(t, rawCallReponse, &accResponse)
-	assert.Equal(t, acc.ID, accResponse.ID)
-	assert.True(t, svc.GetMetricsValue("account_list").Value > 0)
+	c.Call([]byte(newRawRequest(t, "account_list", nil)))
+	p, ok := client.LastRequest.Params.(map[string]string)
+	assert.True(t, ok)
+	assert.Equal(t, wid, p[paramWalletID])
 }
 
 func TestCallSDKError(t *testing.T) {
@@ -275,8 +271,8 @@ func TestParamsAsMap(t *testing.T) {
 	assert.Equal(t, map[string]interface{}{"urls": "what"}, q.ParamsAsMap())
 
 	q, _ = NewQuery(newRawRequest(t, "account_balance", nil))
-	q.attachAccountID("123")
-	assert.Equal(t, map[string]interface{}{"account_id": "123"}, q.ParamsAsMap())
+	q.attachWalletID("123")
+	assert.Equal(t, map[string]interface{}{"wallet_id": "123"}, q.ParamsAsMap())
 
 	searchParams := map[string]interface{}{
 		"any_tags": []interface{}{

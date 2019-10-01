@@ -10,12 +10,10 @@ import (
 	"os/exec"
 	"path"
 	"testing"
-	"time"
 
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/storage"
 
 	"github.com/stretchr/testify/assert"
@@ -71,7 +69,7 @@ func launchDummyAPIServer() *httptest.Server {
 }
 
 func TestLbrynetPublisher(t *testing.T) {
-	dummyUserID := 751365
+	// dummyUserID := 751365
 	authToken := "zzz"
 
 	dbConfig := config.GetDatabase()
@@ -83,7 +81,6 @@ func TestLbrynetPublisher(t *testing.T) {
 	c, connCleanup := storage.CreateTestConn(params)
 	c.SetDefaultConnection()
 	defer connCleanup()
-	defer lbrynet.RemoveAccount(dummyUserID)
 
 	ts := launchDummyAPIServer()
 	defer ts.Close()
@@ -92,10 +89,7 @@ func TestLbrynetPublisher(t *testing.T) {
 
 	p := &LbrynetPublisher{proxy.NewService(config.GetLbrynet())}
 
-	userSvc := users.NewUserService()
-	userSvc.Retrieve(users.Query{Token: authToken})
-	// Required for the account to settle down in the SDK
-	time.Sleep(500 * time.Millisecond)
+	userSvc := users.NewWalletService()
 	u, err := userSvc.Retrieve(users.Query{Token: authToken})
 	require.Nil(t, err)
 
@@ -130,7 +124,7 @@ func TestLbrynetPublisher(t *testing.T) {
 		"id": 1567580184168
 	}`)
 
-	rawResp := p.Publish(path.Join("/storage", path.Base(f.Name())), u.SDKAccountID, query)
+	rawResp := p.Publish(path.Join("/storage", path.Base(f.Name())), u.WalletID, query)
 
 	// This is all we can check for now without running on testnet or crediting some funds to the test account
 	assert.Regexp(t, "Not enough funds to cover this transaction", string(rawResp))

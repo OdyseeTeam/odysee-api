@@ -13,7 +13,7 @@ type Authenticator struct {
 
 type AuthenticatedRequest struct {
 	*http.Request
-	AccountID string
+	WalletID  string
 	AuthError error
 }
 
@@ -25,9 +25,9 @@ func NewAuthenticator(retriever Retriever) *Authenticator {
 	return &Authenticator{retriever}
 }
 
-// GetAccountID retrieves user token from HTTP headers and subsequently
+// GetWalletID retrieves user token from HTTP headers and subsequently
 // an SDK account ID from Retriever.
-func (a *Authenticator) GetAccountID(r *http.Request) (string, error) {
+func (a *Authenticator) GetWalletID(r *http.Request) (string, error) {
 	if token, ok := r.Header[TokenHeader]; ok {
 		u, err := a.retriever.Retrieve(Query{token[0], GetIPAddressForRequest(r)})
 		if err != nil {
@@ -36,7 +36,7 @@ func (a *Authenticator) GetAccountID(r *http.Request) (string, error) {
 		if u == nil {
 			return "", errors.New(GenericRetrievalErr)
 		}
-		return u.SDKAccountID, nil
+		return u.WalletID, nil
 	}
 	return "", nil
 }
@@ -45,12 +45,12 @@ func (a *Authenticator) GetAccountID(r *http.Request) (string, error) {
 // supplied function will be wrapped and called with AuthenticatedRequest instead of http.Request.
 func (a *Authenticator) Wrap(wrapped AuthenticatedFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		AccountID, err := a.GetAccountID(r)
+		WalletID, err := a.GetWalletID(r)
 		ar := &AuthenticatedRequest{Request: r}
 		if err != nil {
 			ar.AuthError = err
 		} else {
-			ar.AccountID = AccountID
+			ar.WalletID = WalletID
 		}
 		wrapped(w, ar)
 	}
@@ -65,5 +65,5 @@ func (r *AuthenticatedRequest) AuthFailed() bool {
 // If it is false, AuthError might be provided (in case user retriever has errored)
 // or be nil if no auth token was present in headers.
 func (r *AuthenticatedRequest) IsAuthenticated() bool {
-	return r.AccountID != ""
+	return r.WalletID != ""
 }

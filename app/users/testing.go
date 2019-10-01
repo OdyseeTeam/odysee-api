@@ -9,15 +9,15 @@ import (
 // TestUserRetriever is a helper allowing to test API endpoints that require authentication
 // without actually creating DB records.
 type TestUserRetriever struct {
-	AccountID string
-	Token     string
+	WalletID string
+	Token    string
 }
 
-// Retrieve returns AccountID set during TestUserRetriever creation,
+// Retrieve returns WalletID set during TestUserRetriever creation,
 // checking it against TestUserRetriever's Token field if one was supplied.
 func (r *TestUserRetriever) Retrieve(q Query) (*models.User, error) {
 	if r.Token == "" || r.Token == q.Token {
-		return &models.User{SDKAccountID: r.AccountID}, nil
+		return &models.User{WalletID: r.WalletID}, nil
 	}
 	return nil, errors.New(GenericRetrievalErr)
 }
