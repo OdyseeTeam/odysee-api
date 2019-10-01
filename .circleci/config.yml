@@ -24,7 +24,7 @@ jobs:
 
   publish-image:
     docker:
-      - image: circleci/golang:1.12
+      - image: circleci/golang:1.13
     steps:
       - checkout
       - restore_cache:
