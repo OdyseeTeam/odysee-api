@@ -2,6 +2,7 @@ package lbrynet
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -74,6 +75,40 @@ func TestResolve(t *testing.T) {
 
 	require.Nil(t, err)
 	require.NotNil(t, r)
+}
+
+func TestInitializeWallet(t *testing.T) {
+	uid := rand.Int()
+
+	wid, err := InitializeWallet(uid)
+	require.Nil(t, err)
+	assert.Equal(t, wid, MakeWalletID(uid))
+
+	_, err = WalletRemove(uid)
+	require.Nil(t, err)
+
+	wid, err = InitializeWallet(uid)
+	require.Nil(t, err)
+	assert.Equal(t, wid, MakeWalletID(uid))
+}
+
+func TestCreateWalletAddWallet(t *testing.T) {
+	uid := rand.Int()
+
+	w, err := CreateWallet(uid)
+	require.Nil(t, err)
+	assert.Equal(t, w.ID, MakeWalletID(uid))
+
+	_, err = CreateWallet(uid)
+	require.NotNil(t, err)
+	assert.True(t, errors.As(err, &WalletExists{}))
+
+	_, err = WalletRemove(uid)
+	require.Nil(t, err)
+
+	w, err = AddWallet(uid)
+	require.Nil(t, err)
+	assert.Equal(t, w.ID, MakeWalletID(uid))
 }
 
 func BenchmarkCreateAccount(b *testing.B) {
