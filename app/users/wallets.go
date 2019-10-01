@@ -60,8 +60,13 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 		return nil, errStorage
 	}
 
+	// This scenario may happen for legacy users who haven't moved to wallets yet
 	if localUser.WalletID == "" {
-		log.Warn("user doesn't have WalletID set")
+		log.Warn("user doesn't have wallet ID set")
+		wid, err = s.createWallet(localUser)
+		if err != nil {
+			return nil, err
+		}
 		err := s.saveWalletID(localUser, wid)
 		if err != nil {
 			return nil, err
@@ -76,6 +81,7 @@ func (s *WalletService) createWallet(u *models.User) (string, error) {
 }
 
 func (s *WalletService) saveWalletID(u *models.User, wid string) error {
+	s.logger.LogF(monitor.F{"id": u.ID, "wallet_id": wid}).Info("saving wallet ID to user record")
 	u.WalletID = wid
 	_, err := u.UpdateG(boil.Infer())
 	return err

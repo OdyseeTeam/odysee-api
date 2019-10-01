@@ -64,7 +64,7 @@ func (s *UserService) createDBUser(id int) (*models.User, error) {
 		switch baseErr := xerrors.Cause(err).(type) {
 		case *pq.Error:
 			if baseErr.Code == errUniqueViolation && baseErr.Column == "users_pkey" {
-				log.Debug("user creation conflict, trying to retrieve local user again")
+				log.Debug("user creation conflict, trying to retrieve the local user again")
 				u, retryErr := s.getDBUser(id)
 				if retryErr != nil {
 					return nil, retryErr

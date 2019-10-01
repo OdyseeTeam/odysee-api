@@ -2,6 +2,7 @@ package users
 
 import (
 	"errors"
+	"math/rand"
 	"testing"
 
 	"github.com/lbryio/lbrytv/config"
@@ -75,6 +76,25 @@ func TestWalletServiceRetrieveExistingUser(t *testing.T) {
 	count, err := models.Users().CountG()
 	require.Nil(t, err)
 	assert.EqualValues(t, 1, count)
+}
+
+func TestWalletServiceRetrieveExistingUserMissingWalletID(t *testing.T) {
+	testFuncSetup()
+
+	uid := int(rand.Int31())
+	ts := launchAuthenticatingAPIServer(uid)
+	defer ts.Close()
+	config.Override("InternalAPIHost", ts.URL)
+	defer config.RestoreOverridden()
+
+	s := NewWalletService()
+	u, err := s.createDBUser(uid)
+	require.Nil(t, err)
+	require.NotNil(t, u)
+
+	u, err = s.Retrieve(Query{Token: "abc"})
+	require.Nil(t, err)
+	assert.NotEqual(t, "", u.WalletID)
 }
 
 func TestWalletServiceRetrieveEmptyEmailNoUser(t *testing.T) {
