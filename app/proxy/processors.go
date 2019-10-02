@@ -9,7 +9,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/monitor"
 	log "github.com/sirupsen/logrus"
 
-	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
 

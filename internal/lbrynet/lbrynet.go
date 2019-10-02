@@ -7,7 +7,7 @@ import (
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
-	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 )
 
 const accountNamePrefix string = "lbrytv-user-id:"

@@ -14,7 +14,7 @@ import (
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 
-	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	logrus_test "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

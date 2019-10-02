@@ -12,7 +12,7 @@ import (
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 
-	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"

@@ -1,7 +1,7 @@
 package users
 
 import (
-	"github.com/lbryio/lbry.go/extras/lbryinc"
+	"github.com/lbryio/lbry.go/v2/extras/lbryinc"
 	"github.com/lbryio/lbrytv/config"
 )
 

@@ -12,7 +12,7 @@ import (
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
-	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"

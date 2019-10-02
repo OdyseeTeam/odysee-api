@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"time"
 
-	ljsonrpc "github.com/lbryio/lbry.go/extras/jsonrpc"
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
