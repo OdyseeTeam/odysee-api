@@ -34,8 +34,7 @@ var migrateToWallets = &cobra.Command{
 		}
 		c := lbrynet.Client
 
-		usersQ := models.Users(models.UserWhere.WalletID.EQ(""))
-		users, err := usersQ.AllG()
+		users, err := models.Users(models.UserWhere.WalletID.EQ("")).AllG()
 		if err != nil {
 			panic(err)
 		}
