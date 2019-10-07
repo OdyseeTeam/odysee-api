@@ -57,10 +57,10 @@ func TestLogFailedQuery(t *testing.T) {
 }
 
 func TestModuleLoggerLogF(t *testing.T) {
-	hook := test.NewLocal(Logger)
-
 	l := NewModuleLogger("storage")
+	hook := test.NewLocal(l.Logger)
 	l.LogF(F{"number": 1}).Info("error!")
+
 	require.Equal(t, 1, len(hook.Entries))
 	require.Equal(t, log.InfoLevel, hook.LastEntry().Level)
 	require.Equal(t, 1, hook.LastEntry().Data["number"])
@@ -71,10 +71,10 @@ func TestModuleLoggerLogF(t *testing.T) {
 }
 
 func TestModuleLoggerLog(t *testing.T) {
-	hook := test.NewLocal(Logger)
-
 	l := NewModuleLogger("storage")
+	hook := test.NewLocal(l.Logger)
 	l.Log().Info("error!")
+
 	require.Equal(t, 1, len(hook.Entries))
 	require.Equal(t, log.InfoLevel, hook.LastEntry().Level)
 	require.Equal(t, "storage", hook.LastEntry().Data["module"])
@@ -84,14 +84,12 @@ func TestModuleLoggerLog(t *testing.T) {
 }
 
 func TestModuleLoggerMasksTokens(t *testing.T) {
-	hook := test.NewLocal(Logger)
+	l := NewModuleLogger("auth")
+	hook := test.NewLocal(l.Logger)
 
-	// fmt.Println(config.IsProduction())
 	config.Override("Debug", false)
 	defer config.RestoreOverridden()
-	// fmt.Println(config.IsProduction())
 
-	l := NewModuleLogger("auth")
 	l.LogF(F{"token": "SecRetT0Ken", "email": "abc@abc.com"}).Info("something happened")
 	require.Equal(t, "abc@abc.com", hook.LastEntry().Data["email"])
 	require.Equal(t, ValueMask, hook.LastEntry().Data["token"])

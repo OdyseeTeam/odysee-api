@@ -80,7 +80,7 @@ func (l ModuleLogger) LogF(fields F) *logrus.Entry {
 			logFields[k] = v
 		}
 	}
-	return Logger.WithFields(logFields)
+	return l.Logger.WithFields(logFields)
 }
 
 // Log returns a new log entry for the module
@@ -88,7 +88,7 @@ func (l ModuleLogger) LogF(fields F) *logrus.Entry {
 // Example:
 //  Log().Info("query error")
 func (l ModuleLogger) Log() *logrus.Entry {
-	return Logger.WithFields(logrus.Fields{"module": l.ModuleName})
+	return l.Logger.WithFields(logrus.Fields{"module": l.ModuleName})
 }
 
 // LogSuccessfulQuery takes a remote method name, execution time and params and logs it
