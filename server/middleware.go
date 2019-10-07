@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/lbryio/lbrytv/internal/monitor"
 )
@@ -11,8 +12,6 @@ import (
 const responseSnippetLength = 500
 
 var errGeneric = errors.New("handler responded with an error")
-
-var logger = monitor.NewModuleLogger("server")
 
 // loggingWriter mimics http.ResponseWriter but stores a snippet of response, status code
 // and response size for easier logging
@@ -31,7 +30,7 @@ func (w *loggingWriter) Write(p []byte) (int, error) {
 		} else {
 			snippet = p
 		}
-		w.ResponseSnippet = string(snippet)
+		w.ResponseSnippet = strings.Trim(string(snippet), "\n")
 	}
 	w.ResponseSize += len(p)
 	return w.ResponseWriter.Write(p)
@@ -43,7 +42,7 @@ func (w *loggingWriter) WriteHeader(status int) {
 }
 
 func (w *loggingWriter) IsSuccess() bool {
-	return w.Status <= http.StatusBadRequest
+	return w.Status < http.StatusBadRequest
 }
 
 // ErrorLoggingMiddleware intercepts panics and regular error responses from http handlers,

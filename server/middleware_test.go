@@ -1,98 +1,125 @@
 package server
 
 import (
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
+	logrus_test "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func panickingHandler(w http.ResponseWriter, r *http.Request) {
-	panic("a plain panic happened")
+type middlewareTestRow struct {
+	NAME             string
+	method           string
+	url              string
+	reqBody          *io.Reader
+	handler          http.HandlerFunc
+	status           int
+	resBody          string
+	lastEntry        *map[string]interface{}
+	lastEntryLevel   log.Level
+	lastEntryMessage string
 }
 
-func erroringHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusBadRequest)
-	w.Write([]byte(`{"status": "error"}`))
+var testTableErrorLoggingMiddleware = []middlewareTestRow{
+	middlewareTestRow{
+		NAME:   "Panicking Handler",
+		method: "POST",
+		url:    "/api/",
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			panic("panic ensued")
+		},
+		status:  http.StatusInternalServerError,
+		resBody: "panic ensued\n",
+		lastEntry: &map[string]interface{}{
+			"method":   "POST",
+			"url":      "/api/",
+			"status":   http.StatusInternalServerError,
+			"response": "panic ensued",
+		},
+		lastEntryLevel:   log.ErrorLevel,
+		lastEntryMessage: "panic ensued",
+	},
+
+	middlewareTestRow{
+		NAME:   "Erroring Handler",
+		method: "POST",
+		url:    "/api/",
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"status": "error"}`))
+		},
+		status:  http.StatusBadRequest,
+		resBody: `{"status": "error"}`,
+		lastEntry: &map[string]interface{}{
+			"method":   "POST",
+			"url":      "/api/",
+			"status":   http.StatusBadRequest,
+			"response": `{"status": "error"}`,
+		},
+		lastEntryLevel:   log.ErrorLevel,
+		lastEntryMessage: "handler responded with an error",
+	},
+
+	middlewareTestRow{
+		NAME:   "Redirecting Handler",
+		method: "POST",
+		url:    "/api/",
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "http://lbry.com", http.StatusPermanentRedirect)
+		},
+		status: http.StatusPermanentRedirect,
+	},
+
+	middlewareTestRow{
+		NAME:   "Okay Handler",
+		method: "POST",
+		url:    "/api/",
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusAccepted)
+			w.Write([]byte(`OK`))
+		},
+		status:  http.StatusAccepted,
+		resBody: "OK",
+	},
 }
 
-func okayHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusAccepted)
-	w.Write([]byte(`OK`))
-}
+func TestErrorLoggingMiddlewareTableTest(t *testing.T) {
+	for _, row := range testTableErrorLoggingMiddleware {
+		t.Run(row.NAME, func(t *testing.T) {
+			hook := logrus_test.NewLocal(logger.Logger)
 
-func TestErrorLoggingMiddlewarePanic(t *testing.T) {
-	r, _ := http.NewRequest("POST", "/api/", nil)
-	hook := test.NewLocal(logger.Logger)
+			var reqBody io.Reader
+			if row.reqBody != nil {
+				reqBody = *row.reqBody
+			}
+			r, _ := http.NewRequest(row.method, row.url, reqBody)
 
-	panicMW := ErrorLoggingMiddleware(http.HandlerFunc(panickingHandler))
+			mw := ErrorLoggingMiddleware(http.HandlerFunc(row.handler))
+			rr := httptest.NewRecorder()
+			mw.ServeHTTP(rr, r)
+			res := rr.Result()
+			body, err := ioutil.ReadAll(res.Body)
+			require.Nil(t, err)
 
-	panicRR := httptest.NewRecorder()
-	panicMW.ServeHTTP(panicRR, r)
+			assert.Equal(t, row.status, res.StatusCode)
+			assert.Equal(t, row.resBody, string(body))
 
-	res := panicRR.Result()
-	body, err := ioutil.ReadAll(res.Body)
-	require.Nil(t, err)
-
-	assert.Equal(t, http.StatusInternalServerError, res.StatusCode)
-	assert.Equal(t, "a plain panic happened\n", string(body))
-
-	lastLog := hook.LastEntry()
-	require.Equal(t, 1, len(hook.Entries))
-	require.Equal(t, log.ErrorLevel, lastLog.Level)
-	require.Equal(t, "POST", lastLog.Data["method"])
-	require.Equal(t, "/api/", lastLog.Data["url"])
-	require.Equal(t, "500", lastLog.Data["status"])
-	require.Equal(t, `{"status": "error"}`, lastLog.Data["response"])
-	require.Equal(t, `handler responded with an error`, lastLog.Message)
-}
-
-func TestErrorLoggingMiddlewareError(t *testing.T) {
-	r, _ := http.NewRequest("POST", "/api/", nil)
-	hook := test.NewLocal(logger.Logger)
-
-	errorMW := ErrorLoggingMiddleware(http.HandlerFunc(erroringHandler))
-
-	errorRR := httptest.NewRecorder()
-	errorMW.ServeHTTP(errorRR, r)
-
-	res := errorRR.Result()
-	body, err := ioutil.ReadAll(res.Body)
-	require.Nil(t, err)
-
-	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
-	assert.Equal(t, `{"status": "error"}`, string(body))
-
-	require.Equal(t, 1, len(hook.Entries))
-	lastLog := hook.LastEntry()
-	assert.Equal(t, log.ErrorLevel, lastLog.Level)
-	assert.Equal(t, "POST", lastLog.Data["method"])
-	assert.Equal(t, "/api/", lastLog.Data["url"])
-	assert.Equal(t, "401", lastLog.Data["status"])
-	assert.Equal(t, "a plain panic happened", lastLog.Data["response"])
-	assert.Equal(t, `handler responded with an error`, lastLog.Message)
-}
-
-func TestErrorLoggingMiddlewareOK(t *testing.T) {
-	r, _ := http.NewRequest("POST", "/api/", nil)
-	hook := test.NewLocal(logger.Logger)
-
-	okMW := ErrorLoggingMiddleware(http.HandlerFunc(okayHandler))
-
-	okRR := httptest.NewRecorder()
-	okMW.ServeHTTP(okRR, r)
-
-	res := okRR.Result()
-	body, err := ioutil.ReadAll(res.Body)
-	require.Nil(t, err)
-
-	assert.Equal(t, http.StatusAccepted, res.StatusCode)
-	assert.Equal(t, `OK`, string(body))
-
-	require.Equal(t, 0, len(hook.Entries))
+			if row.lastEntry != nil {
+				if assert.GreaterOrEqual(t, len(hook.Entries), 1, "expected a log entry, got none") {
+					l := hook.LastEntry()
+					assert.Equal(t, row.lastEntryLevel, l.Level)
+					for k, v := range *row.lastEntry {
+						assert.Equal(t, v, l.Data[k], k)
+					}
+					assert.Equal(t, row.lastEntryMessage, l.Message)
+				}
+			}
+		})
+	}
 }
