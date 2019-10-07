@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/lbryio/lbry.go/extras/crypto"
+	"github.com/lbryio/lbry.go/v2/extras/crypto"
 	"github.com/lbryio/lbrytv/config"
 
 	"github.com/stretchr/testify/assert"

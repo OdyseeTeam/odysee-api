@@ -15,7 +15,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/monitor"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
-	"github.com/lbryio/lbry.go/stream"
+	"github.com/lbryio/lbry.go/v2/stream"
 	log "github.com/sirupsen/logrus"
 )
 

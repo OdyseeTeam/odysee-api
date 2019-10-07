@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lbryio/lbry.go/stream"
+	"github.com/lbryio/lbry.go/v2/stream"
 )
 
 // CopyN copies n bytes (or until an error) from src to dst.

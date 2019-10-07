@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/lbryio/lbry.go/extras/crypto"
+	"github.com/lbryio/lbry.go/v2/extras/crypto"
 )
 
 // CreateTestConn creates a temporary test database and returns a connection object for accessing it

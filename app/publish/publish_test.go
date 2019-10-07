@@ -89,8 +89,8 @@ func TestLbrynetPublisher(t *testing.T) {
 
 	p := &LbrynetPublisher{proxy.NewService(config.GetLbrynet())}
 
-	userSvc := users.NewWalletService()
-	u, err := userSvc.Retrieve(users.Query{Token: authToken})
+	walletSvc := users.NewWalletService()
+	u, err := walletSvc.Retrieve(users.Query{Token: authToken})
 	require.Nil(t, err)
 
 	data := []byte("test file")
