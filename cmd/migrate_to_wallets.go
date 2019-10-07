@@ -68,7 +68,7 @@ var migrateToWallets = &cobra.Command{
 				panic(fmt.Sprintf("expected one page, found %v for account %v", channels.TotalPages, accID))
 			}
 
-			fmt.Printf("got %v channels for acc id=%v, uid=%v", len(channels.Items), accID, u.ID)
+			fmt.Printf("got %v channels for acc id=%v, uid=%v\n", len(channels.Items), accID, u.ID)
 
 			for _, channel := range channels.Items {
 				key, err := c.ChannelExport(channel.ClaimID, nil, nil)
@@ -93,7 +93,7 @@ var migrateToWallets = &cobra.Command{
 					panic(err)
 				}
 			}
-			fmt.Printf("removed account %v for user %v", accID, u.ID)
+			fmt.Printf("removed account %v for user %v\n", accID, u.ID)
 
 			newAccName := lbrynet.MakeAccountName(u.ID)
 
@@ -104,8 +104,11 @@ var migrateToWallets = &cobra.Command{
 					prettyPrint(acc)
 					panic(err)
 				}
+				fmt.Printf("DONE migrating account %v to wallet %v (acc id=%v)\n", accID, wid, newAcc.ID)
+			} else {
+				fmt.Printf("TESTED migrating account %v to wallet %v\n", accID, wid)
 			}
-			fmt.Printf("DONE migrating account %v to wallet %v (acc id=%v)\n", accID, wid, newAcc.ID)
+
 		}
 	},
 }
