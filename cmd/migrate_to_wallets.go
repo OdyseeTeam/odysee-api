@@ -44,7 +44,7 @@ var migrateToWallets = &cobra.Command{
 			wid := lbrynet.MakeWalletID(u.ID)
 
 			if realRun {
-				wid, err = lbrynet.InitializeWallet(u.ID)
+				_, err = c.WalletCreate(wid, &ljsonrpc.WalletCreateOpts{CreateAccount: false})
 				if err != nil {
 					panic(err)
 				}
@@ -92,8 +92,8 @@ var migrateToWallets = &cobra.Command{
 				if err != nil {
 					panic(err)
 				}
+				fmt.Printf("removed account %v for user %v (seed=%v)\n", accID, u.ID, acc.Seed)
 			}
-			fmt.Printf("removed account %v for user %v\n", accID, u.ID)
 
 			newAccName := lbrynet.MakeAccountName(u.ID)
 
