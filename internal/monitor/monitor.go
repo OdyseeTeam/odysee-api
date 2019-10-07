@@ -1,9 +1,6 @@
 package monitor
 
 import (
-	"math"
-	"net/http"
-
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/version"
 
@@ -27,8 +24,6 @@ type ModuleLogger struct {
 
 // F can be supplied to ModuleLogger's Log function for providing additional log context.
 type F map[string]interface{}
-
-const responseSnippetLen = 250.
 
 // init magic is needed so logging is set up without calling it in every package explicitly
 func init() {
@@ -121,45 +116,6 @@ func LogFailedQuery(method string, query interface{}, errorResponse interface{})
 	}).Error("daemon responded with an error")
 
 	captureFailedQuery(method, query, errorResponse)
-}
-
-// loggingWriter mimics http.ResponseWriter but stores a snippet of response, status code
-// and response size for easier logging
-type loggingWriter struct {
-	http.ResponseWriter
-	Status          int
-	ResponseSnippet string
-	ResponseSize    int
-}
-
-func (w *loggingWriter) Write(p []byte) (int, error) {
-	w.ResponseSnippet = string(p[:int(math.Min(float64(len(p)), responseSnippetLen))])
-	w.ResponseSize += len(p)
-	return w.ResponseWriter.Write(p)
-}
-
-func (w *loggingWriter) WriteHeader(status int) {
-	w.Status = status
-	w.ResponseWriter.WriteHeader(status)
-}
-
-func (w *loggingWriter) IsSuccess() bool {
-	return w.Status <= http.StatusBadRequest
-}
-
-func RequestLoggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		w := &loggingWriter{ResponseWriter: writer}
-		next.ServeHTTP(w, request)
-		fields := logrus.Fields{
-			"url":    request.URL.Path,
-			"status": w.Status,
-		}
-		if !w.IsSuccess() {
-			fields["response"] = w.ResponseSnippet
-			Logger.WithFields(fields).Error("server responded with error")
-		}
-	})
 }
 
 type QueryMonitor interface {

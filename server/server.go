@@ -79,7 +79,7 @@ func (s *Server) configureRouter() *mux.Router {
 
 	api.InstallRoutes(s.ProxyService, r)
 
-	r.Use(monitor.RequestLoggingMiddleware)
+	r.Use(ErrorLoggingMiddleware)
 	r.Use(s.defaultHeadersMiddleware)
 	return r
 }
