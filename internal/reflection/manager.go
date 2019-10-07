@@ -8,8 +8,8 @@ import (
 
 	"github.com/lbryio/lbrytv/internal/monitor"
 
-	"github.com/lbryio/lbry.go/v2/extras/errors"
-	"github.com/lbryio/lbry.go/v2/stream"
+	"github.com/lbryio/lbry.go/extras/errors"
+	"github.com/lbryio/lbry.go/stream"
 	"github.com/lbryio/reflector.go/reflector"
 )
 
