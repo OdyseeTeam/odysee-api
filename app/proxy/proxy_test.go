@@ -211,7 +211,7 @@ func TestForwardCall_ClientError(t *testing.T) {
 func TestForwardCall_InvalidResolveParams(t *testing.T) {
 	r := call(t, MethodResolve)
 	assert.NotNil(t, r.Error)
-	assert.Equal(t, "jsonrpc_resolve() missing 1 required positional argument: 'urls'", r.Error.Message)
+	assert.Contains(t, r.Error.Message, `missing 1 required positional argument:`)
 }
 
 func TestForwardCall_shouldLog(t *testing.T) {
