@@ -175,7 +175,7 @@ func TestCallerCallRelaxedMethods(t *testing.T) {
 }
 
 func TestCallerCallNonRelaxedMethods(t *testing.T) {
-	for _, m := range accountSpecificMethods {
+	for _, m := range walletSpecificMethods {
 		mockClient := &ClientMock{}
 		svc := NewService("")
 		c := Caller{

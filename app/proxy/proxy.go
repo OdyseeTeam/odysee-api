@@ -38,11 +38,11 @@ var relaxedMethods = []string{
 	"routing_table_get",
 }
 
-// accountSpecificMethods are methods which require wallet_id.
+// walletSpecificMethods are methods which require wallet_id.
 // This list will inevitably turn stale sooner or later as new methods
 // are added to the SDK so relaxedMethods should be used for strict validation
 // whether wallet_id is required.
-var accountSpecificMethods = []string{
+var walletSpecificMethods = []string{
 	"publish",
 
 	"address_unused",
@@ -91,7 +91,7 @@ var accountSpecificMethods = []string{
 }
 
 // forbiddenMethods are not allowed for remote calling.
-// DEPRECATED: a sum of relaxedMethods and accountSpecificMethods should be used instead.
+// DEPRECATED: a sum of relaxedMethods and walletSpecificMethods should be used instead.
 var forbiddenMethods = []string{
 	"stop",
 
@@ -199,7 +199,7 @@ func preprocessRequest(r *jsonrpc.RPCRequest, accountID string) *jsonrpc.RPCResp
 		return resp
 	}
 
-	if accountID != "" && methodInList(r.Method, accountSpecificMethods) {
+	if accountID != "" && methodInList(r.Method, walletSpecificMethods) {
 		monitor.Logger.WithFields(log.Fields{
 			"method": r.Method, "params": r.Params,
 		}).Info("got an account-specific method call")

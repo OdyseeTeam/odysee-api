@@ -159,7 +159,7 @@ func (q *Query) predefinedResponse() *jsonrpc.RPCResponse {
 }
 
 func (q *Query) validate() CallError {
-	if !methodInList(q.Method(), relaxedMethods) && !methodInList(q.Method(), accountSpecificMethods) {
+	if !methodInList(q.Method(), relaxedMethods) && !methodInList(q.Method(), walletSpecificMethods) {
 		return NewMethodError(errors.New("forbidden method"))
 	}
 	if q.ParamsAsMap() != nil {
