@@ -3,37 +3,39 @@ package proxy
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/monitor"
 )
+
+var logger = monitor.NewModuleLogger("proxy_handlers")
 
 // RequestHandler is a wrapper for passing proxy.Service instance to proxy HTTP handler.
 type RequestHandler struct {
 	*Service
 }
 
+// NewRequestHandler initializes request handler with a provided Proxy Service instance
 func NewRequestHandler(svc *Service) *RequestHandler {
-	return &RequestHandler{svc}
+	return &RequestHandler{Service: svc}
 }
 
 // Handle forwards client JSON-RPC request to proxy.
 func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "OPTIONS" {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
 	if r.Body == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("empty request body"))
+		logger.Log().Errorf("empty request body")
 		return
 	}
-
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Panicf("error: %v", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("error reading request body"))
+		logger.Log().Errorf("error reading request body: %v", err.Error())
+		return
 	}
 
 	c := rh.Service.NewCaller()
@@ -43,11 +45,13 @@ func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		auth := users.NewAuthenticator(retriever)
 		wid, err := auth.GetWalletID(r)
 
-		// TODO: Refactor response creation out of this function
+		// TODO: Refactor error response creation
 		if err != nil {
 			response, _ := json.Marshal(NewErrorResponse(err.Error(), ErrAuthFailed))
-			w.WriteHeader(http.StatusForbidden)
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
 			w.Write(response)
+			monitor.CaptureRequestError(err, r, w)
 			return
 		}
 		c.SetWalletID(wid)
@@ -59,6 +63,7 @@ func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	w.Write(rawCallReponse)
 }
 
+// HandleOptions returns necessary CORS headers for pre-flight requests to proxy API
 func (rh *RequestHandler) HandleOptions(w http.ResponseWriter, r *http.Request) {
 	hs := w.Header()
 	hs.Set("Access-Control-Max-Age", "7200")

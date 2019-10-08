@@ -8,6 +8,7 @@ require (
 	github.com/gobuffalo/packr/v2 v2.5.1
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
+	github.com/google/martian v2.1.0+incompatible
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/jinzhu/gorm v1.9.9

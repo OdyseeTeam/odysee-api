@@ -17,7 +17,7 @@ func TestProxyOptions(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	handler := NewRequestHandler(svc)
-	handler.Handle(rr, r)
+	handler.HandleOptions(rr, r)
 
 	response := rr.Result()
 	assert.Equal(t, http.StatusOK, response.StatusCode)

@@ -163,7 +163,7 @@ func TestWithWrongAuthToken(t *testing.T) {
 	handler := NewRequestHandler(svc)
 	handler.Handle(rr, r)
 
-	assert.Equal(t, http.StatusForbidden, rr.Code)
+	assert.Equal(t, http.StatusOK, rr.Code)
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.Nil(t, err)
 	assert.Equal(t, "cannot authenticate user with internal-apis: could not authenticate user", response.Error.Message)

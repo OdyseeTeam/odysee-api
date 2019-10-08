@@ -1,6 +1,7 @@
-package server
+package monitor
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -21,7 +22,7 @@ type middlewareTestRow struct {
 	handler          http.HandlerFunc
 	status           int
 	resBody          string
-	lastEntry        *map[string]interface{}
+	lastEntry        *map[string]string
 	lastEntryLevel   log.Level
 	lastEntryMessage string
 }
@@ -36,10 +37,10 @@ var testTableErrorLoggingMiddleware = []middlewareTestRow{
 		},
 		status:  http.StatusInternalServerError,
 		resBody: "panic ensued\n",
-		lastEntry: &map[string]interface{}{
+		lastEntry: &map[string]string{
 			"method":   "POST",
 			"url":      "/api/",
-			"status":   http.StatusInternalServerError,
+			"status":   fmt.Sprintf("%v", http.StatusInternalServerError),
 			"response": "panic ensued",
 		},
 		lastEntryLevel:   log.ErrorLevel,
@@ -56,10 +57,10 @@ var testTableErrorLoggingMiddleware = []middlewareTestRow{
 		},
 		status:  http.StatusBadRequest,
 		resBody: `{"status": "error"}`,
-		lastEntry: &map[string]interface{}{
+		lastEntry: &map[string]string{
 			"method":   "POST",
 			"url":      "/api/",
-			"status":   http.StatusBadRequest,
+			"status":   fmt.Sprintf("%v", http.StatusBadRequest),
 			"response": `{"status": "error"}`,
 		},
 		lastEntryLevel:   log.ErrorLevel,
@@ -92,7 +93,7 @@ var testTableErrorLoggingMiddleware = []middlewareTestRow{
 func TestErrorLoggingMiddlewareTableTest(t *testing.T) {
 	for _, row := range testTableErrorLoggingMiddleware {
 		t.Run(row.NAME, func(t *testing.T) {
-			hook := logrus_test.NewLocal(logger.Logger)
+			hook := logrus_test.NewLocal(httpLogger.Logger)
 
 			var reqBody io.Reader
 			if row.reqBody != nil {
