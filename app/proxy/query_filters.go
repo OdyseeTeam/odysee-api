@@ -6,28 +6,6 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-var forbiddenMethods = []string{
-	"stop",
-	"account_add",
-	"account_create",
-	"account_encrypt",
-	"account_decrypt",
-	"account_fund",
-	// "account_list",
-	"account_lock",
-	"account_remove",
-	"account_set",
-	"account_unlock",
-	"get",
-	"sync_apply",
-}
-
-const forbiddenParam = paramAccountID
-
-func MethodRequiresAccountID(method string) bool {
-	return methodInList(method, accountSpecificMethods)
-}
-
 func methodInList(method string, checkMethods []string) bool {
 	for _, m := range checkMethods {
 		if m == method {

@@ -159,7 +159,7 @@ func (q *Query) predefinedResponse() *jsonrpc.RPCResponse {
 }
 
 func (q *Query) validate() CallError {
-	if methodInList(q.Method(), forbiddenMethods) {
+	if !methodInList(q.Method(), relaxedMethods) && !methodInList(q.Method(), accountSpecificMethods) {
 		return NewMethodError(errors.New("forbidden method"))
 	}
 	if q.ParamsAsMap() != nil {
@@ -168,7 +168,7 @@ func (q *Query) validate() CallError {
 		}
 	}
 
-	if methodInList(q.Method(), accountSpecificMethods) {
+	if !methodInList(q.Method(), relaxedMethods) {
 		if q.walletID == "" {
 			return NewParamsError(errors.New("account identificator required"))
 		}

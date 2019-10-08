@@ -152,13 +152,61 @@ func TestCallerCallAccountBalance(t *testing.T) {
 	assert.Equal(t, "account_balance", hook.LastEntry().Data["method"])
 }
 
+func TestCallerCallRelaxedMethods(t *testing.T) {
+	for _, m := range relaxedMethods {
+		if m == MethodStatus {
+			continue
+		}
+		mockClient := &ClientMock{}
+		svc := NewService("")
+		c := Caller{
+			client:  mockClient,
+			service: svc,
+		}
+		request := newRawRequest(t, m, nil)
+		result := c.Call(request)
+		expectedRequest := jsonrpc.RPCRequest{
+			Method:  m,
+			Params:  nil,
+			JSONRPC: "2.0",
+		}
+		assert.EqualValues(t, expectedRequest, mockClient.LastRequest, string(result))
+	}
+}
+
+func TestCallerCallNonRelaxedMethods(t *testing.T) {
+	for _, m := range accountSpecificMethods {
+		mockClient := &ClientMock{}
+		svc := NewService("")
+		c := Caller{
+			client:  mockClient,
+			service: svc,
+		}
+		request := newRawRequest(t, m, nil)
+		result := c.Call(request)
+		assert.Contains(t, string(result), `"message": "account identificator required"`)
+	}
+}
+
+func TestCallerCallForbiddenMethod(t *testing.T) {
+	mockClient := &ClientMock{}
+	svc := NewService("")
+	c := Caller{
+		client:  mockClient,
+		service: svc,
+	}
+	request := newRawRequest(t, "stop", nil)
+	result := c.Call(request)
+	assert.Contains(t, string(result), `"message": "forbidden method"`)
+}
+
 func TestCallerCallAttachesAccountId(t *testing.T) {
 	mockClient := &ClientMock{}
 
 	rand.Seed(time.Now().UnixNano())
 	dummyWalletID := "abc123321"
 
-	svc := NewService(endpoint)
+	svc := NewService("")
 	c := Caller{
 		client:  mockClient,
 		service: svc,
@@ -178,8 +226,6 @@ func TestCallerCallAttachesAccountId(t *testing.T) {
 }
 
 func TestCallerSetPreprocessor(t *testing.T) {
-	wid := "walletId"
-
 	svc := NewService("")
 	client := &ClientMock{}
 	c := Caller{
@@ -190,17 +236,17 @@ func TestCallerSetPreprocessor(t *testing.T) {
 	c.SetPreprocessor(func(q *Query) {
 		params := q.ParamsAsMap()
 		if params == nil {
-			q.Request.Params = map[string]string{paramWalletID: wid}
+			q.Request.Params = map[string]string{"param": "123"}
 		} else {
-			params[paramWalletID] = wid
+			params["param"] = "123"
 			q.Request.Params = params
 		}
 	})
 
-	c.Call([]byte(newRawRequest(t, "imaginary_method", nil)))
+	c.Call([]byte(newRawRequest(t, relaxedMethods[0], nil)))
 	p, ok := client.LastRequest.Params.(map[string]string)
 	assert.True(t, ok)
-	assert.Equal(t, wid, p[paramWalletID])
+	assert.Equal(t, "123", p["param"])
 }
 
 func TestCallerCallSDKError(t *testing.T) {
