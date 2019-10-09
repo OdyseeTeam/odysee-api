@@ -61,9 +61,9 @@ func (s *Server) configureListener() *http.Server {
 		Addr:    s.address,
 		Handler: s.router,
 		// Can't have WriteTimeout set for streaming endpoints
-		WriteTimeout: time.Second * 0,
-		ReadTimeout:  time.Second * 120,
-		IdleTimeout:  time.Second * 60,
+		WriteTimeout:      time.Second * 0,
+		IdleTimeout:       time.Second * 0,
+		ReadHeaderTimeout: time.Second * 10,
 	}
 }
 
