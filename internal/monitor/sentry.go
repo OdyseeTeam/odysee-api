@@ -1,7 +1,6 @@
 package monitor
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/lbryio/lbrytv/config"
@@ -45,10 +44,12 @@ func CaptureException(err error, params ...map[string]string) {
 
 // captureFailedQuery sends to Sentry details of a failed daemon call.
 func captureFailedQuery(method string, query interface{}, errorResponse interface{}) {
-	sentry.WithScope(func(scope *sentry.Scope) {
-		scope.SetExtra("method", method)
-		scope.SetExtra("query", fmt.Sprintf("%v", query))
-		scope.SetExtra("response", fmt.Sprintf("%v", errorResponse))
-		sentry.CaptureException(errors.New("Daemon responded with an error"))
-	})
+	CaptureException(
+		fmt.Errorf("daemon responded with an error when calling method %v", method),
+		map[string]string{
+			"method":   method,
+			"query":    fmt.Sprintf("%v", query),
+			"response": fmt.Sprintf("%v", errorResponse),
+		},
+	)
 }
