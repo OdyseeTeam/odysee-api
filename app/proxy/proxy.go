@@ -88,6 +88,13 @@ var walletSpecificMethods = []string{
 	"utxo_release",
 
 	"wallet_list",
+	"wallet_send",
+	"wallet_balance",
+	"wallet_encrypt",
+	"wallet_decrypt",
+	"wallet_lock",
+	"wallet_unlock",
+	"wallet_status",
 }
 
 // forbiddenMethods are not allowed for remote calling.
@@ -102,7 +109,6 @@ var forbiddenMethods = []string{
 	"account_fund",
 	"account_lock",
 	"account_remove",
-	"account_set",
 	"account_unlock",
 
 	"file_delete",
