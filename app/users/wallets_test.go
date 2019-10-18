@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/ybbus/jsonrpc"
 )
 
 func TestWalletServiceRetrieveNewUser(t *testing.T) {
@@ -29,7 +30,7 @@ func TestWalletServiceRetrieveNewUser(t *testing.T) {
 	require.Equal(t, wid, u.WalletID)
 
 	count, err := models.Users(models.UserWhere.ID.EQ(u.ID)).CountG()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, 1, count)
 
 	u, err = svc.Retrieve(Query{Token: "abc"})
@@ -66,16 +67,42 @@ func TestWalletServiceRetrieveExistingUser(t *testing.T) {
 
 	s := NewWalletService()
 	u, err := s.Retrieve(Query{Token: "abc"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, u)
 
 	u, err = s.Retrieve(Query{Token: "abc"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, dummyUserID, u.ID)
 
 	count, err := models.Users().CountG()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, 1, count)
+}
+
+func TestWalletServiceRetrieveExistingUnloadedWallet(t *testing.T) {
+	testFuncSetup()
+
+	ts := launchAuthenticatingAPIServer(dummyUserID)
+	defer ts.Close()
+	config.Override("InternalAPIHost", ts.URL)
+	defer config.RestoreOverridden()
+
+	s := NewWalletService()
+	u, err := s.Retrieve(Query{Token: "abc"})
+	require.NoError(t, err)
+	require.NotNil(t, u)
+
+	// Unloading wallet which should then be loaded in the Retrieve method
+	_, err = lbrynet.WalletRemove(u.ID)
+	require.NoError(t, err)
+	u, err = s.Retrieve(Query{Token: "abc"})
+	require.NoError(t, err)
+	require.NotNil(t, u)
+
+	cl := jsonrpc.NewClient(config.GetLbrynet())
+	res, err := cl.Call("wallet_balance", map[string]string{"wallet_id": u.WalletID})
+	require.NoError(t, err)
+	assert.Nil(t, res.Error)
 }
 
 func TestWalletServiceRetrieveExistingUserMissingWalletID(t *testing.T) {
@@ -89,11 +116,11 @@ func TestWalletServiceRetrieveExistingUserMissingWalletID(t *testing.T) {
 
 	s := NewWalletService()
 	u, err := s.createDBUser(uid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, u)
 
 	u, err = s.Retrieve(Query{Token: "abc"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotEqual(t, "", u.WalletID)
 }
 

@@ -28,6 +28,7 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 		localUser *models.User
 		wid       string
 	)
+	doWalletInit := true
 	token := q.Token
 
 	log := s.logger.LogF(monitor.F{"token": token})
@@ -55,6 +56,7 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 		if err != nil {
 			return nil, err
 		}
+		doWalletInit = false
 		log = s.logger.LogF(monitor.F{"token": token, "id": remoteUser.ID, "email": remoteUser.Email, "wallet_id": wid})
 	} else if errStorage != nil {
 		return nil, errStorage
@@ -67,17 +69,29 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 		if err != nil {
 			return nil, err
 		}
+		doWalletInit = false
 		err := s.saveWalletID(localUser, wid)
 		if err != nil {
 			return nil, err
 		}
 	}
 
+	if doWalletInit {
+		err = s.initializeWallet(localUser)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return localUser, nil
 }
 
 func (s *WalletService) createWallet(u *models.User) (string, error) {
 	return lbrynet.InitializeWallet(u.ID)
+}
+
+func (s *WalletService) initializeWallet(u *models.User) error {
+	_, err := lbrynet.AddWallet(u.ID)
+	return err
 }
 
 func (s *WalletService) saveWalletID(u *models.User, wid string) error {
