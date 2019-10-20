@@ -5,6 +5,7 @@ The LBRY experience, in the comfort of your own browser.
 Active development is in progress, expect failing tests and breaking changes.
 
 [![CircleCI](https://img.shields.io/circleci/project/github/lbryio/lbrytv/master.svg)](https://circleci.com/gh/lbryio/lbrytv/tree/master) [![Coverage](https://img.shields.io/coveralls/github/lbryio/lbrytv.svg)](https://coveralls.io/github/lbryio/lbrytv)
+[![MIT licensed](https://img.shields.io/dub/l/vibe-d.svg?style=flat)](https://github.com/lbryio/lbry-desktop/blob/master/LICENSE)
 
 ## Running with Docker
 
