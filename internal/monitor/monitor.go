@@ -22,10 +22,14 @@ const ValueMask = "****"
 type ModuleLogger struct {
 	ModuleName string
 	Logger     *logrus.Logger
+	Level      logrus.Level
 }
 
 // F can be supplied to ModuleLogger's Log function for providing additional log context.
 type F map[string]interface{}
+
+var jsonFormatter = logrus.JSONFormatter{DisableTimestamp: true}
+var textFormatter = logrus.TextFormatter{FullTimestamp: true, TimestampFormat: "15:04"}
 
 // init magic is needed so logging is set up without calling it in every package explicitly
 func init() {
@@ -44,15 +48,15 @@ func SetupLogging() {
 
 		logrus.SetLevel(logrus.InfoLevel)
 		Logger.SetLevel(logrus.InfoLevel)
-		logrus.SetFormatter(&logrus.JSONFormatter{})
-		Logger.SetFormatter(&logrus.JSONFormatter{})
+		logrus.SetFormatter(&jsonFormatter)
+		Logger.SetFormatter(&jsonFormatter)
 	} else {
 		mode = "develop"
 
 		logrus.SetLevel(logrus.DebugLevel)
 		Logger.SetLevel(logrus.DebugLevel)
-		logrus.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
-		Logger.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
+		logrus.SetFormatter(&textFormatter)
+		Logger.SetFormatter(&textFormatter)
 	}
 
 	Logger.Infof("%v, running in %v mode", version.GetFullBuildName(), mode)
@@ -62,10 +66,14 @@ func SetupLogging() {
 // NewModuleLogger creates a new ModuleLogger instance carrying module name
 // for later `Log()` calls.
 func NewModuleLogger(moduleName string) ModuleLogger {
-	return ModuleLogger{
+	logger := getBaseLogger()
+	modLogger := ModuleLogger{
 		ModuleName: moduleName,
-		Logger:     logrus.New(),
+		Logger:     logger,
+		Level:      logger.GetLevel(),
 	}
+	modLogger.Log().Debugf("module logger initialized (level=%v)", modLogger.Level)
+	return modLogger
 }
 
 // LogF returns a new log entry containing additional info provided by fields,
@@ -138,10 +146,10 @@ func getBaseLogger() *logrus.Logger {
 	logger := logrus.New()
 	if config.IsProduction() {
 		logger.SetLevel(logrus.InfoLevel)
-		logger.SetFormatter(&logrus.JSONFormatter{})
+		logger.SetFormatter(&jsonFormatter)
 	} else {
 		logger.SetLevel(logrus.DebugLevel)
-		logger.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
+		logger.SetFormatter(&textFormatter)
 	}
 	return logger
 }
@@ -149,6 +157,7 @@ func getBaseLogger() *logrus.Logger {
 type ProxyLogger struct {
 	logger *logrus.Logger
 	entry  *logrus.Entry
+	Level  logrus.Level
 }
 
 func NewProxyLogger() *ProxyLogger {
@@ -157,6 +166,7 @@ func NewProxyLogger() *ProxyLogger {
 	l := ProxyLogger{
 		logger: logger,
 		entry:  logger.WithFields(logrus.Fields{"module": "proxy"}),
+		Level:  logger.GetLevel(),
 	}
 	return &l
 }

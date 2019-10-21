@@ -19,3 +19,5 @@ PublishSourceDir: /storage/published
 BlobFilesDir: /storage/lbrynet/blobfiles
 
 # ReflectorAddress: reflector.lbry.com:5566
+
+BlobDownloadTimeout: 60

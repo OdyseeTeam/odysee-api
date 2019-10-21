@@ -59,6 +59,7 @@ func (c *ConfigWrapper) Init() {
 	c.Viper.SetDefault("Address", ":8080")
 	c.Viper.SetDefault("Host", "http://localhost:8080")
 	c.Viper.SetDefault("BaseContentURL", "http://localhost:8080/content/")
+	c.Viper.SetDefault("BlobDownloadTimeout", int64(10))
 
 	c.Viper.SetDefault("AccountsEnabled", false)
 	c.Viper.BindEnv("AccountsEnabled")
@@ -180,4 +181,9 @@ func GetBlobFilesDir() string {
 // GetReflectorAddress returns reflector address in the format of host:port.
 func GetReflectorAddress() string {
 	return Config.Viper.GetString("ReflectorAddress")
+}
+
+// GetBlobDownloadTimeout returns timeout for blob HTTP client in seconds.
+func GetBlobDownloadTimeout() int64 {
+	return Config.Viper.GetInt64("BlobDownloadTimeout")
 }

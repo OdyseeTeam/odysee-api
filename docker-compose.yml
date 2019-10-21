@@ -69,6 +69,7 @@ services:
       target: /storage
     environment:
       LW_LBRYNET: http://lbrynet:5279/
+      LW_DEBUG: 1
     depends_on:
       - lbrynet
       - postgres

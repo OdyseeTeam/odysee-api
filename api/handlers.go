@@ -3,11 +3,9 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/lbryio/lbrytv/app/player"
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
 	"github.com/gorilla/mux"
@@ -21,14 +19,9 @@ func Index(w http.ResponseWriter, req *http.Request) {
 }
 
 func stream(uri string, w http.ResponseWriter, req *http.Request) {
-	metrics.PlayerStreamsRunning.Inc()
-	defer metrics.PlayerStreamsRunning.Dec()
-	start := time.Now()
 	err := player.PlayURI(uri, w, req)
-	duration := time.Now().Sub(start).Seconds()
 
 	if err != nil {
-		metrics.PlayerFailedDurations.Observe(duration)
 		if err.Error() == "paid stream" {
 			w.WriteHeader(http.StatusPaymentRequired)
 		} else {
@@ -36,8 +29,6 @@ func stream(uri string, w http.ResponseWriter, req *http.Request) {
 			monitor.CaptureException(err, map[string]string{"uri": uri})
 			w.Write([]byte(err.Error()))
 		}
-	} else {
-		metrics.PlayerSuccessDurations.Observe(duration)
 	}
 }
 

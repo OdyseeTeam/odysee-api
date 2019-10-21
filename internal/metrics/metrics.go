@@ -43,17 +43,27 @@ var (
 		Name:      "running",
 		Help:      "Number of streams currently playing",
 	})
-	PlayerSuccessDurations = promauto.NewHistogram(prometheus.HistogramOpts{
+	PlayerBlobDownloadDurations = promauto.NewHistogram(prometheus.HistogramOpts{
 		Namespace: nsPlayer,
-		Subsystem: "response",
-		Name:      "success_seconds",
-		Help:      "Time to successful response",
+		Subsystem: "blob",
+		Name:      "download_seconds",
+		Help:      "Blob download durations",
 	})
-	PlayerFailedDurations = promauto.NewHistogram(prometheus.HistogramOpts{
+	PlayerBlobDecodeDurations = promauto.NewHistogram(prometheus.HistogramOpts{
 		Namespace: nsPlayer,
-		Subsystem: "response",
-		Name:      "failed_seconds",
-		Help:      "Time to failed response",
+		Subsystem: "blob",
+		Name:      "decode_seconds",
+		Help:      "Blob decode durations",
+	})
+	PlayerSuccessesCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: nsPlayer,
+		Name:      "successes_total",
+		Help:      "Total number of successfully served blobs",
+	})
+	PlayerFailuresCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: nsPlayer,
+		Name:      "failures_total",
+		Help:      "Total number of errors serving blobs",
 	})
 
 	IAPIAuthSuccessDurations = promauto.NewHistogram(prometheus.HistogramOpts{
