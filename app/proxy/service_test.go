@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -99,16 +98,6 @@ func TestCallerSetWalletID(t *testing.T) {
 	assert.Equal(t, "abc", c.walletID)
 }
 
-func TestCallerMetrics(t *testing.T) {
-	svc := NewService(endpoint)
-	c := Caller{
-		client:  &ClientMock{Delay: 250 * time.Millisecond},
-		service: svc,
-	}
-	c.Call([]byte(newRawRequest(t, "resolve", map[string]string{"urls": "what"})))
-	assert.Equal(t, 0.25, math.Round(svc.GetMetricsValue("resolve").Value*100)/100)
-}
-
 func TestCallerCallResolve(t *testing.T) {
 	var resolveResponse ljsonrpc.ResolveResponse
 
@@ -122,7 +111,6 @@ func TestCallerCallResolve(t *testing.T) {
 	rawCallReponse := c.Call(request)
 	parseRawResponse(t, rawCallReponse, &resolveResponse)
 	assert.Equal(t, resolvedClaimID, resolveResponse[resolvedURL].ClaimID)
-	assert.True(t, svc.GetMetricsValue("resolve").Value > 0)
 }
 
 func TestCallerCallAccountBalance(t *testing.T) {

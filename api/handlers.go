@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/lbryio/lbrytv/app/player"
 	"github.com/lbryio/lbrytv/config"
@@ -14,20 +15,20 @@ import (
 
 var logger = monitor.NewModuleLogger("api")
 
-var Collector = metrics.NewCollector()
-
 // Index serves a blank home page
 func Index(w http.ResponseWriter, req *http.Request) {
 	http.Redirect(w, req, config.GetProjectURL(), http.StatusSeeOther)
 }
 
 func stream(uri string, w http.ResponseWriter, req *http.Request) {
-	Collector.MetricsIncrement("player_instances_count", metrics.One)
-	Collector.MetricsIncrement("player_streams_total", metrics.One)
+	metrics.PlayerStreamsRunning.Inc()
+	defer metrics.PlayerStreamsRunning.Dec()
+	start := time.Now()
 	err := player.PlayURI(uri, w, req)
-	Collector.MetricsDecrement("player_instances_count", metrics.One)
-	// Only output error if player has not pushed anything to the client yet
+	duration := time.Now().Sub(start).Seconds()
+
 	if err != nil {
+		metrics.PlayerFailureSeconds.Observe(duration)
 		if err.Error() == "paid stream" {
 			w.WriteHeader(http.StatusPaymentRequired)
 		} else {
@@ -35,6 +36,8 @@ func stream(uri string, w http.ResponseWriter, req *http.Request) {
 			monitor.CaptureException(err, map[string]string{"uri": uri})
 			w.Write([]byte(err.Error()))
 		}
+	} else {
+		metrics.PlayerResponseSeconds.Observe(duration)
 	}
 }
 

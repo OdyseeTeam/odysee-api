@@ -22,7 +22,6 @@ type Preprocessor func(q *Query)
 // Service generates Caller objects and keeps execution time metrics
 // for all calls proxied through those objects.
 type Service struct {
-	*metrics.Collector
 	TargetEndpoint string
 	logger         monitor.QueryMonitor
 }
@@ -48,7 +47,6 @@ type Query struct {
 // Normally only one instance of Service should be created per running server.
 func NewService(targetEndpoint string) *Service {
 	s := Service{
-		Collector:      metrics.NewCollector(),
 		TargetEndpoint: targetEndpoint,
 		logger:         monitor.NewProxyLogger(),
 	}
@@ -251,16 +249,16 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 
 	queryStartTime := time.Now()
 	r, err := c.sendQuery(q)
+	execTime := time.Now().Sub(queryStartTime).Seconds()
 	if err != nil {
 		return r, NewInternalError(err)
 	}
-	execTime := time.Now().Sub(queryStartTime).Seconds()
-
-	c.service.SetMetricsValue(q.Method(), execTime, q.Params())
 
 	if r.Error != nil {
+		metrics.ProxyCallFailureDurations.WithLabelValues(q.Method()).Observe(execTime)
 		c.service.logger.LogFailedQuery(q.Method(), q.Params(), r.Error)
 	} else {
+		metrics.ProxyCallDurations.WithLabelValues(q.Method()).Observe(execTime)
 		c.service.logger.LogSuccessfulQuery(q.Method(), execTime, q.Params())
 	}
 
