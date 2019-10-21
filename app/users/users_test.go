@@ -52,7 +52,7 @@ func launchAuthenticatingAPIServer(userID int) *httptest.Server {
 		}`, userID)))
 }
 
-func llll() *httptest.Server {
+func launchEasyAPIServer() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t := r.PostFormValue("auth_token")
 

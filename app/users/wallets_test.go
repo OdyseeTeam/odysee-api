@@ -157,7 +157,7 @@ func TestWalletServiceRetrieveEmptyEmailNoUser(t *testing.T) {
 func BenchmarkWalletCommands(b *testing.B) {
 	setupDBTables()
 
-	ts := llll()
+	ts := launchEasyAPIServer()
 	defer ts.Close()
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
