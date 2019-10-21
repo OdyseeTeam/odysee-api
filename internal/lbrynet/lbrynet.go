@@ -20,7 +20,7 @@ var defaultWalletOpts = ljsonrpc.WalletCreateOpts{SkipOnStartup: false, CreateAc
 // Client is a LBRY SDK jsonrpc client instance
 var Client = ljsonrpc.NewClient(config.GetLbrynet())
 
-var logger = monitor.NewModuleLogger("lbrynet")
+var Logger = monitor.NewModuleLogger("lbrynet")
 
 // MakeAccountName formats user ID to use as an SDK account name.
 func MakeAccountName(uid int) string {
@@ -53,14 +53,14 @@ func CreateAccount(UID int) (*ljsonrpc.Account, error) {
 	accountName := MakeAccountName(UID)
 	account, err := GetAccount(UID)
 	if err == nil {
-		logger.LogF(monitor.F{"uid": UID, "account_id": account.ID}).Error("account is already registered with lbrynet")
+		Logger.LogF(monitor.F{"uid": UID, "account_id": account.ID}).Error("account is already registered with lbrynet")
 		return nil, AccountConflict{UID: UID}
 	}
 	r, err := Client.AccountCreate(accountName, true)
 	if err != nil {
 		return nil, err
 	}
-	logger.LogF(monitor.F{"uid": UID, "account_id": r.ID}).Info("registered a new account with lbrynet")
+	Logger.LogF(monitor.F{"uid": UID, "account_id": r.ID}).Info("registered a new account with lbrynet")
 	return r, nil
 }
 
@@ -70,7 +70,7 @@ func RemoveAccount(UID int) (*ljsonrpc.Account, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger.LogF(monitor.F{"uid": UID, "account_id": acc.ID}).Warn("removing account from lbrynet")
+	Logger.LogF(monitor.F{"uid": UID, "account_id": acc.ID}).Warn("removing account from lbrynet")
 	r, err := Client.AccountRemove(acc.ID)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func RemoveAccount(UID int) (*ljsonrpc.Account, error) {
 // (eg. a wallet ID stored in the database already), AddWallet should be called instead.
 func InitializeWallet(uid int) (string, error) {
 	wid := MakeWalletID(uid)
-	log := logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
+	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
 	wallet, err := CreateWallet(uid)
 	if err != nil {
 		if errors.As(err, &WalletExists{}) {
@@ -117,7 +117,7 @@ func InitializeWallet(uid int) (string, error) {
 //  }
 func CreateWallet(uid int) (*ljsonrpc.Wallet, error) {
 	wid := MakeWalletID(uid)
-	log := logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
+	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
 	wallet, err := Client.WalletCreate(wid, &defaultWalletOpts)
 	if err != nil {
 		return nil, NewWalletError(uid, err)
@@ -132,7 +132,7 @@ func CreateWallet(uid int) (*ljsonrpc.Wallet, error) {
 //  WalletNotFound - wallet file does not exist and won't be loaded.
 func AddWallet(uid int) (*ljsonrpc.Wallet, error) {
 	wid := MakeWalletID(uid)
-	log := logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
+	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
 	wallet, err := Client.WalletAdd(wid)
 	if err != nil {
 		return nil, NewWalletError(uid, err)
@@ -147,7 +147,7 @@ func AddWallet(uid int) (*ljsonrpc.Wallet, error) {
 //  WalletNotFound - wallet file does not exist and won't be loaded.
 func WalletRemove(uid int) (*ljsonrpc.Wallet, error) {
 	wid := MakeWalletID(uid)
-	log := logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
+	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
 	wallet, err := Client.WalletRemove(wid)
 	if err != nil {
 		return nil, NewWalletError(uid, err)

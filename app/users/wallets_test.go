@@ -2,30 +2,30 @@ package users
 
 import (
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/models"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"
 )
 
 func TestWalletServiceRetrieveNewUser(t *testing.T) {
-	testFuncSetup()
-
-	ts := launchAuthenticatingAPIServer(dummyUserID)
-	defer ts.Close()
-	config.Override("InternalAPIHost", ts.URL)
-	defer config.RestoreOverridden()
+	setupDBTables()
+	defer setupCleanupDummyUser()()
 
 	wid := lbrynet.MakeWalletID(dummyUserID)
 	svc := NewWalletService()
 	u, err := svc.Retrieve(Query{Token: "abc"})
-	require.Nil(t, err, errors.Unwrap(err))
+	require.NoError(t, err, errors.Unwrap(err))
 	require.NotNil(t, u)
 	require.Equal(t, wid, u.WalletID)
 
@@ -34,12 +34,12 @@ func TestWalletServiceRetrieveNewUser(t *testing.T) {
 	assert.EqualValues(t, 1, count)
 
 	u, err = svc.Retrieve(Query{Token: "abc"})
-	require.Nil(t, err, errors.Unwrap(err))
+	require.NoError(t, err, errors.Unwrap(err))
 	require.Equal(t, wid, u.WalletID)
 }
 
 func TestWalletServiceRetrieveNonexistentUser(t *testing.T) {
-	testFuncSetup()
+	setupDBTables()
 
 	ts := launchDummyAPIServer([]byte(`{
 		"success": false,
@@ -52,18 +52,14 @@ func TestWalletServiceRetrieveNonexistentUser(t *testing.T) {
 
 	svc := NewWalletService()
 	u, err := svc.Retrieve(Query{Token: "non-existent-token"})
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Nil(t, u)
 	assert.Equal(t, "cannot authenticate user with internal-apis: could not authenticate user", err.Error())
 }
 
 func TestWalletServiceRetrieveExistingUser(t *testing.T) {
-	testFuncSetup()
-
-	ts := launchAuthenticatingAPIServer(dummyUserID)
-	defer ts.Close()
-	config.Override("InternalAPIHost", ts.URL)
-	defer config.RestoreOverridden()
+	setupDBTables()
+	defer setupCleanupDummyUser()()
 
 	s := NewWalletService()
 	u, err := s.Retrieve(Query{Token: "abc"})
@@ -80,12 +76,8 @@ func TestWalletServiceRetrieveExistingUser(t *testing.T) {
 }
 
 func TestWalletServiceRetrieveExistingUnloadedWallet(t *testing.T) {
-	testFuncSetup()
-
-	ts := launchAuthenticatingAPIServer(dummyUserID)
-	defer ts.Close()
-	config.Override("InternalAPIHost", ts.URL)
-	defer config.RestoreOverridden()
+	setupDBTables()
+	defer setupCleanupDummyUser()()
 
 	s := NewWalletService()
 	u, err := s.Retrieve(Query{Token: "abc"})
@@ -106,7 +98,7 @@ func TestWalletServiceRetrieveExistingUnloadedWallet(t *testing.T) {
 }
 
 func TestWalletServiceRetrieveExistingUserMissingWalletID(t *testing.T) {
-	testFuncSetup()
+	setupDBTables()
 
 	uid := int(rand.Int31())
 	ts := launchAuthenticatingAPIServer(uid)
@@ -125,7 +117,7 @@ func TestWalletServiceRetrieveExistingUserMissingWalletID(t *testing.T) {
 }
 
 func TestWalletServiceRetrieveEmptyEmailNoUser(t *testing.T) {
-	testFuncSetup()
+	setupDBTables()
 
 	// API server returns empty email
 	ts := launchDummyAPIServer([]byte(`{
@@ -160,4 +152,46 @@ func TestWalletServiceRetrieveEmptyEmailNoUser(t *testing.T) {
 	u, err := svc.Retrieve(Query{Token: "abc"})
 	assert.Nil(t, u)
 	assert.EqualError(t, err, "cannot authenticate user with internal-api, email not confirmed")
+}
+
+func BenchmarkWalletCommands(b *testing.B) {
+	setupDBTables()
+
+	ts := llll()
+	defer ts.Close()
+	config.Override("InternalAPIHost", ts.URL)
+	defer config.RestoreOverridden()
+
+	walletsNum := 60
+	users := make([]*models.User, walletsNum)
+	svc := NewWalletService()
+	cl := jsonrpc.NewClient(config.GetLbrynet())
+
+	svc.Logger.Disable()
+	lbrynet.Logger.Disable()
+	log.SetOutput(ioutil.Discard)
+
+	rand.Seed(time.Now().UnixNano())
+
+	for i := 0; i < walletsNum; i++ {
+		uid := int(rand.Int31())
+		u, err := svc.Retrieve(Query{Token: fmt.Sprintf("%v", uid)})
+		require.NoError(b, err, errors.Unwrap(err))
+		require.NotNil(b, u)
+		users[i] = u
+	}
+
+	b.SetParallelism(20)
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			u := users[rand.Intn(len(users))]
+			res, err := cl.Call("account_balance", map[string]string{"wallet_id": u.WalletID})
+			require.NoError(b, err)
+			assert.Nil(b, res.Error)
+		}
+	})
+
+	b.StopTimer()
 }

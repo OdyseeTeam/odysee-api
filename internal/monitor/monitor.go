@@ -1,6 +1,8 @@
 package monitor
 
 import (
+	"io/ioutil"
+
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/version"
 
@@ -89,6 +91,12 @@ func (l ModuleLogger) LogF(fields F) *logrus.Entry {
 //  Log().Info("query error")
 func (l ModuleLogger) Log() *logrus.Entry {
 	return l.Logger.WithFields(logrus.Fields{"module": l.ModuleName})
+}
+
+// Disable turns off logging output for this module logger
+func (l ModuleLogger) Disable() {
+	l.Logger.SetLevel(logrus.PanicLevel)
+	l.Logger.SetOutput(ioutil.Discard)
 }
 
 // LogSuccessfulQuery takes a remote method name, execution time and params and logs it

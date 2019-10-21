@@ -14,7 +14,9 @@ type RemoteUser struct {
 func getRemoteUser(token string, remoteIP string) (*RemoteUser, error) {
 	u := &RemoteUser{}
 	c := lbryinc.NewClient(token, &lbryinc.ClientOpts{
-		ServerAddress: config.GetInternalAPIHost(), RemoteIP: remoteIP})
+		ServerAddress: config.GetInternalAPIHost(),
+		RemoteIP:      remoteIP,
+	})
 
 	r, err := c.UserMe()
 	if err != nil {

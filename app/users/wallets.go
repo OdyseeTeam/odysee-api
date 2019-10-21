@@ -19,7 +19,7 @@ type WalletService struct {
 
 // NewWalletService returns UserService instance for retrieving or creating wallet-based user records and accounts.
 func NewWalletService() *WalletService {
-	s := &WalletService{UserService{logger: monitor.NewModuleLogger("users")}}
+	s := &WalletService{UserService{Logger: monitor.NewModuleLogger("users")}}
 	return s
 }
 
@@ -31,7 +31,7 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 	doWalletInit := true
 	token := q.Token
 
-	log := s.logger.LogF(monitor.F{"token": token})
+	log := s.Logger.LogF(monitor.F{"token": token})
 
 	remoteUser, err := getRemoteUser(token, q.MetaRemoteIP)
 	if err != nil {
@@ -39,7 +39,7 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 	}
 
 	// Update log entry with extra context data
-	log = s.logger.LogF(monitor.F{"token": token, "id": remoteUser.ID, "email": remoteUser.Email})
+	log = s.Logger.LogF(monitor.F{"token": token, "id": remoteUser.ID, "email": remoteUser.Email})
 	if remoteUser.Email == "" {
 		return nil, s.LogErrorAndReturn(log, "cannot authenticate user with internal-api, email not confirmed")
 	}
@@ -56,13 +56,19 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		err := s.saveWalletID(localUser, wid)
+		if err != nil {
+			return nil, err
+		}
+
 		doWalletInit = false
-		log = s.logger.LogF(monitor.F{"token": token, "id": remoteUser.ID, "email": remoteUser.Email, "wallet_id": wid})
+		log = s.Logger.LogF(monitor.F{"token": token, "id": remoteUser.ID, "email": remoteUser.Email, "wallet_id": wid})
 	} else if errStorage != nil {
 		return nil, errStorage
 	}
 
-	// This scenario may happen for legacy users who haven't moved to wallets yet
+	// This scenario may happen for legacy users who are present in the database but don't have a wallet yet
 	if localUser.WalletID == "" {
 		log.Warn("user doesn't have wallet ID set")
 		wid, err = s.createWallet(localUser)
@@ -78,7 +84,7 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 
 	if doWalletInit {
 		err = s.initializeWallet(localUser)
-		if err != nil {
+		if err != nil && !errors.As(err, &lbrynet.WalletAlreadyLoaded{}) {
 			return nil, err
 		}
 	}
@@ -95,7 +101,7 @@ func (s *WalletService) initializeWallet(u *models.User) error {
 }
 
 func (s *WalletService) saveWalletID(u *models.User, wid string) error {
-	s.logger.LogF(monitor.F{"id": u.ID, "wallet_id": wid}).Info("saving wallet ID to user record")
+	s.Logger.LogF(monitor.F{"id": u.ID, "wallet_id": wid}).Info("saving wallet ID to user record")
 	u.WalletID = wid
 	_, err := u.UpdateG(boil.Infer())
 	return err
@@ -104,7 +110,7 @@ func (s *WalletService) saveWalletID(u *models.User, wid string) error {
 // LogErrorAndReturn logs error with rich context and returns an error object
 // so it can be returned from the function
 func (s *WalletService) LogErrorAndReturn(log *logrus.Entry, message string, a ...interface{}) error {
-	log.Error(message)
+	log.Errorf(message, a...)
 	return fmt.Errorf(message, a...)
 }
 
