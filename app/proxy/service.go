@@ -249,17 +249,17 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 
 	queryStartTime := time.Now()
 	r, err := c.sendQuery(q)
-	execTime := time.Now().Sub(queryStartTime).Seconds()
+	duration := time.Now().Sub(queryStartTime).Seconds()
 	if err != nil {
 		return r, NewInternalError(err)
 	}
 
 	if r.Error != nil {
-		metrics.ProxyCallFailureDurations.WithLabelValues(q.Method()).Observe(execTime)
+		metrics.ProxyCallFailedDurations.WithLabelValues(q.Method()).Observe(duration)
 		c.service.logger.LogFailedQuery(q.Method(), q.Params(), r.Error)
 	} else {
-		metrics.ProxyCallDurations.WithLabelValues(q.Method()).Observe(execTime)
-		c.service.logger.LogSuccessfulQuery(q.Method(), execTime, q.Params())
+		metrics.ProxyCallDurations.WithLabelValues(q.Method()).Observe(duration)
+		c.service.logger.LogSuccessfulQuery(q.Method(), duration, q.Params())
 	}
 
 	r, err = processResponse(q.Request, r)

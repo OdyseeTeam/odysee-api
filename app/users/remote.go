@@ -1,8 +1,12 @@
 package users
 
 import (
-	"github.com/lbryio/lbry.go/v2/extras/lbryinc"
+	"time"
+
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/metrics"
+
+	"github.com/lbryio/lbry.go/v2/extras/lbryinc"
 )
 
 // RemoteUser encapsulates internal-apis user data
@@ -18,12 +22,17 @@ func getRemoteUser(token string, remoteIP string) (*RemoteUser, error) {
 		RemoteIP:      remoteIP,
 	})
 
+	start := time.Now()
 	r, err := c.UserMe()
+	duration := time.Now().Sub(start).Seconds()
+
 	if err != nil {
-		// Conn.Logger.LogF(monitor.F{monitor.TokenF: token}).Error("internal-api responded with an error: ", err)
 		// No user found in internal-apis database, give up at this point
+		metrics.IAPIAuthFailedDurations.Observe(duration)
 		return nil, err
 	}
+	metrics.IAPIAuthSuccessDurations.Observe(duration)
+
 	u.ID = int(r["id"].(float64))
 	if r["primary_email"] != nil {
 		u.Email = r["primary_email"].(string)

@@ -28,7 +28,7 @@ func stream(uri string, w http.ResponseWriter, req *http.Request) {
 	duration := time.Now().Sub(start).Seconds()
 
 	if err != nil {
-		metrics.PlayerFailureSeconds.Observe(duration)
+		metrics.PlayerFailedDurations.Observe(duration)
 		if err.Error() == "paid stream" {
 			w.WriteHeader(http.StatusPaymentRequired)
 		} else {
@@ -37,7 +37,7 @@ func stream(uri string, w http.ResponseWriter, req *http.Request) {
 			w.Write([]byte(err.Error()))
 		}
 	} else {
-		metrics.PlayerResponseSeconds.Observe(duration)
+		metrics.PlayerSuccessDurations.Observe(duration)
 	}
 }
 
