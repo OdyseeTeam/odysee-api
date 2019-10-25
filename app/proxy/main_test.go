@@ -15,7 +15,7 @@ import (
 
 const dummyUserID = 751365
 const dummyServerURL = "http://127.0.0.1:59999"
-const proxySuffix = "/api/proxy"
+const proxySuffix = "/api/v1/proxy"
 const testSetupWait = 200 * time.Millisecond
 
 var svc *Service

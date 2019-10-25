@@ -2,43 +2,44 @@ package users
 
 import (
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/models"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/ybbus/jsonrpc"
 )
 
 func TestWalletServiceRetrieveNewUser(t *testing.T) {
-	testFuncSetup()
-
-	ts := launchAuthenticatingAPIServer(dummyUserID)
-	defer ts.Close()
-	config.Override("InternalAPIHost", ts.URL)
-	defer config.RestoreOverridden()
+	setupDBTables()
+	defer setupCleanupDummyUser()()
 
 	wid := lbrynet.MakeWalletID(dummyUserID)
 	svc := NewWalletService()
 	u, err := svc.Retrieve(Query{Token: "abc"})
-	require.Nil(t, err, errors.Unwrap(err))
+	require.NoError(t, err, errors.Unwrap(err))
 	require.NotNil(t, u)
 	require.Equal(t, wid, u.WalletID)
 
 	count, err := models.Users(models.UserWhere.ID.EQ(u.ID)).CountG()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, 1, count)
 
 	u, err = svc.Retrieve(Query{Token: "abc"})
-	require.Nil(t, err, errors.Unwrap(err))
+	require.NoError(t, err, errors.Unwrap(err))
 	require.Equal(t, wid, u.WalletID)
 }
 
 func TestWalletServiceRetrieveNonexistentUser(t *testing.T) {
-	testFuncSetup()
+	setupDBTables()
 
 	ts := launchDummyAPIServer([]byte(`{
 		"success": false,
@@ -51,35 +52,53 @@ func TestWalletServiceRetrieveNonexistentUser(t *testing.T) {
 
 	svc := NewWalletService()
 	u, err := svc.Retrieve(Query{Token: "non-existent-token"})
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Nil(t, u)
 	assert.Equal(t, "cannot authenticate user with internal-apis: could not authenticate user", err.Error())
 }
 
 func TestWalletServiceRetrieveExistingUser(t *testing.T) {
-	testFuncSetup()
-
-	ts := launchAuthenticatingAPIServer(dummyUserID)
-	defer ts.Close()
-	config.Override("InternalAPIHost", ts.URL)
-	defer config.RestoreOverridden()
+	setupDBTables()
+	defer setupCleanupDummyUser()()
 
 	s := NewWalletService()
 	u, err := s.Retrieve(Query{Token: "abc"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, u)
 
 	u, err = s.Retrieve(Query{Token: "abc"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, dummyUserID, u.ID)
 
 	count, err := models.Users().CountG()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, 1, count)
 }
 
+func TestWalletServiceRetrieveExistingUnloadedWallet(t *testing.T) {
+	setupDBTables()
+	defer setupCleanupDummyUser()()
+
+	s := NewWalletService()
+	u, err := s.Retrieve(Query{Token: "abc"})
+	require.NoError(t, err)
+	require.NotNil(t, u)
+
+	// Unloading wallet which should then be loaded in the Retrieve method
+	_, err = lbrynet.WalletRemove(u.ID)
+	require.NoError(t, err)
+	u, err = s.Retrieve(Query{Token: "abc"})
+	require.NoError(t, err)
+	require.NotNil(t, u)
+
+	cl := jsonrpc.NewClient(config.GetLbrynet())
+	res, err := cl.Call("wallet_balance", map[string]string{"wallet_id": u.WalletID})
+	require.NoError(t, err)
+	assert.Nil(t, res.Error)
+}
+
 func TestWalletServiceRetrieveExistingUserMissingWalletID(t *testing.T) {
-	testFuncSetup()
+	setupDBTables()
 
 	uid := int(rand.Int31())
 	ts := launchAuthenticatingAPIServer(uid)
@@ -89,16 +108,16 @@ func TestWalletServiceRetrieveExistingUserMissingWalletID(t *testing.T) {
 
 	s := NewWalletService()
 	u, err := s.createDBUser(uid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, u)
 
 	u, err = s.Retrieve(Query{Token: "abc"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotEqual(t, "", u.WalletID)
 }
 
 func TestWalletServiceRetrieveEmptyEmailNoUser(t *testing.T) {
-	testFuncSetup()
+	setupDBTables()
 
 	// API server returns empty email
 	ts := launchDummyAPIServer([]byte(`{
@@ -133,4 +152,46 @@ func TestWalletServiceRetrieveEmptyEmailNoUser(t *testing.T) {
 	u, err := svc.Retrieve(Query{Token: "abc"})
 	assert.Nil(t, u)
 	assert.EqualError(t, err, "cannot authenticate user with internal-api, email not confirmed")
+}
+
+func BenchmarkWalletCommands(b *testing.B) {
+	setupDBTables()
+
+	ts := launchEasyAPIServer()
+	defer ts.Close()
+	config.Override("InternalAPIHost", ts.URL)
+	defer config.RestoreOverridden()
+
+	walletsNum := 60
+	users := make([]*models.User, walletsNum)
+	svc := NewWalletService()
+	cl := jsonrpc.NewClient(config.GetLbrynet())
+
+	svc.Logger.Disable()
+	lbrynet.Logger.Disable()
+	log.SetOutput(ioutil.Discard)
+
+	rand.Seed(time.Now().UnixNano())
+
+	for i := 0; i < walletsNum; i++ {
+		uid := int(rand.Int31())
+		u, err := svc.Retrieve(Query{Token: fmt.Sprintf("%v", uid)})
+		require.NoError(b, err, errors.Unwrap(err))
+		require.NotNil(b, u)
+		users[i] = u
+	}
+
+	b.SetParallelism(20)
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			u := users[rand.Intn(len(users))]
+			res, err := cl.Call("account_balance", map[string]string{"wallet_id": u.WalletID})
+			require.NoError(b, err)
+			assert.Nil(b, res.Error)
+		}
+	})
+
+	b.StopTimer()
 }

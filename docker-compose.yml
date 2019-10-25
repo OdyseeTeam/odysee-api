@@ -69,13 +69,14 @@ services:
       target: /storage
     environment:
       LW_LBRYNET: http://lbrynet:5279/
+      LW_DEBUG: 1
     depends_on:
       - lbrynet
       - postgres
   prometheus:
     image: prom/prometheus:latest
     ports:
-      - 9090:9090
+      - 9080:9090
     volumes:
       - ${PWD}/deployments/docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - ${PWD}/deployments/docker/prometheus/rules.yml:/etc/prometheus/rules.yml

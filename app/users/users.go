@@ -16,7 +16,7 @@ import (
 
 // UserService stores manipulated user data
 type UserService struct {
-	logger monitor.ModuleLogger
+	Logger monitor.ModuleLogger
 }
 
 // TokenHeader is the name of HTTP header which is supplied by client and should contain internal-api auth_token.
@@ -43,7 +43,7 @@ type Query struct {
 // NewUserService returns UserService instance for retrieving or creating user records and accounts.
 // Deprecated: NewWalletService should be used instead
 func NewUserService() *UserService {
-	s := &UserService{logger: monitor.NewModuleLogger("users")}
+	s := &UserService{Logger: monitor.NewModuleLogger("users")}
 	return s
 }
 
@@ -52,7 +52,7 @@ func (s *UserService) getDBUser(id int) (*models.User, error) {
 }
 
 func (s *UserService) createDBUser(id int) (*models.User, error) {
-	log := s.logger.LogF(monitor.F{"id": id})
+	log := s.Logger.LogF(monitor.F{"id": id})
 
 	u := &models.User{}
 	u.ID = id
@@ -83,7 +83,7 @@ func (s *UserService) createDBUser(id int) (*models.User, error) {
 // Deprecated: WalletService.Retrieve should be used instead
 func (s *UserService) Retrieve(q Query) (*models.User, error) {
 	token := q.Token
-	log := s.logger.LogF(monitor.F{"token": token})
+	log := s.Logger.LogF(monitor.F{"token": token})
 	var localUser *models.User
 
 	remoteUser, err := getRemoteUser(token, q.MetaRemoteIP)
@@ -92,7 +92,7 @@ func (s *UserService) Retrieve(q Query) (*models.User, error) {
 		return nil, errors.Errorf("cannot authenticate user with internal-apis: %v", err)
 	}
 
-	log = s.logger.LogF(monitor.F{"token": token, "id": remoteUser.ID, "email": remoteUser.Email})
+	log = s.Logger.LogF(monitor.F{"token": token, "id": remoteUser.ID, "email": remoteUser.Email})
 
 	if remoteUser.Email == "" {
 		log.Info("cannot authenticate internal-api user: email not confirmed")
@@ -134,7 +134,7 @@ func (s *UserService) createSDKAccount(u *models.User) error {
 	if err != nil {
 		switch err.(type) {
 		case lbrynet.AccountConflict:
-			s.logger.Log().Info("account creation conflict, proceeding")
+			s.Logger.Log().Info("account creation conflict, proceeding")
 		default:
 			return err
 		}
@@ -143,7 +143,7 @@ func (s *UserService) createSDKAccount(u *models.User) error {
 		if err != nil {
 			return err
 		}
-		s.logger.Log().Info("created an sdk account")
+		s.Logger.Log().Info("created an sdk account")
 	}
 	return nil
 }
