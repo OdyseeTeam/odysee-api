@@ -41,7 +41,7 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 	// Update log entry with extra context data
 	log = s.Logger.LogF(monitor.F{"token": token, "id": remoteUser.ID, "email": remoteUser.Email})
 	if remoteUser.Email == "" {
-		return nil, s.LogErrorAndReturn(log, "cannot authenticate user with internal-api, email not confirmed")
+		return nil, nil
 	}
 
 	localUser, errStorage := s.getDBUser(remoteUser.ID)
