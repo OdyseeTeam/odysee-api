@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/http"
 
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/monitor"
@@ -112,20 +111,4 @@ func (s *WalletService) saveWalletID(u *models.User, wid string) error {
 func (s *WalletService) LogErrorAndReturn(log *logrus.Entry, message string, a ...interface{}) error {
 	log.Errorf(message, a...)
 	return fmt.Errorf(message, a...)
-}
-
-// GetWalletIDFromRequest retrieves SDK wallet ID of a user making a http request
-// by a header provided by http client.
-func GetWalletIDFromRequest(r *http.Request, retriever Retriever) (string, error) {
-	if token, ok := r.Header[TokenHeader]; ok {
-		u, err := retriever.Retrieve(Query{token[0], GetIPAddressForRequest(r)})
-		if err != nil {
-			return "", err
-		}
-		if u == nil {
-			return "", errors.New("unable to retrieve user")
-		}
-		return u.WalletID, nil
-	}
-	return "", nil
 }

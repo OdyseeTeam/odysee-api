@@ -1,7 +1,6 @@
 package users
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/lbryio/lbrytv/internal/monitor"
@@ -39,13 +38,9 @@ func (a *Authenticator) GetWalletID(r *http.Request) (string, error) {
 		if err != nil {
 			log.Debugf("failed to authenticate user")
 			return "", err
+		} else if u != nil {
+			return u.WalletID, nil
 		}
-		if u == nil {
-			log.Debugf("user is nil")
-			return "", errors.New(GenericRetrievalErr)
-		}
-		log.Debugf("authenticated user")
-		return u.WalletID, nil
 	}
 	return "", nil
 }

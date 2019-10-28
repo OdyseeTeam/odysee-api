@@ -24,6 +24,14 @@ func (r *DummyRetriever) Retrieve(q Query) (*models.User, error) {
 	return nil, errors.New("cannot authenticate")
 }
 
+type UnverifiedRetriever struct {
+	remoteIP string
+}
+
+func (r *UnverifiedRetriever) Retrieve(q Query) (*models.User, error) {
+	return nil, nil
+}
+
 func AuthenticatedHandler(w http.ResponseWriter, r *AuthenticatedRequest) {
 	if r.IsAuthenticated() {
 		w.WriteHeader(http.StatusAccepted)
@@ -63,4 +71,15 @@ func TestAuthenticatorFailure(t *testing.T) {
 	body, _ := ioutil.ReadAll(response.Body)
 	assert.Equal(t, "cannot authenticate", string(body))
 	assert.Equal(t, http.StatusForbidden, response.StatusCode)
+}
+
+func TestAuthenticatorGetWalletIDUnverifiedUser(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/api/proxy", nil)
+	r.Header.Set(TokenHeader, "zzz")
+
+	a := NewAuthenticator(&UnverifiedRetriever{})
+
+	wid, err := a.GetWalletID(r)
+	assert.NoError(t, err)
+	assert.Equal(t, "", wid)
 }
