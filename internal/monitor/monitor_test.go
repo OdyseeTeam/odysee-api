@@ -14,7 +14,23 @@ import (
 func TestLogSuccessfulQuery(t *testing.T) {
 	hook := test.NewLocal(Logger)
 
-	LogSuccessfulQuery("resolve", 0.025, map[string]string{"urls": "one"})
+	config.Override("ShouldLogResponses", false)
+	defer config.RestoreOverridden()
+
+	response := &jsonrpc.RPCResponse{
+		Result: map[string]interface{}{
+			"available": "20.02",
+			"reserved":  "0.0",
+			"reserved_subtotals": map[string]string{
+				"claims":   "0.0",
+				"supports": "0.0",
+				"tips":     "0.0",
+			},
+			"total": "20.02",
+		},
+	}
+
+	LogSuccessfulQuery("resolve", 0.025, map[string]string{"urls": "one"}, response)
 
 	require.Equal(t, 1, len(hook.Entries))
 	require.Equal(t, log.InfoLevel, hook.LastEntry().Level)
@@ -23,17 +39,51 @@ func TestLogSuccessfulQuery(t *testing.T) {
 	require.Equal(t, 0.025, hook.LastEntry().Data["time"])
 	require.Equal(t, "call processed", hook.LastEntry().Message)
 
-	LogSuccessfulQuery("account_balance", 0.025, nil)
+	LogSuccessfulQuery("account_balance", 0.025, nil, nil)
 
 	require.Equal(t, 2, len(hook.Entries))
 	require.Equal(t, log.InfoLevel, hook.LastEntry().Level)
 	require.Equal(t, "account_balance", hook.LastEntry().Data["method"])
 	require.Equal(t, nil, hook.LastEntry().Data["params"])
 	require.Equal(t, 0.025, hook.LastEntry().Data["time"])
+	require.Nil(t, hook.LastEntry().Data["response"])
 	require.Equal(t, "call processed", hook.LastEntry().Message)
 
 	hook.Reset()
 }
+
+func TestLogSuccessfulQueryWithResponse(t *testing.T) {
+	hook := test.NewLocal(Logger)
+
+	config.Override("ShouldLogResponses", true)
+	defer config.RestoreOverridden()
+
+	response := &jsonrpc.RPCResponse{
+		Result: map[string]interface{}{
+			"available": "20.02",
+			"reserved":  "0.0",
+			"reserved_subtotals": map[string]string{
+				"claims":   "0.0",
+				"supports": "0.0",
+				"tips":     "0.0",
+			},
+			"total": "20.02",
+		},
+	}
+
+	LogSuccessfulQuery("resolve", 0.025, map[string]string{"urls": "one"}, response)
+
+	require.Equal(t, 1, len(hook.Entries))
+	require.Equal(t, log.InfoLevel, hook.LastEntry().Level)
+	require.Equal(t, "resolve", hook.LastEntry().Data["method"])
+	require.Equal(t, map[string]string{"urls": "one"}, hook.LastEntry().Data["params"])
+	require.Equal(t, 0.025, hook.LastEntry().Data["time"])
+	require.Equal(t, response, hook.LastEntry().Data["response"])
+	require.Equal(t, "call processed", hook.LastEntry().Message)
+
+	hook.Reset()
+}
+
 func TestLogFailedQuery(t *testing.T) {
 	hook := test.NewLocal(Logger)
 

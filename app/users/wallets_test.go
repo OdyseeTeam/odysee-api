@@ -151,7 +151,7 @@ func TestWalletServiceRetrieveEmptyEmailNoUser(t *testing.T) {
 	svc := NewWalletService()
 	u, err := svc.Retrieve(Query{Token: "abc"})
 	assert.Nil(t, u)
-	assert.EqualError(t, err, "cannot authenticate user with internal-api, email not confirmed")
+	assert.NoError(t, err)
 }
 
 func BenchmarkWalletCommands(b *testing.B) {

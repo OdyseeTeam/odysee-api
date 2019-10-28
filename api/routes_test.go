@@ -64,20 +64,4 @@ func TestRoutesOptions(t *testing.T) {
 		"X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept",
 		rr.HeaderMap.Get("Access-Control-Allow-Headers"),
 	)
-
-	// TODO: Remove after legacy url has been removed
-	req, err = http.NewRequest("OPTIONS", "/api/proxy", nil)
-	require.Nil(t, err)
-	rr = httptest.NewRecorder()
-
-	InstallRoutes(proxy, r)
-	r.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Equal(t, "7200", rr.HeaderMap.Get("Access-Control-Max-Age"))
-	assert.Equal(t, "*", rr.HeaderMap.Get("Access-Control-Allow-Origin"))
-	assert.Equal(
-		t,
-		"X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept",
-		rr.HeaderMap.Get("Access-Control-Allow-Headers"),
-	)
 }
