@@ -75,27 +75,28 @@ func TestWalletServiceRetrieveExistingUser(t *testing.T) {
 	assert.EqualValues(t, 1, count)
 }
 
-func TestWalletServiceRetrieveExistingUnloadedWallet(t *testing.T) {
-	setupDBTables()
-	defer setupCleanupDummyUser()()
+// TODO: Marked for removal, check proxy/service.go for wallet reloading
+// func TestWalletServiceRetrieveExistingUnloadedWallet(t *testing.T) {
+// 	setupDBTables()
+// 	defer setupCleanupDummyUser()()
 
-	s := NewWalletService()
-	u, err := s.Retrieve(Query{Token: "abc"})
-	require.NoError(t, err)
-	require.NotNil(t, u)
+// 	s := NewWalletService()
+// 	u, err := s.Retrieve(Query{Token: "abc"})
+// 	require.NoError(t, err)
+// 	require.NotNil(t, u)
 
-	// Unloading wallet which should then be loaded in the Retrieve method
-	_, err = lbrynet.WalletRemove(u.ID)
-	require.NoError(t, err)
-	u, err = s.Retrieve(Query{Token: "abc"})
-	require.NoError(t, err)
-	require.NotNil(t, u)
+// 	// Unloading wallet which should then be loaded in the Retrieve method
+// 	_, err = lbrynet.WalletRemove(u.ID)
+// 	require.NoError(t, err)
+// 	u, err = s.Retrieve(Query{Token: "abc"})
+// 	require.NoError(t, err)
+// 	require.NotNil(t, u)
 
-	cl := jsonrpc.NewClient(config.GetLbrynet())
-	res, err := cl.Call("wallet_balance", map[string]string{"wallet_id": u.WalletID})
-	require.NoError(t, err)
-	assert.Nil(t, res.Error)
-}
+// 	cl := jsonrpc.NewClient(config.GetLbrynet())
+// 	res, err := cl.Call("wallet_balance", map[string]string{"wallet_id": u.WalletID})
+// 	require.NoError(t, err)
+// 	assert.Nil(t, res.Error)
+// }
 
 func TestWalletServiceRetrieveExistingUserMissingWalletID(t *testing.T) {
 	setupDBTables()

@@ -10,10 +10,11 @@ import (
 	"fmt"
 	"time"
 
-	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
+	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -34,6 +35,7 @@ type Caller struct {
 	client       jsonrpc.RPCClient
 	service      *Service
 	preprocessor Preprocessor
+	retries      int
 }
 
 // Query is a wrapper around client JSON-RPC query for easier (un)marshaling and processing.
@@ -249,7 +251,7 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 
 	queryStartTime := time.Now()
 	r, err := c.sendQuery(q)
-	duration := time.Now().Sub(queryStartTime).Seconds()
+	duration := time.Since(queryStartTime).Seconds()
 	if err != nil {
 		return r, NewInternalError(err)
 	}
@@ -262,7 +264,24 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 		c.service.logger.LogSuccessfulQuery(q.Method(), duration, q.Params(), r)
 	}
 
+	// This checks if SDK responded with missing wallet error and tries to reload it,
+	// then repeat the request again.
+	// TODO: Refactor this and move somewhere else
+	if r.Error != nil && c.retries == 0 {
+		wErr := lbrynet.NewWalletError(0, errors.New(r.Error.Message))
+		if errors.As(wErr, &lbrynet.WalletNotLoaded{}) {
+			_, err := lbrynet.Client.WalletAdd(c.WalletID())
+			if err == nil {
+				c.retries++
+				return c.call(rawQuery)
+			}
+		}
+	}
+
 	r, err = processResponse(q.Request, r)
+	if err != nil {
+		return r, NewInternalError(err)
+	}
 
 	if q.isCacheable() {
 		responseCache.Save(q.Method(), q.Params(), r)

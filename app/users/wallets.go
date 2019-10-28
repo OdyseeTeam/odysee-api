@@ -2,7 +2,6 @@ package users
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 
 	"github.com/lbryio/lbrytv/internal/lbrynet"
@@ -81,11 +80,12 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 		}
 	}
 
+	// TODO: Marked for removal, check proxy/service.go for wallet reloading
 	if doWalletInit {
-		err = s.initializeWallet(localUser)
-		if err != nil && !errors.As(err, &lbrynet.WalletAlreadyLoaded{}) {
-			return nil, err
-		}
+		// err = s.initializeWallet(localUser)
+		// if err != nil && !errors.As(err, &lbrynet.WalletAlreadyLoaded{}) {
+		// 	return nil, err
+		// }
 	}
 	return localUser, nil
 }
