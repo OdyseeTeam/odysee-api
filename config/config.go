@@ -187,3 +187,8 @@ func GetReflectorAddress() string {
 func GetBlobDownloadTimeout() int64 {
 	return Config.Viper.GetInt64("BlobDownloadTimeout")
 }
+
+// AccountsEnabled enables or disables accounts subsystem
+func ShouldLogResponses() bool {
+	return Config.Viper.GetBool("ShouldLogResponses")
+}

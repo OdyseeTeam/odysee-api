@@ -108,12 +108,16 @@ func (l ModuleLogger) Disable() {
 }
 
 // LogSuccessfulQuery takes a remote method name, execution time and params and logs it
-func LogSuccessfulQuery(method string, time float64, params interface{}) {
-	Logger.WithFields(logrus.Fields{
+func LogSuccessfulQuery(method string, time float64, params interface{}, response interface{}) {
+	fields := logrus.Fields{
 		"method": method,
 		"time":   time,
 		"params": params,
-	}).Info("call processed")
+	}
+	if config.ShouldLogResponses() {
+		fields["response"] = response
+	}
+	Logger.WithFields(fields).Info("call processed")
 }
 
 // LogCachedQuery logs a cache hit for a given method
@@ -135,7 +139,7 @@ func LogFailedQuery(method string, query interface{}, errorResponse interface{})
 }
 
 type QueryMonitor interface {
-	LogSuccessfulQuery(method string, time float64, params interface{})
+	LogSuccessfulQuery(method string, time float64, params interface{}, response interface{})
 	LogFailedQuery(method string, params interface{}, errorResponse interface{})
 	Error(message string)
 	Errorf(message string, args ...interface{})
@@ -171,12 +175,17 @@ func NewProxyLogger() *ProxyLogger {
 	return &l
 }
 
-func (l *ProxyLogger) LogSuccessfulQuery(method string, time float64, params interface{}) {
-	l.entry.WithFields(logrus.Fields{
-		"method":    method,
-		"exec_time": time,
-		"params":    params,
-	}).Info("call proxied")
+func (l *ProxyLogger) LogSuccessfulQuery(method string, time float64, params interface{}, response interface{}) {
+	fields := logrus.Fields{
+		"method": method,
+		"time":   time,
+		"params": params,
+	}
+	if config.ShouldLogResponses() {
+		fields["response"] = response
+	}
+	l.entry.WithFields(fields).Info("call processed")
+
 }
 
 func (l *ProxyLogger) LogFailedQuery(method string, params interface{}, errorResponse interface{}) {

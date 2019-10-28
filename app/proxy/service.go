@@ -259,7 +259,7 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 		c.service.logger.LogFailedQuery(q.Method(), q.Params(), r.Error)
 	} else {
 		metrics.ProxyCallDurations.WithLabelValues(q.Method()).Observe(duration)
-		c.service.logger.LogSuccessfulQuery(q.Method(), duration, q.Params())
+		c.service.logger.LogSuccessfulQuery(q.Method(), duration, q.Params(), r)
 	}
 
 	r, err = processResponse(q.Request, r)
