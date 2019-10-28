@@ -1,32 +1,6 @@
 version: '3.2'
 
 services:
-  postgres:
-    image: postgres:11-alpine
-    ports:
-      - "5432:5432"
-    environment:
-     POSTGRES_USER: lbrytv
-     POSTGRES_PASSWORD: lbrytv
-  lbrynet:
-    image: lbry/lbrynet-tv:latest
-    ports:
-      - "5579:5279"
-    volumes:
-    - type: bind
-      source: storage
-      target: /storage
-    logging:
-      driver: awslogs
-      options:
-        awslogs-group: lbrytv
-        awslogs-region: us-east-1
-        awslogs-stream: lbrynet-dev
-  watchtower:
-    image: v2tec/watchtower
-    command: --interval 30 --cleanup
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
   app:
     image: lbry/lbrytv:latest-dev
     ports:
@@ -48,6 +22,41 @@ services:
         awslogs-group: lbrytv
         awslogs-region: us-east-1
         awslogs-stream: app-dev
+    labels:
+      com.centurylinklabs.watchtower.enable: true
+  lbrynet:
+    image: lbry/lbrynet-tv:latest
+    ports:
+      - "5579:5279"
+    volumes:
+    - type: bind
+      source: storage
+      target: /storage
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: lbrytv
+        awslogs-region: us-east-1
+        awslogs-stream: lbrynet-dev
+    labels:
+      com.centurylinklabs.watchtower.enable: true
+  postgres:
+    image: postgres:11-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+    - type: bind
+      source: pgdata
+      target: /pgdata
+    environment:
+     POSTGRES_USER: lbrytv
+     POSTGRES_PASSWORD: lbrytv
+     PGDATA: /pgdata
+  watchtower:
+    image: containrrr/watchtower
+    command: --interval 60 --cleanup --label-enable
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
   prometheus:
     image: prom/prometheus:latest
     ports:
@@ -63,5 +72,6 @@ services:
       - ${PWD}/deployments/docker/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
 
 volumes:
+  pgdata:
   storage:
   test_storage:
