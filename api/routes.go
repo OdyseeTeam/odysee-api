@@ -23,10 +23,6 @@ func InstallRoutes(proxyService *proxy.Service, r *mux.Router) {
 	v1Router.HandleFunc("/proxy", authenticator.Wrap(upHandler.Handle)).MatcherFunc(upHandler.CanHandle)
 	v1Router.HandleFunc("/proxy", proxyHandler.Handle)
 
-	// TODO: For temporary backwards compatibility, remove after JS code has been updated to use paths above
-	r.HandleFunc("/api/proxy", proxyHandler.HandleOptions).Methods("OPTIONS")
-	r.HandleFunc("/api/proxy", proxyHandler.Handle)
-
 	r.HandleFunc("/content/claims/{uri}/{claim}/{filename}", ContentByClaimsURI).Methods("GET")
 	r.HandleFunc("/content/url", ContentByURL).Methods("GET")
 }
