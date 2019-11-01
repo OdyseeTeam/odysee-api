@@ -60,6 +60,7 @@ func PlayURI(uri string, w http.ResponseWriter, req *http.Request) error {
 		return err
 	}
 	s.prepareWriter(w)
+
 	Logger.LogF(monitor.F{
 		"stream":    s.URI,
 		"remote_ip": users.GetIPAddressForRequest(req),
@@ -74,6 +75,10 @@ func newReflectedStream(uri string) (rs *reflectedStream, err error) {
 	rs = &reflectedStream{URI: uri}
 	err = rs.resolve(client)
 	return rs, err
+}
+
+func (s reflectedStream) blobNum() int {
+	return len(s.SDBlob.BlobInfos) - 1
 }
 
 // Read implements io.ReadSeeker interface
@@ -97,13 +102,13 @@ func (s *reflectedStream) Read(p []byte) (n int, err error) {
 		metrics.PlayerFailuresCount.Inc()
 		Logger.LogF(monitor.F{
 			"stream":         s.URI,
-			"num":            fmt.Sprintf("%v/%v", blobNum, len(s.SDBlob.BlobInfos)),
+			"num":            fmt.Sprintf("%v/%v", blobNum+1, s.blobNum()),
 			"current_offset": s.seekOffset,
 			"offset_in_blob": startOffsetInBlob,
 		}).Errorf("failed to read from blob stream after %vs: %v", time.Since(start).Seconds(), err)
 		monitor.CaptureException(err, map[string]string{
 			"stream":         s.URI,
-			"num":            fmt.Sprintf("%v/%v", blobNum, len(s.SDBlob.BlobInfos)),
+			"num":            fmt.Sprintf("%v/%v", blobNum, s.blobNum()),
 			"current_offset": fmt.Sprintf("%v", s.seekOffset),
 			"offset_in_blob": fmt.Sprintf("%v", startOffsetInBlob),
 		})
@@ -111,10 +116,10 @@ func (s *reflectedStream) Read(p []byte) (n int, err error) {
 		metrics.PlayerSuccessesCount.Inc()
 		Logger.LogF(monitor.F{
 			"buffer_len":     bufferLen,
-			"num":            fmt.Sprintf("%v/%v", blobNum, len(s.SDBlob.BlobInfos)),
+			"num":            fmt.Sprintf("%v/%v", blobNum, s.blobNum()),
 			"current_offset": s.seekOffset,
 			"offset_in_blob": startOffsetInBlob,
-		}).Debugf("read %v bytes (%v..%v) from blob stream", n, s.seekOffset, seekOffsetEnd)
+		}).Debugf("read %v bytes (%v..%v) from blob stream", n, s.seekOffset, seekOffsetEnd-1)
 	}
 
 	s.seekOffset += int64(n)
@@ -123,14 +128,20 @@ func (s *reflectedStream) Read(p []byte) (n int, err error) {
 
 // Seek implements io.ReadSeeker interface
 func (s *reflectedStream) Seek(offset int64, whence int) (int64, error) {
-	var newSeekOffset int64
+	var (
+		newSeekOffset int64
+		whenceText    string
+	)
 
 	if whence == io.SeekEnd {
 		newSeekOffset = s.Size - offset
+		whenceText = "relative to end"
 	} else if whence == io.SeekStart {
 		newSeekOffset = offset
+		whenceText = "relative to start"
 	} else if whence == io.SeekCurrent {
 		newSeekOffset = s.seekOffset + offset
+		whenceText = "relative to current"
 	} else {
 		return 0, errors.New("invalid seek whence argument")
 	}
@@ -140,6 +151,9 @@ func (s *reflectedStream) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	s.seekOffset = newSeekOffset
+
+	Logger.LogF(monitor.F{"stream": s.URI}).Debugf("seeking to %v, new seek offset = %v (%v)", offset, newSeekOffset, whenceText)
+
 	return newSeekOffset, nil
 }
 
@@ -211,7 +225,7 @@ func (s *reflectedStream) fetchData() error {
 		}
 
 		// last padding is unguessable
-		s.Size -= 15
+		s.Size -= 16
 	}
 
 	sort.Slice(sdb.BlobInfos, func(i, j int) bool {
@@ -220,9 +234,9 @@ func (s *reflectedStream) fetchData() error {
 	s.SDBlob = sdb
 
 	Logger.LogF(monitor.F{
-		"blobs": len(sdb.BlobInfos),
-		"size":  s.Size,
-		"uri":   s.URI,
+		"blob_num": s.blobNum(),
+		"size":     s.Size,
+		"uri":      s.URI,
 	}).Debug("got stream data")
 	return nil
 }
@@ -238,13 +252,14 @@ func (s *reflectedStream) getBlob(url string) (*http.Response, error) {
 	return r, err
 }
 
-func (s *reflectedStream) streamBlob(blobNum int, startOffsetInBlob int64, dest []byte) (n int, err error) {
+func (s *reflectedStream) streamBlob(blobNum int, startOffsetInBlob int64, dest []byte) (int, error) {
 	bi := s.SDBlob.BlobInfos[blobNum]
-	logBlobNum := fmt.Sprintf("%v/%v", bi.BlobNum, len(s.SDBlob.BlobInfos))
+	logBlobNum := fmt.Sprintf("%v/%v", bi.BlobNum+1, s.blobNum())
 
-	if n > 0 {
-		startOffsetInBlob = 0
-	}
+	readLen := 0
+	// if n > 0 {
+	// 	startOffsetInBlob = 0
+	// }
 	url := blobInfoURL(bi)
 
 	Logger.LogF(monitor.F{
@@ -290,21 +305,20 @@ func (s *reflectedStream) streamBlob(blobNum int, startOffsetInBlob int64, dest 
 		elapsedDecode := time.Since(start).Seconds()
 		metrics.PlayerBlobDecodeDurations.Observe(elapsedDecode)
 
-		thisN := copy(dest, decryptedBody[startOffsetInBlob:endOffsetInBlob])
-		n += thisN
+		readLen += copy(dest, decryptedBody[startOffsetInBlob:endOffsetInBlob])
 
 		Logger.LogF(monitor.F{
 			"stream":       s.URI,
 			"num":          logBlobNum,
-			"written":      n,
+			"written":      readLen,
 			"elapsed":      elapsedDecode,
 			"start_offset": startOffsetInBlob,
 			"end_offset":   endOffsetInBlob,
 		}).Debug("done streaming a blob")
 	} else {
-		return n, fmt.Errorf("server responded with an unexpected status (%v)", resp.Status)
+		return readLen, fmt.Errorf("server responded with an unexpected status (%v)", resp.Status)
 	}
-	return n, nil
+	return readLen, nil
 }
 
 func blobInfoURL(bi stream.BlobInfo) string {
