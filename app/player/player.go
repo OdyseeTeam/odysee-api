@@ -257,9 +257,6 @@ func (s *reflectedStream) streamBlob(blobNum int, startOffsetInBlob int64, dest 
 	logBlobNum := fmt.Sprintf("%v/%v", bi.BlobNum+1, s.blobNum())
 
 	readLen := 0
-	// if n > 0 {
-	// 	startOffsetInBlob = 0
-	// }
 	url := blobInfoURL(bi)
 
 	Logger.LogF(monitor.F{
