@@ -284,13 +284,14 @@ func (s *reflectedStream) streamBlob(blobNum int, startOffsetInBlob int64, dest 
 	blobInfo := s.SDBlob.BlobInfos[blobNum]
 	logBlobNum := fmt.Sprintf("%v/%v", blobInfo.BlobNum+1, s.blobNum())
 
-	readLen := 0
-	encBody, err := s.downloadBlob(blobInfo.BlobHash)
-
 	Logger.LogF(monitor.F{
 		"stream": s.URI,
 		"num":    logBlobNum,
 	}).Debug("blob requested")
+
+	readLen := 0
+	encBody, err := s.downloadBlob(blobInfo.BlobHash)
+
 	start := time.Now()
 
 	decryptedBody, err := stream.DecryptBlob(stream.Blob(encBody), s.SDBlob.Key, blobInfo.IV)

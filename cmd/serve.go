@@ -17,7 +17,7 @@ var rootCmd = &cobra.Command{
 	Use:   "lbrytv",
 	Short: "lbrytv is a backend API server for lbry.tv frontend",
 	Run: func(cmd *cobra.Command, args []string) {
-		s := server.NewServer(server.ServerOpts{
+		s := server.NewServer(server.Options{
 			Address:      config.GetAddress(),
 			ProxyService: proxy.NewService(config.GetLbrynet()),
 		})
