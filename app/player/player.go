@@ -245,79 +245,79 @@ func (s *reflectedStream) prepareWriter(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", s.ContentType)
 }
 
-func (s *reflectedStream) getBlob(url string) (*http.Response, error) {
-	request, _ := http.NewRequest("GET", url, nil)
-	client := http.Client{Timeout: time.Second * time.Duration(config.GetBlobDownloadTimeout())}
-	r, err := client.Do(request)
-	return r, err
-}
+func (s *reflectedStream) downloadBlob(hash []byte) ([]byte, error) {
+	var body []byte
 
-func (s *reflectedStream) streamBlob(blobNum int, startOffsetInBlob int64, dest []byte) (int, error) {
-	bi := s.SDBlob.BlobInfos[blobNum]
-	logBlobNum := fmt.Sprintf("%v/%v", bi.BlobNum+1, s.blobNum())
-
-	readLen := 0
-	url := blobInfoURL(bi)
-
-	Logger.LogF(monitor.F{
-		"stream": s.URI,
-		"url":    url,
-		"num":    logBlobNum,
-	}).Debug("requesting a blob")
+	url := blobInfoURL(hash)
 	start := time.Now()
 
-	resp, err := s.getBlob(url)
+	request, _ := http.NewRequest("GET", url, nil)
+	client := http.Client{Timeout: time.Second * time.Duration(config.GetBlobDownloadTimeout())}
+	resp, err := client.Do(request)
+
 	if err != nil {
-		return 0, err
+		return body, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusOK {
-		encryptedBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return 0, err
-		}
-
-		message := "done downloading a blob"
-		elapsedDLoad := time.Since(start).Seconds()
-		metrics.PlayerBlobDownloadDurations.Observe(elapsedDLoad)
-		if blobNum == 0 {
-			message += ", starting stream playback"
-		}
-		Logger.LogF(monitor.F{
-			"stream":  s.URI,
-			"num":     logBlobNum,
-			"elapsed": elapsedDLoad,
-		}).Info(message)
-
-		start = time.Now()
-		decryptedBody, err := stream.DecryptBlob(stream.Blob(encryptedBody), s.SDBlob.Key, bi.IV)
-		if err != nil {
-			return 0, err
-		}
-		endOffsetInBlob := int64(len(dest)) + startOffsetInBlob
-		if endOffsetInBlob > int64(len(decryptedBody)) {
-			endOffsetInBlob = int64(len(decryptedBody))
-		}
-		elapsedDecode := time.Since(start).Seconds()
-		metrics.PlayerBlobDecodeDurations.Observe(elapsedDecode)
-
-		readLen += copy(dest, decryptedBody[startOffsetInBlob:endOffsetInBlob])
-
-		Logger.LogF(monitor.F{
-			"stream":       s.URI,
-			"num":          logBlobNum,
-			"written":      readLen,
-			"elapsed":      elapsedDecode,
-			"start_offset": startOffsetInBlob,
-			"end_offset":   endOffsetInBlob,
-		}).Debug("done streaming a blob")
-	} else {
-		return readLen, fmt.Errorf("server responded with an unexpected status (%v)", resp.Status)
+	if resp.StatusCode != http.StatusOK {
+		return body, fmt.Errorf("server responded with an unexpected status (%v)", resp.Status)
 	}
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return body, err
+	}
+
+	elapsedDLoad := time.Since(start).Seconds()
+	metrics.PlayerBlobDownloadDurations.Observe(elapsedDLoad)
+
+	Logger.LogF(monitor.F{
+		"stream":  s.URI,
+		"url":     url,
+		"elapsed": elapsedDLoad,
+	}).Info("blob downloaded")
+
+	return body, nil
+}
+
+func (s *reflectedStream) streamBlob(blobNum int, startOffsetInBlob int64, dest []byte) (int, error) {
+	blobInfo := s.SDBlob.BlobInfos[blobNum]
+	logBlobNum := fmt.Sprintf("%v/%v", blobInfo.BlobNum+1, s.blobNum())
+
+	readLen := 0
+	encBody, err := s.downloadBlob(blobInfo.BlobHash)
+
+	Logger.LogF(monitor.F{
+		"stream": s.URI,
+		"num":    logBlobNum,
+	}).Debug("blob requested")
+	start := time.Now()
+
+	decryptedBody, err := stream.DecryptBlob(stream.Blob(encBody), s.SDBlob.Key, blobInfo.IV)
+	if err != nil {
+		return 0, err
+	}
+	endOffsetInBlob := int64(len(dest)) + startOffsetInBlob
+	if endOffsetInBlob > int64(len(decryptedBody)) {
+		endOffsetInBlob = int64(len(decryptedBody))
+	}
+	elapsedDecode := time.Since(start).Seconds()
+	metrics.PlayerBlobDecodeDurations.Observe(elapsedDecode)
+
+	readLen += copy(dest, decryptedBody[startOffsetInBlob:endOffsetInBlob])
+
+	Logger.LogF(monitor.F{
+		"stream":       s.URI,
+		"num":          logBlobNum,
+		"written":      readLen,
+		"elapsed":      elapsedDecode,
+		"start_offset": startOffsetInBlob,
+		"end_offset":   endOffsetInBlob,
+	}).Debug("done streaming a blob")
+
 	return readLen, nil
 }
 
-func blobInfoURL(bi stream.BlobInfo) string {
-	return reflectorURL + hex.EncodeToString(bi.BlobHash)
+func blobInfoURL(hash []byte) string {
+	return reflectorURL + hex.EncodeToString(hash)
 }
