@@ -15,7 +15,7 @@ const accountNameTemplate string = accountNamePrefix + "%v"
 
 const walletNameTemplate string = "lbrytv-id.%v.wallet"
 
-var defaultWalletOpts = ljsonrpc.WalletCreateOpts{SkipOnStartup: false, CreateAccount: true, SingleKey: true}
+var defaultWalletOpts = ljsonrpc.WalletCreateOpts{SkipOnStartup: true, CreateAccount: true, SingleKey: true}
 
 // Client is a LBRY SDK jsonrpc client instance
 var Client = ljsonrpc.NewClient(config.GetLbrynet())
