@@ -211,7 +211,7 @@ func TestForwardCall_ClientError(t *testing.T) {
 func TestForwardCall_InvalidResolveParams(t *testing.T) {
 	r := call(t, MethodResolve)
 	assert.NotNil(t, r.Error)
-	assert.Contains(t, r.Error.Message, `missing 1 required positional argument:`)
+	assert.Contains(t, r.Error.Message, `Missing required parameters for resolve command: urls`)
 }
 
 func TestForwardCall_shouldLog(t *testing.T) {
