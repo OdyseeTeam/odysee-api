@@ -20,17 +20,18 @@ import (
 	"github.com/lbryio/lbry.go/v2/stream"
 )
 
-const reflectorURL = "http://blobs.lbry.io/"
+const reflectorURL = "http://blobs.lbry.io"
 
 type reflectedStream struct {
-	URI         string
-	StartByte   int64
-	EndByte     int64
-	SdHash      string
-	Size        int64
-	ContentType string
-	SDBlob      *stream.SDBlob
-	seekOffset  int64
+	URI          string
+	StartByte    int64
+	EndByte      int64
+	SdHash       string
+	Size         int64
+	ContentType  string
+	SDBlob       *stream.SDBlob
+	seekOffset   int64
+	reflectorURL string
 }
 
 // Logger is a package-wide logger.
@@ -51,7 +52,7 @@ func PlayURI(uri string, w http.ResponseWriter, req *http.Request) error {
 	metrics.PlayerStreamsRunning.Inc()
 	defer metrics.PlayerStreamsRunning.Dec()
 
-	s, err := newReflectedStream(uri)
+	s, err := newReflectedStream(uri, reflectorURL)
 	if err != nil {
 		return err
 	}
@@ -70,9 +71,9 @@ func PlayURI(uri string, w http.ResponseWriter, req *http.Request) error {
 	return err
 }
 
-func newReflectedStream(uri string) (rs *reflectedStream, err error) {
+func newReflectedStream(uri string, reflectorURL string) (rs *reflectedStream, err error) {
 	client := ljsonrpc.NewClient(config.GetLbrynet())
-	rs = &reflectedStream{URI: uri}
+	rs = &reflectedStream{URI: uri, reflectorURL: reflectorURL}
 	err = rs.resolve(client)
 	return rs, err
 }
@@ -158,7 +159,7 @@ func (s *reflectedStream) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (s *reflectedStream) URL() string {
-	return reflectorURL + s.SdHash
+	return fmt.Sprintf("%v/%v", s.reflectorURL, s.SdHash)
 }
 
 func (s *reflectedStream) resolve(client *ljsonrpc.Client) error {
@@ -248,7 +249,7 @@ func (s *reflectedStream) prepareWriter(w http.ResponseWriter) {
 func (s *reflectedStream) downloadBlob(hash []byte) ([]byte, error) {
 	var body []byte
 
-	url := blobInfoURL(hash)
+	url := s.blobInfoURL(hash)
 	start := time.Now()
 
 	request, _ := http.NewRequest("GET", url, nil)
@@ -261,7 +262,7 @@ func (s *reflectedStream) downloadBlob(hash []byte) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusForbidden {
-		return body, nil
+		return body, errMissingBlob
 	} else if resp.StatusCode != http.StatusOK {
 		return body, fmt.Errorf("server responded with an unexpected status (%v)", resp.Status)
 	}
@@ -293,6 +294,9 @@ func (s *reflectedStream) streamBlob(blobNum int, startOffsetInBlob int64, dest 
 
 	readLen := 0
 	encBody, err := s.downloadBlob(blobInfo.BlobHash)
+	if errors.Is(err, errMissingBlob) {
+		return 0, nil
+	}
 
 	start := time.Now()
 
@@ -321,6 +325,6 @@ func (s *reflectedStream) streamBlob(blobNum int, startOffsetInBlob int64, dest 
 	return readLen, nil
 }
 
-func blobInfoURL(hash []byte) string {
-	return reflectorURL + hex.EncodeToString(hash)
+func (s *reflectedStream) blobInfoURL(hash []byte) string {
+	return fmt.Sprintf("%v/%v", s.reflectorURL, hex.EncodeToString(hash))
 }

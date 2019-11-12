@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // An MP4 file, size: 158433824 bytes, blobs: 77
@@ -16,7 +18,7 @@ const streamURL = "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
 const sizedStreamURL = "known-size#0590f924bbee6627a2e79f7f2ff7dfb50bf2877c"
 
 func TestNewReflectedStream(t *testing.T) {
-	rs, err := newReflectedStream(streamURL)
+	rs, err := newReflectedStream(streamURL, reflectorURL)
 	if err != nil {
 		// If this fails, no point running other tests
 		panic(err)
@@ -27,12 +29,12 @@ func TestNewReflectedStream(t *testing.T) {
 }
 
 func TestNewReflectedStreamWithEmptyURL(t *testing.T) {
-	_, err := newReflectedStream("")
+	_, err := newReflectedStream("", reflectorURL)
 	assert.NotNil(t, err)
 }
 
 func TestNewReflectedStreamFetchData(t *testing.T) {
-	rs, err := newReflectedStream(streamURL)
+	rs, err := newReflectedStream(streamURL, reflectorURL)
 	err = rs.fetchData()
 	if err != nil {
 		t.Fatal(err)
@@ -198,4 +200,29 @@ func TestPlayURIFromZeroTo100KB(t *testing.T) {
 		t.Errorf("expected to read 100000 bytes, read %v", n)
 		return
 	}
+}
+
+func TestPlayURIReflectorMissingBlobs(t *testing.T) {
+	var err error
+	r, _ := http.NewRequest("", "", nil)
+
+	s, err := newReflectedStream("lbry://one", reflectorURL)
+	err = s.fetchData()
+	require.NoError(t, err)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("forbidden"))
+	}))
+	defer ts.Close()
+	s.reflectorURL = ts.URL
+
+	rr := httptest.NewRecorder()
+	s.prepareWriter(rr)
+
+	ServeContent(rr, r, "test", time.Time{}, s)
+
+	responseData := make([]byte, 100000)
+	n, err := rr.Body.Read(responseData)
+	assert.Equal(t, 0, n)
 }
