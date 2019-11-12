@@ -260,7 +260,9 @@ func (s *reflectedStream) downloadBlob(hash []byte) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode == http.StatusForbidden {
+		return body, nil
+	} else if resp.StatusCode != http.StatusOK {
 		return body, fmt.Errorf("server responded with an unexpected status (%v)", resp.Status)
 	}
 	body, err = ioutil.ReadAll(resp.Body)
