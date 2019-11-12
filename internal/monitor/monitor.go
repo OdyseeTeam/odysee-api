@@ -135,7 +135,7 @@ func LogFailedQuery(method string, query interface{}, errorResponse interface{})
 		"response": errorResponse,
 	}).Error("daemon responded with an error")
 
-	captureFailedQuery(method, query, errorResponse)
+	// captureFailedQuery(method, query, errorResponse)
 }
 
 type QueryMonitor interface {
@@ -195,7 +195,7 @@ func (l *ProxyLogger) LogFailedQuery(method string, params interface{}, errorRes
 		"response": errorResponse,
 	}).Error("error from the target endpoint")
 
-	captureFailedQuery(method, params, errorResponse)
+	// captureFailedQuery(method, params, errorResponse)
 }
 
 func (l *ProxyLogger) Error(message string) {
