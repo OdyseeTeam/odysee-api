@@ -25,7 +25,7 @@ type Server struct {
 	InterruptChan  chan os.Signal
 	DefaultHeaders map[string]string
 	Environment    *environment.Env
-	ProxyService   *proxy.Service
+	ProxyService   *proxy.ProxyService
 
 	address  string
 	router   *mux.Router
@@ -35,7 +35,7 @@ type Server struct {
 // ServerOpts holds basic web server settings
 type ServerOpts struct {
 	Address      string
-	ProxyService *proxy.Service
+	ProxyService *proxy.ProxyService
 }
 
 // NewServer returns a server initialized with settings from global config.

@@ -55,6 +55,7 @@ func (c *ConfigWrapper) Init() {
 	c.Viper.BindEnv("Debug")
 	c.Viper.BindEnv("Lbrynet")
 	c.Viper.SetDefault("Lbrynet", "http://localhost:5279/")
+	c.Viper.SetDefault("LbrynetServers", map[string]string{"default": "http://localhost:5279/"})
 
 	c.Viper.SetDefault("Address", ":8080")
 	c.Viper.SetDefault("Host", "http://localhost:8080")
@@ -142,7 +143,17 @@ func MetricsPath() string {
 
 // GetLbrynet returns the address of SDK server to use
 func GetLbrynet() string {
-	return Config.Viper.GetString("Lbrynet")
+	lbrynets := GetAllLbrynets()
+	defaultLSDKServer, ok := lbrynets["default"]
+	if !ok {
+		return Config.Viper.GetString("Lbrynet")
+	}
+	return defaultLSDKServer
+}
+
+//GetAllLbrynets returns the names/addresses of every SDK server
+func GetAllLbrynets() map[string]string {
+	return Config.Viper.GetStringMapString("LbrynetServers")
 }
 
 // GetInternalAPIHost returns the address of internal-api server

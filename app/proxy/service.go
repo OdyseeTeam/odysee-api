@@ -1,4 +1,4 @@
-// Service/Caller/Query is a refactoring/improvement over the previous version of proxy module
+// ProxyService/Caller/Query is a refactoring/improvement over the previous version of proxy module
 // currently contained in proxy.go. The old code should be gradually removed and replaced
 // by the following approach.
 
@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lbryio/lbrytv/app/router"
+
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
@@ -20,11 +22,11 @@ import (
 
 type Preprocessor func(q *Query)
 
-// Service generates Caller objects and keeps execution time metrics
+// ProxyService generates Caller objects and keeps execution time metrics
 // for all calls proxied through those objects.
-type Service struct {
-	TargetEndpoint string
-	logger         monitor.QueryMonitor
+type ProxyService struct {
+	Router router.SDKRouter
+	logger monitor.QueryMonitor
 }
 
 // Caller patches through JSON-RPC requests from clients, doing pre/post-processing,
@@ -33,7 +35,8 @@ type Caller struct {
 	walletID     string
 	query        *jsonrpc.RPCRequest
 	client       jsonrpc.RPCClient
-	service      *Service
+	endpoint     string
+	service      *ProxyService
 	preprocessor Preprocessor
 	retries      int
 }
@@ -46,21 +49,24 @@ type Query struct {
 }
 
 // NewService is the entry point to proxy module.
-// Normally only one instance of Service should be created per running server.
-func NewService(targetEndpoint string) *Service {
-	s := Service{
-		TargetEndpoint: targetEndpoint,
-		logger:         monitor.NewProxyLogger(),
+// Normally only one instance of ProxyService should be created per running server.
+func NewService(sdkRouter router.SDKRouter) *ProxyService {
+	s := ProxyService{
+		Router: sdkRouter,
+		logger: monitor.NewProxyLogger(),
 	}
 	return &s
 }
 
 // NewCaller returns an instance of Caller ready to proxy requests.
 // Note that `SetWalletID` needs to be called if an authenticated user is making this call.
-func (ps *Service) NewCaller() *Caller {
+func (ps *ProxyService) NewCaller(walletID string) *Caller {
+	endpoint := ps.Router.GetSDKServer(walletID)
 	c := Caller{
-		client:  jsonrpc.NewClient(ps.TargetEndpoint),
-		service: ps,
+		walletID: walletID,
+		client:   jsonrpc.NewClient(endpoint),
+		endpoint: endpoint,
+		service:  ps,
 	}
 	return &c
 }
@@ -186,11 +192,6 @@ func (q *Query) validate() CallError {
 // SetPreprocessor applies provided function to query before it's sent to the SDK.
 func (c *Caller) SetPreprocessor(p Preprocessor) {
 	c.preprocessor = p
-}
-
-// SetWalletID sets walletID for the current instance of Caller.
-func (c *Caller) SetWalletID(id string) {
-	c.walletID = id
 }
 
 // WalletID is an SDK wallet ID for the client this caller instance is serving.

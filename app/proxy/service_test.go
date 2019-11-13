@@ -10,7 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/app/router"
+
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
@@ -86,23 +87,35 @@ func (c ClientMock) CallBatchRaw(requests jsonrpc.RPCRequests) (jsonrpc.RPCRespo
 }
 
 func TestNewCaller(t *testing.T) {
-	svc := NewService(endpoint)
-	c := svc.NewCaller()
+	servers := map[string]string{
+		"first":  "http://lbrynet1",
+		"second": "http://lbrynet2",
+	}
+	svc := NewService(router.New(servers))
+	c := svc.NewCaller("")
 	assert.Equal(t, svc, c.service)
+
+	sList := svc.Router.GetSDKServerList()
+	rand.Seed(time.Now().UnixNano())
+	for i := 1; i <= 10000; i++ {
+		id := rand.Int()
+		wc := svc.NewCaller(fmt.Sprintf("wallet.%v", id))
+		lastDigit := id % 10
+		assert.Equal(t, sList[lastDigit%len(sList)].Address, wc.endpoint)
+	}
 }
 
 func TestCallerSetWalletID(t *testing.T) {
-	svc := NewService(endpoint)
-	c := svc.NewCaller()
-	c.SetWalletID("abc")
+	svc := NewService(router.NewDefault())
+	c := svc.NewCaller("abc")
 	assert.Equal(t, "abc", c.walletID)
 }
 
 func TestCallerCallResolve(t *testing.T) {
 	var resolveResponse ljsonrpc.ResolveResponse
 
-	svc := NewService(config.GetLbrynet())
-	c := svc.NewCaller()
+	svc := NewService(router.NewDefault())
+	c := svc.NewCaller("")
 
 	resolvedURL := "one#3ae4ed38414e426c29c2bd6aeab7a6ac5da74a98"
 	resolvedClaimID := "3ae4ed38414e426c29c2bd6aeab7a6ac5da74a98"
@@ -121,15 +134,14 @@ func TestCallerCallAccountBalance(t *testing.T) {
 
 	wid, _ := lbrynet.InitializeWallet(dummyUserID)
 
-	svc := NewService(config.GetLbrynet())
-	c := svc.NewCaller()
+	svc := NewService(router.NewDefault())
+	c := svc.NewCaller(wid)
 
 	request := newRawRequest(t, "account_balance", nil)
 	result := c.Call(request)
 
 	assert.Contains(t, string(result), `"message": "account identificator required"`)
 
-	c.SetWalletID(wid)
 	hook := logrus_test.NewLocal(svc.logger.Logger())
 	result = c.Call(request)
 
@@ -151,9 +163,8 @@ func TestCallerCallDoesReloadWallet(t *testing.T) {
 	_, err := lbrynet.WalletRemove(dummyUserID)
 	require.NoError(t, err)
 
-	svc := NewService(config.GetLbrynet())
-	c := svc.NewCaller()
-	c.SetWalletID(wid)
+	svc := NewService(router.NewDefault())
+	c := svc.NewCaller(wid)
 
 	request := newRawRequest(t, "wallet_balance", nil)
 	result := c.Call(request)
@@ -170,7 +181,7 @@ func TestCallerCallRelaxedMethods(t *testing.T) {
 			continue
 		}
 		mockClient := &ClientMock{}
-		svc := NewService("")
+		svc := NewService(router.NewDefault())
 		c := Caller{
 			client:  mockClient,
 			service: svc,
@@ -189,7 +200,7 @@ func TestCallerCallRelaxedMethods(t *testing.T) {
 func TestCallerCallNonRelaxedMethods(t *testing.T) {
 	for _, m := range walletSpecificMethods {
 		mockClient := &ClientMock{}
-		svc := NewService("")
+		svc := NewService(router.NewDefault())
 		c := Caller{
 			client:  mockClient,
 			service: svc,
@@ -202,7 +213,7 @@ func TestCallerCallNonRelaxedMethods(t *testing.T) {
 
 func TestCallerCallForbiddenMethod(t *testing.T) {
 	mockClient := &ClientMock{}
-	svc := NewService("")
+	svc := NewService(router.NewDefault())
 	c := Caller{
 		client:  mockClient,
 		service: svc,
@@ -218,12 +229,12 @@ func TestCallerCallAttachesAccountId(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	dummyWalletID := "abc123321"
 
-	svc := NewService("")
+	svc := NewService(router.NewDefault())
 	c := Caller{
-		client:  mockClient,
-		service: svc,
+		walletID: dummyWalletID,
+		client:   mockClient,
+		service:  svc,
 	}
-	c.SetWalletID(dummyWalletID)
 	c.Call([]byte(newRawRequest(t, "channel_create", map[string]string{"name": "test", "bid": "0.1"})))
 	expectedRequest := jsonrpc.RPCRequest{
 		Method: "channel_create",
@@ -238,7 +249,7 @@ func TestCallerCallAttachesAccountId(t *testing.T) {
 }
 
 func TestCallerSetPreprocessor(t *testing.T) {
-	svc := NewService("")
+	svc := NewService(router.NewDefault())
 	client := &ClientMock{}
 	c := Caller{
 		client:  client,
@@ -296,8 +307,8 @@ func TestCallerCallSDKError(t *testing.T) {
 		}
 		`))
 	}))
-	svc := NewService(ts.URL)
-	c := svc.NewCaller()
+	svc := NewService(router.New(router.SingleSDKSet(ts.URL)))
+	c := svc.NewCaller("")
 
 	hook := logrus_test.NewLocal(svc.logger.Logger())
 	response := c.Call([]byte(newRawRequest(t, "resolve", map[string]string{"urls": "what"})))
@@ -315,8 +326,8 @@ func TestCallerCallClientJSONError(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"method":"version}`))
 	}))
-	svc := NewService(ts.URL)
-	c := svc.NewCaller()
+	svc := NewService(router.New(router.SingleSDKSet(ts.URL)))
+	c := svc.NewCaller("")
 
 	hook := logrus_test.NewLocal(svc.logger.Logger())
 	response := c.Call([]byte(`{"method":"version}`))

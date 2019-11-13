@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/lbryio/lbrytv/app/router"
+
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
@@ -19,6 +21,7 @@ var defaultWalletOpts = ljsonrpc.WalletCreateOpts{SkipOnStartup: false, CreateAc
 
 // Client is a LBRY SDK jsonrpc client instance
 var Client = ljsonrpc.NewClient(config.GetLbrynet())
+var lbrynetRouter = router.New(config.GetAllLbrynets())
 
 var Logger = monitor.NewModuleLogger("lbrynet")
 
@@ -118,7 +121,8 @@ func InitializeWallet(uid int) (string, error) {
 func CreateWallet(uid int) (*ljsonrpc.Wallet, error) {
 	wid := MakeWalletID(uid)
 	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
-	wallet, err := Client.WalletCreate(wid, &defaultWalletOpts)
+	client := ljsonrpc.NewClient(lbrynetRouter.GetSDKServer(wid))
+	wallet, err := client.WalletCreate(wid, &defaultWalletOpts)
 	if err != nil {
 		return nil, NewWalletError(uid, err)
 	}
@@ -133,7 +137,8 @@ func CreateWallet(uid int) (*ljsonrpc.Wallet, error) {
 func AddWallet(uid int) (*ljsonrpc.Wallet, error) {
 	wid := MakeWalletID(uid)
 	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
-	wallet, err := Client.WalletAdd(wid)
+	client := ljsonrpc.NewClient(lbrynetRouter.GetSDKServer(wid))
+	wallet, err := client.WalletAdd(wid)
 	if err != nil {
 		return nil, NewWalletError(uid, err)
 	}
@@ -148,7 +153,8 @@ func AddWallet(uid int) (*ljsonrpc.Wallet, error) {
 func WalletRemove(uid int) (*ljsonrpc.Wallet, error) {
 	wid := MakeWalletID(uid)
 	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
-	wallet, err := Client.WalletRemove(wid)
+	client := ljsonrpc.NewClient(lbrynetRouter.GetSDKServer(wid))
+	wallet, err := client.WalletRemove(wid)
 	if err != nil {
 		return nil, NewWalletError(uid, err)
 	}

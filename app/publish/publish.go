@@ -35,7 +35,7 @@ type Publisher interface {
 
 // LbrynetPublisher is an implementation of SDK publisher.
 type LbrynetPublisher struct {
-	*proxy.Service
+	*proxy.ProxyService
 }
 
 // UploadHandler glues HTTP uploads to the Publisher.
@@ -47,7 +47,7 @@ type UploadHandler struct {
 type UploadOpts struct {
 	Path         string
 	Publisher    Publisher
-	ProxyService *proxy.Service
+	ProxyService *proxy.ProxyService
 }
 
 // NewUploadHandler returns a HTTP upload handler object.
@@ -57,7 +57,7 @@ func NewUploadHandler(opts UploadOpts) (*UploadHandler, error) {
 		uploadPath string
 	)
 	if opts.ProxyService != nil {
-		publisher = &LbrynetPublisher{Service: opts.ProxyService}
+		publisher = &LbrynetPublisher{ProxyService: opts.ProxyService}
 	} else if opts.Publisher != nil {
 		publisher = opts.Publisher
 	} else {
@@ -79,8 +79,7 @@ func NewUploadHandler(opts UploadOpts) (*UploadHandler, error) {
 // patches the query and sends it to the SDK for processing.
 // Resulting response is then returned back as a slice of bytes.
 func (p *LbrynetPublisher) Publish(filePath, walletID string, rawQuery []byte) []byte {
-	c := p.Service.NewCaller()
-	c.SetWalletID(walletID)
+	c := p.ProxyService.NewCaller(walletID)
 	c.SetPreprocessor(func(q *proxy.Query) {
 		params := q.ParamsAsMap()
 		params[fileNameParam] = filePath

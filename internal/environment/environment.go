@@ -10,10 +10,10 @@ type Env struct {
 	*monitor.ModuleLogger
 	*config.ConfigWrapper
 
-	proxy *proxy.Service
+	proxy *proxy.ProxyService
 }
 
-func NewEnvironment(logger *monitor.ModuleLogger, config *config.ConfigWrapper, ps *proxy.Service) *Env {
+func NewEnvironment(logger *monitor.ModuleLogger, config *config.ConfigWrapper, ps *proxy.ProxyService) *Env {
 	if logger == nil {
 		logger = &monitor.ModuleLogger{}
 	}

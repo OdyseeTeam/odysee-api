@@ -12,14 +12,14 @@ import (
 
 var logger = monitor.NewModuleLogger("proxy_handlers")
 
-// RequestHandler is a wrapper for passing proxy.Service instance to proxy HTTP handler.
+// RequestHandler is a wrapper for passing proxy.ProxyService instance to proxy HTTP handler.
 type RequestHandler struct {
-	*Service
+	*ProxyService
 }
 
-// NewRequestHandler initializes request handler with a provided Proxy Service instance
-func NewRequestHandler(svc *Service) *RequestHandler {
-	return &RequestHandler{Service: svc}
+// NewRequestHandler initializes request handler with a provided Proxy ProxyService instance
+func NewRequestHandler(svc *ProxyService) *RequestHandler {
+	return &RequestHandler{ProxyService: svc}
 }
 
 // Handle forwards client JSON-RPC request to proxy.
@@ -38,12 +38,11 @@ func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c := rh.Service.NewCaller()
-
+	var walletID string
 	if config.AccountsEnabled() {
 		retriever := users.NewWalletService()
 		auth := users.NewAuthenticator(retriever)
-		wid, err := auth.GetWalletID(r)
+		walletID, err = auth.GetWalletID(r)
 
 		// TODO: Refactor error response creation
 		if err != nil {
@@ -54,8 +53,8 @@ func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 			monitor.CaptureRequestError(err, r, w)
 			return
 		}
-		c.SetWalletID(wid)
 	}
+	c := rh.ProxyService.NewCaller(walletID)
 
 	rawCallReponse := c.Call(body)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")

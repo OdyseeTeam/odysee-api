@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/storage"
@@ -18,13 +19,13 @@ const dummyServerURL = "http://127.0.0.1:59999"
 const proxySuffix = "/api/v1/proxy"
 const testSetupWait = 200 * time.Millisecond
 
-var svc *Service
+var svc *ProxyService
 
 func TestMain(m *testing.M) {
 	rand.Seed(time.Now().UnixNano())
 
 	go launchGrumpyServer()
-	svc = NewService(config.GetLbrynet())
+	svc = NewService(router.NewDefault())
 
 	config.Override("AccountsEnabled", true)
 	defer config.RestoreOverridden()
