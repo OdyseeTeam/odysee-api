@@ -47,7 +47,7 @@ You still might want to use `docker` and `docker-compose` for running SDK and DB
 
 If this is your first launch, initialize:
 
-`docker-compose up postgres lbrynet --no-start`
+`docker-compose up --no-start postgres lbrynet`
 
 After that, launch the containers:
 
