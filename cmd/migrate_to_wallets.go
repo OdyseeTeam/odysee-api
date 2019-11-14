@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/models"
+	"github.com/lbryio/lbrytv/util/wallet"
+
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
 	"github.com/spf13/cobra"
 	"github.com/volatiletech/sqlboiler/boil"
@@ -41,7 +43,7 @@ var migrateToWallets = &cobra.Command{
 		fmt.Printf("%v users without wallets\n", len(users))
 
 		for _, u := range users {
-			wid := lbrynet.MakeWalletID(u.ID)
+			wid := wallet.MakeID(u.ID)
 
 			if realRun {
 				_, err = c.WalletCreate(wid, &ljsonrpc.WalletCreateOpts{CreateAccount: false})

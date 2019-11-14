@@ -307,7 +307,7 @@ func TestCallerCallSDKError(t *testing.T) {
 		}
 		`))
 	}))
-	svc := NewService(router.New(router.SingleSDKSet(ts.URL)))
+	svc := NewService(router.New(router.SingleLbrynetServer(ts.URL)))
 	c := svc.NewCaller("")
 
 	hook := logrus_test.NewLocal(svc.logger.Logger())
@@ -326,7 +326,7 @@ func TestCallerCallClientJSONError(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"method":"version}`))
 	}))
-	svc := NewService(router.New(router.SingleSDKSet(ts.URL)))
+	svc := NewService(router.New(router.SingleLbrynetServer(ts.URL)))
 	c := svc.NewCaller("")
 
 	hook := logrus_test.NewLocal(svc.logger.Logger())

@@ -189,12 +189,12 @@ func (q *Query) validate() CallError {
 	return nil
 }
 
-// SetPreprocessor applies provided function to query before it's sent to the SDK.
+// SetPreprocessor applies provided function to query before it's sent to the LbrynetServer.
 func (c *Caller) SetPreprocessor(p Preprocessor) {
 	c.preprocessor = p
 }
 
-// WalletID is an SDK wallet ID for the client this caller instance is serving.
+// WalletID is an LbrynetServer wallet ID for the client this caller instance is serving.
 func (c *Caller) WalletID() string {
 	return c.walletID
 }
@@ -265,7 +265,7 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 		c.service.logger.LogSuccessfulQuery(q.Method(), duration, q.Params(), r)
 	}
 
-	// This checks if SDK responded with missing wallet error and tries to reload it,
+	// This checks if LbrynetServer responded with missing wallet error and tries to reload it,
 	// then repeat the request again.
 	// TODO: Refactor this and move somewhere else
 	if r.Error != nil && c.retries == 0 {
@@ -290,7 +290,7 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 	return r, nil
 }
 
-// Call method processes a raw query received from JSON-RPC client and forwards it to SDK.
+// Call method processes a raw query received from JSON-RPC client and forwards it to LbrynetServer.
 // It returns a response that is ready to be sent back to the JSON-RPC client as is.
 func (c *Caller) Call(rawQuery []byte) []byte {
 	r, err := c.call(rawQuery)

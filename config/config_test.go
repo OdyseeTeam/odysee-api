@@ -24,10 +24,18 @@ func TestIsProduction(t *testing.T) {
 	defer RestoreOverridden()
 }
 
-func TestGetAllLbrynets(t *testing.T) {
+func TestGetLbrynetServer(t *testing.T) {
+	Override("LbrynetServers", map[string]string{})
+	assert.Equal(t, "http://localhost:5581/", Config.Viper.Get("Lbrynet"))
+	RestoreOverridden()
+	Override("LbrynetServers", map[string]string{"default": "http://localhost:5581/"})
+	assert.Equal(t, "http://localhost:5581/", Config.Viper.Get("Lbrynet"))
+}
+
+func TestGetLbrynetServers(t *testing.T) {
 	assert.Equal(t, map[string]string{
 		"default": "http://lbrynet1:5279/",
 		"sdk1":    "http://lbrynet2:5279/",
 		"sdk2":    "http://lbrynet3:5279/",
-	}, GetAllLbrynets())
+	}, GetLbrynetServers())
 }

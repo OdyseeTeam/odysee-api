@@ -141,9 +141,9 @@ func MetricsPath() string {
 	return Config.Viper.GetString("MetricsPath")
 }
 
-// GetLbrynet returns the address of SDK server to use
-func GetLbrynet() string {
-	lbrynets := GetAllLbrynets()
+// GetLbrynetServer returns the address of SDK server to use
+func getLbrynetServer() string {
+	lbrynets := GetLbrynetServers()
 	defaultLSDKServer, ok := lbrynets["default"]
 	if !ok {
 		return Config.Viper.GetString("Lbrynet")
@@ -151,8 +151,8 @@ func GetLbrynet() string {
 	return defaultLSDKServer
 }
 
-//GetAllLbrynets returns the names/addresses of every SDK server
-func GetAllLbrynets() map[string]string {
+//GetLbrynetServers returns the names/addresses of every SDK server
+func GetLbrynetServers() map[string]string {
 	return Config.Viper.GetStringMapString("LbrynetServers")
 }
 

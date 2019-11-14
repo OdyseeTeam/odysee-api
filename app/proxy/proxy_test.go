@@ -298,7 +298,7 @@ func BenchmarkResolve(b *testing.B) {
 }
 
 func BenchmarkDirectResolve(b *testing.B) {
-	rpcClient := jsonrpc.NewClient(config.GetLbrynet())
+	rpcClient := jsonrpc.NewClient(sdkRouter.GetBalancedSDK())
 	query := jsonrpc.NewRequest(MethodResolve, map[string][110]string{paramUrls: homePageUrls})
 
 	wg := sync.WaitGroup{}

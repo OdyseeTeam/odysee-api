@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lbryio/lbrytv/util/wallet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -82,14 +83,14 @@ func TestInitializeWallet(t *testing.T) {
 
 	wid, err := InitializeWallet(uid)
 	require.Nil(t, err)
-	assert.Equal(t, wid, MakeWalletID(uid))
+	assert.Equal(t, wid, wallet.MakeID(uid))
 
 	_, err = WalletRemove(uid)
 	require.Nil(t, err)
 
 	wid, err = InitializeWallet(uid)
 	require.Nil(t, err)
-	assert.Equal(t, wid, MakeWalletID(uid))
+	assert.Equal(t, wid, wallet.MakeID(uid))
 }
 
 func TestCreateWalletAddWallet(t *testing.T) {
@@ -97,7 +98,7 @@ func TestCreateWalletAddWallet(t *testing.T) {
 
 	w, err := CreateWallet(uid)
 	require.Nil(t, err)
-	assert.Equal(t, w.ID, MakeWalletID(uid))
+	assert.Equal(t, w.ID, wallet.MakeID(uid))
 
 	_, err = CreateWallet(uid)
 	require.NotNil(t, err)
@@ -108,7 +109,7 @@ func TestCreateWalletAddWallet(t *testing.T) {
 
 	w, err = AddWallet(uid)
 	require.Nil(t, err)
-	assert.Equal(t, w.ID, MakeWalletID(uid))
+	assert.Equal(t, w.ID, wallet.MakeID(uid))
 }
 
 func BenchmarkCreateAccount(b *testing.B) {

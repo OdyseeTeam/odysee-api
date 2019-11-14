@@ -1,8 +1,9 @@
 package router
 
 import (
-	"strconv"
 	"testing"
+
+	"github.com/lbryio/lbrytv/util/wallet"
 
 	"github.com/lbryio/lbrytv/config"
 	"github.com/stretchr/testify/assert"
@@ -16,12 +17,12 @@ func TestGetFirstDigit(t *testing.T) {
 }
 
 func TestInitializeWithYML(t *testing.T) {
-	sdkRouter := New(config.GetAllLbrynets())
+	sdkRouter := New(config.GetLbrynetServers())
 	assert.True(t, len(sdkRouter.GetSDKServerList()) > 0, "No servers")
 }
 
 func TestFirstServer(t *testing.T) {
-	sdkRouter := New(config.GetAllLbrynets())
+	sdkRouter := New(config.GetLbrynetServers())
 	server := sdkRouter.GetSDKServer("lbrytv-id.756130.wallet")
 	assert.Equal(t, "http://lbrynet1:5279/", server)
 
@@ -33,11 +34,19 @@ func TestFirstServer(t *testing.T) {
 }
 
 func TestServerRetrieval(t *testing.T) {
-	sdkRouter := New(config.GetAllLbrynets())
+	sdkRouter := New(config.GetLbrynetServers())
 	servers := sdkRouter.GetSDKServerList()
 	for i := 0; i < 10000; i++ {
-		iStr := strconv.Itoa(i)
-		server := sdkRouter.GetSDKServer("lbrytv-id." + iStr + ".wallet")
+		walletID := wallet.MakeID(i)
+		server := sdkRouter.GetSDKServer(walletID)
 		assert.Equal(t, servers[i%10%3].Address, server)
+	}
+}
+
+func TestDefaultLbrynetServer(t *testing.T) {
+	sdkRouter := New(config.GetLbrynetServers())
+	_, ok := sdkRouter.LbrynetServers["default"]
+	if !ok {
+		t.Error("No default lbrynet server is specified in the lbrytv.yml")
 	}
 }
