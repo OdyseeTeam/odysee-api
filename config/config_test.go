@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,6 +15,14 @@ func TestOverride(t *testing.T) {
 	RestoreOverridden()
 	assert.Equal(t, originalSetting, c.Viper.Get("Lbrynet"))
 	assert.Empty(t, overriddenValues)
+}
+
+func TestOverrideInEnv(t *testing.T) {
+	os.Setenv("LW_LBRYNETSERVERS", `{"default": "http://abc:5279/"}`)
+	oldConfig := Config
+	Config = NewConfig()
+	assert.Equal(t, map[string]string{"default": "http://abc:5279/"}, GetLbrynetServers())
+	Config = oldConfig
 }
 
 func TestIsProduction(t *testing.T) {
