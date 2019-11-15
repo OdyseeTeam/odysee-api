@@ -20,7 +20,7 @@ jobs:
       - save_cache:
           key: go-mod-cache-{{ checksum "go.sum" }}
           paths:
-            - /go/pkg/mod
+            - /go
 
   publish-image:
     docker:
