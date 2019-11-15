@@ -84,7 +84,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestOverrideLbrynetDefault(t *testing.T) {
-	config.Override("Lbrynet", "http://localhost:5279")
+	config.Override("LbrynetServers", map[string]string{"default": "http://localhost:5279"})
 	defer config.RestoreOverridden()
 	sdkRouter := NewDefault()
 	dummyID := 2343465345
@@ -95,6 +95,7 @@ func TestOverrideLbrynetDefault(t *testing.T) {
 
 func TestOverrideLbrynet(t *testing.T) {
 	config.Override("Lbrynet", "http://localhost:5279")
+	config.Override("LbrynetServers", map[string]string{})
 	defer config.RestoreOverridden()
 	sdkRouter := New(config.GetLbrynetServers())
 	dummyID := 2343465345

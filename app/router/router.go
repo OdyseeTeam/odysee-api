@@ -46,7 +46,7 @@ func New(lbrynetServers map[string]string) SDKRouter {
 }
 
 func NewDefault() SDKRouter {
-	return New(map[string]string{"default": config.Config.Viper.GetString("Lbrynet")})
+	return New(config.GetLbrynetServers())
 }
 
 func (r *SDKRouter) GetSDKServerList() []models.LbrynetServer {

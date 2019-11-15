@@ -147,14 +147,15 @@ func MetricsPath() string {
 
 //GetLbrynetServers returns the names/addresses of every SDK server
 func GetLbrynetServers() map[string]string {
-	if Config.Viper.IsSet(deprecatedLbrynet) && Config.Viper.IsSet(lbrynetServers) {
+	if Config.Viper.GetString(deprecatedLbrynet) != "" &&
+		len(Config.Viper.GetStringMapString(lbrynetServers)) > 0 {
 		logrus.Panicf("Both %s and %s are set. This is a highlander situation...there can be only 1.", deprecatedLbrynet, lbrynetServers)
 	}
 
 	var serverMap = make(map[string]string)
-	if Config.Viper.IsSet(lbrynetServers) {
+	if len(Config.Viper.GetStringMapString(lbrynetServers)) > 0 {
 		serverMap = Config.Viper.GetStringMapString(lbrynetServers)
-	} else if Config.Viper.IsSet(deprecatedLbrynet) {
+	} else if Config.Viper.GetString(deprecatedLbrynet) != "" {
 		serverMap = map[string]string{"default": Config.Viper.GetString(deprecatedLbrynet)}
 	} else {
 		servers, err := models.LbrynetServers().AllG()

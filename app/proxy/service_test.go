@@ -112,7 +112,10 @@ func TestCallerSetWalletID(t *testing.T) {
 }
 
 func TestCallerCallResolve(t *testing.T) {
-	var resolveResponse ljsonrpc.ResolveResponse
+	var (
+		errorResponse   jsonrpc.RPCResponse
+		resolveResponse ljsonrpc.ResolveResponse
+	)
 
 	svc := NewService(router.NewDefault())
 	c := svc.NewCaller("")
@@ -122,6 +125,10 @@ func TestCallerCallResolve(t *testing.T) {
 
 	request := newRawRequest(t, "resolve", map[string]string{"urls": resolvedURL})
 	rawCallReponse := c.Call(request)
+	err := json.Unmarshal(rawCallReponse, &errorResponse)
+	require.NoError(t, err)
+	require.Nil(t, errorResponse.Error)
+
 	parseRawResponse(t, rawCallReponse, &resolveResponse)
 	assert.Equal(t, resolvedClaimID, resolveResponse[resolvedURL].ClaimID)
 }
