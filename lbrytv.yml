@@ -1,8 +1,5 @@
 Lbrynet: http://localhost:5581/
 
-LbrynetServers:
-  default: http://localhost:5581/
-
 Debug: 1
 InternalAPIHost: https://api.lbry.com
 ProjectURL: https://beta.lbry.tv
