@@ -256,14 +256,6 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 		return r, NewInternalError(err)
 	}
 
-	if r.Error != nil {
-		metrics.ProxyCallFailedDurations.WithLabelValues(q.Method()).Observe(duration)
-		c.service.logger.LogFailedQuery(q.Method(), q.Params(), r.Error)
-	} else {
-		metrics.ProxyCallDurations.WithLabelValues(q.Method()).Observe(duration)
-		c.service.logger.LogSuccessfulQuery(q.Method(), duration, q.Params(), r)
-	}
-
 	// This checks if LbrynetServer responded with missing wallet error and tries to reload it,
 	// then repeat the request again.
 	// TODO: Refactor this and move somewhere else
@@ -277,6 +269,14 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 				c.retries++
 				return c.call(rawQuery)
 			}
+		}
+	} else {
+		if r.Error != nil {
+			metrics.ProxyCallFailedDurations.WithLabelValues(q.Method()).Observe(duration)
+			c.service.logger.LogFailedQuery(q.Method(), q.Params(), r.Error)
+		} else {
+			metrics.ProxyCallDurations.WithLabelValues(q.Method()).Observe(duration)
+			c.service.logger.LogSuccessfulQuery(q.Method(), duration, q.Params(), r)
 		}
 	}
 
