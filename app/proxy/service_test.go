@@ -132,13 +132,13 @@ func TestCallerCallDoesReloadWallet(t *testing.T) {
 	)
 
 	rand.Seed(time.Now().UnixNano())
-	dummyUserID := rand.Int()
+	dummyUserID := rand.Intn(10^6-10^3) + 10 ^ 3
 
 	_, wid, _ := lbrynet.InitializeWallet(dummyUserID)
 	_, err := lbrynet.WalletRemove(dummyUserID)
 	require.NoError(t, err)
 
-	svc := NewService(router.NewDefault())
+	svc := NewService(router.New(router.SingleLbrynetServer("http://localhost:5581/")))
 	c := svc.NewCaller(wid)
 
 	request := newRawRequest(t, "wallet_balance", nil)
