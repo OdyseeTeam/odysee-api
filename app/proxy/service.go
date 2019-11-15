@@ -259,9 +259,9 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 	// This checks if LbrynetServer responded with missing wallet error and tries to reload it,
 	// then repeat the request again.
 	// TODO: Refactor this and move somewhere else
-	if r.Error != nil && c.retries == 0 {
+	if r.Error != nil {
 		wErr := lbrynet.NewWalletError(0, errors.New(r.Error.Message))
-		if errors.As(wErr, &lbrynet.WalletNotLoaded{}) {
+		if c.retries == 0 && errors.As(wErr, &lbrynet.WalletNotLoaded{}) {
 			// We need to use Lbry JSON-RPC client here for eqsier request/response processing
 			client := ljsonrpc.NewClient(c.service.Router.GetSDKServerAddress(c.WalletID()))
 			_, err := client.WalletAdd(c.WalletID())
@@ -269,15 +269,13 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 				c.retries++
 				return c.call(rawQuery)
 			}
-		}
-	} else {
-		if r.Error != nil {
+		} else {
 			metrics.ProxyCallFailedDurations.WithLabelValues(q.Method()).Observe(duration)
 			c.service.logger.LogFailedQuery(q.Method(), q.Params(), r.Error)
-		} else {
-			metrics.ProxyCallDurations.WithLabelValues(q.Method()).Observe(duration)
-			c.service.logger.LogSuccessfulQuery(q.Method(), duration, q.Params(), r)
 		}
+	} else {
+		metrics.ProxyCallDurations.WithLabelValues(q.Method()).Observe(duration)
+		c.service.logger.LogSuccessfulQuery(q.Method(), duration, q.Params(), r)
 	}
 
 	r, err = processResponse(q.Request, r)
