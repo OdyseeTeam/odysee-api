@@ -87,8 +87,10 @@ func (r *SDKRouter) getSDKByWalletID(walletID string) models.LbrynetServer {
 	server := 0
 	if user != nil {
 		for i, s := range r.servers {
-			if s.ID == user.R.LbrynetServer.ID {
-				server = i
+			if user.R.LbrynetServer != nil {
+				if s.ID == user.R.LbrynetServer.ID {
+					server = i
+				}
 			}
 		}
 	} else {
