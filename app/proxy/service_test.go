@@ -145,7 +145,7 @@ func TestCallerCallDoesReloadWallet(t *testing.T) {
 	_, err := lbrynet.WalletRemove(dummyUserID)
 	require.NoError(t, err)
 
-	svc := NewService(router.New(router.SingleLbrynetServer("http://localhost:5581/")))
+	svc := NewService(router.NewDefault())
 	c := svc.NewCaller(wid)
 
 	request := newRawRequest(t, "wallet_balance", nil)

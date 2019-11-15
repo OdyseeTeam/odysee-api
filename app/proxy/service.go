@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/app/router"
-	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
@@ -271,10 +270,9 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 	if r.Error != nil && c.retries == 0 {
 		wErr := lbrynet.NewWalletError(0, errors.New(r.Error.Message))
 		if errors.As(wErr, &lbrynet.WalletNotLoaded{}) {
-			lbrynetRouter := router.New(config.GetLbrynetServers())
-			// Client is a LBRY LbrynetServer jsonrpc client instance
-			var Client = ljsonrpc.NewClient(lbrynetRouter.GetBalancedSDKAddress())
-			_, err := Client.WalletAdd(c.WalletID())
+			// We need to use Lbry JSON-RPC client here for eqsier request/response processing
+			client := ljsonrpc.NewClient(c.service.Router.GetSDKServerAddress(c.WalletID()))
+			_, err := client.WalletAdd(c.WalletID())
 			if err == nil {
 				c.retries++
 				return c.call(rawQuery)
