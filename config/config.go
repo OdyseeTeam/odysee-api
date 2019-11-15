@@ -7,6 +7,7 @@ import (
 
 	"github.com/lbryio/lbrytv/models"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -21,6 +22,9 @@ type DBConfig struct {
 	DBName     string
 	Options    string
 }
+
+const lbrynetServers = "LbrynetServers"
+const deprecatedLbrynet = "Lbrynet"
 
 var once sync.Once
 var Config *ConfigWrapper
@@ -56,8 +60,6 @@ func (c *ConfigWrapper) Init() {
 
 	c.Viper.BindEnv("Debug")
 	c.Viper.BindEnv("Lbrynet")
-	c.Viper.SetDefault("Lbrynet", "http://localhost:5279/")
-	c.Viper.SetDefault("LbrynetServers", map[string]string{"default": "http://localhost:5279/"})
 
 	c.Viper.SetDefault("Address", ":8080")
 	c.Viper.SetDefault("Host", "http://localhost:8080")
@@ -143,20 +145,12 @@ func MetricsPath() string {
 	return Config.Viper.GetString("MetricsPath")
 }
 
-// GetLbrynetServer returns the address of SDK server to use
-func getLbrynetServer() string {
-	lbrynets := GetLbrynetServers()
-	defaultLSDKServer, ok := lbrynets["default"]
-	if !ok {
-		return Config.Viper.GetString("Lbrynet")
-	}
-	return defaultLSDKServer
-}
-
 //GetLbrynetServers returns the names/addresses of every SDK server
 func GetLbrynetServers() map[string]string {
-	const lbrynetServers = "LbrynetServers"
-	const deprecatedLbrynet = "Lbrynet"
+	if Config.Viper.IsSet(deprecatedLbrynet) && Config.Viper.IsSet(lbrynetServers) {
+		logrus.Panicf("Both %s and %s are set. This is a highlander situation...there can be only 1.", deprecatedLbrynet, lbrynetServers)
+	}
+
 	var serverMap = make(map[string]string)
 	if Config.Viper.IsSet(lbrynetServers) {
 		serverMap = Config.Viper.GetStringMapString(lbrynetServers)

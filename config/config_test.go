@@ -45,3 +45,9 @@ func TestGetLbrynetServers(t *testing.T) {
 		"sdk2":    "http://lbrynet3:5279/",
 	}, GetLbrynetServers())
 }
+
+func TestGetLbrynetServersNoDB(t *testing.T) {
+	if Config.Viper.IsSet(deprecatedLbrynet) && Config.Viper.IsSet(lbrynetServers) {
+		t.Errorf("Both %s and %s are set. This is a highlander situation...there can be only 1.", deprecatedLbrynet, lbrynetServers)
+	}
+}
