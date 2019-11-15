@@ -23,9 +23,6 @@ var svc *ProxyService
 
 func TestMain(m *testing.M) {
 	rand.Seed(time.Now().UnixNano())
-	config.Override("Lbrynet", grumpyServerURL)
-	defer config.RestoreOverridden()
-	go launchGrumpyServer()
 	svc = NewService(router.NewDefault())
 
 	config.Override("AccountsEnabled", true)
