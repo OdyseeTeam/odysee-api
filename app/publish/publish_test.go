@@ -11,6 +11,8 @@ import (
 	"path"
 	"testing"
 
+	"github.com/lbryio/lbrytv/app/router"
+
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/config"
@@ -87,7 +89,7 @@ func TestLbrynetPublisher(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	p := &LbrynetPublisher{proxy.NewService(config.GetLbrynet())}
+	p := &LbrynetPublisher{proxy.NewService(router.New(config.GetLbrynetServers()))}
 
 	walletSvc := users.NewWalletService()
 	u, err := walletSvc.Retrieve(users.Query{Token: authToken})

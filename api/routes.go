@@ -9,7 +9,7 @@ import (
 )
 
 // InstallRoutes sets up global API handlers
-func InstallRoutes(proxyService *proxy.Service, r *mux.Router) {
+func InstallRoutes(proxyService *proxy.ProxyService, r *mux.Router) {
 	authenticator := users.NewAuthenticator(users.NewWalletService())
 	proxyHandler := proxy.NewRequestHandler(proxyService)
 	upHandler, err := publish.NewUploadHandler(publish.UploadOpts{ProxyService: proxyService})

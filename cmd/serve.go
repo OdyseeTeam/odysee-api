@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/lbryio/lbrytv/app/proxy"
+	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/server"
@@ -19,7 +20,7 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		s := server.NewServer(server.ServerOpts{
 			Address:      config.GetAddress(),
-			ProxyService: proxy.NewService(config.GetLbrynet()),
+			ProxyService: proxy.NewService(router.New(config.GetLbrynetServers())),
 		})
 		err := s.Start()
 		if err != nil {
