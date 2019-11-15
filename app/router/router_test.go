@@ -103,3 +103,9 @@ func TestOverrideLbrynet(t *testing.T) {
 	server := sdkRouter.GetSDKServer(wallet.MakeID(dummyID))
 	assert.Equal(t, server.Address, "http://localhost:5279")
 }
+
+func TestGetUserID(t *testing.T) {
+	walletID := "sjdfkjhsdkjs.1234235.sdfsgf"
+	userID := getUserID(walletID)
+	assert.Equal(t, 1234235, userID)
+}
