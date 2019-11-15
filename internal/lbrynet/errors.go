@@ -81,7 +81,7 @@ func (e WalletError) Unwrap() error {
 }
 
 func (e WalletError) Error() string {
-	return "unknown wallet error"
+	return fmt.Sprintf("unknown wallet error: %v", e.Unwrap())
 }
 
 func (e WalletExists) Error() string {
