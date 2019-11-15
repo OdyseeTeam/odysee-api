@@ -9,10 +9,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
@@ -270,6 +272,7 @@ func BenchmarkResolve(b *testing.B) {
 }
 
 func BenchmarkDirectResolve(b *testing.B) {
+	sdkRouter := router.New(config.GetLbrynetServers())
 	rpcClient := jsonrpc.NewClient(sdkRouter.GetBalancedSDKAddress())
 	query := jsonrpc.NewRequest(MethodResolve, map[string][110]string{paramUrls: homePageUrls})
 

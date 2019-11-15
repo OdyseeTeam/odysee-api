@@ -19,11 +19,6 @@ const accountNameTemplate string = accountNamePrefix + "%v"
 
 var defaultWalletOpts = ljsonrpc.WalletCreateOpts{SkipOnStartup: false, CreateAccount: true, SingleKey: true}
 
-var lbrynetRouter = router.New(config.GetLbrynetServers())
-
-// Client is a LBRY LbrynetServer jsonrpc client instance
-var Client = ljsonrpc.NewClient(lbrynetRouter.GetBalancedSDKAddress())
-
 var Logger = monitor.NewModuleLogger("lbrynet")
 
 // MakeAccountName formats user ID to use as an LbrynetServer account name.
@@ -33,6 +28,9 @@ func MakeAccountName(uid int) string {
 
 // GetAccount finds account in account_list by UID
 func GetAccount(uid int) (*ljsonrpc.Account, error) {
+	lbrynetRouter := router.New(config.GetLbrynetServers())
+	// Client is a LBRY LbrynetServer jsonrpc client instance
+	var Client = ljsonrpc.NewClient(lbrynetRouter.GetBalancedSDKAddress())
 	requiredAccountName := MakeAccountName(uid)
 	accounts, err := Client.AccountList()
 	if err != nil {
@@ -49,6 +47,9 @@ func GetAccount(uid int) (*ljsonrpc.Account, error) {
 // CreateAccount creates a new account with the LbrynetServer.
 // Will return an error if account with this UID already exists.
 func CreateAccount(UID int) (*ljsonrpc.Account, error) {
+	lbrynetRouter := router.New(config.GetLbrynetServers())
+	// Client is a LBRY LbrynetServer jsonrpc client instance
+	var Client = ljsonrpc.NewClient(lbrynetRouter.GetBalancedSDKAddress())
 	accountName := MakeAccountName(UID)
 	account, err := GetAccount(UID)
 	if err == nil {
@@ -65,6 +66,9 @@ func CreateAccount(UID int) (*ljsonrpc.Account, error) {
 
 // RemoveAccount removes an account from the LbrynetServer by uid
 func RemoveAccount(UID int) (*ljsonrpc.Account, error) {
+	lbrynetRouter := router.New(config.GetLbrynetServers())
+	// Client is a LBRY LbrynetServer jsonrpc client instance
+	var Client = ljsonrpc.NewClient(lbrynetRouter.GetBalancedSDKAddress())
 	acc, err := GetAccount(UID)
 	if err != nil {
 		return nil, err
@@ -115,6 +119,7 @@ func InitializeWallet(uid int) (models.LbrynetServer, string, error) {
 // 	 // AddWallet() needs to be called before the wallet can be used
 //  }
 func CreateWallet(uid int) (*ljsonrpc.Wallet, models.LbrynetServer, error) {
+	lbrynetRouter := router.New(config.GetLbrynetServers())
 	wid := wallet.MakeID(uid)
 	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
 	lbrynetServer := lbrynetRouter.GetSDKServer(wid)
@@ -132,6 +137,7 @@ func CreateWallet(uid int) (*ljsonrpc.Wallet, models.LbrynetServer, error) {
 //  WalletAlreadyLoaded - wallet is already loaded and operational
 //  WalletNotFound - wallet file does not exist and won't be loaded.
 func AddWallet(uid int) (*ljsonrpc.Wallet, error) {
+	lbrynetRouter := router.New(config.GetLbrynetServers())
 	wid := wallet.MakeID(uid)
 	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
 	client := ljsonrpc.NewClient(lbrynetRouter.GetSDKServerAddress(wid))
@@ -148,6 +154,7 @@ func AddWallet(uid int) (*ljsonrpc.Wallet, error) {
 //  WalletAlreadyLoaded - wallet is already loaded and operational
 //  WalletNotFound - wallet file does not exist and won't be loaded.
 func WalletRemove(uid int) (*ljsonrpc.Wallet, error) {
+	lbrynetRouter := router.New(config.GetLbrynetServers())
 	wid := wallet.MakeID(uid)
 	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
 	client := ljsonrpc.NewClient(lbrynetRouter.GetSDKServerAddress(wid))
@@ -162,6 +169,9 @@ func WalletRemove(uid int) (*ljsonrpc.Wallet, error) {
 // Resolve calls resolve method on the daemon and handles
 // *frequent* LbrynetServer response format changes with grace instead of panicking.
 func Resolve(url string) (*ljsonrpc.Claim, error) {
+	lbrynetRouter := router.New(config.GetLbrynetServers())
+	// Client is a LBRY LbrynetServer jsonrpc client instance
+	var Client = ljsonrpc.NewClient(lbrynetRouter.GetBalancedSDKAddress())
 	r, err := Client.Resolve(url)
 	if err != nil {
 		return nil, err

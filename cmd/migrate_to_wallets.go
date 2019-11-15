@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/lbryio/lbrytv/app/router"
+	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/models"
 	"github.com/lbryio/lbrytv/util/wallet"
@@ -34,7 +36,8 @@ var migrateToWallets = &cobra.Command{
 		if len(args) > 0 && args[0] == "doit" {
 			realRun = true
 		}
-		c := lbrynet.Client
+		lbrynetRouter := router.New(config.GetLbrynetServers())
+		c := ljsonrpc.NewClient(lbrynetRouter.GetBalancedSDKAddress())
 
 		users, err := models.Users(models.UserWhere.WalletID.EQ("")).AllG()
 		if err != nil {

@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/app/router"
-
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
@@ -26,8 +25,6 @@ import (
 )
 
 const cacheResolveLongerThan = 10
-
-var sdkRouter = router.New(config.GetLbrynetServers())
 
 // relaxedMethods are methods which are allowed to be called without wallet_id.
 var relaxedMethods = []string{
@@ -250,6 +247,7 @@ func NewRequest(method string, params ...interface{}) jsonrpc.RPCRequest {
 
 // RawCall makes an arbitrary jsonrpc request to the SDK
 func RawCall(request jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
+	sdkRouter := router.New(config.GetLbrynetServers())
 	rpcClient := jsonrpc.NewClient(sdkRouter.GetBalancedSDKAddress())
 	response, err := rpcClient.CallRaw(&request)
 	if err != nil {

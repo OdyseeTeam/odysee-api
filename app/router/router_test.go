@@ -82,3 +82,23 @@ func TestMain(m *testing.M) {
 
 	os.Exit(code)
 }
+
+func TestOverrideLbrynetDefault(t *testing.T) {
+	config.Override("Lbrynet", "http://localhost:5279")
+	defer config.RestoreOverridden()
+	sdkRouter := NewDefault()
+	dummyID := 2343465345
+	wallet.MakeID(dummyID)
+	server := sdkRouter.GetSDKServer(wallet.MakeID(dummyID))
+	assert.Equal(t, server.Address, "http://localhost:5279")
+}
+
+func TestOverrideLbrynet(t *testing.T) {
+	config.Override("Lbrynet", "http://localhost:5279")
+	defer config.RestoreOverridden()
+	sdkRouter := New(config.GetLbrynetServers())
+	dummyID := 2343465345
+	wallet.MakeID(dummyID)
+	server := sdkRouter.GetSDKServer(wallet.MakeID(dummyID))
+	assert.Equal(t, server.Address, "http://localhost:5279")
+}

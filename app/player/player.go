@@ -23,8 +23,6 @@ import (
 
 const reflectorURL = "http://blobs.lbry.io/"
 
-var sdkRouter = router.New(config.GetLbrynetServers())
-
 type reflectedStream struct {
 	URI         string
 	StartByte   int64
@@ -74,6 +72,7 @@ func PlayURI(uri string, w http.ResponseWriter, req *http.Request) error {
 }
 
 func newReflectedStream(uri string) (rs *reflectedStream, err error) {
+	sdkRouter := router.New(config.GetLbrynetServers())
 	client := ljsonrpc.NewClient(sdkRouter.GetBalancedSDKAddress())
 	rs = &reflectedStream{URI: uri}
 	err = rs.resolve(client)

@@ -42,9 +42,6 @@ func New(lbrynetServers map[string]string) SDKRouter {
 	}
 
 	sdkRouter.populateServers()
-	if _, ok := lbrynetServers["default"]; !ok {
-		sdkRouter.logger.Log().Fatal(`There is no default lbrynet server defined with key "default"`)
-	}
 	return sdkRouter
 }
 
@@ -126,24 +123,34 @@ func getUserID(walletID string) int {
 }
 
 func (r *SDKRouter) populateServers() {
-	if len(r.LbrynetServers) == 0 {
-		r.logger.Log().Fatal("Router created with NO servers!")
-	}
 	var servers []models.LbrynetServer
 	if len(r.LbrynetServers) > 0 {
 		for name, address := range r.LbrynetServers {
 			servers = append(servers, models.LbrynetServer{Name: name, Address: address})
+		}
+		if _, ok := r.LbrynetServers["default"]; !ok {
+			r.logger.Log().Fatal(`There is no default lbrynet server defined with key "default"`)
 		}
 	} else {
 		serversDB, err := models.LbrynetServers().AllG()
 		if err != nil {
 			r.logger.Log().Error("Error retrieving lbrynet servers: ", err)
 		}
+		hasDefault := false
 		for _, s := range serversDB {
 			if s != nil {
+				if s.Name == "default" {
+					hasDefault = true
+				}
 				servers = append(servers, *s)
 			}
 		}
+		if hasDefault == false {
+			r.logger.Log().Fatal(`There is no default lbrynet server defined with key "default"`)
+		}
+	}
+	if len(servers) == 0 {
+		r.logger.Log().Fatal("Router created with NO servers!")
 	}
 
 	sort.Slice(servers, func(i, j int) bool {
