@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/volatiletech/sqlboiler/boil"
+
 	"github.com/volatiletech/sqlboiler/queries/qm"
 
 	"github.com/lbryio/lbrytv/models"
@@ -80,10 +82,15 @@ func (r *SDKRouter) getSDKByWalletID(walletID string) models.LbrynetServer {
 		return r.defaultSDKServer()
 	}
 	userID := getUserID(walletID)
-	user, err := models.Users(qm.Load(models.UserRels.LbrynetServer), models.UserWhere.ID.EQ(userID)).OneG()
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		r.logger.Log().Errorf("Error getting user %d from db: %s", userID, err.Error())
+	var user *models.User
+	var err error
+	if boil.GetDB() != nil {
+		user, err = models.Users(qm.Load(models.UserRels.LbrynetServer), models.UserWhere.ID.EQ(userID)).OneG()
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			r.logger.Log().Errorf("Error getting user %d from db: %s", userID, err.Error())
+		}
 	}
+
 	server := 0
 	if user != nil {
 		for i, s := range r.servers {
