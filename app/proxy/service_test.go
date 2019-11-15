@@ -97,8 +97,8 @@ func TestNewCaller(t *testing.T) {
 
 	sList := svc.Router.GetSDKServerList()
 	rand.Seed(time.Now().UnixNano())
-	for i := 1; i <= 10000; i++ {
-		id := rand.Int()
+	for i := 1; i <= 100; i++ {
+		id := rand.Intn(10^6-10^3) + 10 ^ 3
 		wc := svc.NewCaller(fmt.Sprintf("wallet.%v", id))
 		lastDigit := id % 10
 		assert.Equal(t, sList[lastDigit%len(sList)].Address, wc.endpoint)
@@ -132,7 +132,7 @@ func TestCallerCallDoesReloadWallet(t *testing.T) {
 	)
 
 	rand.Seed(time.Now().UnixNano())
-	dummyUserID := rand.Intn(10^6-10^3) + 10 ^ 3
+	dummyUserID := rand.Intn(100)
 
 	_, wid, _ := lbrynet.InitializeWallet(dummyUserID)
 	_, err := lbrynet.WalletRemove(dummyUserID)
