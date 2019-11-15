@@ -1,8 +1,9 @@
 #!/bin/bash
 
-echo "Waiting for wallet server '${LW_LBRYNET}'..."
+lbrynet=http://localhost:5279/
+echo "Waiting for wallet server '${lbrynet}'..."
 
-while [[ ! $(curl -sd '{"method": "status"}' ${LW_LBRYNET} |grep '"wallet": true') ]]; do
+while [[ ! $(curl -sd '{"method": "status"}' ${lbrynet} |grep '"wallet": true') ]]; do
     sleep 1
 done
 
