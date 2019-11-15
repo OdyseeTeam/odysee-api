@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/lbryio/lbrytv/models"
+
 	"github.com/spf13/viper"
 )
 
@@ -153,7 +155,23 @@ func getLbrynetServer() string {
 
 //GetLbrynetServers returns the names/addresses of every SDK server
 func GetLbrynetServers() map[string]string {
-	return Config.Viper.GetStringMapString("LbrynetServers")
+	const lbrynetServers = "LbrynetServers"
+	const deprecatedLbrynet = "Lbrynet"
+	var serverMap = make(map[string]string)
+	if Config.Viper.IsSet(lbrynetServers) {
+		serverMap = Config.Viper.GetStringMapString(lbrynetServers)
+	} else if Config.Viper.IsSet(deprecatedLbrynet) {
+		serverMap = map[string]string{"default": Config.Viper.GetString(deprecatedLbrynet)}
+	} else {
+		servers, err := models.LbrynetServers().AllG()
+		if err != nil {
+			panic("Could not retrieve lbrynet server list from db and config is not set.")
+		}
+		if len(servers) == 0 {
+			panic("There are no servers listed in the db and config is not set.")
+		}
+	}
+	return serverMap
 }
 
 // GetInternalAPIHost returns the address of internal-api server

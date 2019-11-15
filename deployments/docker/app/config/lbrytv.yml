@@ -19,11 +19,3 @@ BlobFilesDir: /storage/lbrynet/blobfiles
 
 ReflectorAddress: reflector.lbry.com:5566
 ShouldLogResponses: false
-
-LbrynetServers:
-  #default:http://localhost:5581/
-  default: http://lbrynet1:5279/
-  sdk1: http://lbrynet2:5279/
-  sdk2: http://lbrynet3:5279/
-
-

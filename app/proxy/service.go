@@ -61,7 +61,7 @@ func NewService(sdkRouter router.SDKRouter) *ProxyService {
 // NewCaller returns an instance of Caller ready to proxy requests.
 // Note that `SetWalletID` needs to be called if an authenticated user is making this call.
 func (ps *ProxyService) NewCaller(walletID string) *Caller {
-	endpoint := ps.Router.GetSDKServer(walletID)
+	endpoint := ps.Router.GetSDKServerAddress(walletID)
 	c := Caller{
 		walletID: walletID,
 		client:   jsonrpc.NewClient(endpoint),

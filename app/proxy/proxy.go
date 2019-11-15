@@ -250,7 +250,7 @@ func NewRequest(method string, params ...interface{}) jsonrpc.RPCRequest {
 
 // RawCall makes an arbitrary jsonrpc request to the SDK
 func RawCall(request jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
-	rpcClient := jsonrpc.NewClient(sdkRouter.GetBalancedSDK())
+	rpcClient := jsonrpc.NewClient(sdkRouter.GetBalancedSDKAddress())
 	response, err := rpcClient.CallRaw(&request)
 	if err != nil {
 		return nil, err

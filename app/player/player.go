@@ -74,7 +74,7 @@ func PlayURI(uri string, w http.ResponseWriter, req *http.Request) error {
 }
 
 func newReflectedStream(uri string) (rs *reflectedStream, err error) {
-	client := ljsonrpc.NewClient(sdkRouter.GetBalancedSDK())
+	client := ljsonrpc.NewClient(sdkRouter.GetBalancedSDKAddress())
 	rs = &reflectedStream{URI: uri}
 	err = rs.resolve(client)
 	return rs, err

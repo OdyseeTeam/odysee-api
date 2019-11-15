@@ -170,7 +170,8 @@ func BenchmarkWalletCommands(b *testing.B) {
 	walletsNum := 60
 	users := make([]*models.User, walletsNum)
 	svc := NewWalletService()
-	cl := jsonrpc.NewClient(router.NewDefault().GetBalancedSDK())
+	sdkRouter := router.NewDefault()
+	cl := jsonrpc.NewClient(sdkRouter.GetBalancedSDKAddress())
 
 	svc.Logger.Disable()
 	lbrynet.Logger.Disable()

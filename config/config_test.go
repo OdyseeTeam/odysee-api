@@ -33,6 +33,12 @@ func TestGetLbrynetServer(t *testing.T) {
 }
 
 func TestGetLbrynetServers(t *testing.T) {
+	Override("LbrynetServers", map[string]string{
+		"default": "http://lbrynet1:5279/",
+		"sdk1":    "http://lbrynet2:5279/",
+		"sdk2":    "http://lbrynet3:5279/",
+	})
+	defer RestoreOverridden()
 	assert.Equal(t, map[string]string{
 		"default": "http://lbrynet1:5279/",
 		"sdk1":    "http://lbrynet2:5279/",

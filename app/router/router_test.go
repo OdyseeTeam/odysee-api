@@ -1,7 +1,10 @@
 package router
 
 import (
+	"os"
 	"testing"
+
+	"github.com/lbryio/lbrytv/internal/storage"
 
 	"github.com/lbryio/lbrytv/util/wallet"
 
@@ -10,7 +13,8 @@ import (
 )
 
 func TestGetFirstDigit(t *testing.T) {
-	digit := getLastDigit("lbrytv-id.756130.wallet")
+	userID := getUserID("lbrytv-id.756135.wallet")
+	digit := userID % 10
 	if digit != 5 {
 		t.Error("digit of number does not match")
 	}
@@ -22,23 +26,35 @@ func TestInitializeWithYML(t *testing.T) {
 }
 
 func TestFirstServer(t *testing.T) {
+	config.Override("LbrynetServers", map[string]string{
+		"default": "http://lbrynet1:5279/",
+		"sdk1":    "http://lbrynet2:5279/",
+		"sdk2":    "http://lbrynet3:5279/",
+	})
+	defer config.RestoreOverridden()
 	sdkRouter := New(config.GetLbrynetServers())
-	server := sdkRouter.GetSDKServer("lbrytv-id.756130.wallet")
+	server := sdkRouter.GetSDKServerAddress("lbrytv-id.756130.wallet")
 	assert.Equal(t, "http://lbrynet1:5279/", server)
 
-	server = sdkRouter.GetSDKServer("lbrytv-id.1767731.wallet")
+	server = sdkRouter.GetSDKServerAddress("lbrytv-id.1767731.wallet")
 	assert.Equal(t, "http://lbrynet2:5279/", server)
 
-	server = sdkRouter.GetSDKServer("lbrytv-id.751365.wallet")
+	server = sdkRouter.GetSDKServerAddress("lbrytv-id.751365.wallet")
 	assert.Equal(t, "http://lbrynet3:5279/", server)
 }
 
 func TestServerRetrieval(t *testing.T) {
+	config.Override("LbrynetServers", map[string]string{
+		"default": "http://lbrynet1:5279/",
+		"sdk1":    "http://lbrynet2:5279/",
+		"sdk2":    "http://lbrynet3:5279/",
+	})
+	defer config.RestoreOverridden()
 	sdkRouter := New(config.GetLbrynetServers())
 	servers := sdkRouter.GetSDKServerList()
 	for i := 0; i < 10000; i++ {
 		walletID := wallet.MakeID(i)
-		server := sdkRouter.GetSDKServer(walletID)
+		server := sdkRouter.GetSDKServerAddress(walletID)
 		assert.Equal(t, servers[i%10%3].Address, server)
 	}
 }
@@ -49,4 +65,20 @@ func TestDefaultLbrynetServer(t *testing.T) {
 	if !ok {
 		t.Error("No default lbrynet server is specified in the lbrytv.yml")
 	}
+}
+
+func TestMain(m *testing.M) {
+	dbConfig := config.GetDatabase()
+	params := storage.ConnParams{
+		Connection: dbConfig.Connection,
+		DBName:     dbConfig.DBName,
+		Options:    dbConfig.Options,
+	}
+	dbConn, connCleanup := storage.CreateTestConn(params)
+	dbConn.SetDefaultConnection()
+	defer connCleanup()
+
+	code := m.Run()
+
+	os.Exit(code)
 }

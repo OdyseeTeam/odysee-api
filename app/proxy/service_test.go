@@ -88,8 +88,8 @@ func (c ClientMock) CallBatchRaw(requests jsonrpc.RPCRequests) (jsonrpc.RPCRespo
 
 func TestNewCaller(t *testing.T) {
 	servers := map[string]string{
-		"first":  "http://lbrynet1",
-		"second": "http://lbrynet2",
+		"default": "http://lbrynet1",
+		"second":  "http://lbrynet2",
 	}
 	svc := NewService(router.New(servers))
 	c := svc.NewCaller("")
@@ -126,31 +126,6 @@ func TestCallerCallResolve(t *testing.T) {
 	assert.Equal(t, resolvedClaimID, resolveResponse[resolvedURL].ClaimID)
 }
 
-func TestCallerCallAccountBalance(t *testing.T) {
-	var accountBalanceResponse ljsonrpc.AccountBalanceResponse
-
-	rand.Seed(time.Now().UnixNano())
-	dummyUserID := rand.Int()
-
-	wid, _ := lbrynet.InitializeWallet(dummyUserID)
-
-	svc := NewService(router.NewDefault())
-	c := svc.NewCaller(wid)
-
-	request := newRawRequest(t, "account_balance", nil)
-	result := c.Call(request)
-
-	assert.Contains(t, string(result), `"message": "account identificator required"`)
-
-	hook := logrus_test.NewLocal(svc.logger.Logger())
-	result = c.Call(request)
-
-	parseRawResponse(t, result, &accountBalanceResponse)
-	assert.EqualValues(t, "0", fmt.Sprintf("%v", accountBalanceResponse.Available))
-	assert.Equal(t, map[string]interface{}{"wallet_id": fmt.Sprintf("%v", wid)}, hook.LastEntry().Data["params"])
-	assert.Equal(t, "account_balance", hook.LastEntry().Data["method"])
-}
-
 func TestCallerCallDoesReloadWallet(t *testing.T) {
 	var (
 		response jsonrpc.RPCResponse
@@ -159,7 +134,7 @@ func TestCallerCallDoesReloadWallet(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	dummyUserID := rand.Int()
 
-	wid, _ := lbrynet.InitializeWallet(dummyUserID)
+	_, wid, _ := lbrynet.InitializeWallet(dummyUserID)
 	_, err := lbrynet.WalletRemove(dummyUserID)
 	require.NoError(t, err)
 
