@@ -36,7 +36,7 @@ type Server struct {
 // Options holds basic web server settings.
 type Options struct {
 	Address         string
-	ProxyService    *proxy.Service
+	ProxyService    *proxy.ProxyService
 	StopWaitSeconds int
 }
 
