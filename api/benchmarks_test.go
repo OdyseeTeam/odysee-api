@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/app/proxy"
+	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
@@ -109,7 +110,7 @@ func BenchmarkWalletCommands(b *testing.B) {
 		wallets[i] = u
 	}
 
-	handler := proxy.NewRequestHandler(proxy.NewService(config.GetLbrynet()))
+	handler := proxy.NewRequestHandler(proxy.NewService(router.New(config.GetLbrynetServers())))
 
 	b.SetParallelism(30)
 	b.ResetTimer()

@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
@@ -246,7 +247,8 @@ func NewRequest(method string, params ...interface{}) jsonrpc.RPCRequest {
 
 // RawCall makes an arbitrary jsonrpc request to the SDK
 func RawCall(request jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
-	rpcClient := jsonrpc.NewClient(config.GetLbrynet())
+	sdkRouter := router.New(config.GetLbrynetServers())
+	rpcClient := jsonrpc.NewClient(sdkRouter.GetBalancedSDKAddress())
 	response, err := rpcClient.CallRaw(&request)
 	if err != nil {
 		return nil, err

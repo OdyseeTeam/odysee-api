@@ -1,4 +1,4 @@
-// Service/Caller/Query is a refactoring/improvement over the previous version of proxy module
+// ProxyService/Caller/Query is a refactoring/improvement over the previous version of proxy module
 // currently contained in proxy.go. The old code should be gradually removed and replaced
 // by the following approach.
 
@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
@@ -20,11 +21,11 @@ import (
 
 type Preprocessor func(q *Query)
 
-// Service generates Caller objects and keeps execution time metrics
+// ProxyService generates Caller objects and keeps execution time metrics
 // for all calls proxied through those objects.
-type Service struct {
-	TargetEndpoint string
-	logger         monitor.QueryMonitor
+type ProxyService struct {
+	Router router.SDKRouter
+	logger monitor.QueryMonitor
 }
 
 // Caller patches through JSON-RPC requests from clients, doing pre/post-processing,
@@ -33,7 +34,8 @@ type Caller struct {
 	walletID     string
 	query        *jsonrpc.RPCRequest
 	client       jsonrpc.RPCClient
-	service      *Service
+	endpoint     string
+	service      *ProxyService
 	preprocessor Preprocessor
 	retries      int
 }
@@ -46,21 +48,24 @@ type Query struct {
 }
 
 // NewService is the entry point to proxy module.
-// Normally only one instance of Service should be created per running server.
-func NewService(targetEndpoint string) *Service {
-	s := Service{
-		TargetEndpoint: targetEndpoint,
-		logger:         monitor.NewProxyLogger(),
+// Normally only one instance of ProxyService should be created per running server.
+func NewService(sdkRouter router.SDKRouter) *ProxyService {
+	s := ProxyService{
+		Router: sdkRouter,
+		logger: monitor.NewProxyLogger(),
 	}
 	return &s
 }
 
 // NewCaller returns an instance of Caller ready to proxy requests.
 // Note that `SetWalletID` needs to be called if an authenticated user is making this call.
-func (ps *Service) NewCaller() *Caller {
+func (ps *ProxyService) NewCaller(walletID string) *Caller {
+	endpoint := ps.Router.GetSDKServerAddress(walletID)
 	c := Caller{
-		client:  jsonrpc.NewClient(ps.TargetEndpoint),
-		service: ps,
+		walletID: walletID,
+		client:   jsonrpc.NewClient(endpoint),
+		endpoint: endpoint,
+		service:  ps,
 	}
 	return &c
 }
@@ -183,17 +188,12 @@ func (q *Query) validate() CallError {
 	return nil
 }
 
-// SetPreprocessor applies provided function to query before it's sent to the SDK.
+// SetPreprocessor applies provided function to query before it's sent to the LbrynetServer.
 func (c *Caller) SetPreprocessor(p Preprocessor) {
 	c.preprocessor = p
 }
 
-// SetWalletID sets walletID for the current instance of Caller.
-func (c *Caller) SetWalletID(id string) {
-	c.walletID = id
-}
-
-// WalletID is an SDK wallet ID for the client this caller instance is serving.
+// WalletID is an LbrynetServer wallet ID for the client this caller instance is serving.
 func (c *Caller) WalletID() string {
 	return c.walletID
 }
@@ -256,26 +256,26 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 		return r, NewInternalError(err)
 	}
 
-	if r.Error != nil {
-		metrics.ProxyCallFailedDurations.WithLabelValues(q.Method()).Observe(duration)
-		c.service.logger.LogFailedQuery(q.Method(), q.Params(), r.Error)
-	} else {
-		metrics.ProxyCallDurations.WithLabelValues(q.Method()).Observe(duration)
-		c.service.logger.LogSuccessfulQuery(q.Method(), duration, q.Params(), r)
-	}
-
-	// This checks if SDK responded with missing wallet error and tries to reload it,
+	// This checks if LbrynetServer responded with missing wallet error and tries to reload it,
 	// then repeat the request again.
 	// TODO: Refactor this and move somewhere else
-	if r.Error != nil && c.retries == 0 {
+	if r.Error != nil {
 		wErr := lbrynet.NewWalletError(0, errors.New(r.Error.Message))
-		if errors.As(wErr, &lbrynet.WalletNotLoaded{}) {
-			_, err := lbrynet.Client.WalletAdd(c.WalletID())
+		if c.retries == 0 && errors.As(wErr, &lbrynet.WalletNotLoaded{}) {
+			// We need to use Lbry JSON-RPC client here for eqsier request/response processing
+			client := ljsonrpc.NewClient(c.service.Router.GetSDKServerAddress(c.WalletID()))
+			_, err := client.WalletAdd(c.WalletID())
 			if err == nil {
 				c.retries++
 				return c.call(rawQuery)
 			}
+		} else {
+			metrics.ProxyCallFailedDurations.WithLabelValues(q.Method()).Observe(duration)
+			c.service.logger.LogFailedQuery(q.Method(), q.Params(), r.Error)
 		}
+	} else {
+		metrics.ProxyCallDurations.WithLabelValues(q.Method()).Observe(duration)
+		c.service.logger.LogSuccessfulQuery(q.Method(), duration, q.Params(), r)
 	}
 
 	r, err = processResponse(q.Request, r)
@@ -289,7 +289,7 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 	return r, nil
 }
 
-// Call method processes a raw query received from JSON-RPC client and forwards it to SDK.
+// Call method processes a raw query received from JSON-RPC client and forwards it to LbrynetServer.
 // It returns a response that is ready to be sent back to the JSON-RPC client as is.
 func (c *Caller) Call(rawQuery []byte) []byte {
 	r, err := c.call(rawQuery)

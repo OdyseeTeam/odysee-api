@@ -8,6 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lbryio/lbrytv/app/router"
+
+	"github.com/lbryio/lbrytv/util/wallet"
+
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/models"
@@ -22,7 +26,7 @@ func TestWalletServiceRetrieveNewUser(t *testing.T) {
 	setupDBTables()
 	defer setupCleanupDummyUser()()
 
-	wid := lbrynet.MakeWalletID(dummyUserID)
+	wid := wallet.MakeID(dummyUserID)
 	svc := NewWalletService()
 	u, err := svc.Retrieve(Query{Token: "abc"})
 	require.NoError(t, err, errors.Unwrap(err))
@@ -92,7 +96,7 @@ func TestWalletServiceRetrieveExistingUser(t *testing.T) {
 // 	require.NoError(t, err)
 // 	require.NotNil(t, u)
 
-// 	cl := jsonrpc.NewClient(config.GetLbrynet())
+// 	cl := jsonrpc.NewClient(config.GetLbrynetServer())
 // 	res, err := cl.Call("wallet_balance", map[string]string{"wallet_id": u.WalletID})
 // 	require.NoError(t, err)
 // 	assert.Nil(t, res.Error)
@@ -166,7 +170,8 @@ func BenchmarkWalletCommands(b *testing.B) {
 	walletsNum := 60
 	users := make([]*models.User, walletsNum)
 	svc := NewWalletService()
-	cl := jsonrpc.NewClient(config.GetLbrynet())
+	sdkRouter := router.NewDefault()
+	cl := jsonrpc.NewClient(sdkRouter.GetBalancedSDKAddress())
 
 	svc.Logger.Disable()
 	lbrynet.Logger.Disable()

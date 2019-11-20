@@ -9,10 +9,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
@@ -174,19 +176,6 @@ func call(t *testing.T, method string, params ...interface{}) jsonrpc.RPCRespons
 	return response
 }
 
-// TestForwardCallWithHTTPError tests for HTTP level error connecting to a port that no server is listening on
-func TestForwardCall_HTTPError(t *testing.T) {
-	config.Override("Lbrynet", "http://127.0.0.1:49999")
-	defer config.RestoreOverridden()
-
-	query := jsonrpc.NewRequest(MethodAccountBalance)
-	response, err := ForwardCall(*query)
-	assert.NotNil(t, err)
-	assert.Nil(t, response)
-	assert.True(t, strings.HasPrefix(err.Error(), "rpc call account_balance() on http://127.0.0.1:49999"), err.Error())
-	assert.True(t, strings.HasSuffix(err.Error(), "connect: connection refused"), err.Error())
-}
-
 func TestForwardCall_LbrynetError(t *testing.T) {
 	var response jsonrpc.RPCResponse
 	query := jsonrpc.NewRequest("crazy_method")
@@ -197,21 +186,6 @@ func TestForwardCall_LbrynetError(t *testing.T) {
 	assert.NotNil(t, response)
 	assert.NotNil(t, response.Error)
 	assert.Equal(t, "Invalid method requested: crazy_method.", response.Error.Message)
-}
-
-func TestForwardCall_ClientError(t *testing.T) {
-	config.Override("Lbrynet", "http://localhost:59999")
-	defer config.RestoreOverridden()
-
-	r := call(t, "anymethod")
-	assert.NotNil(t, r.Error)
-	assert.Equal(t, "your ways are wrong", r.Error.Message)
-}
-
-func TestForwardCall_InvalidResolveParams(t *testing.T) {
-	r := call(t, MethodResolve)
-	assert.NotNil(t, r.Error)
-	assert.Contains(t, r.Error.Message, `Missing required parameters for resolve command: urls`)
 }
 
 func TestForwardCall_shouldLog(t *testing.T) {
@@ -298,7 +272,8 @@ func BenchmarkResolve(b *testing.B) {
 }
 
 func BenchmarkDirectResolve(b *testing.B) {
-	rpcClient := jsonrpc.NewClient(config.GetLbrynet())
+	sdkRouter := router.New(config.GetLbrynetServers())
+	rpcClient := jsonrpc.NewClient(sdkRouter.GetBalancedSDKAddress())
 	query := jsonrpc.NewRequest(MethodResolve, map[string][110]string{paramUrls: homePageUrls})
 
 	wg := sync.WaitGroup{}

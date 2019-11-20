@@ -20,16 +20,18 @@ jobs:
       - save_cache:
           key: go-mod-cache-{{ checksum "go.sum" }}
           paths:
-            - /go/pkg/mod
+            - /go/pkg
+            - /go/src
+            - /go/bin
 
   publish-image:
     docker:
       - image: circleci/golang:1.13
     steps:
       - checkout
-      - restore_cache:
-          keys:
-            - go-mod-cache-{{ checksum "go.sum" }}
+      # - restore_cache:
+      #     keys:
+      #       - go-mod-cache-{{ checksum "go.sum" }}
       - run: curl -sLO https://git.io/goreleaser && chmod +x goreleaser
       - run: go get -u github.com/gobuffalo/packr/v2/packr2
       - run: ./goreleaser --rm-dist --snapshot

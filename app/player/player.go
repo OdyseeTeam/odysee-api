@@ -10,6 +10,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
@@ -72,7 +73,8 @@ func PlayURI(uri string, w http.ResponseWriter, req *http.Request) error {
 }
 
 func newReflectedStream(uri string, reflectorURL string) (rs *reflectedStream, err error) {
-	client := ljsonrpc.NewClient(config.GetLbrynet())
+	sdkRouter := router.New(config.GetLbrynetServers())
+	client := ljsonrpc.NewClient(sdkRouter.GetBalancedSDKAddress())
 	rs = &reflectedStream{URI: uri, reflectorURL: reflectorURL}
 	err = rs.resolve(client)
 	return rs, err

@@ -24,7 +24,7 @@ type Server struct {
 
 	DefaultHeaders map[string]string
 	Environment    *environment.Env
-	ProxyService   *proxy.Service
+	ProxyService   *proxy.ProxyService
 
 	stopChan chan os.Signal
 	stopWait time.Duration

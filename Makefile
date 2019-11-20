@@ -53,4 +53,6 @@ tag:
 
 .PHONY: models
 models:
+	go get -u -t github.com/volatiletech/sqlboiler@v3.4.0
+	go get -u -t github.com/volatiletech/sqlboiler/drivers/sqlboiler-psql@v3.4.0
 	sqlboiler --add-global-variants --wipe psql --no-context

@@ -23,8 +23,9 @@ func NewWalletService() *WalletService {
 
 func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 	var (
-		localUser *models.User
-		wid       string
+		localUser     *models.User
+		lbrynetServer models.LbrynetServer
+		wid           string
 	)
 	doWalletInit := true
 	token := q.Token
@@ -50,12 +51,12 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 			return nil, err
 		}
 
-		wid, err = s.createWallet(localUser)
+		lbrynetServer, wid, err = s.createWallet(localUser)
 		if err != nil {
 			return nil, err
 		}
 
-		err := s.saveWalletID(localUser, wid)
+		err := s.postCreateUpdate(localUser, lbrynetServer, wid)
 		if err != nil {
 			return nil, err
 		}
@@ -69,12 +70,12 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 	// This scenario may happen for legacy users who are present in the database but don't have a wallet yet
 	if localUser.WalletID == "" {
 		log.Warn("user doesn't have wallet ID set")
-		wid, err = s.createWallet(localUser)
+		lbrynetServer, wid, err = s.createWallet(localUser)
 		if err != nil {
 			return nil, err
 		}
 		doWalletInit = false
-		err := s.saveWalletID(localUser, wid)
+		err := s.postCreateUpdate(localUser, lbrynetServer, wid)
 		if err != nil {
 			return nil, err
 		}
@@ -90,7 +91,7 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 	return localUser, nil
 }
 
-func (s *WalletService) createWallet(u *models.User) (string, error) {
+func (s *WalletService) createWallet(u *models.User) (models.LbrynetServer, string, error) {
 	return lbrynet.InitializeWallet(u.ID)
 }
 
@@ -99,9 +100,13 @@ func (s *WalletService) initializeWallet(u *models.User) error {
 	return err
 }
 
-func (s *WalletService) saveWalletID(u *models.User, wid string) error {
+func (s *WalletService) postCreateUpdate(u *models.User, server models.LbrynetServer, wid string) error {
 	s.Logger.LogF(monitor.F{"id": u.ID, "wallet_id": wid}).Info("saving wallet ID to user record")
 	u.WalletID = wid
+	if server.ID > 0 { //Ensure server is from DB
+		u.LbrynetServerID.SetValid(server.ID)
+	}
+
 	_, err := u.UpdateG(boil.Infer())
 	return err
 }

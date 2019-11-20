@@ -481,6 +481,164 @@ func testUsersInsertWhitelist(t *testing.T) {
 	}
 }
 
+func testUserToOneLbrynetServerUsingLbrynetServer(t *testing.T) {
+
+	tx := MustTx(boil.Begin())
+	defer func() { _ = tx.Rollback() }()
+
+	var local User
+	var foreign LbrynetServer
+
+	seed := randomize.NewSeed()
+	if err := randomize.Struct(seed, &local, userDBTypes, true, userColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize User struct: %s", err)
+	}
+	if err := randomize.Struct(seed, &foreign, lbrynetServerDBTypes, false, lbrynetServerColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize LbrynetServer struct: %s", err)
+	}
+
+	if err := foreign.Insert(tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	queries.Assign(&local.LbrynetServerID, foreign.ID)
+	if err := local.Insert(tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	check, err := local.LbrynetServer().One(tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !queries.Equal(check.ID, foreign.ID) {
+		t.Errorf("want: %v, got %v", foreign.ID, check.ID)
+	}
+
+	slice := UserSlice{&local}
+	if err = local.L.LoadLbrynetServer(tx, false, (*[]*User)(&slice), nil); err != nil {
+		t.Fatal(err)
+	}
+	if local.R.LbrynetServer == nil {
+		t.Error("struct should have been eager loaded")
+	}
+
+	local.R.LbrynetServer = nil
+	if err = local.L.LoadLbrynetServer(tx, true, &local, nil); err != nil {
+		t.Fatal(err)
+	}
+	if local.R.LbrynetServer == nil {
+		t.Error("struct should have been eager loaded")
+	}
+}
+
+func testUserToOneSetOpLbrynetServerUsingLbrynetServer(t *testing.T) {
+	var err error
+
+	tx := MustTx(boil.Begin())
+	defer func() { _ = tx.Rollback() }()
+
+	var a User
+	var b, c LbrynetServer
+
+	seed := randomize.NewSeed()
+	if err = randomize.Struct(seed, &a, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+	if err = randomize.Struct(seed, &b, lbrynetServerDBTypes, false, strmangle.SetComplement(lbrynetServerPrimaryKeyColumns, lbrynetServerColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+	if err = randomize.Struct(seed, &c, lbrynetServerDBTypes, false, strmangle.SetComplement(lbrynetServerPrimaryKeyColumns, lbrynetServerColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := a.Insert(tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+	if err = b.Insert(tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	for i, x := range []*LbrynetServer{&b, &c} {
+		err = a.SetLbrynetServer(tx, i != 0, x)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if a.R.LbrynetServer != x {
+			t.Error("relationship struct not set to correct value")
+		}
+
+		if x.R.Users[0] != &a {
+			t.Error("failed to append to foreign relationship struct")
+		}
+		if !queries.Equal(a.LbrynetServerID, x.ID) {
+			t.Error("foreign key was wrong value", a.LbrynetServerID)
+		}
+
+		zero := reflect.Zero(reflect.TypeOf(a.LbrynetServerID))
+		reflect.Indirect(reflect.ValueOf(&a.LbrynetServerID)).Set(zero)
+
+		if err = a.Reload(tx); err != nil {
+			t.Fatal("failed to reload", err)
+		}
+
+		if !queries.Equal(a.LbrynetServerID, x.ID) {
+			t.Error("foreign key was wrong value", a.LbrynetServerID, x.ID)
+		}
+	}
+}
+
+func testUserToOneRemoveOpLbrynetServerUsingLbrynetServer(t *testing.T) {
+	var err error
+
+	tx := MustTx(boil.Begin())
+	defer func() { _ = tx.Rollback() }()
+
+	var a User
+	var b LbrynetServer
+
+	seed := randomize.NewSeed()
+	if err = randomize.Struct(seed, &a, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+	if err = randomize.Struct(seed, &b, lbrynetServerDBTypes, false, strmangle.SetComplement(lbrynetServerPrimaryKeyColumns, lbrynetServerColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = a.Insert(tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = a.SetLbrynetServer(tx, true, &b); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = a.RemoveLbrynetServer(tx, &b); err != nil {
+		t.Error("failed to remove relationship")
+	}
+
+	count, err := a.LbrynetServer().Count(tx)
+	if err != nil {
+		t.Error(err)
+	}
+	if count != 0 {
+		t.Error("want no relationships remaining")
+	}
+
+	if a.R.LbrynetServer != nil {
+		t.Error("R struct entry should be nil")
+	}
+
+	if !queries.IsValuerNil(a.LbrynetServerID) {
+		t.Error("foreign key value should be nil")
+	}
+
+	if len(b.R.Users) != 0 {
+		t.Error("failed to remove a from b's relationships")
+	}
+}
+
 func testUsersReload(t *testing.T) {
 	t.Parallel()
 
@@ -552,7 +710,7 @@ func testUsersSelect(t *testing.T) {
 }
 
 var (
-	userDBTypes = map[string]string{`ID`: `integer`, `CreatedAt`: `timestamp without time zone`, `UpdatedAt`: `timestamp without time zone`, `SDKAccountID`: `character varying`, `WalletID`: `character varying`}
+	userDBTypes = map[string]string{`ID`: `integer`, `CreatedAt`: `timestamp without time zone`, `UpdatedAt`: `timestamp without time zone`, `SDKAccountID`: `character varying`, `WalletID`: `character varying`, `LbrynetServerID`: `integer`}
 	_           = bytes.MinRead
 )
 

@@ -23,61 +23,34 @@ import (
 
 // User is an object representing the database table.
 type User struct {
-	ID           int         `boil:"id" json:"id" toml:"id" yaml:"id"`
-	CreatedAt    time.Time   `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt    time.Time   `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	SDKAccountID null.String `boil:"sdk_account_id" json:"sdk_account_id,omitempty" toml:"sdk_account_id" yaml:"sdk_account_id,omitempty"`
-	WalletID     string      `boil:"wallet_id" json:"wallet_id" toml:"wallet_id" yaml:"wallet_id"`
+	ID              int         `boil:"id" json:"id" toml:"id" yaml:"id"`
+	CreatedAt       time.Time   `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt       time.Time   `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	SDKAccountID    null.String `boil:"sdk_account_id" json:"sdk_account_id,omitempty" toml:"sdk_account_id" yaml:"sdk_account_id,omitempty"`
+	WalletID        string      `boil:"wallet_id" json:"wallet_id" toml:"wallet_id" yaml:"wallet_id"`
+	LbrynetServerID null.Int    `boil:"lbrynet_server_id" json:"lbrynet_server_id,omitempty" toml:"lbrynet_server_id" yaml:"lbrynet_server_id,omitempty"`
 
 	R *userR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var UserColumns = struct {
-	ID           string
-	CreatedAt    string
-	UpdatedAt    string
-	SDKAccountID string
-	WalletID     string
+	ID              string
+	CreatedAt       string
+	UpdatedAt       string
+	SDKAccountID    string
+	WalletID        string
+	LbrynetServerID string
 }{
-	ID:           "id",
-	CreatedAt:    "created_at",
-	UpdatedAt:    "updated_at",
-	SDKAccountID: "sdk_account_id",
-	WalletID:     "wallet_id",
+	ID:              "id",
+	CreatedAt:       "created_at",
+	UpdatedAt:       "updated_at",
+	SDKAccountID:    "sdk_account_id",
+	WalletID:        "wallet_id",
+	LbrynetServerID: "lbrynet_server_id",
 }
 
 // Generated where
-
-type whereHelperint struct{ field string }
-
-func (w whereHelperint) EQ(x int) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
-func (w whereHelperint) NEQ(x int) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
-func (w whereHelperint) LT(x int) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
-func (w whereHelperint) LTE(x int) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
-func (w whereHelperint) GT(x int) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
-func (w whereHelperint) GTE(x int) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
-
-type whereHelpertime_Time struct{ field string }
-
-func (w whereHelpertime_Time) EQ(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.EQ, x)
-}
-func (w whereHelpertime_Time) NEQ(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.NEQ, x)
-}
-func (w whereHelpertime_Time) LT(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelpertime_Time) LTE(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelpertime_Time) GT(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelpertime_Time) GTE(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
 
 type whereHelpernull_String struct{ field string }
 
@@ -102,26 +75,55 @@ func (w whereHelpernull_String) GTE(x null.String) qm.QueryMod {
 	return qmhelper.Where(w.field, qmhelper.GTE, x)
 }
 
+type whereHelpernull_Int struct{ field string }
+
+func (w whereHelpernull_Int) EQ(x null.Int) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_Int) NEQ(x null.Int) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_Int) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_Int) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
+func (w whereHelpernull_Int) LT(x null.Int) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_Int) LTE(x null.Int) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_Int) GT(x null.Int) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_Int) GTE(x null.Int) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
 var UserWhere = struct {
-	ID           whereHelperint
-	CreatedAt    whereHelpertime_Time
-	UpdatedAt    whereHelpertime_Time
-	SDKAccountID whereHelpernull_String
-	WalletID     whereHelperstring
+	ID              whereHelperint
+	CreatedAt       whereHelpertime_Time
+	UpdatedAt       whereHelpertime_Time
+	SDKAccountID    whereHelpernull_String
+	WalletID        whereHelperstring
+	LbrynetServerID whereHelpernull_Int
 }{
-	ID:           whereHelperint{field: "\"users\".\"id\""},
-	CreatedAt:    whereHelpertime_Time{field: "\"users\".\"created_at\""},
-	UpdatedAt:    whereHelpertime_Time{field: "\"users\".\"updated_at\""},
-	SDKAccountID: whereHelpernull_String{field: "\"users\".\"sdk_account_id\""},
-	WalletID:     whereHelperstring{field: "\"users\".\"wallet_id\""},
+	ID:              whereHelperint{field: "\"users\".\"id\""},
+	CreatedAt:       whereHelpertime_Time{field: "\"users\".\"created_at\""},
+	UpdatedAt:       whereHelpertime_Time{field: "\"users\".\"updated_at\""},
+	SDKAccountID:    whereHelpernull_String{field: "\"users\".\"sdk_account_id\""},
+	WalletID:        whereHelperstring{field: "\"users\".\"wallet_id\""},
+	LbrynetServerID: whereHelpernull_Int{field: "\"users\".\"lbrynet_server_id\""},
 }
 
 // UserRels is where relationship names are stored.
 var UserRels = struct {
-}{}
+	LbrynetServer string
+}{
+	LbrynetServer: "LbrynetServer",
+}
 
 // userR is where relationships are stored.
 type userR struct {
+	LbrynetServer *LbrynetServer
 }
 
 // NewStruct creates a new relationship struct
@@ -133,9 +135,9 @@ func (*userR) NewStruct() *userR {
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"id", "created_at", "updated_at", "sdk_account_id", "wallet_id"}
-	userColumnsWithoutDefault = []string{"id", "sdk_account_id", "wallet_id"}
-	userColumnsWithDefault    = []string{"created_at", "updated_at"}
+	userAllColumns            = []string{"id", "created_at", "updated_at", "sdk_account_id", "wallet_id", "lbrynet_server_id"}
+	userColumnsWithoutDefault = []string{"id", "sdk_account_id", "lbrynet_server_id"}
+	userColumnsWithDefault    = []string{"created_at", "updated_at", "wallet_id"}
 	userPrimaryKeyColumns     = []string{"id"}
 )
 
@@ -396,6 +398,219 @@ func (q userQuery) Exists(exec boil.Executor) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+// LbrynetServer pointed to by the foreign key.
+func (o *User) LbrynetServer(mods ...qm.QueryMod) lbrynetServerQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("id=?", o.LbrynetServerID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := LbrynetServers(queryMods...)
+	queries.SetFrom(query.Query, "\"lbrynet_servers\"")
+
+	return query
+}
+
+// LoadLbrynetServer allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (userL) LoadLbrynetServer(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		if !queries.IsNil(object.LbrynetServerID) {
+			args = append(args, object.LbrynetServerID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.LbrynetServerID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.LbrynetServerID) {
+				args = append(args, obj.LbrynetServerID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(qm.From(`lbrynet_servers`), qm.WhereIn(`id in ?`, args...))
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load LbrynetServer")
+	}
+
+	var resultSlice []*LbrynetServer
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice LbrynetServer")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for lbrynet_servers")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for lbrynet_servers")
+	}
+
+	if len(userAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.LbrynetServer = foreign
+		if foreign.R == nil {
+			foreign.R = &lbrynetServerR{}
+		}
+		foreign.R.Users = append(foreign.R.Users, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.LbrynetServerID, foreign.ID) {
+				local.R.LbrynetServer = foreign
+				if foreign.R == nil {
+					foreign.R = &lbrynetServerR{}
+				}
+				foreign.R.Users = append(foreign.R.Users, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// SetLbrynetServerG of the user to the related item.
+// Sets o.R.LbrynetServer to related.
+// Adds o to related.R.Users.
+// Uses the global database handle.
+func (o *User) SetLbrynetServerG(insert bool, related *LbrynetServer) error {
+	return o.SetLbrynetServer(boil.GetDB(), insert, related)
+}
+
+// SetLbrynetServer of the user to the related item.
+// Sets o.R.LbrynetServer to related.
+// Adds o to related.R.Users.
+func (o *User) SetLbrynetServer(exec boil.Executor, insert bool, related *LbrynetServer) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"users\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"lbrynet_server_id"}),
+		strmangle.WhereClause("\"", "\"", 2, userPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.LbrynetServerID, related.ID)
+	if o.R == nil {
+		o.R = &userR{
+			LbrynetServer: related,
+		}
+	} else {
+		o.R.LbrynetServer = related
+	}
+
+	if related.R == nil {
+		related.R = &lbrynetServerR{
+			Users: UserSlice{o},
+		}
+	} else {
+		related.R.Users = append(related.R.Users, o)
+	}
+
+	return nil
+}
+
+// RemoveLbrynetServerG relationship.
+// Sets o.R.LbrynetServer to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+// Uses the global database handle.
+func (o *User) RemoveLbrynetServerG(related *LbrynetServer) error {
+	return o.RemoveLbrynetServer(boil.GetDB(), related)
+}
+
+// RemoveLbrynetServer relationship.
+// Sets o.R.LbrynetServer to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *User) RemoveLbrynetServer(exec boil.Executor, related *LbrynetServer) error {
+	var err error
+
+	queries.SetScanner(&o.LbrynetServerID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("lbrynet_server_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.R.LbrynetServer = nil
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.Users {
+		if queries.Equal(o.LbrynetServerID, ri.LbrynetServerID) {
+			continue
+		}
+
+		ln := len(related.R.Users)
+		if ln > 1 && i < ln-1 {
+			related.R.Users[i] = related.R.Users[ln-1]
+		}
+		related.R.Users = related.R.Users[:ln-1]
+		break
+	}
+	return nil
 }
 
 // Users retrieves all the records using an executor.

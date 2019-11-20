@@ -8,6 +8,7 @@ import (
 
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
+	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/config"
 
 	"github.com/gorilla/mux"
@@ -17,7 +18,7 @@ import (
 
 func TestRoutesProxy(t *testing.T) {
 	r := mux.NewRouter()
-	proxy := proxy.NewService(config.GetLbrynet())
+	proxy := proxy.NewService(router.New(config.GetLbrynetServers()))
 
 	req, err := http.NewRequest("POST", "/api/v1/proxy", bytes.NewBuffer([]byte(`{"method": "status"}`)))
 	require.Nil(t, err)
@@ -32,7 +33,7 @@ func TestRoutesProxy(t *testing.T) {
 
 func TestRoutesPublish(t *testing.T) {
 	r := mux.NewRouter()
-	proxy := proxy.NewService(config.GetLbrynet())
+	proxy := proxy.NewService(router.New(config.GetLbrynetServers()))
 
 	req := publish.CreatePublishRequest(t, []byte("test file"))
 	rr := httptest.NewRecorder()
@@ -48,7 +49,7 @@ func TestRoutesPublish(t *testing.T) {
 
 func TestRoutesOptions(t *testing.T) {
 	r := mux.NewRouter()
-	proxy := proxy.NewService(config.GetLbrynet())
+	proxy := proxy.NewService(router.New(config.GetLbrynetServers()))
 
 	req, err := http.NewRequest("OPTIONS", "/api/v1/proxy", nil)
 	require.Nil(t, err)
