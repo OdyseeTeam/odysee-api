@@ -33,6 +33,7 @@ type reflectedStream struct {
 	SDBlob       *stream.SDBlob
 	seekOffset   int64
 	reflectorURL string
+	blobs        []*Blob
 }
 
 // Logger is a package-wide logger.
@@ -85,10 +86,10 @@ func (s reflectedStream) blobNum() int {
 }
 
 // Read implements io.ReadSeeker interface
-func (s *reflectedStream) Read(p []byte) (n int, err error) {
+func (s *reflectedStream) Read(dest []byte) (n int, err error) {
 	var startOffsetInBlob int64
 
-	bufferLen := len(p)
+	bufferLen := len(dest)
 	seekOffsetEnd := s.seekOffset + int64(bufferLen)
 	blobNum := int(s.seekOffset / (stream.MaxBlobSize - 2))
 
@@ -99,7 +100,7 @@ func (s *reflectedStream) Read(p []byte) (n int, err error) {
 	}
 
 	start := time.Now()
-	n, err = s.streamBlob(blobNum, startOffsetInBlob, p)
+	n, err = s.streamBlob(blobNum, startOffsetInBlob, dest)
 
 	if err != nil {
 		metrics.PlayerFailuresCount.Inc()
@@ -329,4 +330,152 @@ func (s *reflectedStream) streamBlob(blobNum int, startOffsetInBlob int64, dest 
 
 func (s *reflectedStream) blobInfoURL(hash []byte) string {
 	return fmt.Sprintf("%v/%v", s.reflectorURL, hex.EncodeToString(hash))
+}
+
+/////////////////////////////////////////////////////////////////////
+
+type CacheEntry struct {
+	Body []byte
+	Hits int32
+}
+
+var cache = map[string]*CacheEntry{}
+
+type Blob interface {
+	Stream(int64, int64, []byte) (int, error)
+}
+
+type reflectedBlob struct {
+	stream        *reflectedStream
+	hash          string
+	iv            []byte
+	key           []byte
+	decryptedBlob *decryptedBlob
+}
+
+type decryptedBlob struct {
+	stream     *reflectedStream
+	hash       string
+	cacheEntry *CacheEntry
+}
+
+func GetBlob(s *reflectedStream, n int, hash string) Blob {
+	if e, ok := cache[hash]; ok {
+		e.Hits++
+		return &decryptedBlob{
+			stream:     s,
+			hash:       hash,
+			cacheEntry: e,
+		}
+	}
+	return &reflectedBlob{
+		stream: s,
+		hash:   hash,
+		key:    s.SDBlob.Key,
+		iv:     s.SDBlob.BlobInfos[n].IV,
+	}
+}
+
+func (b *reflectedBlob) url() string {
+	return fmt.Sprintf("%v/%v", b.stream.reflectorURL, b.hash)
+}
+
+func (b *reflectedBlob) download() ([]byte, error) {
+	var body []byte
+
+	start := time.Now()
+
+	request, _ := http.NewRequest("GET", b.url(), nil)
+	client := http.Client{Timeout: time.Second * time.Duration(config.GetBlobDownloadTimeout())}
+	resp, err := client.Do(request)
+
+	if err != nil {
+		return body, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusForbidden {
+		return body, errMissingBlob
+	} else if resp.StatusCode != http.StatusOK {
+		return body, fmt.Errorf("server responded with an unexpected status (%v)", resp.Status)
+	}
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return body, err
+	}
+
+	elapsedDLoad := time.Since(start).Seconds()
+	metrics.PlayerBlobDownloadDurations.Observe(elapsedDLoad)
+
+	Logger.LogF(monitor.F{
+		"stream":  b.stream.URI,
+		"url":     b.url(),
+		"elapsed": elapsedDLoad,
+	}).Info("blob downloaded")
+
+	return body, nil
+}
+
+func (b *reflectedBlob) decrypt(encBody []byte) ([]byte, error) {
+	body, err := stream.DecryptBlob(stream.Blob(encBody), b.key, b.iv)
+	if err != nil {
+		return body, err
+	}
+	return body, nil
+}
+
+func (b *reflectedBlob) saveToCache(decBody []byte) {
+	cache[b.hash] = &CacheEntry{Body: decBody}
+}
+
+func (b *reflectedBlob) Stream(start, end int64, dest []byte) (int, error) {
+	body, err := b.download()
+	if err != nil {
+		return 0, err
+	}
+	decBody, err := b.decrypt(body)
+	if err != nil {
+		return 0, err
+	}
+	return copy(dest, decBody[start:end]), nil
+}
+
+func (b *decryptedBlob) Stream(start, end int64, dest []byte) (int, error) {
+	return copy(dest, b.cacheEntry.Body[start:end]), nil
+}
+
+func (s *reflectedStream) prepareBlobs(dest []byte) {
+	blobs := make([]*Blob, len(s.SDBlob.BlobInfos))
+
+	for n, blobInfo := range s.SDBlob.BlobInfos {
+		b := GetBlob(s, n, hex.EncodeToString(blobInfo.BlobHash))
+		blobs[n] = &b
+	}
+
+	s.blobs = blobs
+}
+
+func (s *reflectedStream) Stream(dest []byte) (*[]Blob, error) {
+	// blobs := make([]*Blob, len(s.SDBlob.BlobInfos))
+
+	// var firstBlobOffset int64
+
+	// readLen := int64(len(dest))
+	// end := s.seekOffset + readLen
+	// firstBlobNum := int(s.seekOffset / (stream.MaxBlobSize - 2))
+
+	// if firstBlobNum == 0 {
+	// 	firstBlobOffset = s.seekOffset - int64(firstBlobNum*stream.MaxBlobSize)
+	// } else {
+	// 	firstBlobOffset = s.seekOffset - int64(firstBlobNum*stream.MaxBlobSize) + int64(firstBlobNum)
+	// }
+
+	// for n, blobInfo := range s.SDBlob.BlobInfos {
+	// 	b := GetBlob(s, n, hex.EncodeToString(blobInfo.BlobHash))
+	// 	blobs[n] = &b
+	// }
+	// for n, blob := range blobs[firstBlobNum:] {
+
+	// }
+	return nil, nil
 }

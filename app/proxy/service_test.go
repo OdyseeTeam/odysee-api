@@ -133,6 +133,32 @@ func TestCallerCallResolve(t *testing.T) {
 	assert.Equal(t, resolvedClaimID, resolveResponse[resolvedURL].ClaimID)
 }
 
+func TestCallerCallAccountBalance(t *testing.T) {
+	var accountBalanceResponse ljsonrpc.AccountBalanceResponse
+
+	rand.Seed(time.Now().UnixNano())
+	dummyUserID := rand.Intn(10^6-10^3) + 10 ^ 3
+
+	wid, _ := lbrynet.InitializeWallet(dummyUserID)
+
+	svc := NewService(config.GetLbrynet())
+	c := svc.NewCaller()
+
+	request := newRawRequest(t, "account_balance", nil)
+	result := c.Call(request)
+
+	assert.Contains(t, string(result), `"message": "account identificator required"`)
+
+	c.SetWalletID(wid)
+	hook := logrus_test.NewLocal(svc.logger.Logger())
+	result = c.Call(request)
+
+	parseRawResponse(t, result, &accountBalanceResponse)
+	assert.EqualValues(t, "0", fmt.Sprintf("%v", accountBalanceResponse.Available))
+	assert.Equal(t, map[string]interface{}{"wallet_id": fmt.Sprintf("%v", wid)}, hook.LastEntry().Data["params"])
+	assert.Equal(t, "account_balance", hook.LastEntry().Data["method"])
+}
+
 func TestCallerCallDoesReloadWallet(t *testing.T) {
 	var (
 		response jsonrpc.RPCResponse

@@ -15,7 +15,18 @@ import (
 const streamURL = "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
 
 // An MP4 file, size: 128791189 bytes, blobs: 63
-const sizedStreamURL = "known-size#0590f924bbee6627a2e79f7f2ff7dfb50bf2877c"
+const knownSizeStreamURL = "known-size#0590f924bbee6627a2e79f7f2ff7dfb50bf2877c"
+
+type knownStream struct {
+	uri      string
+	size     int64
+	blobsNum int
+}
+
+var knownStreams = []knownStream{
+	knownStream{uri: streamURL, size: 158433824, blobsNum: 77},
+	knownStream{uri: knownSizeStreamURL, size: 128791189, blobsNum: 63},
+}
 
 func TestNewReflectedStream(t *testing.T) {
 	rs, err := newReflectedStream(streamURL, reflectorURL)
@@ -150,7 +161,7 @@ func TestPlayURILastBytes(t *testing.T) {
 	r, _ := http.NewRequest("", "", nil)
 	r.Header.Add("Range", "bytes=128791089-")
 	rr := httptest.NewRecorder()
-	err = PlayURI(sizedStreamURL, rr, r)
+	err = PlayURI(knownSizeStreamURL, rr, r)
 	if err != nil {
 		t.Error(err)
 		return
