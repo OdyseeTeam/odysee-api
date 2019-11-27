@@ -46,10 +46,13 @@ clean:
 server:
 	LW_DEBUG=1 go run . serve
 
-.PHONY: tag
-tag:
-	git tag -d v$v
-	git tag v$v
+tag := $(shell git describe --abbrev=0 --tags)
+.PHONY: retag
+retag:
+	@echo "Re-setting tag $(tag) to the current commit"
+	git push origin :$(tag)
+	git tag -d $(tag)
+	git tag $(tag)
 
 .PHONY: models
 models:
