@@ -156,7 +156,7 @@ func TestCallerCallWalletBalance(t *testing.T) {
 	parseRawResponse(t, result, &accountBalanceResponse)
 	assert.EqualValues(t, "0", fmt.Sprintf("%v", accountBalanceResponse.Available))
 	assert.Equal(t, map[string]interface{}{"wallet_id": fmt.Sprintf("%v", wid)}, hook.LastEntry().Data["params"])
-	assert.Equal(t, "account_balance", hook.LastEntry().Data["method"])
+	assert.Equal(t, "wallet_balance", hook.LastEntry().Data["method"])
 }
 
 func TestCallerCallDoesReloadWallet(t *testing.T) {
