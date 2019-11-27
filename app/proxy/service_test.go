@@ -133,23 +133,23 @@ func TestCallerCallResolve(t *testing.T) {
 	assert.Equal(t, resolvedClaimID, resolveResponse[resolvedURL].ClaimID)
 }
 
-func TestCallerCallAccountBalance(t *testing.T) {
+func TestCallerCallWalletBalance(t *testing.T) {
 	var accountBalanceResponse ljsonrpc.AccountBalanceResponse
 
 	rand.Seed(time.Now().UnixNano())
 	dummyUserID := rand.Intn(10^6-10^3) + 10 ^ 3
 
-	wid, _ := lbrynet.InitializeWallet(dummyUserID)
+	_, wid, err := lbrynet.InitializeWallet(dummyUserID)
+	require.NoError(t, err)
 
-	svc := NewService(config.GetLbrynet())
-	c := svc.NewCaller()
+	svc := NewService(router.NewDefault())
+	request := newRawRequest(t, "wallet_balance", nil)
 
-	request := newRawRequest(t, "account_balance", nil)
+	c := svc.NewCaller("")
 	result := c.Call(request)
-
 	assert.Contains(t, string(result), `"message": "account identificator required"`)
 
-	c.SetWalletID(wid)
+	c = svc.NewCaller(wid)
 	hook := logrus_test.NewLocal(svc.logger.Logger())
 	result = c.Call(request)
 
