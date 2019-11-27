@@ -146,7 +146,7 @@ func serveContent(w http.ResponseWriter, r *http.Request, name string, modtime t
 	w.WriteHeader(code)
 
 	if r.Method != "HEAD" {
-		CopyN(w, sendContent, sendSize)
+		io.CopyN(w, sendContent, sendSize)
 	}
 }
 

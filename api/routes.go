@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/lbryio/lbrytv/app/player"
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
 	"github.com/lbryio/lbrytv/app/users"
@@ -23,6 +24,5 @@ func InstallRoutes(proxyService *proxy.ProxyService, r *mux.Router) {
 	v1Router.HandleFunc("/proxy", authenticator.Wrap(upHandler.Handle)).MatcherFunc(upHandler.CanHandle)
 	v1Router.HandleFunc("/proxy", proxyHandler.Handle)
 
-	r.HandleFunc("/content/claims/{uri}/{claim}/{filename}", ContentByClaimsURI).Methods("GET")
-	r.HandleFunc("/content/url", ContentByURL).Methods("GET")
+	player.InstallRoutes(r)
 }

@@ -5,334 +5,23 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"math"
 	"net/http"
-	"sort"
 	"time"
 
 	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbry.go/v2/stream"
+	"github.com/lbryio/reflector.go/peer"
+	"github.com/lbryio/reflector.go/store"
 )
 
-const reflectorURL = "http://blobs.lbry.io"
-
-type reflectedStream struct {
-	URI          string
-	StartByte    int64
-	EndByte      int64
-	SdHash       string
-	Size         int64
-	ContentType  string
-	SDBlob       *stream.SDBlob
-	seekOffset   int64
-	reflectorURL string
-	blobs        []*Blob
-}
-
-// Logger is a package-wide logger.
-// Warning: will generate a lot of output if DEBUG loglevel is enabled.
-var Logger = monitor.NewModuleLogger("player")
-
-// PlayURI downloads and streams LBRY video content located at uri and delimited by rangeHeader
-// (use rangeHeader := request.Header.Get("Range")).
-// Streaming works like this:
-// 1. Resolve stream hash through lbrynet daemon (see resolve)
-// 2. Retrieve stream details (list of blob hashes and lengths, etc) by the SD hash from the reflector
-// (see fetchData)
-// 3. Implement io.ReadSeeker interface for http.ServeContent:
-// - Seek simply implements io.Seeker
-// - Read calculates boundaries and finds blobs that contain the requested stream range,
-// then calls streamBlobs, which sequentially downloads and decrypts requested blobs
-func PlayURI(uri string, w http.ResponseWriter, req *http.Request) error {
-	metrics.PlayerStreamsRunning.Inc()
-	defer metrics.PlayerStreamsRunning.Dec()
-
-	s, err := newReflectedStream(uri, reflectorURL)
-	if err != nil {
-		return err
-	}
-	err = s.fetchData()
-	if err != nil {
-		return err
-	}
-	s.prepareWriter(w)
-
-	Logger.LogF(monitor.F{
-		"stream":    s.URI,
-		"remote_ip": users.GetIPAddressForRequest(req),
-	}).Info("stream requested")
-	ServeContent(w, req, "test", time.Time{}, s)
-
-	return err
-}
-
-func newReflectedStream(uri string, reflectorURL string) (rs *reflectedStream, err error) {
-	sdkRouter := router.New(config.GetLbrynetServers())
-	client := ljsonrpc.NewClient(sdkRouter.GetBalancedSDKAddress())
-	rs = &reflectedStream{URI: uri, reflectorURL: reflectorURL}
-	err = rs.resolve(client)
-	return rs, err
-}
-
-func (s reflectedStream) blobNum() int {
-	return len(s.SDBlob.BlobInfos) - 1
-}
-
-// Read implements io.ReadSeeker interface
-func (s *reflectedStream) Read(dest []byte) (n int, err error) {
-	var startOffsetInBlob int64
-
-	bufferLen := len(dest)
-	seekOffsetEnd := s.seekOffset + int64(bufferLen)
-	blobNum := int(s.seekOffset / (stream.MaxBlobSize - 2))
-
-	if blobNum == 0 {
-		startOffsetInBlob = s.seekOffset - int64(blobNum*stream.MaxBlobSize)
-	} else {
-		startOffsetInBlob = s.seekOffset - int64(blobNum*stream.MaxBlobSize) + int64(blobNum)
-	}
-
-	start := time.Now()
-	n, err = s.streamBlob(blobNum, startOffsetInBlob, dest)
-
-	if err != nil {
-		metrics.PlayerFailuresCount.Inc()
-		Logger.LogF(monitor.F{
-			"stream":         s.URI,
-			"num":            fmt.Sprintf("%v/%v", blobNum+1, s.blobNum()),
-			"current_offset": s.seekOffset,
-			"offset_in_blob": startOffsetInBlob,
-		}).Errorf("failed to read from blob stream after %vs: %v", time.Since(start).Seconds(), err)
-		monitor.CaptureException(err, map[string]string{
-			"stream":         s.URI,
-			"num":            fmt.Sprintf("%v/%v", blobNum, s.blobNum()),
-			"current_offset": fmt.Sprintf("%v", s.seekOffset),
-			"offset_in_blob": fmt.Sprintf("%v", startOffsetInBlob),
-		})
-	} else {
-		metrics.PlayerSuccessesCount.Inc()
-		Logger.LogF(monitor.F{
-			"buffer_len":     bufferLen,
-			"num":            fmt.Sprintf("%v/%v", blobNum, s.blobNum()),
-			"current_offset": s.seekOffset,
-			"offset_in_blob": startOffsetInBlob,
-		}).Debugf("read %v bytes (%v..%v) from blob stream", n, s.seekOffset, seekOffsetEnd-1)
-	}
-
-	s.seekOffset += int64(n)
-	return n, err
-}
-
-// Seek implements io.ReadSeeker interface
-func (s *reflectedStream) Seek(offset int64, whence int) (int64, error) {
-	var (
-		newSeekOffset int64
-		whenceText    string
-	)
-
-	if whence == io.SeekEnd {
-		newSeekOffset = s.Size - offset
-		whenceText = "relative to end"
-	} else if whence == io.SeekStart {
-		newSeekOffset = offset
-		whenceText = "relative to start"
-	} else if whence == io.SeekCurrent {
-		newSeekOffset = s.seekOffset + offset
-		whenceText = "relative to current"
-	} else {
-		return 0, errors.New("invalid seek whence argument")
-	}
-
-	if 0 > newSeekOffset {
-		return 0, errors.New("seeking before the beginning of file")
-	}
-
-	s.seekOffset = newSeekOffset
-
-	Logger.LogF(monitor.F{"stream": s.URI}).Debugf("seeking to %v, new seek offset = %v (%v)", offset, newSeekOffset, whenceText)
-
-	return newSeekOffset, nil
-}
-
-func (s *reflectedStream) URL() string {
-	return fmt.Sprintf("%v/%v", s.reflectorURL, s.SdHash)
-}
-
-func (s *reflectedStream) resolve(client *ljsonrpc.Client) error {
-	if s.URI == "" {
-		return errors.New("stream uri is not set")
-	}
-
-	r, err := lbrynet.Resolve(s.URI)
-	if err != nil {
-		return err
-	}
-
-	// TODO: Change when underlying libs are updated for 0.38
-	stream := r.Value.GetStream()
-	if stream.Fee != nil && stream.Fee.Amount > 0 {
-		return errors.New("paid stream")
-	}
-
-	s.SdHash = hex.EncodeToString(stream.Source.SdHash)
-	s.ContentType = stream.Source.MediaType
-	s.Size = int64(stream.Source.Size)
-
-	Logger.LogF(monitor.F{
-		"sd_hash":      fmt.Sprintf("%s", s.SdHash),
-		"uri":          s.URI,
-		"content_type": s.ContentType,
-	}).Debug("resolved uri")
-
-	return nil
-}
-
-func (s *reflectedStream) fetchData() error {
-	if s.SdHash == "" {
-		return errors.New("no sd hash set, call `resolve` first")
-	}
-	Logger.LogF(monitor.F{
-		"uri": s.URI, "url": s.URL(),
-	}).Debug("requesting stream data")
-
-	resp, err := http.Get(s.URL())
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	sdb := &stream.SDBlob{}
-	err = sdb.UnmarshalJSON(body)
-	if err != nil {
-		return err
-	}
-
-	if s.Size == 0 {
-		for _, bi := range sdb.BlobInfos {
-			if bi.Length == stream.MaxBlobSize {
-				s.Size += int64(stream.MaxBlobSize - 1)
-			} else {
-				s.Size += int64(bi.Length)
-			}
-		}
-
-		// last padding is unguessable
-		s.Size -= 16
-	}
-
-	sort.Slice(sdb.BlobInfos, func(i, j int) bool {
-		return sdb.BlobInfos[i].BlobNum < sdb.BlobInfos[j].BlobNum
-	})
-	s.SDBlob = sdb
-
-	Logger.LogF(monitor.F{
-		"blob_num": s.blobNum(),
-		"size":     s.Size,
-		"uri":      s.URI,
-	}).Debug("got stream data")
-	return nil
-}
-
-func (s *reflectedStream) prepareWriter(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", s.ContentType)
-}
-
-func (s *reflectedStream) downloadBlob(hash []byte) ([]byte, error) {
-	var body []byte
-
-	url := s.blobInfoURL(hash)
-	start := time.Now()
-
-	request, _ := http.NewRequest("GET", url, nil)
-	client := http.Client{Timeout: time.Second * time.Duration(config.GetBlobDownloadTimeout())}
-	resp, err := client.Do(request)
-
-	if err != nil {
-		return body, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusForbidden {
-		return body, errMissingBlob
-	} else if resp.StatusCode != http.StatusOK {
-		return body, fmt.Errorf("server responded with an unexpected status (%v)", resp.Status)
-	}
-	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return body, err
-	}
-
-	elapsedDLoad := time.Since(start).Seconds()
-	metrics.PlayerBlobDownloadDurations.Observe(elapsedDLoad)
-
-	Logger.LogF(monitor.F{
-		"stream":  s.URI,
-		"url":     url,
-		"elapsed": elapsedDLoad,
-	}).Info("blob downloaded")
-
-	return body, nil
-}
-
-func (s *reflectedStream) streamBlob(blobNum int, startOffsetInBlob int64, dest []byte) (int, error) {
-	blobInfo := s.SDBlob.BlobInfos[blobNum]
-	logBlobNum := fmt.Sprintf("%v/%v", blobInfo.BlobNum+1, s.blobNum())
-
-	Logger.LogF(monitor.F{
-		"stream": s.URI,
-		"num":    logBlobNum,
-	}).Debug("blob requested")
-
-	readLen := 0
-	encBody, err := s.downloadBlob(blobInfo.BlobHash)
-	if errors.Is(err, errMissingBlob) {
-		return 0, nil
-	}
-
-	start := time.Now()
-
-	decryptedBody, err := stream.DecryptBlob(stream.Blob(encBody), s.SDBlob.Key, blobInfo.IV)
-	if err != nil {
-		return 0, err
-	}
-	endOffsetInBlob := int64(len(dest)) + startOffsetInBlob
-	if endOffsetInBlob > int64(len(decryptedBody)) {
-		endOffsetInBlob = int64(len(decryptedBody))
-	}
-	elapsedDecode := time.Since(start).Seconds()
-	metrics.PlayerBlobDecodeDurations.Observe(elapsedDecode)
-
-	readLen += copy(dest, decryptedBody[startOffsetInBlob:endOffsetInBlob])
-
-	Logger.LogF(monitor.F{
-		"stream":       s.URI,
-		"num":          logBlobNum,
-		"written":      readLen,
-		"elapsed":      elapsedDecode,
-		"start_offset": startOffsetInBlob,
-		"end_offset":   endOffsetInBlob,
-	}).Debug("done streaming a blob")
-
-	return readLen, nil
-}
-
-func (s *reflectedStream) blobInfoURL(hash []byte) string {
-	return fmt.Sprintf("%v/%v", s.reflectorURL, hex.EncodeToString(hash))
-}
-
-/////////////////////////////////////////////////////////////////////
+const reflectorAddress = "refractor.lbry.com:5567"
 
 type CacheEntry struct {
 	Body []byte
@@ -341,141 +30,338 @@ type CacheEntry struct {
 
 var cache = map[string]*CacheEntry{}
 
-type Blob interface {
-	Stream(int64, int64, []byte) (int, error)
+// Player is an entry-point object to the new player package.
+type Player struct {
+	lbrynet    *ljsonrpc.Client
+	blobStore  store.BlobStore
+	blobGetter BlobGetter
+}
+
+type PlayerOpts struct {
+	Lbrynet   *ljsonrpc.Client
+	BlobStore store.BlobStore
+}
+
+// Stream provides an io.ReadSeeker interface to a stream of blobs to be used by standard http library for range requests,
+// as well as some stream metadata.
+type Stream struct {
+	URI         string
+	Hash        string
+	SDBlob      *stream.SDBlob
+	Size        int64
+	ContentType string
+	Claim       *ljsonrpc.Claim
+	seekOffset  int64
+	blobGetter  BlobGetter
+}
+
+// BlobGetter is an object for retrieving blobs from BlobStore or optionally from local cache.
+type BlobGetter struct {
+	blobStore store.BlobStore
+	sdBlob    *stream.SDBlob
+}
+
+// ReadableBlob interface describes generic blob object that Stream can Read() from.
+type ReadableBlob interface {
+	Read(offset, n int, dest []byte) (int, error)
 }
 
 type reflectedBlob struct {
-	stream        *reflectedStream
-	hash          string
-	iv            []byte
-	key           []byte
-	decryptedBlob *decryptedBlob
+	body stream.Blob
+	key  []byte
+	iv   []byte
 }
 
-type decryptedBlob struct {
-	stream     *reflectedStream
-	hash       string
-	cacheEntry *CacheEntry
+// GetBlobStore returns default pre-configured blob store.
+func GetBlobStore() *peer.Store {
+	return peer.NewStore(peer.StoreOpts{Address: reflectorAddress, Timeout: time.Second * 25})
 }
 
-func GetBlob(s *reflectedStream, n int, hash string) Blob {
-	if e, ok := cache[hash]; ok {
-		e.Hits++
-		return &decryptedBlob{
-			stream:     s,
-			hash:       hash,
-			cacheEntry: e,
+// func NewCachingBlobStore(reflectorAddress string) *store.CachingBlobStore {
+// 	return store.NewCachingBlobStore()
+// }
+
+// NewPlayer initializes an instance with optional BlobStore.
+func NewPlayer(opts *PlayerOpts) *Player {
+	if opts == nil {
+		opts = &PlayerOpts{}
+	}
+	if opts.BlobStore == nil {
+		opts.BlobStore = GetBlobStore()
+	}
+	if opts.Lbrynet == nil {
+		sdkRouter := router.New(config.GetLbrynetServers())
+		opts.Lbrynet = ljsonrpc.NewClient(sdkRouter.GetBalancedSDKAddress())
+	}
+	p := &Player{
+		lbrynet:   opts.Lbrynet,
+		blobStore: opts.BlobStore,
+	}
+	return p
+}
+
+// Play delivers requested URI onto the supplied http.ResponseWriter.
+func (p *Player) Play(uri string, w http.ResponseWriter, r *http.Request) error {
+	Logger.streamPlaybackRequested(uri, users.GetIPAddressForRequest(r))
+
+	s, err := p.ResolveStream(uri)
+	if err != nil {
+		Logger.streamResolveFailure(uri, err)
+		return err
+	}
+	Logger.streamResolved(s)
+
+	err = p.RetrieveStream(s)
+	if err != nil {
+		return err
+	}
+
+	w.Header().Set("Content-Type", s.ContentType)
+
+	metrics.PlayerStreamsRunning.Inc()
+	defer metrics.PlayerStreamsRunning.Dec()
+	http.ServeContent(w, r, "stream", s.Timestamp(), s)
+
+	return nil
+}
+
+// ResolveStream resolves provided URI by calling the SDK.
+func (p *Player) ResolveStream(uri string) (*Stream, error) {
+	s := &Stream{URI: uri}
+
+	r, err := p.lbrynet.Resolve(uri)
+	if err != nil {
+		return nil, err
+	}
+
+	claim := (*r)[uri]
+	if claim.CanonicalURL == "" {
+		return nil, errStreamNotFound
+	}
+
+	stream := claim.Value.GetStream()
+	if stream.Fee != nil && stream.Fee.Amount > 0 {
+		return nil, errPaidStream
+	}
+
+	s.Claim = &claim
+	s.Hash = hex.EncodeToString(stream.Source.SdHash)
+	s.ContentType = stream.Source.MediaType
+	s.Size = int64(stream.Source.Size)
+
+	return s, nil
+}
+
+// RetrieveStream downloads stream description from the reflector and tries to determine stream size
+// using several methods, including legacy ones for streams that do not have metadata.
+func (p *Player) RetrieveStream(s *Stream) error {
+	sdBlob := stream.SDBlob{}
+	blob, err := p.blobStore.Get(s.Hash)
+	if err != nil {
+		return err
+	}
+
+	err = sdBlob.FromBlob(blob)
+	if err != nil {
+		return err
+	}
+
+	s.setSize(&sdBlob.BlobInfos)
+	s.blobGetter = BlobGetter{
+		blobStore: p.blobStore,
+		sdBlob:    &sdBlob,
+	}
+
+	return nil
+}
+
+func (s *Stream) setSize(blobs *[]stream.BlobInfo) {
+	if s.Size > 0 {
+		return
+	}
+
+	size, err := s.Claim.GetStreamSizeByMagic()
+
+	if err != nil {
+		Logger.LogF(monitor.F{
+			"uri":  s.URI,
+			"size": s.Size,
+		}).Infof("couldn't figure out size by magic (%v)", err)
+		for _, blob := range *blobs {
+			if blob.Length == stream.MaxBlobSize {
+				size += stream.MaxBlobSize - 1
+			} else {
+				size += uint64(blob.Length)
+			}
 		}
+		// last padding is unguessable
+		size -= 16
 	}
-	return &reflectedBlob{
-		stream: s,
-		hash:   hash,
-		key:    s.SDBlob.Key,
-		iv:     s.SDBlob.BlobInfos[n].IV,
-	}
+
+	s.Size = int64(size)
 }
 
-func (b *reflectedBlob) url() string {
-	return fmt.Sprintf("%v/%v", b.stream.reflectorURL, b.hash)
+// Timestamp returns stream creation timestamp, used in HTTP response header.
+func (s *Stream) Timestamp() time.Time {
+	return time.Unix(int64(s.Claim.Timestamp), 0)
 }
 
-func (b *reflectedBlob) download() ([]byte, error) {
-	var body []byte
+// Seek implements io.ReadSeeker interface and is meant to be called by http.ServeContent.
+func (s *Stream) Seek(offset int64, whence int) (int64, error) {
+	var (
+		newOffset  int64
+		whenceText string
+	)
 
-	start := time.Now()
+	if s.Size == 0 {
+		return 0, errStreamSizeZero
+	} else if int64(math.Abs(float64(offset))) > s.Size {
+		return 0, errOutOfBounds
+	}
 
-	request, _ := http.NewRequest("GET", b.url(), nil)
-	client := http.Client{Timeout: time.Second * time.Duration(config.GetBlobDownloadTimeout())}
-	resp, err := client.Do(request)
+	if whence == io.SeekEnd {
+		newOffset = s.Size - offset
+		whenceText = "relative to end"
+	} else if whence == io.SeekStart {
+		newOffset = offset
+		whenceText = "relative to start"
+	} else if whence == io.SeekCurrent {
+		newOffset = s.seekOffset + offset
+		whenceText = "relative to current"
+	} else {
+		return 0, errors.New("invalid seek whence argument")
+	}
+
+	if 0 > newOffset {
+		return 0, errSeekingBeforeStart
+	}
+
+	Logger.streamSeek(s, offset, newOffset, whenceText)
+	s.seekOffset = newOffset
+
+	return newOffset, nil
+}
+
+// Read implements io.ReadSeeker interface and is meant to be called by http.ServeContent.
+// Actual blob retrieval and delivery happens in s.readFromBlobs().
+func (s *Stream) Read(dest []byte) (n int, err error) {
+	calc := NewBlobCalculator(s.Size, s.seekOffset, len(dest))
+	n, err = s.readFromBlobs(calc, dest)
 
 	if err != nil {
-		return body, err
+		metrics.PlayerFailuresCount.Inc()
+		Logger.streamReadFailed(s, calc, err)
+	} else {
+		metrics.PlayerSuccessesCount.Inc()
+		Logger.streamRead(s, n, calc)
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusForbidden {
-		return body, errMissingBlob
-	} else if resp.StatusCode != http.StatusOK {
-		return body, fmt.Errorf("server responded with an unexpected status (%v)", resp.Status)
+	s.seekOffset += int64(n)
+	return n, err
+}
+
+func (s *Stream) readFromBlobs(calc BlobCalculator, dest []byte) (int, error) {
+	var b ReadableBlob
+	var err error
+	var read int
+
+	log := Logger.WithField("stream", s.URI)
+
+	for i := calc.FirstBlobNum; i < calc.LastBlobNum+1; i++ {
+		var start, readLen int
+		readLen = -1
+
+		if i == calc.FirstBlobNum {
+			start = calc.FirstBlobOffset
+		} else if i == calc.LastBlobNum {
+			start = 0
+			readLen = calc.LastBlobReadLen
+		}
+		log.Tracef("requesting %v bytes starting from %v from blob #%v", readLen, start, i)
+
+		b, err = s.blobGetter.Get(i)
+		if err != nil {
+			return read, err
+		}
+		n, err := b.Read(start, readLen, dest)
+		read += n
+		if err != nil {
+			return read, err
+		}
+		log.Tracef("read %v bytes from blob #%v (%v read total)", n, i, read)
 	}
-	body, err = ioutil.ReadAll(resp.Body)
+
+	return read, nil
+}
+
+// Get returns a Blob object that can be Read() from.
+func (b *BlobGetter) Get(n int) (ReadableBlob, error) {
+	if n > len(b.sdBlob.BlobInfos) {
+		return nil, errors.New("blob index out of bounds")
+	}
+	bi := b.sdBlob.BlobInfos[n]
+	blob, err := b.getReflectedBlobByHash(hex.EncodeToString(bi.BlobHash))
 	if err != nil {
-		return body, err
+		return nil, err
 	}
-
-	elapsedDLoad := time.Since(start).Seconds()
-	metrics.PlayerBlobDownloadDurations.Observe(elapsedDLoad)
-
-	Logger.LogF(monitor.F{
-		"stream":  b.stream.URI,
-		"url":     b.url(),
-		"elapsed": elapsedDLoad,
-	}).Info("blob downloaded")
-
-	return body, nil
+	blob.key = b.sdBlob.Key
+	blob.iv = bi.IV
+	return blob, nil
 }
 
-func (b *reflectedBlob) decrypt(encBody []byte) ([]byte, error) {
-	body, err := stream.DecryptBlob(stream.Blob(encBody), b.key, b.iv)
+func (b *BlobGetter) getReflectedBlobByHash(hash string) (*reflectedBlob, error) {
+	timer := metrics.TimerStart(metrics.PlayerBlobDownloadDurations)
+	blob, err := b.blobStore.Get(hash)
 	if err != nil {
-		return body, err
+		Logger.blobDownloadFailure(blob, err)
+		return nil, err
 	}
-	return body, nil
+	timer.Done()
+	Logger.blobDownloaded(blob, timer)
+
+	return &reflectedBlob{body: blob}, nil
 }
 
-func (b *reflectedBlob) saveToCache(decBody []byte) {
-	cache[b.hash] = &CacheEntry{Body: decBody}
-}
-
-func (b *reflectedBlob) Stream(start, end int64, dest []byte) (int, error) {
-	body, err := b.download()
+// Read decrypts the blob and writes into the supplied buffer.
+func (b *reflectedBlob) Read(offset, n int, dest []byte) (int, error) {
+	decBody, err := stream.DecryptBlob(b.body, b.key, b.iv)
 	if err != nil {
 		return 0, err
 	}
-	decBody, err := b.decrypt(body)
-	if err != nil {
-		return 0, err
-	}
-	return copy(dest, decBody[start:end]), nil
-}
-
-func (b *decryptedBlob) Stream(start, end int64, dest []byte) (int, error) {
-	return copy(dest, b.cacheEntry.Body[start:end]), nil
-}
-
-func (s *reflectedStream) prepareBlobs(dest []byte) {
-	blobs := make([]*Blob, len(s.SDBlob.BlobInfos))
-
-	for n, blobInfo := range s.SDBlob.BlobInfos {
-		b := GetBlob(s, n, hex.EncodeToString(blobInfo.BlobHash))
-		blobs[n] = &b
+	if n == -1 {
+		n = len(decBody)
 	}
 
-	s.blobs = blobs
+	timer := metrics.TimerStart(metrics.PlayerBlobDeliveryDurations)
+	read := copy(dest, decBody[offset:n])
+	timer.Done()
+
+	return read, nil
 }
 
-func (s *reflectedStream) Stream(dest []byte) (*[]Blob, error) {
-	// blobs := make([]*Blob, len(s.SDBlob.BlobInfos))
+// BlobCalculator provides handy blob calculations for a requested stream range.
+type BlobCalculator struct {
+	Offset          int64
+	ReadLen         int
+	FirstBlobNum    int
+	LastBlobNum     int
+	FirstBlobOffset int
+	LastBlobReadLen int
+}
 
-	// var firstBlobOffset int64
+// NewBlobCalculator initializes BlobCalculator with provided stream size, start offset and reader buffer length.
+func NewBlobCalculator(size, offset int64, readLen int) BlobCalculator {
+	bc := BlobCalculator{Offset: offset, ReadLen: readLen}
+	blobSize := stream.MaxBlobSize
 
-	// readLen := int64(len(dest))
-	// end := s.seekOffset + readLen
-	// firstBlobNum := int(s.seekOffset / (stream.MaxBlobSize - 2))
+	bc.FirstBlobNum = int(offset / int64(blobSize-2)) // TODO: why -2?
+	bc.LastBlobNum = bc.FirstBlobNum + readLen/blobSize
+	bc.FirstBlobOffset = int(offset + int64(bc.FirstBlobNum) - int64(bc.FirstBlobNum*blobSize))
+	bc.LastBlobReadLen = readLen - (bc.LastBlobNum-bc.FirstBlobNum)*blobSize
 
-	// if firstBlobNum == 0 {
-	// 	firstBlobOffset = s.seekOffset - int64(firstBlobNum*stream.MaxBlobSize)
-	// } else {
-	// 	firstBlobOffset = s.seekOffset - int64(firstBlobNum*stream.MaxBlobSize) + int64(firstBlobNum)
-	// }
+	return bc
+}
 
-	// for n, blobInfo := range s.SDBlob.BlobInfos {
-	// 	b := GetBlob(s, n, hex.EncodeToString(blobInfo.BlobHash))
-	// 	blobs[n] = &b
-	// }
-	// for n, blob := range blobs[firstBlobNum:] {
-
-	// }
-	return nil, nil
+func (c BlobCalculator) String() string {
+	return fmt.Sprintf("B%v[%v:]-B%v[:%v]", c.FirstBlobNum, c.FirstBlobOffset, c.LastBlobNum, c.LastBlobReadLen)
 }
