@@ -1,6 +1,7 @@
 # Lbrynet: set in the docker-compose thru an env variable
 BaseContentURL: https://api.lbry.tv/content/
 InternalAPIHost: https://api.lbry.com
+ProjectURL: https://lbry.tv
 
 SentryDSN: "https://9ef75ef77a844d4aa35d834d78266477@sentry.io/1416147"
 
