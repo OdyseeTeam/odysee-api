@@ -22,6 +22,8 @@ MetricsPath: /metrics
 PublishSourceDir: /storage/published
 BlobFilesDir: /storage/lbrynet/blobfiles
 
-# ReflectorAddress: reflector.lbry.com:5566
+ReflectorAddress: reflector.lbry.com:5566
+ReflectorTimeout: 60
 
-BlobDownloadTimeout: 60
+RefractorAddress: refractor.lbry.com:5567
+RefractorTimeout: 60

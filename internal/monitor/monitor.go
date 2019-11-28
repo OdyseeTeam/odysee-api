@@ -54,9 +54,9 @@ func SetupLogging() {
 // LogSuccessfulQuery takes a remote method name, execution time and params and logs it
 func LogSuccessfulQuery(method string, time float64, params interface{}, response interface{}) {
 	fields := logrus.Fields{
-		"method": method,
-		"time":   time,
-		"params": params,
+		"method":   method,
+		"duration": time,
+		"params":   params,
 	}
 	if config.ShouldLogResponses() {
 		fields["response"] = response
@@ -119,9 +119,9 @@ func NewProxyLogger() *ProxyLogger {
 
 func (l *ProxyLogger) LogSuccessfulQuery(method string, time float64, params interface{}, response interface{}) {
 	fields := logrus.Fields{
-		"method": method,
-		"time":   time,
-		"params": params,
+		"method":   method,
+		"duration": time,
+		"params":   params,
 	}
 	if config.ShouldLogResponses() {
 		fields["response"] = response

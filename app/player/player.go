@@ -21,8 +21,6 @@ import (
 	"github.com/lbryio/reflector.go/store"
 )
 
-const reflectorAddress = "refractor.lbry.com:5567"
-
 type CacheEntry struct {
 	Body []byte
 	Hits int32
@@ -32,9 +30,9 @@ var cache = map[string]*CacheEntry{}
 
 // Player is an entry-point object to the new player package.
 type Player struct {
-	lbrynet    *ljsonrpc.Client
-	blobStore  store.BlobStore
-	blobGetter BlobGetter
+	lbrynetClient *ljsonrpc.Client
+	blobStore     store.BlobStore
+	blobGetter    BlobGetter
 }
 
 type PlayerOpts struct {
@@ -74,12 +72,11 @@ type reflectedBlob struct {
 
 // GetBlobStore returns default pre-configured blob store.
 func GetBlobStore() *peer.Store {
-	return peer.NewStore(peer.StoreOpts{Address: reflectorAddress, Timeout: time.Second * 25})
+	return peer.NewStore(peer.StoreOpts{
+		Address: config.GetRefractorAddress(),
+		Timeout: time.Second * time.Duration(config.GetRefractorTimeout()),
+	})
 }
-
-// func NewCachingBlobStore(reflectorAddress string) *store.CachingBlobStore {
-// 	return store.NewCachingBlobStore()
-// }
 
 // NewPlayer initializes an instance with optional BlobStore.
 func NewPlayer(opts *PlayerOpts) *Player {
@@ -89,15 +86,19 @@ func NewPlayer(opts *PlayerOpts) *Player {
 	if opts.BlobStore == nil {
 		opts.BlobStore = GetBlobStore()
 	}
-	if opts.Lbrynet == nil {
-		sdkRouter := router.New(config.GetLbrynetServers())
-		opts.Lbrynet = ljsonrpc.NewClient(sdkRouter.GetBalancedSDKAddress())
-	}
 	p := &Player{
-		lbrynet:   opts.Lbrynet,
-		blobStore: opts.BlobStore,
+		lbrynetClient: opts.Lbrynet,
+		blobStore:     opts.BlobStore,
 	}
 	return p
+}
+
+func (p *Player) getLbrynetClient() *ljsonrpc.Client {
+	if p.lbrynetClient != nil {
+		return p.lbrynetClient
+	}
+	sdkRouter := router.New(config.GetLbrynetServers())
+	return ljsonrpc.NewClient(sdkRouter.GetBalancedSDKAddress())
 }
 
 // Play delivers requested URI onto the supplied http.ResponseWriter.
@@ -106,15 +107,17 @@ func (p *Player) Play(uri string, w http.ResponseWriter, r *http.Request) error 
 
 	s, err := p.ResolveStream(uri)
 	if err != nil {
-		Logger.streamResolveFailure(uri, err)
+		Logger.streamResolveFailed(uri, err)
 		return err
 	}
 	Logger.streamResolved(s)
 
 	err = p.RetrieveStream(s)
 	if err != nil {
+		Logger.streamRetrievalFailed(uri, err)
 		return err
 	}
+	Logger.streamRetrieved(s)
 
 	w.Header().Set("Content-Type", s.ContentType)
 
@@ -129,7 +132,7 @@ func (p *Player) Play(uri string, w http.ResponseWriter, r *http.Request) error 
 func (p *Player) ResolveStream(uri string) (*Stream, error) {
 	s := &Stream{URI: uri}
 
-	r, err := p.lbrynet.Resolve(uri)
+	r, err := p.getLbrynetClient().Resolve(uri)
 	if err != nil {
 		return nil, err
 	}
@@ -249,10 +252,8 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 	n, err = s.readFromBlobs(calc, dest)
 
 	if err != nil {
-		metrics.PlayerFailuresCount.Inc()
 		Logger.streamReadFailed(s, calc, err)
 	} else {
-		metrics.PlayerSuccessesCount.Inc()
 		Logger.streamRead(s, n, calc)
 	}
 
@@ -313,7 +314,7 @@ func (b *BlobGetter) getReflectedBlobByHash(hash string) (*reflectedBlob, error)
 	timer := metrics.TimerStart(metrics.PlayerBlobDownloadDurations)
 	blob, err := b.blobStore.Get(hash)
 	if err != nil {
-		Logger.blobDownloadFailure(blob, err)
+		Logger.blobDownloadFailed(blob, err)
 		return nil, err
 	}
 	timer.Done()

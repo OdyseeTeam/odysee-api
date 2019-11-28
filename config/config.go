@@ -65,7 +65,8 @@ func (c *ConfigWrapper) Init() {
 	c.Viper.SetDefault("Address", ":8080")
 	c.Viper.SetDefault("Host", "http://localhost:8080")
 	c.Viper.SetDefault("BaseContentURL", "http://localhost:8080/content/")
-	c.Viper.SetDefault("BlobDownloadTimeout", int64(10))
+	c.Viper.SetDefault("ReflectorTimeout", int64(10))
+	c.Viper.SetDefault("RefractorTimeout", int64(10))
 
 	c.Viper.SetDefault("AccountsEnabled", false)
 	c.Viper.BindEnv("AccountsEnabled")
@@ -208,12 +209,22 @@ func GetReflectorAddress() string {
 	return Config.Viper.GetString("ReflectorAddress")
 }
 
-// GetBlobDownloadTimeout returns timeout for blob HTTP client in seconds.
-func GetBlobDownloadTimeout() int64 {
-	return Config.Viper.GetInt64("BlobDownloadTimeout")
+// GetReflectorTimeout returns reflector TCP timeout in seconds.
+func GetReflectorTimeout() int64 {
+	return Config.Viper.GetInt64("ReflectorTimeout")
 }
 
-// AccountsEnabled enables or disables accounts subsystem
+// GetRefractorAddress returns refractor address in the format of host:port.
+func GetRefractorAddress() string {
+	return Config.Viper.GetString("RefractorAddress")
+}
+
+// GetRefractorTimeout returns refractor TCP timeout in seconds.
+func GetRefractorTimeout() int64 {
+	return Config.Viper.GetInt64("RefractorTimeout")
+}
+
+// ShouldLogResponses enables or disables full SDK responses logging
 func ShouldLogResponses() bool {
 	return Config.Viper.GetBool("ShouldLogResponses")
 }

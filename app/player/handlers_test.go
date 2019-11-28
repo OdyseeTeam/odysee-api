@@ -32,7 +32,6 @@ func makeRequest(method, uri string, rng *rangeHeader) *http.Response {
 		}
 	}
 
-	fmt.Println(r.Header.Get("Range"))
 	rr := httptest.NewRecorder()
 	router.ServeHTTP(rr, r)
 	return rr.Result()

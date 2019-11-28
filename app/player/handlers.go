@@ -8,12 +8,12 @@ import (
 	"github.com/lbryio/lbrytv/internal/monitor"
 )
 
-// RequestHandler is a wrapper for passing proxy.ProxyService instance to proxy HTTP handler.
+// RequestHandler is a HTTP request handler for player package.
 type RequestHandler struct {
 	player *Player
 }
 
-// NewRequestHandler initializes request handler with a provided Proxy ProxyService instance
+// NewRequestHandler initializes a HTTP request handler with the provided Player instance.
 func NewRequestHandler(p *Player) *RequestHandler {
 	return &RequestHandler{p}
 }
@@ -39,6 +39,7 @@ func (h RequestHandler) processStreamError(w http.ResponseWriter, uri string, er
 	}
 }
 
+// Handle is responsible for all HTTP media delivery via player module.
 func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	uri := h.getURI(r)
 	err := h.player.Play(uri, w, r)
@@ -48,6 +49,7 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// HandleOptions handlers OPTIONS requests for media.
 func (h *RequestHandler) HandleOptions(w http.ResponseWriter, r *http.Request) {
 	header := w.Header()
 	uri := h.getURI(r)

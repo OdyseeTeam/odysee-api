@@ -19,4 +19,9 @@ PublishSourceDir: /storage/publish
 BlobFilesDir: /storage/lbrynet/blobfiles
 
 ReflectorAddress: reflector.lbry.com:5566
+ReflectorTimeout: 5
+
+RefractorAddress: refractor.lbry.com:5567
+RefractorTimeout: 5
+
 ShouldLogResponses: false

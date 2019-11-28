@@ -6,9 +6,7 @@ import (
 	"io"
 	"math/rand"
 	"testing"
-	"time"
 
-	"github.com/lbryio/reflector.go/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -126,9 +124,7 @@ func TestBlobCalculator(t *testing.T) {
 }
 
 func TestStreamRead(t *testing.T) {
-	p := NewPlayer(&PlayerOpts{
-		BlobStore: peer.NewStore(peer.StoreOpts{Timeout: time.Second * 60, Address: reflectorAddress}),
-	})
+	p := NewPlayer(nil)
 	s, err := p.ResolveStream(streamURL)
 	require.NoError(t, err)
 
@@ -153,9 +149,7 @@ func TestStreamRead(t *testing.T) {
 }
 
 func TestStreamReadOutOfBounds(t *testing.T) {
-	p := NewPlayer(&PlayerOpts{
-		BlobStore: peer.NewStore(peer.StoreOpts{Timeout: time.Second * 60, Address: reflectorAddress}),
-	})
+	p := NewPlayer(nil)
 	s, err := p.ResolveStream(streamURL)
 	require.NoError(t, err)
 
