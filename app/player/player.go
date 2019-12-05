@@ -7,6 +7,8 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"os"
+	"path"
 	"time"
 
 	"github.com/lbryio/lbrytv/app/router"
@@ -21,23 +23,16 @@ import (
 	"github.com/lbryio/reflector.go/store"
 )
 
-type CacheEntry struct {
-	Body []byte
-	Hits int32
-}
-
-var cache = map[string]*CacheEntry{}
-
 // Player is an entry-point object to the new player package.
 type Player struct {
 	lbrynetClient *ljsonrpc.Client
-	blobStore     store.BlobStore
 	blobGetter    BlobGetter
+	localCache    BlobCache
 }
 
 type PlayerOpts struct {
-	Lbrynet   *ljsonrpc.Client
-	BlobStore store.BlobStore
+	Lbrynet          *ljsonrpc.Client
+	EnableLocalCache bool
 }
 
 // Stream provides an io.ReadSeeker interface to a stream of blobs to be used by standard http library for range requests,
@@ -45,7 +40,7 @@ type PlayerOpts struct {
 type Stream struct {
 	URI         string
 	Hash        string
-	SDBlob      *stream.SDBlob
+	sdBlob      *stream.SDBlob
 	Size        int64
 	ContentType string
 	Claim       *ljsonrpc.Claim
@@ -55,8 +50,9 @@ type Stream struct {
 
 // BlobGetter is an object for retrieving blobs from BlobStore or optionally from local cache.
 type BlobGetter struct {
-	blobStore store.BlobStore
-	sdBlob    *stream.SDBlob
+	blobStore  store.BlobStore
+	localCache BlobCache
+	sdBlob     *stream.SDBlob
 }
 
 // ReadableBlob interface describes generic blob object that Stream can Read() from.
@@ -83,12 +79,18 @@ func NewPlayer(opts *PlayerOpts) *Player {
 	if opts == nil {
 		opts = &PlayerOpts{}
 	}
-	if opts.BlobStore == nil {
-		opts.BlobStore = GetBlobStore()
-	}
 	p := &Player{
 		lbrynetClient: opts.Lbrynet,
-		blobStore:     opts.BlobStore,
+	}
+	if opts.EnableLocalCache {
+		cPath := path.Join(os.TempDir(), "blob_cache")
+		cache, err := NewFSCache(cPath)
+		if err != nil {
+			Logger.Log().Error("unable to initialize cache: ", err)
+		} else {
+			Logger.Log().Infof("player cache initialized at %v", cPath)
+			p.localCache = cache
+		}
 	}
 	return p
 }
@@ -99,6 +101,10 @@ func (p *Player) getLbrynetClient() *ljsonrpc.Client {
 	}
 	sdkRouter := router.New(config.GetLbrynetServers())
 	return ljsonrpc.NewClient(sdkRouter.GetBalancedSDKAddress())
+}
+
+func (p *Player) getBlobStore() store.BlobStore {
+	return GetBlobStore()
 }
 
 // Play delivers requested URI onto the supplied http.ResponseWriter.
@@ -159,7 +165,8 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 // using several methods, including legacy ones for streams that do not have metadata.
 func (p *Player) RetrieveStream(s *Stream) error {
 	sdBlob := stream.SDBlob{}
-	blob, err := p.blobStore.Get(s.Hash)
+	bStore := p.getBlobStore()
+	blob, err := bStore.Get(s.Hash)
 	if err != nil {
 		return err
 	}
@@ -171,8 +178,9 @@ func (p *Player) RetrieveStream(s *Stream) error {
 
 	s.setSize(&sdBlob.BlobInfos)
 	s.blobGetter = BlobGetter{
-		blobStore: p.blobStore,
-		sdBlob:    &sdBlob,
+		blobStore:  bStore,
+		localCache: p.localCache,
+		sdBlob:     &sdBlob,
 	}
 
 	return nil
@@ -250,6 +258,7 @@ func (s *Stream) Seek(offset int64, whence int) (int64, error) {
 func (s *Stream) Read(dest []byte) (n int, err error) {
 	calc := NewBlobCalculator(s.Size, s.seekOffset, len(dest))
 	n, err = s.readFromBlobs(calc, dest)
+	s.seekOffset += int64(n)
 
 	if err != nil {
 		Logger.streamReadFailed(s, calc, err)
@@ -257,7 +266,6 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 		Logger.streamRead(s, n, calc)
 	}
 
-	s.seekOffset += int64(n)
 	return n, err
 }
 
@@ -284,6 +292,8 @@ func (s *Stream) readFromBlobs(calc BlobCalculator, dest []byte) (int, error) {
 		if err != nil {
 			return read, err
 		}
+		Logger.blobRetrieved(s, i)
+
 		n, err := b.Read(start, readLen, dest)
 		read += n
 		if err != nil {
@@ -297,17 +307,52 @@ func (s *Stream) readFromBlobs(calc BlobCalculator, dest []byte) (int, error) {
 
 // Get returns a Blob object that can be Read() from.
 func (b *BlobGetter) Get(n int) (ReadableBlob, error) {
+	var (
+		cached    ReadableBlob
+		reflected *reflectedBlob
+		cacheHit  bool
+		err       error
+	)
+
 	if n > len(b.sdBlob.BlobInfos) {
 		return nil, errors.New("blob index out of bounds")
 	}
 	bi := b.sdBlob.BlobInfos[n]
-	blob, err := b.getReflectedBlobByHash(hex.EncodeToString(bi.BlobHash))
-	if err != nil {
-		return nil, err
+	hash := hex.EncodeToString(bi.BlobHash)
+
+	if b.localCache != nil {
+		cached, cacheHit = b.localCache.Get(hash)
+		if !cacheHit {
+			Logger.localCacheMiss(n)
+		}
+	} else {
+		Logger.Log().Debug("local cache not set")
+		cacheHit = false
 	}
-	blob.key = b.sdBlob.Key
-	blob.iv = bi.IV
-	return blob, nil
+
+	if !cacheHit {
+		reflected, err = b.getReflectedBlobByHash(hash)
+		if err != nil {
+			return nil, err
+		}
+
+		reflected.key = b.sdBlob.Key
+		reflected.iv = bi.IV
+
+		refBody := make([]byte, len(reflected.body))
+		_, err = reflected.Read(0, -1, refBody)
+		if err != nil {
+			return nil, err
+		}
+
+		if b.localCache != nil {
+			go b.localCache.Set(hash, refBody)
+		}
+		return reflected, nil
+	}
+
+	Logger.localCacheHit(n)
+	return cached, nil
 }
 
 func (b *BlobGetter) getReflectedBlobByHash(hash string) (*reflectedBlob, error) {

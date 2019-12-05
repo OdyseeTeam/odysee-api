@@ -65,10 +65,22 @@ func (l localLogger) streamRetrievalFailed(uri string, err error) {
 
 func (l localLogger) blobDownloaded(b stream.Blob, t *metrics.Timer) {
 	speed := float64(len(b)) / (1024 * 1024) / t.Duration
-	l.WithFields(monitor.F{"duration": t.Duration, "speed": speed}).Debug("blob downloaded")
+	l.WithFields(monitor.F{"duration": fmt.Sprintf("%.2f", t.Duration), "speed": fmt.Sprintf("%.2f", speed)}).Debug("blob downloaded")
+}
+
+func (l localLogger) blobRetrieved(s *Stream, n int) {
+	l.WithFields(monitor.F{"uri": s.URI, "num": n}).Debug("blob retrieved")
 }
 
 func (l localLogger) blobDownloadFailed(b stream.Blob, err error) {
 	metrics.PlayerFailuresCount.Inc()
 	l.Log().Error("blob failed to download: ", err)
+}
+
+func (l localLogger) localCacheHit(n int) {
+	l.WithFields(monitor.F{"num": n}).Debug("blob cache hit")
+}
+
+func (l localLogger) localCacheMiss(n int) {
+	l.WithFields(monitor.F{"num": n}).Debug("blob cache miss")
 }

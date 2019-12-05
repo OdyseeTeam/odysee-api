@@ -2,6 +2,7 @@ module github.com/lbryio/lbrytv
 
 require (
 	github.com/aws/aws-sdk-go v1.23.19 // indirect
+	github.com/dgraph-io/ristretto v0.0.0-20191114170855-99d1bbbf28e6
 	github.com/getsentry/sentry-go v0.3.1
 	github.com/gobuffalo/packr v1.30.1 // indirect
 	github.com/gobuffalo/packr/v2 v2.7.1
@@ -10,6 +11,7 @@ require (
 	github.com/jinzhu/gorm v1.9.9
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
+	github.com/lbryio/errors.go v0.0.0-20180223142025-ad03d3cc6a5c
 	github.com/lbryio/lbry.go v1.1.2
 	github.com/lbryio/lbry.go/v2 v2.4.0
 	github.com/lbryio/reflector.go v1.1.1-0.20191122115620-834733b67566

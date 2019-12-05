@@ -17,9 +17,11 @@ type rangeHeader struct {
 	start, end, knownLen int
 }
 
-func makeRequest(method, uri string, rng *rangeHeader) *http.Response {
-	router := mux.NewRouter()
-	InstallRoutes(router)
+func makeRequest(router *mux.Router, method, uri string, rng *rangeHeader) *http.Response {
+	if router == nil {
+		router = mux.NewRouter()
+		InstallRoutes(router)
+	}
 
 	r, _ := http.NewRequest(method, uri, nil)
 	if rng != nil {
@@ -38,7 +40,7 @@ func makeRequest(method, uri string, rng *rangeHeader) *http.Response {
 }
 
 func TestHandleOptions(t *testing.T) {
-	response := makeRequest(http.MethodOptions, "/content/claims/one/3ae4ed38414e426c29c2bd6aeab7a6ac5da74a98/stream.mp4", nil)
+	response := makeRequest(nil, http.MethodOptions, "/content/claims/one/3ae4ed38414e426c29c2bd6aeab7a6ac5da74a98/stream.mp4", nil)
 
 	assert.Equal(t, "video/mp4", response.Header.Get("Content-Type"))
 	assert.Equal(t, "Sat, 27 Jul 2019 10:01:00 GMT", response.Header.Get("Last-Modified"))
@@ -86,7 +88,7 @@ func TestHandleGet(t *testing.T) {
 	for _, row := range testCases {
 		t.Run(row.input.uri, func(t *testing.T) {
 			var expectedLen int
-			response := makeRequest(http.MethodGet, row.input.uri, row.input.rng)
+			response := makeRequest(nil, http.MethodGet, row.input.uri, row.input.rng)
 
 			if row.input.rng.knownLen > 0 {
 				expectedLen = row.input.rng.knownLen
@@ -107,17 +109,17 @@ func TestHandleGet(t *testing.T) {
 }
 
 func TestHandleOptionsErrors(t *testing.T) {
-	r := makeRequest(http.MethodOptions, "/content/claims/completely/ef/stream", nil)
+	r := makeRequest(nil, http.MethodOptions, "/content/claims/completely/ef/stream", nil)
 	require.Equal(t, http.StatusNotFound, r.StatusCode)
 }
 
 func TestHandleNotFound(t *testing.T) {
-	r := makeRequest(http.MethodGet, "/content/claims/completely/ef/stream", nil)
+	r := makeRequest(nil, http.MethodGet, "/content/claims/completely/ef/stream", nil)
 	require.Equal(t, http.StatusNotFound, r.StatusCode)
 }
 
 func TestHandleOutOfBounds(t *testing.T) {
-	r := makeRequest(http.MethodGet, "/content/claims/known-size/0590f924bbee6627a2e79f7f2ff7dfb50bf2877c/stream", &rangeHeader{999999999, -1, 0})
+	r := makeRequest(nil, http.MethodGet, "/content/claims/known-size/0590f924bbee6627a2e79f7f2ff7dfb50bf2877c/stream", &rangeHeader{999999999, -1, 0})
 
 	require.Equal(t, http.StatusRequestedRangeNotSatisfiable, r.StatusCode)
 }

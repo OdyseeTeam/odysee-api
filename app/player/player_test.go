@@ -28,7 +28,7 @@ var knownStreams = []knownStream{
 	knownStream{uri: knownSizeStreamURL, size: 128791189, blobsNum: 63},
 }
 
-func RandomString(n int) string {
+func randomString(n int) string {
 	var letter = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 	b := make([]rune, n)
@@ -36,6 +36,11 @@ func RandomString(n int) string {
 		b[i] = letter[rand.Intn(len(letter))]
 	}
 	return string(b)
+}
+
+func TestNewPlayer(t *testing.T) {
+	p := NewPlayer(&PlayerOpts{EnableLocalCache: true})
+	assert.IsType(t, p.localCache, &fsCache{})
 }
 
 func TestPlayerResolveStream(t *testing.T) {
@@ -48,7 +53,7 @@ func TestPlayerResolveStream(t *testing.T) {
 
 func TestPlayerResolveStreamNotFound(t *testing.T) {
 	p := NewPlayer(nil)
-	s, err := p.ResolveStream(RandomString(20))
+	s, err := p.ResolveStream(randomString(20))
 	assert.Equal(t, errStreamNotFound, err)
 	assert.Nil(t, s)
 }
