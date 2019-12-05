@@ -7,7 +7,6 @@ services:
       - 8080:8080
     volumes:
       - publish:/storage/publish
-      - wallets:/storage/lbryum/wallets
     environment:
       LW_ACCOUNTSENABLED: 1
     depends_on:
@@ -148,9 +147,9 @@ volumes:
   pgdata:
   storage:
   wallets:
+  publish:
   lbryum1:
   lbryum2:
   lbryum3:
   lbryum4:
   lbryum5:
-  publish:
