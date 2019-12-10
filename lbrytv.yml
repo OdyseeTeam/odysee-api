@@ -26,4 +26,4 @@ ReflectorAddress: reflector.lbry.com:5566
 ReflectorTimeout: 60
 
 RefractorAddress: refractor.lbry.com:5567
-RefractorTimeout: 60
+RefractorTimeout: 120

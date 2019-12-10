@@ -17,7 +17,7 @@ const TokenF = "token"
 const ValueMask = "****"
 
 var jsonFormatter = logrus.JSONFormatter{DisableTimestamp: true}
-var textFormatter = logrus.TextFormatter{FullTimestamp: true, TimestampFormat: "15:04"}
+var textFormatter = logrus.TextFormatter{FullTimestamp: true, TimestampFormat: "15:04:05"}
 
 // init magic is needed so logging is set up without calling it in every package explicitly
 func init() {

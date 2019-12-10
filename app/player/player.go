@@ -2,9 +2,12 @@ package player
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+
+	// "io/ioutil"
 	"math"
 	"net/http"
 	"os"
@@ -25,14 +28,16 @@ import (
 
 // Player is an entry-point object to the new player package.
 type Player struct {
-	lbrynetClient *ljsonrpc.Client
-	blobGetter    BlobGetter
-	localCache    BlobCache
+	lbrynetClient  *ljsonrpc.Client
+	blobGetter     BlobGetter
+	localCache     BlobCache
+	enablePrefetch bool
 }
 
 type PlayerOpts struct {
 	Lbrynet          *ljsonrpc.Client
 	EnableLocalCache bool
+	EnablePrefetch   bool
 }
 
 // Stream provides an io.ReadSeeker interface to a stream of blobs to be used by standard http library for range requests,
@@ -50,9 +55,10 @@ type Stream struct {
 
 // BlobGetter is an object for retrieving blobs from BlobStore or optionally from local cache.
 type BlobGetter struct {
-	blobStore  store.BlobStore
-	localCache BlobCache
-	sdBlob     *stream.SDBlob
+	blobStore      store.BlobStore
+	localCache     BlobCache
+	sdBlob         *stream.SDBlob
+	enablePrefetch bool
 }
 
 // ReadableBlob interface describes generic blob object that Stream can Read() from.
@@ -62,6 +68,7 @@ type ReadableBlob interface {
 
 type reflectedBlob struct {
 	body stream.Blob
+	hash string
 	key  []byte
 	iv   []byte
 }
@@ -84,12 +91,13 @@ func NewPlayer(opts *PlayerOpts) *Player {
 	}
 	if opts.EnableLocalCache {
 		cPath := path.Join(os.TempDir(), "blob_cache")
-		cache, err := NewFSCache(cPath)
+		cache, err := InitFSCache(cPath)
 		if err != nil {
 			Logger.Log().Error("unable to initialize cache: ", err)
 		} else {
 			Logger.Log().Infof("player cache initialized at %v", cPath)
 			p.localCache = cache
+			p.enablePrefetch = opts.EnablePrefetch
 		}
 	}
 	return p
@@ -178,9 +186,10 @@ func (p *Player) RetrieveStream(s *Stream) error {
 
 	s.setSize(&sdBlob.BlobInfos)
 	s.blobGetter = BlobGetter{
-		blobStore:  bStore,
-		localCache: p.localCache,
-		sdBlob:     &sdBlob,
+		blobStore:      bStore,
+		sdBlob:         &sdBlob,
+		localCache:     p.localCache,
+		enablePrefetch: p.enablePrefetch,
 	}
 
 	return nil
@@ -262,8 +271,6 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 
 	if err != nil {
 		Logger.streamReadFailed(s, calc, err)
-	} else {
-		Logger.streamRead(s, n, calc)
 	}
 
 	return n, err
@@ -292,7 +299,6 @@ func (s *Stream) readFromBlobs(calc BlobCalculator, dest []byte) (int, error) {
 		if err != nil {
 			return read, err
 		}
-		Logger.blobRetrieved(s, i)
 
 		n, err := b.Read(start, readLen, dest)
 		read += n
@@ -306,6 +312,7 @@ func (s *Stream) readFromBlobs(calc BlobCalculator, dest []byte) (int, error) {
 }
 
 // Get returns a Blob object that can be Read() from.
+// It first tries to get it from the local cache, and if it is not found, fetches it from the reflector.
 func (b *BlobGetter) Get(n int) (ReadableBlob, error) {
 	var (
 		cached    ReadableBlob
@@ -323,59 +330,106 @@ func (b *BlobGetter) Get(n int) (ReadableBlob, error) {
 	if b.localCache != nil {
 		cached, cacheHit = b.localCache.Get(hash)
 		if !cacheHit {
-			Logger.localCacheMiss(n)
+			b.prefetchToLocalCache(n + 1)
 		}
 	} else {
-		Logger.Log().Debug("local cache not set")
 		cacheHit = false
 	}
 
 	if !cacheHit {
-		reflected, err = b.getReflectedBlobByHash(hash)
+		reflected, err = b.getReflectedBlobByHash(hash, b.sdBlob.Key, bi.IV)
 		if err != nil {
 			return nil, err
 		}
-
-		reflected.key = b.sdBlob.Key
-		reflected.iv = bi.IV
-
-		refBody := make([]byte, len(reflected.body))
-		_, err = reflected.Read(0, -1, refBody)
+		Logger.blobRetrieved(b.sdBlob.StreamName, bi.BlobNum)
+		blob, err := b.saveToLocalCache(hash, reflected)
 		if err != nil {
-			return nil, err
+			CacheLogger.Log().Warnf("failed to stream off cache: %v", err)
+			return reflected, nil
 		}
-
-		if b.localCache != nil {
-			go b.localCache.Set(hash, refBody)
-		}
-		return reflected, nil
+		return blob, nil
 	}
 
-	Logger.localCacheHit(n)
 	return cached, nil
 }
 
-func (b *BlobGetter) getReflectedBlobByHash(hash string) (*reflectedBlob, error) {
+func (b *BlobGetter) saveToLocalCache(hash string, blob *reflectedBlob) (ReadableBlob, error) {
+	if b.localCache == nil {
+		return nil, nil
+	}
+
+	body := make([]byte, len(blob.body))
+	if _, err := blob.Read(0, -1, body); err != nil {
+		Logger.Log().Errorf("couldn't read from blob %v: %v", hash, err)
+		return nil, err
+	}
+	return b.localCache.Set(hash, body)
+}
+
+func prettyPrint(i interface{}) {
+	s, _ := json.MarshalIndent(i, "", "\t")
+	fmt.Println(string(s))
+}
+
+func (b *BlobGetter) prefetchToLocalCache(startN int) {
+	if b.localCache == nil || !b.enablePrefetch {
+		return
+	}
+
+	var prefetchLen int
+	blobsLeft := len(b.sdBlob.BlobInfos) - startN - 1 // Last blob is empty
+	if blobsLeft < 0 {
+		return
+	} else if blobsLeft > 3 {
+		prefetchLen = 3
+	} else {
+		prefetchLen = blobsLeft
+	}
+
+	CacheLogger.Log().Debugf("prefetching %v blobs to local cache", prefetchLen)
+	// prettyPrint(b.sdBlob.BlobInfos)
+	for _, bi := range b.sdBlob.BlobInfos[startN : startN+prefetchLen] {
+		// prettyPrint(bi)
+		hash := hex.EncodeToString(bi.BlobHash)
+		if b.localCache.Has(hash) {
+			CacheLogger.Log().Debugf("blob %v found in cache, not prefetching", hash)
+			continue
+		}
+		CacheLogger.Log().Debugf("prefetching blob %v", hash)
+		reflected, err := b.getReflectedBlobByHash(hash, b.sdBlob.Key, bi.IV)
+		if err != nil {
+			CacheLogger.Log().Warnf("failed to prefetch blob %v: %v", hash, err)
+			return
+		}
+		Logger.blobRetrieved(b.sdBlob.StreamName, bi.BlobNum)
+		go b.saveToLocalCache(hash, reflected)
+	}
+
+}
+
+func (b *BlobGetter) getReflectedBlobByHash(hash string, key, iv []byte) (*reflectedBlob, error) {
 	timer := metrics.TimerStart(metrics.PlayerBlobDownloadDurations)
-	blob, err := b.blobStore.Get(hash)
+	streamBlob, err := b.blobStore.Get(hash)
 	if err != nil {
-		Logger.blobDownloadFailed(blob, err)
+		Logger.blobDownloadFailed(streamBlob, err)
 		return nil, err
 	}
 	timer.Done()
-	Logger.blobDownloaded(blob, timer)
+	Logger.blobDownloaded(streamBlob, timer)
 
-	return &reflectedBlob{body: blob}, nil
+	blob := &reflectedBlob{body: streamBlob, key: key, iv: iv, hash: hash}
+	return blob, nil
 }
 
 // Read decrypts the blob and writes into the supplied buffer.
 func (b *reflectedBlob) Read(offset, n int, dest []byte) (int, error) {
 	decBody, err := stream.DecryptBlob(b.body, b.key, b.iv)
+	// ioutil.WriteFile(fmt.Sprintf("dump%v", b.hash), decBody, 0600)
 	if err != nil {
 		return 0, err
 	}
 	if n == -1 {
-		n = len(decBody)
+		n = len(decBody) + 1
 	}
 
 	timer := metrics.TimerStart(metrics.PlayerBlobDeliveryDurations)

@@ -69,6 +69,31 @@ var (
 		Help:      "Total number of errors getting blobs",
 	})
 
+	PlayerCacheHitCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: nsPlayer,
+		Subsystem: "cache",
+		Name:      "hit_count",
+		Help:      "Total number of blobs found in the local cache",
+	})
+	PlayerCacheMissCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: nsPlayer,
+		Subsystem: "cache",
+		Name:      "miss_count",
+		Help:      "Total number of blobs that were not in the local cache",
+	})
+	PlayerCacheErrorCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: nsPlayer,
+		Subsystem: "cache",
+		Name:      "error_count",
+		Help:      "Total number of errors retrieving blobs from the local cache",
+	})
+	PlayerCacheSize = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: nsPlayer,
+		Subsystem: "cache",
+		Name:      "size",
+		Help:      "Current size of cache",
+	})
+
 	IAPIAuthSuccessDurations = promauto.NewHistogram(prometheus.HistogramOpts{
 		Namespace: nsIAPI,
 		Subsystem: "auth",

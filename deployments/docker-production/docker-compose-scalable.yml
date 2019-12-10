@@ -19,6 +19,7 @@ services:
         awslogs-group: lbrytv
         awslogs-region: us-east-1
         awslogs-stream: app-scalable
+    restart: always
 
   lbrynet1:
     image: lbry/lbrynet-tv:latest
@@ -117,6 +118,7 @@ services:
       POSTGRES_USER: lbrytv
       POSTGRES_PASSWORD: lbrytv
       PGDATA: /pgdata
+    restart: always
 
   watchtower:
     image: containrrr/watchtower

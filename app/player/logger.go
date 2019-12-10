@@ -14,7 +14,11 @@ type localLogger struct {
 
 // Logger is a package-wide logger.
 // Warning: will generate a lot of output if DEBUG loglevel is enabled.
+// Logger variables here are made public so logging can be disabled on the spot when needed (in tests etc).
 var Logger = localLogger{monitor.NewModuleLogger("player")}
+
+// CacheLogger is for caching operations only.
+var CacheLogger = localLogger{monitor.NewModuleLogger("player_cache")}
 
 func (l localLogger) streamPlaybackRequested(uri, remoteIP string) {
 	l.WithFields(monitor.F{"remote_ip": remoteIP, "uri": uri}).Info("starting stream playback")
@@ -68,19 +72,11 @@ func (l localLogger) blobDownloaded(b stream.Blob, t *metrics.Timer) {
 	l.WithFields(monitor.F{"duration": fmt.Sprintf("%.2f", t.Duration), "speed": fmt.Sprintf("%.2f", speed)}).Debug("blob downloaded")
 }
 
-func (l localLogger) blobRetrieved(s *Stream, n int) {
-	l.WithFields(monitor.F{"uri": s.URI, "num": n}).Debug("blob retrieved")
+func (l localLogger) blobRetrieved(uri string, n int) {
+	l.WithFields(monitor.F{"uri": uri, "num": n}).Debug("blob retrieved")
 }
 
 func (l localLogger) blobDownloadFailed(b stream.Blob, err error) {
 	metrics.PlayerFailuresCount.Inc()
 	l.Log().Error("blob failed to download: ", err)
-}
-
-func (l localLogger) localCacheHit(n int) {
-	l.WithFields(monitor.F{"num": n}).Debug("blob cache hit")
-}
-
-func (l localLogger) localCacheMiss(n int) {
-	l.WithFields(monitor.F{"num": n}).Debug("blob cache miss")
 }

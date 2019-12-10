@@ -1,21 +1,26 @@
 package player
 
 import (
-	"bytes"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/dgraph-io/ristretto"
+	"github.com/lbryio/lbrytv/internal/metrics"
 )
 
 const blobCost = 1 << 21     // 2MB
 const maxCacheCost = 1 << 33 // 8GB
+const blobFilenameLength = 96
 
+// BlobCache can save and retrieve readable blobs.
 type BlobCache interface {
+	Has(string) bool
 	Get(string) (ReadableBlob, bool)
-	Set(string, []byte)
+	Set(string, []byte) (ReadableBlob, error)
+	Remove(string)
 }
 
 type fsCache struct {
@@ -28,11 +33,15 @@ type fsStorage struct {
 }
 
 type cachedBlob struct {
-	*os.File
+	body []byte
 }
 
-func NewFSCache(dir string) (BlobCache, error) {
-	storage, err := newFSStorage(dir)
+// InitFSCache initializes disk cache for decrypted blobs.
+// All blob-sized files inside `dir` will be removed on initialization,
+// if `dir` does not exist, it will be created.
+// In other words, os.TempDir() should not be passed as a `dir`.
+func InitFSCache(dir string) (BlobCache, error) {
+	storage, err := initFSStorage(dir)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +51,7 @@ func NewFSCache(dir string) (BlobCache, error) {
 		MaxCost:     maxCacheCost,
 		BufferItems: 64,
 		Metrics:     true,
-		OnEvict:     storage.getBlobEvictor(),
+		OnEvict:     func(_, _ uint64, hash interface{}, _ int64) { storage.remove(hash) },
 	})
 	if err != nil {
 		return nil, err
@@ -51,82 +60,129 @@ func NewFSCache(dir string) (BlobCache, error) {
 	return &fsCache{storage, r}, nil
 }
 
-func newFSStorage(dir string) (*fsStorage, error) {
+func initFSStorage(dir string) (*fsStorage, error) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
+		return nil, err
+	}
+
+	// Cache folder cleanup
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if dir == path {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return fmt.Errorf("subfolder %v found inside cache folder", path)
+		}
+		if len(info.Name()) != blobFilenameLength {
+			return fmt.Errorf("non-cache file found at path %v", path)
+		}
+		return os.Remove(path)
+	})
+
+	if err != nil {
 		return nil, err
 	}
 	return &fsStorage{dir}, nil
 }
 
-func (s fsStorage) getBlobEvictor() func(uint64, uint64, interface{}, int64) {
-	return func(key, conflict uint64, value interface{}, cost int64) {
-		Logger.Log().Debugf("blob %v evicted", value)
-		if err := os.Remove(s.getBlobPath(value)); err != nil {
-			fmt.Println(err)
-		}
+func (s fsStorage) remove(hash interface{}) {
+	if err := os.Remove(s.getPath(hash)); err != nil {
+		CacheLogger.Log().Errorf("failed to evict blob file %v: %v", hash, err)
+		return
 	}
+	CacheLogger.Log().Debugf("blob file %v evicted", hash)
 }
 
-func (s fsStorage) getBlobPath(hash interface{}) string {
+func (s fsStorage) getPath(hash interface{}) string {
 	return path.Join(s.path, hash.(string))
 }
 
-func (s fsStorage) openBlob(hash interface{}) (*os.File, error) {
-	f, err := os.Open(s.getBlobPath(hash))
+func (s fsStorage) open(hash interface{}) (*os.File, error) {
+	f, err := os.Open(s.getPath(hash))
 	if err != nil {
 		return nil, err
 	}
 	return f, nil
 }
 
+// Has returns true if blob cache contains the requested blob.
+// It is not guaranteed that actual file exists on the filesystem.
+func (c *fsCache) Has(hash string) bool {
+	_, ok := c.rCache.Get(hash)
+	return ok
+}
+
+// Get returns ReadableBlob if it can be retrieved from the cache by the requested hash
+// and a boolean representing whether blob was found or not.
 func (c *fsCache) Get(hash string) (ReadableBlob, bool) {
 	if value, ok := c.rCache.Get(hash); ok {
-		f, err := c.storage.openBlob(value)
+		f, err := c.storage.open(value)
 		if err != nil {
-			Logger.Log().Warnf("blob %v found in cache but not on the local filesystem", hash)
+			metrics.PlayerCacheErrorCount.Inc()
+			CacheLogger.Log().Errorf("blob %v found in cache but couldn't open the file: %v", hash, err)
 			c.rCache.Del(value)
 			return nil, false
 		}
-		return &cachedBlob{f}, true
+		metrics.PlayerCacheHitCount.Inc()
+		cb, err := initCachedBlob(f)
+		f.Close()
+		if err != nil {
+			CacheLogger.Log().Errorf("blob %v found in cache but couldn't read the file: %v", hash, err)
+			return nil, false
+		}
+		return cb, true
 	}
-	Logger.Log().Warnf("cache miss for blob %v", hash)
+	metrics.PlayerCacheMissCount.Inc()
+	CacheLogger.Log().Debugf("cache miss for blob %v", hash)
 	return nil, false
 }
 
 // Set takes decrypted blob body and saves reference to it into the cache table
-func (c *fsCache) Set(hash string, body []byte) {
-	blobPath := c.storage.getBlobPath(hash)
-	f, err := os.OpenFile(blobPath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+func (c *fsCache) Set(hash string, body []byte) (ReadableBlob, error) {
+	CacheLogger.Log().Debugf("attempting to cache blob %v", hash)
+	blobPath := c.storage.getPath(hash)
+	f, err := os.OpenFile(blobPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if os.IsExist(err) {
-		Logger.Log().Debugf("blob %v already exists on the local filesystem, not overwriting", hash)
+		metrics.PlayerCacheErrorCount.Inc()
+		CacheLogger.Log().Debugf("blob %v already exists on the local filesystem, not overwriting", hash)
 	} else {
-		numWritten, err := io.Copy(f, bytes.NewReader(body))
+		numWritten, err := f.Write(body)
+		f.Close()
 		if err != nil {
-			Logger.Log().Errorf("error saving file %v: %v", f.Name(), err)
-			return
+			metrics.PlayerCacheErrorCount.Inc()
+			CacheLogger.Log().Errorf("error saving cache file %v: %v", blobPath, err)
+			return nil, err
 		}
-		Logger.Log().Debugf("written %v bytes for blob %v", numWritten, hash)
+		CacheLogger.Log().Debugf("written %v bytes for blob %v", numWritten, hash)
 	}
 	c.rCache.Set(hash, hash, blobCost)
-	Logger.Log().Debugf("blob %v successfully cached", hash)
+	metrics.PlayerCacheSize.Set(float64(c.rCache.Metrics.CostAdded() - c.rCache.Metrics.CostEvicted()))
+	CacheLogger.Log().Debugf("blob %v successfully cached", hash)
+	return &cachedBlob{body}, nil
 }
 
-// Read reads the cached blob from the file
+// Remove deletes both cache record and blob file from the filesystem.
+func (c *fsCache) Remove(hash string) {
+	c.storage.remove(hash)
+	c.rCache.Del(hash)
+}
+
+func initCachedBlob(file *os.File) (*cachedBlob, error) {
+	body, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+	return &cachedBlob{body}, nil
+}
+
+// Read reads requested range from the cached blob file.
 func (b *cachedBlob) Read(offset, n int, dest []byte) (int, error) {
 	if n == -1 {
-		stat, err := b.Stat()
-		if err != nil {
-			return 0, err
-		}
-		if int(stat.Size()) > len(dest) {
-			n = len(dest)
-		} else {
-			n = int(stat.Size())
-		}
+		n = len(b.body)
 	}
-	// _, err := b.Seek(int64(offset), 0)
-	// if err != nil {
-	// 	return 0, err
-	// }
-	return b.ReadAt(dest[:n], int64(offset))
+	copied := copy(dest, b.body[offset:n])
+	return copied, nil
 }

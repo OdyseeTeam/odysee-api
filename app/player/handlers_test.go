@@ -25,9 +25,9 @@ func makeRequest(router *mux.Router, method, uri string, rng *rangeHeader) *http
 
 	r, _ := http.NewRequest(method, uri, nil)
 	if rng != nil {
-		if rng.start == -1 {
+		if rng.start == 0 {
 			r.Header.Add("Range", fmt.Sprintf("bytes=-%v", rng.end))
-		} else if rng.end == -1 {
+		} else if rng.end == 0 {
 			r.Header.Add("Range", fmt.Sprintf("bytes=%v-", rng.start))
 		} else {
 			r.Header.Add("Range", fmt.Sprintf("bytes=%v-%v", rng.start, rng.end))
@@ -48,7 +48,10 @@ func TestHandleOptions(t *testing.T) {
 }
 
 func TestHandleGet(t *testing.T) {
-	uri := "/content/claims/what/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/stream.mp4"
+	player := NewPlayer(&PlayerOpts{EnableLocalCache: true, EnablePrefetch: false})
+	router := mux.NewRouter()
+	router.Path("/content/claims/{uri}/{claim}/{filename}").HandlerFunc(NewRequestHandler(player).Handle)
+
 	type testInput struct {
 		name, uri string
 		rng       *rangeHeader
@@ -58,37 +61,41 @@ func TestHandleGet(t *testing.T) {
 		output string
 	}
 	testCases := []testCase{
+		// testCase{
+		// 	testInput{"MiddleBytes", "/content/claims/what/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/stream.mp4", &rangeHeader{start: 156, end: 259}},
+		// 	"00000001D39A07E8D39A07E80000000100000000008977680000" +
+		// 		"0000000000000000000000000000000100000000000000000000" +
+		// 		"0000000000010000000000000000000000000000400000000780" +
+		// 		"00000438000000000024656474730000001C656C737400000000",
+		// },
+		// testCase{
+		// 	testInput{"FirstBytes", "/content/claims/what/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/stream.mp4", &rangeHeader{end: 52}},
+		// 	"00000018667479706D703432000000006D7034326D7034310000" +
+		// 		"C4EA6D6F6F760000006C6D76686400000000D39A07E8D39A07F200",
+		// },
+		// testCase{
+		// 	testInput{"BytesFromSecondBlob", "/content/claims/what/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/stream.mp4", &rangeHeader{start: 4000000, end: 4000104}},
+		// 	"6E81C93A90DD3A322190C8D608E29AA929867407596665097B5AE780412" +
+		// 		"61638A51C10BC26770AFFEF1533715FBD1428DCADEDC7BEA5D7A9C7D170" +
+		// 		"B71EF38E7138D24B0C7E86D791695EDAE1B88EDBE54F95C98EF3DCFD91D" +
+		// 		"A025C284EE37D8FEEA2EA84B76B9A22D3",
+		// },
+		// testCase{
+		// 	testInput{"LastBytes", "/content/claims/known-size/0590f924bbee6627a2e79f7f2ff7dfb50bf2877c/stream", &rangeHeader{start: 128791089, knownLen: 100}},
+		// 	"2505CA36CB47B0B14CA023203410E965657B6314F6005D51E992D073B8090419D49E28E99306C95CF2DDB9" +
+		// 		"51DA5FE6373AC542CC2D83EB129548FFA0B4FFE390EB56600AD72F0D517236140425E323FDFC649FDEB80F" +
+		// 		"A429227D149FD493FBCA2042141F",
+		// },
 		testCase{
-			testInput{"MiddleBytes", uri, &rangeHeader{156, 259, 0}},
-			"00000001D39A07E8D39A07E80000000100000000008977680000" +
-				"0000000000000000000000000000000100000000000000000000" +
-				"0000000000010000000000000000000000000000400000000780" +
-				"00000438000000000024656474730000001C656C737400000000",
-		},
-		testCase{
-			testInput{"FirstBytes", uri, &rangeHeader{0, 52, 0}},
-			"00000018667479706D703432000000006D7034326D7034310000" +
-				"C4EA6D6F6F760000006C6D76686400000000D39A07E8D39A07F200",
-		},
-		testCase{
-			testInput{"BytesFromSecondBlob", uri, &rangeHeader{4000000, 4000104, 0}},
-			"6E81C93A90DD3A322190C8D608E29AA929867407596665097B5AE780412" +
-				"61638A51C10BC26770AFFEF1533715FBD1428DCADEDC7BEA5D7A9C7D170" +
-				"B71EF38E7138D24B0C7E86D791695EDAE1B88EDBE54F95C98EF3DCFD91D" +
-				"A025C284EE37D8FEEA2EA84B76B9A22D3",
-		},
-		testCase{
-			testInput{"LastBytes", "/content/claims/known-size/0590f924bbee6627a2e79f7f2ff7dfb50bf2877c/stream", &rangeHeader{128791089, -1, 100}},
-			"2505CA36CB47B0B14CA023203410E965657B6314F6005D51E992D073B8090419D49E28E99306C95CF2DDB9" +
-				"51DA5FE6373AC542CC2D83EB129548FFA0B4FFE390EB56600AD72F0D517236140425E323FDFC649FDEB80F" +
-				"A429227D149FD493FBCA2042141F",
+			testInput{"BetweenBlobs", "/content/claims/known-size/0590f924bbee6627a2e79f7f2ff7dfb50bf2877c/stream", &rangeHeader{start: 2097105, end: 2097174}},
+			"33C98D152CB4B2D64E14ACA2805CA9ECBEBBE4495DB46BD308E7F98FFF75B41FEF71511F68ABD2ADB0ADA1F66BD50FA7383B3760C5CE5DFC2F73BD5EE7D3591C986758A5E43D",
 		},
 	}
 
 	for _, row := range testCases {
-		t.Run(row.input.uri, func(t *testing.T) {
+		t.Run(row.input.name, func(t *testing.T) {
 			var expectedLen int
-			response := makeRequest(nil, http.MethodGet, row.input.uri, row.input.rng)
+			response := makeRequest(router, http.MethodGet, row.input.uri, row.input.rng)
 
 			if row.input.rng.knownLen > 0 {
 				expectedLen = row.input.rng.knownLen
@@ -119,7 +126,7 @@ func TestHandleNotFound(t *testing.T) {
 }
 
 func TestHandleOutOfBounds(t *testing.T) {
-	r := makeRequest(nil, http.MethodGet, "/content/claims/known-size/0590f924bbee6627a2e79f7f2ff7dfb50bf2877c/stream", &rangeHeader{999999999, -1, 0})
+	r := makeRequest(nil, http.MethodGet, "/content/claims/known-size/0590f924bbee6627a2e79f7f2ff7dfb50bf2877c/stream", &rangeHeader{start: 999999999})
 
 	require.Equal(t, http.StatusRequestedRangeNotSatisfiable, r.StatusCode)
 }
