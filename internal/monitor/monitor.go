@@ -41,8 +41,8 @@ func SetupLogging() {
 	} else {
 		mode = "develop"
 
-		logrus.SetLevel(logrus.DebugLevel)
-		Logger.SetLevel(logrus.DebugLevel)
+		logrus.SetLevel(logrus.TraceLevel)
+		Logger.SetLevel(logrus.TraceLevel)
 		logrus.SetFormatter(&textFormatter)
 		Logger.SetFormatter(&textFormatter)
 	}

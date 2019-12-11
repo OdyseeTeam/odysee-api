@@ -110,20 +110,24 @@ func TestBlobCalculator(t *testing.T) {
 		testInput  testInput
 		testOutput BlobCalculator
 	}
+
+	// size: 128791189, has blobs: 62 + padding, last blob index: 61
 	testCases := []testCase{
-		testCase{testInput{158433824, 0, 512}, BlobCalculator{158433824, 0, 0, 0, 0, 512}},
-		testCase{testInput{158433824, 2450019, 64000}, BlobCalculator{158433824, 2450019, 1, 1, 352867 + 1, 64000}},
-		testCase{testInput{128791189, 128791089, 99}, BlobCalculator{128791189, 128791089, 61, 61, 864817 + 61, 99}},
-		testCase{testInput{128791189, 0, 128791189}, BlobCalculator{0, 128791189, 0, 61, 0, 864917}},
+		testCase{testInput{158433824, 0, 512}, BlobCalculator{158433824, 0, 0, 0, 0, 512, 0}},
+		testCase{testInput{158433824, 2450019, 64000}, BlobCalculator{158433824, 2450019, 1, 1, 352867 + 1, 64000, 352868}},
+		testCase{testInput{128791189, 128791089, 99}, BlobCalculator{128791189, 128791089, 61, 61, 864817 + 61, 99, 864878}},
+		testCase{testInput{128791189, 0, 128791189}, BlobCalculator{0, 128791189, 0, 61, 0, 864978, 0}},
+		testCase{testInput{1e7, 2097149, 43}, BlobCalculator{2097149, 43, 0, 1, 2097149, 41, 0}},
 	}
 
 	for n, row := range testCases {
 		t.Run(fmt.Sprintf("row:%v", n), func(t *testing.T) {
 			bc := NewBlobCalculator(row.testInput.size, row.testInput.offset, row.testInput.readLen)
-			assert.Equal(t, row.testOutput.FirstBlobNum, bc.FirstBlobNum)
-			assert.Equal(t, row.testOutput.LastBlobNum, bc.LastBlobNum)
+			assert.Equal(t, row.testOutput.FirstBlobIdx, bc.FirstBlobIdx)
+			assert.Equal(t, row.testOutput.LastBlobIdx, bc.LastBlobIdx)
 			assert.Equal(t, row.testOutput.FirstBlobOffset, bc.FirstBlobOffset)
 			assert.Equal(t, row.testOutput.LastBlobReadLen, bc.LastBlobReadLen)
+			assert.Equal(t, row.testOutput.LastBlobOffset, bc.LastBlobOffset)
 		})
 	}
 }

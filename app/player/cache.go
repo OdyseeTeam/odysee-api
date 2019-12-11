@@ -12,7 +12,7 @@ import (
 )
 
 const blobCost = 1 << 21     // 2MB
-const maxCacheCost = 1 << 33 // 8GB
+const maxCacheCost = 1 << 34 // 16GB
 const blobFilenameLength = 96
 
 // BlobCache can save and retrieve readable blobs.
@@ -33,7 +33,7 @@ type fsStorage struct {
 }
 
 type cachedBlob struct {
-	body []byte
+	reflectedBlob
 }
 
 // InitFSCache initializes disk cache for decrypted blobs.
@@ -161,7 +161,7 @@ func (c *fsCache) Set(hash string, body []byte) (ReadableBlob, error) {
 	c.rCache.Set(hash, hash, blobCost)
 	metrics.PlayerCacheSize.Set(float64(c.rCache.Metrics.CostAdded() - c.rCache.Metrics.CostEvicted()))
 	CacheLogger.Log().Debugf("blob %v successfully cached", hash)
-	return &cachedBlob{body}, nil
+	return &cachedBlob{reflectedBlob{body}}, nil
 }
 
 // Remove deletes both cache record and blob file from the filesystem.
@@ -175,14 +175,5 @@ func initCachedBlob(file *os.File) (*cachedBlob, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &cachedBlob{body}, nil
-}
-
-// Read reads requested range from the cached blob file.
-func (b *cachedBlob) Read(offset, n int, dest []byte) (int, error) {
-	if n == -1 {
-		n = len(b.body)
-	}
-	copied := copy(dest, b.body[offset:n])
-	return copied, nil
+	return &cachedBlob{reflectedBlob{body}}, nil
 }
