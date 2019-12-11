@@ -55,6 +55,12 @@ func (r *Manager) Initialize() {
 		logger.Log().Errorf("reflection was NOT initialized, cannot connect to reflector: %v", err)
 		return
 	}
+	f, err := os.Open(r.blobsPath)
+	if err != nil {
+		logger.Log().Errorf("reflection was NOT initialized, cannot open blob folder: %v", err)
+		return
+	}
+	defer f.Close()
 	r.uploader = &c
 	logger.Log().Infof("manager initialized")
 }
