@@ -5,6 +5,7 @@ services:
     image: lbry/lbrytv:latest
     ports:
       - 8080:8080
+      - 6060:6060
     volumes:
       - publish:/storage/publish
     environment:
@@ -119,6 +120,12 @@ services:
       POSTGRES_PASSWORD: lbrytv
       PGDATA: /pgdata
     restart: always
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: lbrytv
+        awslogs-region: us-east-1
+        awslogs-stream: postgres
 
   watchtower:
     image: containrrr/watchtower
