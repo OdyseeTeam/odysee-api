@@ -271,9 +271,10 @@ func (s *Stream) Seek(offset int64, whence int) (int64, error) {
 // Actual chunk retrieval and delivery happens in s.readFromChunks().
 func (s *Stream) Read(dest []byte) (n int, err error) {
 	calc := NewChunkCalculator(s.Size, s.seekOffset, len(dest))
-	Logger.Log().Debugf("reading %v-%v bytes from stream (size=%v, dest len=%v)", s.seekOffset, s.seekOffset+int64(calc.ReadLen), s.Size, len(dest))
+
+	Logger.Log().Tracef("reading %v-%v bytes from stream (size=%v, dest len=%v)", s.seekOffset, s.seekOffset+int64(calc.ReadLen), s.Size, len(dest))
 	n, err = s.readFromChunks(calc, dest)
-	Logger.Log().Debugf("done reading %v-%v bytes from stream", s.seekOffset, s.seekOffset+int64(n))
+	Logger.Log().Tracef("done reading %v-%v bytes from stream", s.seekOffset, s.seekOffset+int64(n))
 	s.seekOffset += int64(n)
 
 	if err != nil {

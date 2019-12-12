@@ -25,7 +25,7 @@ func (l localLogger) streamPlaybackRequested(uri, remoteIP string) {
 }
 
 func (l localLogger) streamSeek(s *Stream, offset, newOffset int64, whence string) {
-	Logger.WithFields(monitor.F{"stream": s.URI}).Tracef("seeking from %v to %v (%v), new position = %v", s.seekOffset, offset, whence, newOffset)
+	Logger.WithFields(monitor.F{"stream": s.URI}).Debugf("seeking from %v to %v (%v), new position = %v", s.seekOffset, offset, whence, newOffset)
 }
 
 func (l localLogger) streamRead(s *Stream, n int, calc ChunkCalculator) {

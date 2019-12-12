@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,7 +27,7 @@ func makeRequest(router *mux.Router, method, uri string, rng *rangeHeader) *http
 	r, _ := http.NewRequest(method, uri, nil)
 	if rng != nil {
 		if rng.start == 0 {
-			r.Header.Add("Range", fmt.Sprintf("bytes=-%v", rng.end))
+			r.Header.Add("Range", fmt.Sprintf("bytes=0-%v", rng.end))
 		} else if rng.end == 0 {
 			r.Header.Add("Range", fmt.Sprintf("bytes=%v-", rng.start))
 		} else {
@@ -43,6 +44,8 @@ func TestHandleGet(t *testing.T) {
 	player := NewPlayer(&Opts{EnableLocalCache: true, EnablePrefetch: false})
 	router := mux.NewRouter()
 	router.Path("/content/claims/{uri}/{claim}/{filename}").HandlerFunc(NewRequestHandler(player).Handle)
+
+	CacheLogger.Logger.SetLevel(logrus.TraceLevel)
 
 	type testInput struct {
 		name, uri string
@@ -61,7 +64,7 @@ func TestHandleGet(t *testing.T) {
 				"00000438000000000024656474730000001C656C737400000000",
 		},
 		testCase{
-			testInput{"FirstBytes", "/content/claims/what/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/stream.mp4", &rangeHeader{end: 52}},
+			testInput{"FirstBytes", "/content/claims/what/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/stream.mp4", &rangeHeader{start: 0, end: 52}},
 			"00000018667479706D703432000000006D7034326D7034310000" +
 				"C4EA6D6F6F760000006C6D76686400000000D39A07E8D39A07F200",
 		},
