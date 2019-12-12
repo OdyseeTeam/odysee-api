@@ -8,14 +8,13 @@ import (
 	"path/filepath"
 
 	"github.com/dgraph-io/ristretto"
+	"github.com/lbryio/lbry.go/v2/stream"
 	"github.com/lbryio/lbrytv/internal/metrics"
 )
 
-const blobCost = 1 << 21     // 2MB
-const maxCacheCost = 1 << 34 // 16GB
-const blobFilenameLength = 96
+const defaultMaxCacheSize = 1 << 34 // 16GB
 
-// BlobCache can save and retrieve readable blobs.
+// BlobCache can save and retrieve readable chunks.
 type BlobCache interface {
 	Has(string) bool
 	Get(string) (ReadableBlob, bool)
@@ -26,6 +25,12 @@ type BlobCache interface {
 type fsCache struct {
 	storage *fsStorage
 	rCache  *ristretto.Cache
+}
+
+// FSCacheOpts contains options for filesystem cache. Size is max size in bytes
+type FSCacheOpts struct {
+	Path string
+	Size int64
 }
 
 type fsStorage struct {
@@ -40,15 +45,19 @@ type cachedBlob struct {
 // All blob-sized files inside `dir` will be removed on initialization,
 // if `dir` does not exist, it will be created.
 // In other words, os.TempDir() should not be passed as a `dir`.
-func InitFSCache(dir string) (BlobCache, error) {
-	storage, err := initFSStorage(dir)
+func InitFSCache(opts *FSCacheOpts) (BlobCache, error) {
+	storage, err := initFSStorage(opts.Path)
 	if err != nil {
 		return nil, err
 	}
 
+	if opts.Size == 0 {
+		opts.Size = defaultMaxCacheSize
+	}
+
 	r, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 1e7, // number of keys to track frequency of (10M)
-		MaxCost:     maxCacheCost,
+		MaxCost:     opts.Size,
 		BufferItems: 64,
 		Metrics:     true,
 		OnEvict:     func(_, _ uint64, hash interface{}, _ int64) { storage.remove(hash) },
@@ -65,7 +74,7 @@ func initFSStorage(dir string) (*fsStorage, error) {
 		return nil, err
 	}
 
-	// Cache folder cleanup
+	// Cache folder cleanup performed based on file names, chunk files will have a name of certain length.
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if dir == path {
 			return nil
@@ -76,7 +85,7 @@ func initFSStorage(dir string) (*fsStorage, error) {
 		if info.IsDir() {
 			return fmt.Errorf("subfolder %v found inside cache folder", path)
 		}
-		if len(info.Name()) != blobFilenameLength {
+		if len(info.Name()) != stream.BlobHashHexLength {
 			return fmt.Errorf("non-cache file found at path %v", path)
 		}
 		return os.Remove(path)
@@ -89,11 +98,18 @@ func initFSStorage(dir string) (*fsStorage, error) {
 }
 
 func (s fsStorage) remove(hash interface{}) {
+	var size int64
+	fi, _ := os.Stat(s.getPath(hash))
+	if fi != nil {
+		size = fi.Size()
+	}
+
 	if err := os.Remove(s.getPath(hash)); err != nil {
 		CacheLogger.Log().Errorf("failed to evict blob file %v: %v", hash, err)
 		return
 	}
-	CacheLogger.Log().Debugf("blob file %v evicted", hash)
+	metrics.PlayerCacheSize.Sub(float64(size))
+	CacheLogger.Log().Infof("blob file %v evicted", hash)
 }
 
 func (s fsStorage) getPath(hash interface{}) string {
@@ -142,6 +158,8 @@ func (c *fsCache) Get(hash string) (ReadableBlob, bool) {
 
 // Set takes decrypted blob body and saves reference to it into the cache table
 func (c *fsCache) Set(hash string, body []byte) (ReadableBlob, error) {
+	cacheCost := len(body)
+
 	CacheLogger.Log().Debugf("attempting to cache blob %v", hash)
 	blobPath := c.storage.getPath(hash)
 	f, err := os.OpenFile(blobPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
@@ -158,8 +176,10 @@ func (c *fsCache) Set(hash string, body []byte) (ReadableBlob, error) {
 		}
 		CacheLogger.Log().Debugf("written %v bytes for blob %v", numWritten, hash)
 	}
-	c.rCache.Set(hash, hash, blobCost)
-	metrics.PlayerCacheSize.Set(float64(c.rCache.Metrics.CostAdded() - c.rCache.Metrics.CostEvicted()))
+	c.rCache.Set(hash, hash, int64(cacheCost))
+	// metrics.PlayerCacheSize.Set(float64(c.rCache.Metrics.CostAdded() - c.rCache.Metrics.CostEvicted()))
+
+	metrics.PlayerCacheSize.Add(float64(cacheCost))
 	CacheLogger.Log().Debugf("blob %v successfully cached", hash)
 	return &cachedBlob{reflectedBlob{body}}, nil
 }

@@ -93,7 +93,7 @@ func NewPlayer(opts *PlayerOpts) *Player {
 	}
 	if opts.EnableLocalCache {
 		cPath := path.Join(os.TempDir(), "blob_cache")
-		cache, err := InitFSCache(cPath)
+		cache, err := InitFSCache(&FSCacheOpts{Path: cPath})
 		if err != nil {
 			Logger.Log().Error("unable to initialize cache: ", err)
 		} else {

@@ -28,7 +28,7 @@ func TestFSCache(t *testing.T) {
 	dir := generateCachePath()
 	os.RemoveAll(dir)
 
-	_, err := InitFSCache(dir)
+	_, err := InitFSCache(&FSCacheOpts{Path: dir})
 	require.Nil(t, err)
 
 	fi, err := os.Stat(dir)
@@ -44,7 +44,7 @@ func TestFSCacheClearsFolder(t *testing.T) {
 
 	defer os.RemoveAll(dir)
 
-	fileToBeRemoved := path.Join(dir, "blob_sized_file")
+	fileToBeRemoved := path.Join(dir, randomString(stream.BlobHashHexLength))
 	f, err := os.Create(fileToBeRemoved)
 	require.NoError(t, err)
 	n, err := f.Write(make([]byte, stream.MaxBlobSize))
@@ -52,13 +52,13 @@ func TestFSCacheClearsFolder(t *testing.T) {
 	require.Equal(t, stream.MaxBlobSize, n)
 	f.Close()
 
-	_, err = InitFSCache(dir)
+	_, err = InitFSCache(&FSCacheOpts{Path: dir})
 	require.Nil(t, err)
 
 	_, err = os.Stat(fileToBeRemoved)
 	assert.Error(t, err)
 
-	fileToNotBeRemoved := path.Join(dir, "non_blob_sized_file")
+	fileToNotBeRemoved := path.Join(dir, "non_blob_sized_file_name")
 	f, err = os.Create(fileToNotBeRemoved)
 	require.NoError(t, err)
 
@@ -70,12 +70,12 @@ func TestFSCacheClearsFolder(t *testing.T) {
 	require.Equal(t, stream.MaxBlobSize/2, n)
 	f.Close()
 
-	_, err = InitFSCache(dir)
+	_, err = InitFSCache(&FSCacheOpts{Path: dir})
 	require.Error(t, err)
 }
 
 func TestFSCacheHas(t *testing.T) {
-	c, err := InitFSCache(generateCachePath())
+	c, err := InitFSCache(&FSCacheOpts{Path: generateCachePath()})
 	require.NoError(t, err)
 
 	assert.False(t, c.Has("hAsH"))
@@ -90,7 +90,7 @@ func TestFSCacheHas(t *testing.T) {
 }
 
 func TestFSCacheSetGet(t *testing.T) {
-	c, err := InitFSCache(generateCachePath())
+	c, err := InitFSCache(&FSCacheOpts{Path: generateCachePath()})
 	require.NoError(t, err)
 
 	b, ok := c.Get("hAsH")
@@ -105,7 +105,7 @@ func TestFSCacheSetGet(t *testing.T) {
 	require.True(t, ok)
 
 	read := make([]byte, 3)
-	b.Read(0, -1, read)
+	b.Read(0, 3, read)
 	assert.Equal(t, []byte{1, 2, 3}, read)
 }
 
@@ -113,7 +113,7 @@ func TestFSCacheRemove(t *testing.T) {
 	dir := generateCachePath()
 	storage, err := initFSStorage(dir)
 	require.NoError(t, err)
-	c, err := InitFSCache(dir)
+	c, err := InitFSCache(&FSCacheOpts{Path: dir})
 	require.NoError(t, err)
 
 	c.Set("hAsH", []byte{1, 2, 3})
@@ -123,6 +123,33 @@ func TestFSCacheRemove(t *testing.T) {
 	waitForCache()
 	_, err = os.Stat(storage.getPath("hAsH"))
 	assert.Error(t, err, "file %v unexpectedly found", storage.getPath("hAsH"))
+}
+
+func TestFSCacheEviction(t *testing.T) {
+	dir := generateCachePath()
+	os.RemoveAll(dir)
+	defer os.RemoveAll(dir)
+
+	storage, err := initFSStorage(dir)
+	require.NoError(t, err)
+	c, err := InitFSCache(&FSCacheOpts{Path: dir, Size: 100})
+	require.NoError(t, err)
+
+	c.Set("one", make([]byte, 40))
+	waitForCache()
+
+	c.Set("two", make([]byte, 40))
+	waitForCache()
+
+	c.Set("three", make([]byte, 40))
+	waitForCache()
+
+	assert.False(t, c.Has("one"))
+
+	evictedPath := storage.getPath("one")
+	_, err = os.Stat(evictedPath)
+	assert.Error(t, err, "file %v unexpectedly found", evictedPath)
+	assert.False(t, true)
 }
 
 func TestNewPlayerWithCache(t *testing.T) {
