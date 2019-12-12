@@ -124,7 +124,7 @@ func (s fsStorage) open(hash interface{}) (*os.File, error) {
 	return f, nil
 }
 
-// Has returns true if cache contains the requested chink.
+// Has returns true if cache contains the requested chunk.
 // It is not guaranteed that actual file exists on the filesystem.
 func (c *fsCache) Has(hash string) bool {
 	_, ok := c.rCache.Get(hash)
@@ -162,6 +162,7 @@ func (c *fsCache) Set(hash string, body []byte) (ReadableChunk, error) {
 
 	CacheLogger.Log().Debugf("attempting to cache chunk %v", hash)
 	chunkPath := c.storage.getPath(hash)
+
 	f, err := os.OpenFile(chunkPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if os.IsExist(err) {
 		metrics.PlayerCacheErrorCount.Inc()
@@ -176,11 +177,21 @@ func (c *fsCache) Set(hash string, body []byte) (ReadableChunk, error) {
 		}
 		CacheLogger.Log().Debugf("written %v bytes for chunk %v", numWritten, hash)
 	}
-	c.rCache.Set(hash, hash, int64(cacheCost))
-	// metrics.PlayerCacheSize.Set(float64(c.rCache.Metrics.CostAdded() - c.rCache.Metrics.CostEvicted()))
 
-	metrics.PlayerCacheSize.Add(float64(cacheCost))
+	added := c.rCache.Set(hash, hash, int64(cacheCost))
+	if !added {
+		err := os.Remove(chunkPath)
+		if err != nil {
+			CacheLogger.Log().Errorf("chunk was not admitted and an error occured removing chunk file: %v", chunkPath, err)
+		} else {
+			CacheLogger.Log().Infof("chunk %v was not admitted", hash)
+		}
+		return nil, err
+	}
+
+	metrics.PlayerCacheSize.Set(float64(c.rCache.Metrics.CostAdded() - c.rCache.Metrics.CostEvicted()))
 	CacheLogger.Log().Debugf("chunk %v successfully cached", hash)
+
 	return &cachedChunk{reflectedChunk{body}}, nil
 }
 
