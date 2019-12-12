@@ -27,18 +27,20 @@ import (
 )
 
 const (
+	// ChunkSize is a size of decrypted blob
 	ChunkSize = stream.MaxBlobSize - 1
 )
 
 // Player is an entry-point object to the new player package.
 type Player struct {
 	lbrynetClient  *ljsonrpc.Client
-	blobGetter     BlobGetter
-	localCache     BlobCache
+	chunkGetter    chunkGetter
+	localCache     ChunkCache
 	enablePrefetch bool
 }
 
-type PlayerOpts struct {
+// Opts are options to be set for Player instance.
+type Opts struct {
 	Lbrynet          *ljsonrpc.Client
 	EnableLocalCache bool
 	EnablePrefetch   bool
@@ -54,24 +56,24 @@ type Stream struct {
 	ContentType string
 	Claim       *ljsonrpc.Claim
 	seekOffset  int64
-	blobGetter  BlobGetter
+	chunkGetter chunkGetter
 }
 
-// BlobGetter is an object for retrieving blobs from BlobStore or optionally from local cache.
-type BlobGetter struct {
+// chunkGetter is an object for retrieving blobs from BlobStore or optionally from local cache.
+type chunkGetter struct {
 	blobStore      store.BlobStore
-	localCache     BlobCache
+	localCache     ChunkCache
 	sdBlob         *stream.SDBlob
-	seenBlobs      []ReadableBlob
+	seenChunks     []ReadableChunk
 	enablePrefetch bool
 }
 
-// ReadableBlob interface describes generic blob object that Stream can Read() from.
-type ReadableBlob interface {
+// ReadableChunk interface describes generic chunk object that Stream can Read() from.
+type ReadableChunk interface {
 	Read(offset, n int, dest []byte) (int, error)
 }
 
-type reflectedBlob struct {
+type reflectedChunk struct {
 	body []byte
 }
 
@@ -84,9 +86,9 @@ func GetBlobStore() *peer.Store {
 }
 
 // NewPlayer initializes an instance with optional BlobStore.
-func NewPlayer(opts *PlayerOpts) *Player {
+func NewPlayer(opts *Opts) *Player {
 	if opts == nil {
-		opts = &PlayerOpts{}
+		opts = &Opts{}
 	}
 	p := &Player{
 		lbrynetClient: opts.Lbrynet,
@@ -188,11 +190,11 @@ func (p *Player) RetrieveStream(s *Stream) error {
 
 	s.setSize(&sdBlob.BlobInfos)
 	s.sdBlob = &sdBlob
-	s.blobGetter = BlobGetter{
+	s.chunkGetter = chunkGetter{
 		sdBlob:         &sdBlob,
 		localCache:     p.localCache,
 		enablePrefetch: p.enablePrefetch,
-		seenBlobs:      make([]ReadableBlob, len(sdBlob.BlobInfos)-1),
+		seenChunks:     make([]ReadableChunk, len(sdBlob.BlobInfos)-1),
 	}
 
 	return nil
@@ -266,11 +268,11 @@ func (s *Stream) Seek(offset int64, whence int) (int64, error) {
 }
 
 // Read implements io.ReadSeeker interface and is meant to be called by http.ServeContent.
-// Actual blob retrieval and delivery happens in s.readFromBlobs().
+// Actual chunk retrieval and delivery happens in s.readFromChunks().
 func (s *Stream) Read(dest []byte) (n int, err error) {
-	calc := NewBlobCalculator(s.Size, s.seekOffset, len(dest))
+	calc := NewChunkCalculator(s.Size, s.seekOffset, len(dest))
 	Logger.Log().Debugf("reading %v-%v bytes from stream (size=%v, dest len=%v)", s.seekOffset, s.seekOffset+int64(calc.ReadLen), s.Size, len(dest))
-	n, err = s.readFromBlobs(calc, dest)
+	n, err = s.readFromChunks(calc, dest)
 	Logger.Log().Debugf("done reading %v-%v bytes from stream", s.seekOffset, s.seekOffset+int64(n))
 	s.seekOffset += int64(n)
 
@@ -281,30 +283,29 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 	return n, err
 }
 
-func (s *Stream) readFromBlobs(calc BlobCalculator, dest []byte) (int, error) {
-	var b ReadableBlob
+func (s *Stream) readFromChunks(calc ChunkCalculator, dest []byte) (int, error) {
+	var b ReadableChunk
 	var err error
 	var read int
 
 	log := Logger.WithField("stream", s.URI)
 
-	prettyPrint(calc)
-	for i := calc.FirstBlobIdx; i < calc.LastBlobIdx+1; i++ {
+	for i := calc.FirstChunkIdx; i < calc.LastChunkIdx+1; i++ {
 		var start, readLen int
 
-		if i == calc.FirstBlobIdx {
-			start = calc.FirstBlobOffset
-			readLen = ChunkSize - calc.FirstBlobOffset
-		} else if i == calc.LastBlobIdx {
-			start = calc.LastBlobOffset
-			readLen = calc.LastBlobReadLen
-		} else if calc.FirstBlobIdx == calc.LastBlobIdx {
-			start = calc.FirstBlobOffset
-			readLen = calc.LastBlobReadLen
+		if i == calc.FirstChunkIdx {
+			start = calc.FirstChunkOffset
+			readLen = ChunkSize - calc.FirstChunkOffset
+		} else if i == calc.LastChunkIdx {
+			start = calc.LastChunkOffset
+			readLen = calc.LastChunkReadLen
+		} else if calc.FirstChunkIdx == calc.LastChunkIdx {
+			start = calc.FirstChunkOffset
+			readLen = calc.LastChunkReadLen
 		}
-		log.Debugf("requesting %v-%v bytes from blob #%v", start, start+readLen, i)
+		log.Debugf("requesting %v-%v bytes from chunk #%v", start, start+readLen, i)
 
-		b, err = s.blobGetter.Get(i)
+		b, err = s.chunkGetter.Get(i)
 		if err != nil {
 			return read, err
 		}
@@ -314,7 +315,7 @@ func (s *Stream) readFromBlobs(calc BlobCalculator, dest []byte) (int, error) {
 		if err != nil {
 			return read, err
 		}
-		log.Debugf("read %v-%v bytes from blob #%v (%v read, %v total)", start, start+readLen, i, n, read)
+		log.Debugf("read %v-%v bytes from chunk #%v (%v read, %v total)", start, start+readLen, i, n, read)
 	}
 
 	return read, nil
@@ -322,10 +323,10 @@ func (s *Stream) readFromBlobs(calc BlobCalculator, dest []byte) (int, error) {
 
 // Get returns a Blob object that can be Read() from.
 // It first tries to get it from the local cache, and if it is not found, fetches it from the reflector.
-func (b *BlobGetter) Get(n int) (ReadableBlob, error) {
+func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 	var (
-		cached    ReadableBlob
-		reflected *reflectedBlob
+		cached    ReadableChunk
+		reflected *reflectedChunk
 		cacheHit  bool
 		err       error
 	)
@@ -334,8 +335,8 @@ func (b *BlobGetter) Get(n int) (ReadableBlob, error) {
 		return nil, errors.New("blob index out of bounds")
 	}
 
-	if b.seenBlobs[n] != nil {
-		return b.seenBlobs[n], nil
+	if b.seenChunks[n] != nil {
+		return b.seenChunks[n], nil
 	}
 
 	bi := b.sdBlob.BlobInfos[n]
@@ -348,12 +349,12 @@ func (b *BlobGetter) Get(n int) (ReadableBlob, error) {
 	}
 
 	if !cacheHit {
-		reflected, err = b.getReflectedBlobByHash(hash, b.sdBlob.Key, bi.IV)
+		reflected, err = b.getReflectedChunkByHash(hash, b.sdBlob.Key, bi.IV)
 		if err != nil {
 			return nil, err
 		}
 		Logger.blobRetrieved(b.sdBlob.StreamName, bi.BlobNum)
-		b.seenBlobs[n] = reflected
+		b.seenChunks[n] = reflected
 		go b.saveToLocalCache(hash, reflected)
 		go b.prefetchToLocalCache(n + 1)
 		return reflected, nil
@@ -362,14 +363,14 @@ func (b *BlobGetter) Get(n int) (ReadableBlob, error) {
 	return cached, nil
 }
 
-func (b *BlobGetter) saveToLocalCache(hash string, blob *reflectedBlob) (ReadableBlob, error) {
+func (b *chunkGetter) saveToLocalCache(hash string, chunk *reflectedChunk) (ReadableChunk, error) {
 	if b.localCache == nil {
 		return nil, nil
 	}
 
-	body := make([]byte, len(blob.body))
-	if _, err := blob.Read(0, ChunkSize, body); err != nil {
-		Logger.Log().Errorf("couldn't read from blob %v: %v", hash, err)
+	body := make([]byte, len(chunk.body))
+	if _, err := chunk.Read(0, ChunkSize, body); err != nil {
+		Logger.Log().Errorf("couldn't read from chunk %v: %v", hash, err)
 		return nil, err
 	}
 	return b.localCache.Set(hash, body)
@@ -380,32 +381,32 @@ func prettyPrint(i interface{}) {
 	fmt.Println(string(s))
 }
 
-func (b *BlobGetter) prefetchToLocalCache(startN int) {
+func (b *chunkGetter) prefetchToLocalCache(startN int) {
 	if b.localCache == nil || !b.enablePrefetch {
 		return
 	}
 
 	var prefetchLen int
-	blobsLeft := len(b.sdBlob.BlobInfos) - startN - 1 // Last blob is empty
-	if blobsLeft <= 0 {
+	chunksLeft := len(b.sdBlob.BlobInfos) - startN - 1 // Last blob is empty
+	if chunksLeft <= 0 {
 		return
-	} else if blobsLeft > 10 {
+	} else if chunksLeft > 10 {
 		prefetchLen = 10
 	} else {
-		prefetchLen = blobsLeft
+		prefetchLen = chunksLeft
 	}
 
-	CacheLogger.Log().Debugf("prefetching %v blobs to local cache", prefetchLen)
+	CacheLogger.Log().Debugf("prefetching %v chunks to local cache", prefetchLen)
 	for _, bi := range b.sdBlob.BlobInfos[startN : startN+prefetchLen] {
 		hash := hex.EncodeToString(bi.BlobHash)
 		if b.localCache.Has(hash) {
-			CacheLogger.Log().Debugf("blob %v found in cache, not prefetching", hash)
+			CacheLogger.Log().Debugf("chunk %v found in cache, not prefetching", hash)
 			continue
 		}
-		CacheLogger.Log().Debugf("prefetching blob %v", hash)
-		reflected, err := b.getReflectedBlobByHash(hash, b.sdBlob.Key, bi.IV)
+		CacheLogger.Log().Debugf("prefetching chunk %v", hash)
+		reflected, err := b.getReflectedChunkByHash(hash, b.sdBlob.Key, bi.IV)
 		if err != nil {
-			CacheLogger.Log().Warnf("failed to prefetch blob %v: %v", hash, err)
+			CacheLogger.Log().Warnf("failed to prefetch chunk %v: %v", hash, err)
 			return
 		}
 		Logger.blobRetrieved(b.sdBlob.StreamName, bi.BlobNum)
@@ -414,27 +415,27 @@ func (b *BlobGetter) prefetchToLocalCache(startN int) {
 
 }
 
-func (b *BlobGetter) getReflectedBlobByHash(hash string, key, iv []byte) (*reflectedBlob, error) {
+func (b *chunkGetter) getReflectedChunkByHash(hash string, key, iv []byte) (*reflectedChunk, error) {
 	timer := metrics.TimerStart(metrics.PlayerBlobDownloadDurations)
 	bStore := GetBlobStore()
-	encBlob, err := bStore.Get(hash)
+	blob, err := bStore.Get(hash)
 	if err != nil {
-		Logger.blobDownloadFailed(encBlob, err)
+		Logger.blobDownloadFailed(blob, err)
 		return nil, err
 	}
 	timer.Done()
-	Logger.blobDownloaded(encBlob, timer)
+	Logger.blobDownloaded(blob, timer)
 
-	body, err := stream.DecryptBlob(encBlob, key, iv)
+	body, err := stream.DecryptBlob(blob, key, iv)
 	if err != nil {
 		return nil, err
 	}
-	blob := &reflectedBlob{body}
-	return blob, nil
+	chunk := &reflectedChunk{body}
+	return chunk, nil
 }
 
-// Read decrypts the blob and writes into the supplied buffer.
-func (b *reflectedBlob) Read(offset, n int, dest []byte) (int, error) {
+// Read is called by stream.Read.
+func (b *reflectedChunk) Read(offset, n int, dest []byte) (int, error) {
 	if offset+n > len(b.body) {
 		n = len(b.body) - offset
 	}
@@ -446,32 +447,32 @@ func (b *reflectedBlob) Read(offset, n int, dest []byte) (int, error) {
 	return read, nil
 }
 
-// BlobCalculator provides handy blob calculations for a requested stream range.
-type BlobCalculator struct {
-	Offset          int64
-	ReadLen         int
-	FirstBlobIdx    int
-	LastBlobIdx     int
-	FirstBlobOffset int
-	LastBlobReadLen int
-	LastBlobOffset  int
+// ChunkCalculator provides handy blob calculations for a requested stream range.
+type ChunkCalculator struct {
+	Offset           int64
+	ReadLen          int
+	FirstChunkIdx    int
+	LastChunkIdx     int
+	FirstChunkOffset int
+	LastChunkReadLen int
+	LastChunkOffset  int
 }
 
-// NewBlobCalculator initializes BlobCalculator with provided stream size, start offset and reader buffer length.
-func NewBlobCalculator(size, offset int64, readLen int) BlobCalculator {
-	bc := BlobCalculator{Offset: offset, ReadLen: readLen}
+// NewChunkCalculator initializes ChunkCalculator with provided stream size, start offset and reader buffer length.
+func NewChunkCalculator(size, offset int64, readLen int) ChunkCalculator {
+	bc := ChunkCalculator{Offset: offset, ReadLen: readLen}
 
-	bc.FirstBlobIdx = int(offset / int64(ChunkSize))
-	bc.LastBlobIdx = int((offset + int64(readLen)) / int64(ChunkSize))
-	bc.FirstBlobOffset = int(offset - int64(bc.FirstBlobIdx*ChunkSize))
-	if bc.FirstBlobIdx == bc.LastBlobIdx {
-		bc.LastBlobOffset = int(offset - int64(bc.LastBlobIdx*ChunkSize))
+	bc.FirstChunkIdx = int(offset / int64(ChunkSize))
+	bc.LastChunkIdx = int((offset + int64(readLen)) / int64(ChunkSize))
+	bc.FirstChunkOffset = int(offset - int64(bc.FirstChunkIdx*ChunkSize))
+	if bc.FirstChunkIdx == bc.LastChunkIdx {
+		bc.LastChunkOffset = int(offset - int64(bc.LastChunkIdx*ChunkSize))
 	}
-	bc.LastBlobReadLen = int((offset + int64(readLen)) - int64(bc.LastBlobOffset) - int64(ChunkSize)*int64(bc.LastBlobIdx))
+	bc.LastChunkReadLen = int((offset + int64(readLen)) - int64(bc.LastChunkOffset) - int64(ChunkSize)*int64(bc.LastChunkIdx))
 
 	return bc
 }
 
-func (c BlobCalculator) String() string {
-	return fmt.Sprintf("B%v[%v:]-B%v[%v:%v]", c.FirstBlobIdx, c.FirstBlobOffset, c.LastBlobIdx, c.LastBlobOffset, c.LastBlobReadLen)
+func (c ChunkCalculator) String() string {
+	return fmt.Sprintf("B%v[%v:]-B%v[%v:%v]", c.FirstChunkIdx, c.FirstChunkOffset, c.LastChunkIdx, c.LastChunkOffset, c.LastChunkReadLen)
 }

@@ -153,7 +153,7 @@ func TestFSCacheEviction(t *testing.T) {
 }
 
 func TestNewPlayerWithCache(t *testing.T) {
-	cachingPlayer := NewPlayer(&PlayerOpts{EnableLocalCache: true})
+	cachingPlayer := NewPlayer(&Opts{EnableLocalCache: true})
 
 	router := mux.NewRouter()
 	playerHandler := NewRequestHandler(cachingPlayer)
@@ -203,7 +203,7 @@ func TestNewPlayerWithCache(t *testing.T) {
 }
 
 func TestNewPlayerWithCacheFull(t *testing.T) {
-	player := NewPlayer(&PlayerOpts{EnableLocalCache: true, EnablePrefetch: false})
+	player := NewPlayer(&Opts{EnableLocalCache: true, EnablePrefetch: false})
 
 	original, err := ioutil.ReadFile("../../downloaded_stream.mp4")
 	require.NoError(t, err)

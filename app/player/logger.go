@@ -28,12 +28,12 @@ func (l localLogger) streamSeek(s *Stream, offset, newOffset int64, whence strin
 	Logger.WithFields(monitor.F{"stream": s.URI}).Tracef("seeking from %v to %v (%v), new position = %v", s.seekOffset, offset, whence, newOffset)
 }
 
-func (l localLogger) streamRead(s *Stream, n int, calc BlobCalculator) {
+func (l localLogger) streamRead(s *Stream, n int, calc ChunkCalculator) {
 	metrics.PlayerSuccessesCount.Inc()
 	l.WithFields(monitor.F{"uri": s.URI}).Debugf("read %v bytes (%v..%v) from stream", n, calc.Offset, s.seekOffset)
 }
 
-func (l localLogger) streamReadFailed(s *Stream, calc BlobCalculator, err error) {
+func (l localLogger) streamReadFailed(s *Stream, calc ChunkCalculator, err error) {
 	excFields := map[string]string{
 		"uri":         s.URI,
 		"blob_calc":   calc.String(),

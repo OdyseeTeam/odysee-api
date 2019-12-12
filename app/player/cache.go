@@ -14,11 +14,11 @@ import (
 
 const defaultMaxCacheSize = 1 << 34 // 16GB
 
-// BlobCache can save and retrieve readable chunks.
-type BlobCache interface {
+// ChunkCache can save and retrieve readable chunks.
+type ChunkCache interface {
 	Has(string) bool
-	Get(string) (ReadableBlob, bool)
-	Set(string, []byte) (ReadableBlob, error)
+	Get(string) (ReadableChunk, bool)
+	Set(string, []byte) (ReadableChunk, error)
 	Remove(string)
 }
 
@@ -37,15 +37,15 @@ type fsStorage struct {
 	path string
 }
 
-type cachedBlob struct {
-	reflectedBlob
+type cachedChunk struct {
+	reflectedChunk
 }
 
-// InitFSCache initializes disk cache for decrypted blobs.
-// All blob-sized files inside `dir` will be removed on initialization,
+// InitFSCache initializes disk cache for chunks.
+// All chunk-sized files inside `dir` will be removed on initialization,
 // if `dir` does not exist, it will be created.
 // In other words, os.TempDir() should not be passed as a `dir`.
-func InitFSCache(opts *FSCacheOpts) (BlobCache, error) {
+func InitFSCache(opts *FSCacheOpts) (ChunkCache, error) {
 	storage, err := initFSStorage(opts.Path)
 	if err != nil {
 		return nil, err
@@ -105,11 +105,11 @@ func (s fsStorage) remove(hash interface{}) {
 	}
 
 	if err := os.Remove(s.getPath(hash)); err != nil {
-		CacheLogger.Log().Errorf("failed to evict blob file %v: %v", hash, err)
+		CacheLogger.Log().Errorf("failed to evict chunk file %v: %v", hash, err)
 		return
 	}
 	metrics.PlayerCacheSize.Sub(float64(size))
-	CacheLogger.Log().Infof("blob file %v evicted", hash)
+	CacheLogger.Log().Infof("chunk file %v evicted", hash)
 }
 
 func (s fsStorage) getPath(hash interface{}) string {
@@ -124,76 +124,76 @@ func (s fsStorage) open(hash interface{}) (*os.File, error) {
 	return f, nil
 }
 
-// Has returns true if blob cache contains the requested blob.
+// Has returns true if cache contains the requested chink.
 // It is not guaranteed that actual file exists on the filesystem.
 func (c *fsCache) Has(hash string) bool {
 	_, ok := c.rCache.Get(hash)
 	return ok
 }
 
-// Get returns ReadableBlob if it can be retrieved from the cache by the requested hash
-// and a boolean representing whether blob was found or not.
-func (c *fsCache) Get(hash string) (ReadableBlob, bool) {
+// Get returns ReadableChunk if it can be retrieved from the cache by the requested hash
+// and a boolean representing whether chunk was found or not.
+func (c *fsCache) Get(hash string) (ReadableChunk, bool) {
 	if value, ok := c.rCache.Get(hash); ok {
 		f, err := c.storage.open(value)
 		if err != nil {
 			metrics.PlayerCacheErrorCount.Inc()
-			CacheLogger.Log().Errorf("blob %v found in cache but couldn't open the file: %v", hash, err)
+			CacheLogger.Log().Errorf("chunk %v found in cache but couldn't open the file: %v", hash, err)
 			c.rCache.Del(value)
 			return nil, false
 		}
 		metrics.PlayerCacheHitCount.Inc()
-		cb, err := initCachedBlob(f)
+		cb, err := initCachedChunk(f)
 		f.Close()
 		if err != nil {
-			CacheLogger.Log().Errorf("blob %v found in cache but couldn't read the file: %v", hash, err)
+			CacheLogger.Log().Errorf("chunk %v found in cache but couldn't read the file: %v", hash, err)
 			return nil, false
 		}
 		return cb, true
 	}
 	metrics.PlayerCacheMissCount.Inc()
-	CacheLogger.Log().Debugf("cache miss for blob %v", hash)
+	CacheLogger.Log().Debugf("cache miss for chunk %v", hash)
 	return nil, false
 }
 
-// Set takes decrypted blob body and saves reference to it into the cache table
-func (c *fsCache) Set(hash string, body []byte) (ReadableBlob, error) {
+// Set takes chunk body and saves reference to it into the cache table
+func (c *fsCache) Set(hash string, body []byte) (ReadableChunk, error) {
 	cacheCost := len(body)
 
-	CacheLogger.Log().Debugf("attempting to cache blob %v", hash)
-	blobPath := c.storage.getPath(hash)
-	f, err := os.OpenFile(blobPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	CacheLogger.Log().Debugf("attempting to cache chunk %v", hash)
+	chunkPath := c.storage.getPath(hash)
+	f, err := os.OpenFile(chunkPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if os.IsExist(err) {
 		metrics.PlayerCacheErrorCount.Inc()
-		CacheLogger.Log().Debugf("blob %v already exists on the local filesystem, not overwriting", hash)
+		CacheLogger.Log().Debugf("chunk %v already exists on the local filesystem, not overwriting", hash)
 	} else {
 		numWritten, err := f.Write(body)
 		f.Close()
 		if err != nil {
 			metrics.PlayerCacheErrorCount.Inc()
-			CacheLogger.Log().Errorf("error saving cache file %v: %v", blobPath, err)
+			CacheLogger.Log().Errorf("error saving cache file %v: %v", chunkPath, err)
 			return nil, err
 		}
-		CacheLogger.Log().Debugf("written %v bytes for blob %v", numWritten, hash)
+		CacheLogger.Log().Debugf("written %v bytes for chunk %v", numWritten, hash)
 	}
 	c.rCache.Set(hash, hash, int64(cacheCost))
 	// metrics.PlayerCacheSize.Set(float64(c.rCache.Metrics.CostAdded() - c.rCache.Metrics.CostEvicted()))
 
 	metrics.PlayerCacheSize.Add(float64(cacheCost))
-	CacheLogger.Log().Debugf("blob %v successfully cached", hash)
-	return &cachedBlob{reflectedBlob{body}}, nil
+	CacheLogger.Log().Debugf("chunk %v successfully cached", hash)
+	return &cachedChunk{reflectedChunk{body}}, nil
 }
 
-// Remove deletes both cache record and blob file from the filesystem.
+// Remove deletes both cache record and chunk file from the filesystem.
 func (c *fsCache) Remove(hash string) {
 	c.storage.remove(hash)
 	c.rCache.Del(hash)
 }
 
-func initCachedBlob(file *os.File) (*cachedBlob, error) {
+func initCachedChunk(file *os.File) (*cachedChunk, error) {
 	body, err := ioutil.ReadAll(file)
 	if err != nil {
 		return nil, err
 	}
-	return &cachedBlob{reflectedBlob{body}}, nil
+	return &cachedChunk{reflectedChunk{body}}, nil
 }

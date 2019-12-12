@@ -40,7 +40,7 @@ func makeRequest(router *mux.Router, method, uri string, rng *rangeHeader) *http
 }
 
 func TestHandleGet(t *testing.T) {
-	player := NewPlayer(&PlayerOpts{EnableLocalCache: true, EnablePrefetch: false})
+	player := NewPlayer(&Opts{EnableLocalCache: true, EnablePrefetch: false})
 	router := mux.NewRouter()
 	router.Path("/content/claims/{uri}/{claim}/{filename}").HandlerFunc(NewRequestHandler(player).Handle)
 
