@@ -1,4 +1,3 @@
-# Lbrynet: set in the docker-compose thru an env variable
 BaseContentURL: https://api.lbry.tv/content/
 InternalAPIHost: https://api.lbry.com
 ProjectURL: https://lbry.tv
@@ -19,9 +18,9 @@ PublishSourceDir: /storage/publish
 BlobFilesDir: /storage/lbrynet/blobfiles
 
 ReflectorAddress: reflector.lbry.com:5566
-ReflectorTimeout: 5
+ReflectorTimeout: 10
 
 RefractorAddress: refractor.lbry.com:5567
-RefractorTimeout: 5
+RefractorTimeout: 10
 
 ShouldLogResponses: false
