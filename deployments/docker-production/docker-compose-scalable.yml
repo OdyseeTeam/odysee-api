@@ -8,6 +8,7 @@ services:
       - 6060:6060
     volumes:
       - publish:/storage/publish
+      - blobfiles:/storage/lbrynet/blobfiles
     environment:
       LW_ACCOUNTSENABLED: 1
     depends_on:
@@ -27,6 +28,7 @@ services:
     volumes:
       - wallets:/storage/lbryum/wallets
       - publish:/storage/publish
+      - blobfiles:/storage/lbrynet/blobfiles
       - lbryum1:/storage/lbryum/lbc_mainnet
     environment:
       SDK_CONFIG: /daemon/daemon_settings.yml
@@ -44,6 +46,7 @@ services:
     volumes:
       - wallets:/storage/lbryum/wallets
       - publish:/storage/publish
+      - blobfiles:/storage/lbrynet/blobfiles
       - lbryum2:/storage/lbryum/lbc_mainnet
     environment:
       SDK_CONFIG: /daemon/daemon_settings.yml
@@ -61,6 +64,7 @@ services:
     volumes:
       - wallets:/storage/lbryum/wallets
       - publish:/storage/publish
+      - blobfiles:/storage/lbrynet/blobfiles
       - lbryum3:/storage/lbryum/lbc_mainnet
     environment:
       SDK_CONFIG: /daemon/daemon_settings.yml
@@ -78,6 +82,7 @@ services:
     volumes:
       - wallets:/storage/lbryum/wallets
       - publish:/storage/publish
+      - blobfiles:/storage/lbrynet/blobfiles
       - lbryum4:/storage/lbryum/lbc_mainnet
     environment:
       SDK_CONFIG: /daemon/daemon_settings.yml
@@ -95,6 +100,7 @@ services:
     volumes:
       - wallets:/storage/lbryum/wallets
       - publish:/storage/publish
+      - blobfiles:/storage/lbrynet/blobfiles
       - lbryum5:/storage/lbryum/lbc_mainnet
     environment:
       SDK_CONFIG: /daemon/daemon_settings.yml
@@ -157,6 +163,7 @@ volumes:
   storage:
   wallets:
   publish:
+  blobfiles:
   lbryum1:
   lbryum2:
   lbryum3:
