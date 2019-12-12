@@ -39,14 +39,6 @@ func makeRequest(router *mux.Router, method, uri string, rng *rangeHeader) *http
 	return rr.Result()
 }
 
-func TestHandleOptions(t *testing.T) {
-	response := makeRequest(nil, http.MethodOptions, "/content/claims/one/3ae4ed38414e426c29c2bd6aeab7a6ac5da74a98/stream.mp4", nil)
-
-	assert.Equal(t, "video/mp4", response.Header.Get("Content-Type"))
-	assert.Equal(t, "Sat, 27 Jul 2019 10:01:00 GMT", response.Header.Get("Last-Modified"))
-	assert.Equal(t, "16499459", response.Header.Get("Content-Length"))
-}
-
 func TestHandleGet(t *testing.T) {
 	player := NewPlayer(&PlayerOpts{EnableLocalCache: true, EnablePrefetch: false})
 	router := mux.NewRouter()
@@ -121,8 +113,16 @@ func TestHandleGet(t *testing.T) {
 	}
 }
 
-func TestHandleOptionsErrors(t *testing.T) {
-	r := makeRequest(nil, http.MethodOptions, "/content/claims/completely/ef/stream", nil)
+func TestHandleHead(t *testing.T) {
+	response := makeRequest(nil, http.MethodHead, "/content/claims/one/3ae4ed38414e426c29c2bd6aeab7a6ac5da74a98/stream.mp4", nil)
+
+	assert.Equal(t, "video/mp4", response.Header.Get("Content-Type"))
+	assert.Equal(t, "Sat, 27 Jul 2019 10:01:00 GMT", response.Header.Get("Last-Modified"))
+	assert.Equal(t, "16499459", response.Header.Get("Content-Length"))
+}
+
+func TestHandleHeadErrors(t *testing.T) {
+	r := makeRequest(nil, http.MethodHead, "/content/claims/completely/ef/stream", nil)
 	require.Equal(t, http.StatusNotFound, r.StatusCode)
 }
 

@@ -49,8 +49,8 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// HandleOptions handlers OPTIONS requests for media.
-func (h *RequestHandler) HandleOptions(w http.ResponseWriter, r *http.Request) {
+// HandleHead handlers OPTIONS requests for media.
+func (h *RequestHandler) HandleHead(w http.ResponseWriter, r *http.Request) {
 	header := w.Header()
 	uri := h.getURI(r)
 
