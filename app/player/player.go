@@ -361,6 +361,7 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 		return reflected, nil
 	}
 
+	b.seenChunks[n] = reflected
 	return cached, nil
 }
 
