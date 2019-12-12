@@ -182,7 +182,7 @@ func (c *fsCache) Set(hash string, body []byte) (ReadableChunk, error) {
 	if !added {
 		err := os.Remove(chunkPath)
 		if err != nil {
-			CacheLogger.Log().Errorf("chunk was not admitted and an error occured removing chunk file: %v", chunkPath, err)
+			CacheLogger.Log().Errorf("chunk was not admitted and an error occured removing chunk file: %v", err)
 		} else {
 			CacheLogger.Log().Infof("chunk %v was not admitted", hash)
 		}
