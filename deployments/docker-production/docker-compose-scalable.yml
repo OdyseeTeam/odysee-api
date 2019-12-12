@@ -125,6 +125,7 @@ services:
       POSTGRES_USER: lbrytv
       POSTGRES_PASSWORD: lbrytv
       PGDATA: /pgdata
+    command: -c 'max_connections=200'
     restart: always
     logging:
       driver: awslogs
