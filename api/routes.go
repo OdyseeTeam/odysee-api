@@ -35,4 +35,5 @@ func InstallRoutes(proxyService *proxy.ProxyService, r *mux.Router) {
 	debugRouter.HandleFunc("/profile", pprof.Profile)
 	debugRouter.HandleFunc("/symbol", pprof.Symbol)
 	debugRouter.HandleFunc("/trace", pprof.Trace)
+	debugRouter.Handle("/heap", pprof.Handler("heap"))
 }
