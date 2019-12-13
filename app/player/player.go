@@ -361,7 +361,8 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 		return reflected, nil
 	}
 
-	b.seenChunks[n] = reflected
+	// Saving chunk in the hot cache so next Get() / Read() goes to it
+	b.seenChunks[n] = cached
 	return cached, nil
 }
 

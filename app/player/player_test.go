@@ -157,6 +157,52 @@ func TestStreamRead(t *testing.T) {
 	assert.Equal(t, expectedData, readData)
 }
 
+func TestStreamReadSavesSeen(t *testing.T) {
+	p := NewPlayer(&Opts{EnableLocalCache: true, EnablePrefetch: false})
+
+	s, err := p.ResolveStream(streamURL)
+	require.NoError(t, err)
+
+	err = p.RetrieveStream(s)
+	require.NoError(t, err)
+
+	// Warm up the cache
+	n, err := s.Seek(4000000, io.SeekStart)
+	require.NoError(t, err)
+	require.EqualValues(t, 4000000, n)
+
+	readData := make([]byte, 105)
+	readNum, err := s.Read(readData)
+	require.NoError(t, err)
+	assert.Equal(t, 105, readNum)
+
+	///
+	s, err = p.ResolveStream(streamURL)
+	require.NoError(t, err)
+
+	err = p.RetrieveStream(s)
+	require.NoError(t, err)
+
+	for i := 0; i < 2; i++ {
+		n, err := s.Seek(4000000, io.SeekStart)
+		require.NoError(t, err)
+		require.EqualValues(t, 4000000, n)
+
+		readData := make([]byte, 105)
+		readNum, err := s.Read(readData)
+		require.NoError(t, err)
+		assert.Equal(t, 105, readNum)
+		expectedData, err := hex.DecodeString(
+			"6E81C93A90DD3A322190C8D608E29AA929867407596665097B5AE780412" +
+				"61638A51C10BC26770AFFEF1533715FBD1428DCADEDC7BEA5D7A9C7D170" +
+				"B71EF38E7138D24B0C7E86D791695EDAE1B88EDBE54F95C98EF3DCFD91D" +
+				"A025C284EE37D8FEEA2EA84B76B9A22D3")
+		require.NoError(t, err)
+		assert.Equal(t, expectedData, readData)
+	}
+	assert.IsType(t, &cachedChunk{}, s.chunkGetter.seenChunks[1])
+}
+
 func TestStreamReadOutOfBounds(t *testing.T) {
 	p := NewPlayer(nil)
 	s, err := p.ResolveStream(streamURL)
