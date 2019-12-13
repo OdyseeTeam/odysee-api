@@ -124,32 +124,6 @@ func TestFSCacheRemove(t *testing.T) {
 	assert.Error(t, err, "file %v unexpectedly found", storage.getPath("hAsH"))
 }
 
-func TestFSCacheEviction(t *testing.T) {
-	dir := generateCachePath()
-	os.RemoveAll(dir)
-	defer os.RemoveAll(dir)
-
-	storage, err := initFSStorage(dir)
-	require.NoError(t, err)
-	c, err := InitFSCache(&FSCacheOpts{Path: dir, Size: 100})
-	require.NoError(t, err)
-
-	c.Set("one", make([]byte, 40))
-	waitForCache()
-
-	c.Set("two", make([]byte, 40))
-	waitForCache()
-
-	c.Set("three", make([]byte, 40))
-	waitForCache()
-
-	assert.False(t, c.Has("one"))
-
-	evictedPath := storage.getPath("one")
-	_, err = os.Stat(evictedPath)
-	assert.Error(t, err, "file %v unexpectedly found", evictedPath)
-}
-
 func TestNewPlayerWithCache(t *testing.T) {
 	cachingPlayer := NewPlayer(&Opts{EnableLocalCache: true})
 
