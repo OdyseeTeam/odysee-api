@@ -157,7 +157,7 @@ func TestStreamRead(t *testing.T) {
 	assert.Equal(t, expectedData, readData)
 }
 
-func TestStreamReadSavesSeen(t *testing.T) {
+func TestStreamReadHotCache(t *testing.T) {
 	p := NewPlayer(&Opts{EnableLocalCache: true, EnablePrefetch: false})
 
 	s, err := p.ResolveStream(streamURL)
@@ -200,7 +200,21 @@ func TestStreamReadSavesSeen(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, expectedData, readData)
 	}
+
 	assert.IsType(t, &cachedChunk{}, s.chunkGetter.seenChunks[1])
+
+	n, err = s.Seek(2000000, io.SeekCurrent)
+	require.NoError(t, err)
+	require.EqualValues(t, 6000105, n)
+
+	readData = make([]byte, 105)
+	readNum, err = s.Read(readData)
+	require.NoError(t, err)
+	assert.Equal(t, 105, readNum)
+	require.NoError(t, err)
+
+	assert.Nil(t, s.chunkGetter.seenChunks[1])
+	assert.IsType(t, &reflectedChunk{}, s.chunkGetter.seenChunks[2])
 }
 
 func TestStreamReadOutOfBounds(t *testing.T) {

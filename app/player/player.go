@@ -355,15 +355,23 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 			return nil, err
 		}
 		Logger.blobRetrieved(b.sdBlob.StreamName, bi.BlobNum)
-		b.seenChunks[n] = reflected
+		b.saveToHotCache(n, reflected)
 		go b.saveToLocalCache(hash, reflected)
 		go b.prefetchToLocalCache(n + 1)
 		return reflected, nil
 	}
 
-	// Saving chunk in the hot cache so next Get() / Read() goes to it
-	b.seenChunks[n] = cached
+	b.saveToHotCache(n, cached)
 	return cached, nil
+}
+
+func (b *chunkGetter) saveToHotCache(n int, chunk ReadableChunk) {
+	// Save chunk in the hot cache so next Get() / Read() goes to it
+	b.seenChunks[n] = chunk
+	// Remove already read chunks to preserve memory
+	if n > 0 {
+		b.seenChunks[n-1] = nil
+	}
 }
 
 func (b *chunkGetter) saveToLocalCache(hash string, chunk *reflectedChunk) (ReadableChunk, error) {
