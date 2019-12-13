@@ -62,8 +62,12 @@ func InitFSCache(opts *FSCacheOpts) (ChunkCache, error) {
 		opts.SweepInterval = time.Second * 60
 	}
 
+	counters := opts.Size / ChunkSize * 10
+	if counters <= 0 {
+		counters = 10000
+	}
 	r, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: opts.Size / ChunkSize * 10,
+		NumCounters: counters,
 		MaxCost:     opts.Size,
 		BufferItems: 64,
 		Metrics:     true,
