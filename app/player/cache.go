@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"time"
 
 	"github.com/dgraph-io/ristretto"
 	"github.com/lbryio/lbry.go/v2/stream"
@@ -20,6 +21,7 @@ type ChunkCache interface {
 	Get(string) (ReadableChunk, bool)
 	Set(string, []byte) (ReadableChunk, error)
 	Remove(string)
+	Size() uint64
 }
 
 type fsCache struct {
@@ -29,8 +31,9 @@ type fsCache struct {
 
 // FSCacheOpts contains options for filesystem cache. Size is max size in bytes
 type FSCacheOpts struct {
-	Path string
-	Size int64
+	Path          string
+	Size          int64
+	SweepInterval time.Duration
 }
 
 type fsStorage struct {
@@ -55,8 +58,12 @@ func InitFSCache(opts *FSCacheOpts) (ChunkCache, error) {
 		opts.Size = defaultMaxCacheSize
 	}
 
+	if opts.SweepInterval == 0 {
+		opts.SweepInterval = time.Second * 60
+	}
+
 	r, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1e7, // number of keys to track frequency of (10M)
+		NumCounters: opts.Size / ChunkSize * 10,
 		MaxCost:     opts.Size,
 		BufferItems: 64,
 		Metrics:     true,
@@ -66,7 +73,17 @@ func InitFSCache(opts *FSCacheOpts) (ChunkCache, error) {
 		return nil, err
 	}
 
-	return &fsCache{storage, r}, nil
+	c := &fsCache{storage, r}
+
+	sweepTicker := time.NewTicker(opts.SweepInterval)
+	go func() {
+		for {
+			<-sweepTicker.C
+			c.sweep()
+		}
+	}()
+
+	return c, nil
 }
 
 func initFSStorage(dir string) (*fsStorage, error) {
@@ -98,18 +115,9 @@ func initFSStorage(dir string) (*fsStorage, error) {
 }
 
 func (s fsStorage) remove(hash interface{}) {
-	var size int64
-	fi, _ := os.Stat(s.getPath(hash))
-	if fi != nil {
-		size = fi.Size()
-	}
-
 	if err := os.Remove(s.getPath(hash)); err != nil {
-		CacheLogger.Log().Errorf("failed to evict chunk file %v: %v", hash, err)
 		return
 	}
-	metrics.PlayerCacheSize.Sub(float64(size))
-	CacheLogger.Log().Infof("chunk file %v evicted", hash)
 }
 
 func (s fsStorage) getPath(hash interface{}) string {
@@ -189,7 +197,7 @@ func (c *fsCache) Set(hash string, body []byte) (ReadableChunk, error) {
 		return nil, err
 	}
 
-	metrics.PlayerCacheSize.Set(float64(c.rCache.Metrics.CostAdded() - c.rCache.Metrics.CostEvicted()))
+	metrics.PlayerCacheSize.Set(float64(c.Size()))
 	CacheLogger.Log().Debugf("chunk %v successfully cached", hash)
 
 	return &cachedChunk{reflectedChunk{body}}, nil
@@ -199,6 +207,39 @@ func (c *fsCache) Set(hash string, body []byte) (ReadableChunk, error) {
 func (c *fsCache) Remove(hash string) {
 	c.storage.remove(hash)
 	c.rCache.Del(hash)
+}
+
+func (c *fsCache) Size() uint64 {
+	return c.rCache.Metrics.CostAdded() - c.rCache.Metrics.CostEvicted()
+}
+
+func (c *fsCache) sweep() {
+	var removed int
+	err := filepath.Walk(c.storage.path, func(path string, info os.FileInfo, err error) error {
+		if c.storage.path == path {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if !c.Has(info.Name()) {
+			err := os.Remove(path)
+			if err == nil {
+				removed++
+			} else {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		CacheLogger.Log().Errorf("error sweeping cache folder: %v", err)
+	} else {
+		CacheLogger.Log().Infof("swept cache folder, %v chunks removed", removed)
+	}
 }
 
 func initCachedChunk(file *os.File) (*cachedChunk, error) {
