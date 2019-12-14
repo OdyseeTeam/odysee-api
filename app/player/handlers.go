@@ -1,8 +1,10 @@
 package player
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/lbryio/lbrytv/internal/monitor"
@@ -29,10 +31,12 @@ func (h RequestHandler) writeErrorResponse(w http.ResponseWriter, s int, msg str
 }
 
 func (h RequestHandler) processStreamError(w http.ResponseWriter, uri string, err error) {
-	if err == errPaidStream {
+	if errors.Is(err, errPaidStream) {
 		h.writeErrorResponse(w, http.StatusPaymentRequired, err.Error())
-	} else if err == errStreamNotFound {
+	} else if errors.Is(err, errStreamNotFound) {
 		h.writeErrorResponse(w, http.StatusNotFound, err.Error())
+	} else if strings.Contains(err.Error(), "blob not found") {
+		h.writeErrorResponse(w, http.StatusServiceUnavailable, err.Error())
 	} else {
 		monitor.CaptureException(err, map[string]string{"uri": uri})
 		h.writeErrorResponse(w, http.StatusInternalServerError, err.Error())

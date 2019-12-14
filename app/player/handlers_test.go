@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,8 +43,6 @@ func TestHandleGet(t *testing.T) {
 	player := NewPlayer(&Opts{EnableLocalCache: true, EnablePrefetch: false})
 	router := mux.NewRouter()
 	router.Path("/content/claims/{uri}/{claim}/{filename}").HandlerFunc(NewRequestHandler(player).Handle)
-
-	CacheLogger.Logger.SetLevel(logrus.TraceLevel)
 
 	type testInput struct {
 		name, uri string
