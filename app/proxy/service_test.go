@@ -120,8 +120,8 @@ func TestCallerCallResolve(t *testing.T) {
 	svc := NewService(router.NewDefault())
 	c := svc.NewCaller("")
 
-	resolvedURL := "one#3ae4ed38414e426c29c2bd6aeab7a6ac5da74a98"
-	resolvedClaimID := "3ae4ed38414e426c29c2bd6aeab7a6ac5da74a98"
+	resolvedURL := "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
+	resolvedClaimID := "6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
 
 	request := newRawRequest(t, "resolve", map[string]string{"urls": resolvedURL})
 	rawCallReponse := c.Call(request)
