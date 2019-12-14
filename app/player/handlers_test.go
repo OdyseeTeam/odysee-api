@@ -114,11 +114,12 @@ func TestHandleGet(t *testing.T) {
 }
 
 func TestHandleHead(t *testing.T) {
-	response := makeRequest(nil, http.MethodHead, "/content/claims/one/3ae4ed38414e426c29c2bd6aeab7a6ac5da74a98/stream.mp4", nil)
+	response := makeRequest(nil, http.MethodHead, "/content/claims/what/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/stream.mp4", nil)
 
+	assert.Equal(t, http.StatusOK, response.StatusCode)
 	assert.Equal(t, "video/mp4", response.Header.Get("Content-Type"))
-	assert.Equal(t, "Sat, 27 Jul 2019 10:01:00 GMT", response.Header.Get("Last-Modified"))
-	assert.Equal(t, "16499459", response.Header.Get("Content-Length"))
+	assert.Equal(t, "Fri, 17 Nov 2017 17:19:50 GMT", response.Header.Get("Last-Modified"))
+	assert.Equal(t, "158433824", response.Header.Get("Content-Length"))
 }
 
 func TestHandleHeadErrors(t *testing.T) {
