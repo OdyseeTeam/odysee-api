@@ -1,0 +1,172 @@
+version: '3.2'
+
+services:
+  app:
+    image: lbry/lbrytv:latest
+    ports:
+      - 8080:8080
+      - 6060:6060
+    volumes:
+      - publish:/storage/publish
+      - blobfiles:/storage/lbrynet/blobfiles
+    environment:
+      LW_ACCOUNTSENABLED: 1
+    depends_on:
+      - postgres
+    labels:
+      com.centurylinklabs.watchtower.enable: true
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: lbrytv
+        awslogs-region: us-east-1
+        awslogs-stream: app-scalable
+    restart: always
+
+  lbrynet1:
+    image: lbry/lbrynet-tv:latest
+    volumes:
+      - wallets:/storage/lbryum/wallets
+      - publish:/storage/publish
+      - blobfiles:/storage/lbrynet/blobfiles
+      - lbryum1:/storage/lbryum/lbc_mainnet
+    environment:
+      SDK_CONFIG: /daemon/daemon_settings.yml
+    labels:
+      com.centurylinklabs.watchtower.enable: true
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: lbrytv
+        awslogs-region: us-east-1
+        awslogs-stream: sdk1
+
+  lbrynet2:
+    image: lbry/lbrynet-tv:latest
+    volumes:
+      - wallets:/storage/lbryum/wallets
+      - publish:/storage/publish
+      - blobfiles:/storage/lbrynet/blobfiles
+      - lbryum2:/storage/lbryum/lbc_mainnet
+    environment:
+      SDK_CONFIG: /daemon/daemon_settings.yml
+    labels:
+      com.centurylinklabs.watchtower.enable: true
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: lbrytv
+        awslogs-region: us-east-1
+        awslogs-stream: sdk2
+
+  lbrynet3:
+    image: lbry/lbrynet-tv:latest
+    volumes:
+      - wallets:/storage/lbryum/wallets
+      - publish:/storage/publish
+      - blobfiles:/storage/lbrynet/blobfiles
+      - lbryum3:/storage/lbryum/lbc_mainnet
+    environment:
+      SDK_CONFIG: /daemon/daemon_settings.yml
+    labels:
+      com.centurylinklabs.watchtower.enable: true
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: lbrytv
+        awslogs-region: us-east-1
+        awslogs-stream: sdk3
+
+  lbrynet4:
+    image: lbry/lbrynet-tv:latest
+    volumes:
+      - wallets:/storage/lbryum/wallets
+      - publish:/storage/publish
+      - blobfiles:/storage/lbrynet/blobfiles
+      - lbryum4:/storage/lbryum/lbc_mainnet
+    environment:
+      SDK_CONFIG: /daemon/daemon_settings.yml
+    labels:
+      com.centurylinklabs.watchtower.enable: true
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: lbrytv
+        awslogs-region: us-east-1
+        awslogs-stream: sdk4
+
+  lbrynet5:
+    image: lbry/lbrynet-tv:latest
+    volumes:
+      - wallets:/storage/lbryum/wallets
+      - publish:/storage/publish
+      - blobfiles:/storage/lbrynet/blobfiles
+      - lbryum5:/storage/lbryum/lbc_mainnet
+    environment:
+      SDK_CONFIG: /daemon/daemon_settings.yml
+    labels:
+      com.centurylinklabs.watchtower.enable: true
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: lbrytv
+        awslogs-region: us-east-1
+        awslogs-stream: sdk5
+
+  postgres:
+    image: postgres:11-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+      - type: bind
+        source: pgdata
+        target: /pgdata
+    environment:
+      POSTGRES_USER: lbrytv
+      POSTGRES_PASSWORD: lbrytv
+      PGDATA: /pgdata
+    command: -c 'max_connections=200'
+    restart: always
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: lbrytv
+        awslogs-region: us-east-1
+        awslogs-stream: postgres
+
+  watchtower:
+    image: containrrr/watchtower
+    command: --interval 30 --cleanup --label-enable --debug
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - 9090:9090
+    volumes:
+      - ${PWD}/deployments/docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ${PWD}/deployments/docker/prometheus/rules.yml:/etc/prometheus/rules.yml
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    ports:
+      - 9093:9093
+    volumes:
+      - ${PWD}/deployments/docker/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+
+  smtp:
+    image: namshi/smtp:latest
+
+
+volumes:
+  pgdata:
+  storage:
+  wallets:
+  publish:
+  blobfiles:
+  lbryum1:
+  lbryum2:
+  lbryum3:
+  lbryum4:
+  lbryum5:

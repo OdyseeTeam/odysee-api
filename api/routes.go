@@ -1,6 +1,9 @@
 package api
 
 import (
+	"net/http/pprof"
+
+	"github.com/lbryio/lbrytv/app/player"
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
 	"github.com/lbryio/lbrytv/app/users"
@@ -18,11 +21,19 @@ func InstallRoutes(proxyService *proxy.ProxyService, r *mux.Router) {
 	}
 
 	r.HandleFunc("/", Index)
+
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
 	v1Router.HandleFunc("/proxy", proxyHandler.HandleOptions).Methods("OPTIONS")
 	v1Router.HandleFunc("/proxy", authenticator.Wrap(upHandler.Handle)).MatcherFunc(upHandler.CanHandle)
 	v1Router.HandleFunc("/proxy", proxyHandler.Handle)
 
-	r.HandleFunc("/content/claims/{uri}/{claim}/{filename}", ContentByClaimsURI).Methods("GET")
-	r.HandleFunc("/content/url", ContentByURL).Methods("GET")
+	player.InstallRoutes(r)
+
+	debugRouter := r.PathPrefix("/superdebug/pprof").Subrouter()
+	debugRouter.HandleFunc("/", pprof.Index)
+	debugRouter.HandleFunc("/cmdline", pprof.Cmdline)
+	debugRouter.HandleFunc("/profile", pprof.Profile)
+	debugRouter.HandleFunc("/symbol", pprof.Symbol)
+	debugRouter.HandleFunc("/trace", pprof.Trace)
+	debugRouter.Handle("/heap", pprof.Handler("heap"))
 }

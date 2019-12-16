@@ -29,23 +29,6 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestGetAccount_Nonexistent(t *testing.T) {
-	uid := generateTestUID()
-	retrievedAccount, err := GetAccount(uid)
-	assert.IsType(t, AccountNotFound{}, err)
-	assert.Nil(t, retrievedAccount)
-}
-
-func TestCreateAccount(t *testing.T) {
-	uid := generateTestUID()
-
-	account, err := CreateAccount(uid)
-	prettyPrint(account)
-
-	require.Nil(t, err, err)
-	assert.Equal(t, fmt.Sprintf("%v%v", accountNamePrefix, uid), account.Name)
-}
-
 func TestResolve(t *testing.T) {
 	r, err := Resolve("what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a")
 	prettyPrint(r)

@@ -1,6 +1,6 @@
-# Lbrynet: set in the docker-compose thru an env variable
 BaseContentURL: https://api.lbry.tv/content/
 InternalAPIHost: https://api.lbry.com
+ProjectURL: https://lbry.tv
 
 SentryDSN: "https://9ef75ef77a844d4aa35d834d78266477@sentry.io/1416147"
 
@@ -18,4 +18,11 @@ PublishSourceDir: /storage/publish
 BlobFilesDir: /storage/lbrynet/blobfiles
 
 ReflectorAddress: reflector.lbry.com:5566
+# ReflectorTimeout (in seconds) is TCP timeout for pushing blobs to reflector.
+ReflectorTimeout: 10
+
+RefractorAddress: refractor.lbry.com:5567
+# RefractorTimeout (in seconds) is TCP timeout for streaming blobs off reflector/refractor.
+RefractorTimeout: 10
+
 ShouldLogResponses: false

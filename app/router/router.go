@@ -3,19 +3,17 @@ package router
 import (
 	"database/sql"
 	"errors"
+	"math/rand"
 	"regexp"
 	"sort"
 	"strconv"
 
-	"github.com/volatiletech/sqlboiler/boil"
-
-	"github.com/volatiletech/sqlboiler/queries/qm"
-
+	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
 
-	"github.com/lbryio/lbrytv/config"
-
-	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/volatiletech/sqlboiler/boil"
+	"github.com/volatiletech/sqlboiler/queries/qm"
 )
 
 type SDKRouter struct {
@@ -166,7 +164,8 @@ func (r *SDKRouter) GetBalancedSDK() models.LbrynetServer {
 }
 
 func (r *SDKRouter) balancedSDK() models.LbrynetServer {
-	return r.defaultSDKServer()
+	r.populateServers()
+	return r.servers[rand.Intn(len(r.servers))]
 }
 
 func (r *SDKRouter) defaultSDKServer() models.LbrynetServer {

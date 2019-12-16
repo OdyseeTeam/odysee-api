@@ -36,7 +36,7 @@ func TestLogSuccessfulQuery(t *testing.T) {
 	require.Equal(t, log.InfoLevel, hook.LastEntry().Level)
 	require.Equal(t, "resolve", hook.LastEntry().Data["method"])
 	require.Equal(t, map[string]string{"urls": "one"}, hook.LastEntry().Data["params"])
-	require.Equal(t, 0.025, hook.LastEntry().Data["time"])
+	require.Equal(t, 0.025, hook.LastEntry().Data["duration"])
 	require.Equal(t, "call processed", hook.LastEntry().Message)
 
 	LogSuccessfulQuery("account_balance", 0.025, nil, nil)
@@ -45,7 +45,7 @@ func TestLogSuccessfulQuery(t *testing.T) {
 	require.Equal(t, log.InfoLevel, hook.LastEntry().Level)
 	require.Equal(t, "account_balance", hook.LastEntry().Data["method"])
 	require.Equal(t, nil, hook.LastEntry().Data["params"])
-	require.Equal(t, 0.025, hook.LastEntry().Data["time"])
+	require.Equal(t, 0.025, hook.LastEntry().Data["duration"])
 	require.Nil(t, hook.LastEntry().Data["response"])
 	require.Equal(t, "call processed", hook.LastEntry().Message)
 
@@ -77,7 +77,7 @@ func TestLogSuccessfulQueryWithResponse(t *testing.T) {
 	require.Equal(t, log.InfoLevel, hook.LastEntry().Level)
 	require.Equal(t, "resolve", hook.LastEntry().Data["method"])
 	require.Equal(t, map[string]string{"urls": "one"}, hook.LastEntry().Data["params"])
-	require.Equal(t, 0.025, hook.LastEntry().Data["time"])
+	require.Equal(t, 0.025, hook.LastEntry().Data["duration"])
 	require.Equal(t, response, hook.LastEntry().Data["response"])
 	require.Equal(t, "call processed", hook.LastEntry().Message)
 

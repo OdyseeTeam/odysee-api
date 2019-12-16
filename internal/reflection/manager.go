@@ -8,8 +8,8 @@ import (
 
 	"github.com/lbryio/lbrytv/internal/monitor"
 
-	"github.com/lbryio/lbry.go/extras/errors"
-	"github.com/lbryio/lbry.go/stream"
+	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/lbryio/lbry.go/v2/stream"
 	"github.com/lbryio/reflector.go/reflector"
 )
 
@@ -55,6 +55,12 @@ func (r *Manager) Initialize() {
 		logger.Log().Errorf("reflection was NOT initialized, cannot connect to reflector: %v", err)
 		return
 	}
+	f, err := os.Open(r.blobsPath)
+	if err != nil {
+		logger.Log().Errorf("reflection was NOT initialized, cannot open blob folder: %v", err)
+		return
+	}
+	defer f.Close()
 	r.uploader = &c
 	logger.Log().Infof("manager initialized")
 }

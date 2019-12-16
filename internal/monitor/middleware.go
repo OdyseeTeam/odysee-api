@@ -14,7 +14,7 @@ const responseSnippetLength = 500
 
 var errGeneric = errors.New("handler responded with an error")
 
-var httpLogger = NewModuleLogger("http")
+var httpLogger = NewModuleLogger("monitor")
 
 // loggingWriter mimics http.ResponseWriter but stores a snippet of response, status code
 // and response size for easier logging

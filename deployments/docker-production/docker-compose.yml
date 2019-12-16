@@ -21,6 +21,7 @@ services:
         awslogs-group: lbrytv
         awslogs-region: us-east-1
         awslogs-stream: app
+    restart: unless-stopped
     labels:
       com.centurylinklabs.watchtower.enable: true
   lbrynet:

@@ -1,8 +1,6 @@
 package monitor
 
 import (
-	"io/ioutil"
-
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/version"
 
@@ -18,18 +16,8 @@ const TokenF = "token"
 // ValueMask is what replaces sensitive fields contents in logs.
 const ValueMask = "****"
 
-// ModuleLogger contains module-specific logger details.
-type ModuleLogger struct {
-	ModuleName string
-	Logger     *logrus.Logger
-	Level      logrus.Level
-}
-
-// F can be supplied to ModuleLogger's Log function for providing additional log context.
-type F map[string]interface{}
-
 var jsonFormatter = logrus.JSONFormatter{DisableTimestamp: true}
-var textFormatter = logrus.TextFormatter{FullTimestamp: true, TimestampFormat: "15:04"}
+var textFormatter = logrus.TextFormatter{FullTimestamp: true, TimestampFormat: "15:04:05"}
 
 // init magic is needed so logging is set up without calling it in every package explicitly
 func init() {
@@ -53,8 +41,8 @@ func SetupLogging() {
 	} else {
 		mode = "develop"
 
-		logrus.SetLevel(logrus.DebugLevel)
-		Logger.SetLevel(logrus.DebugLevel)
+		logrus.SetLevel(logrus.TraceLevel)
+		Logger.SetLevel(logrus.TraceLevel)
 		logrus.SetFormatter(&textFormatter)
 		Logger.SetFormatter(&textFormatter)
 	}
@@ -63,56 +51,12 @@ func SetupLogging() {
 	Logger.Infof("logging initialized (loglevel=%v)", Logger.Level.String())
 }
 
-// NewModuleLogger creates a new ModuleLogger instance carrying module name
-// for later `Log()` calls.
-func NewModuleLogger(moduleName string) ModuleLogger {
-	logger := getBaseLogger()
-	modLogger := ModuleLogger{
-		ModuleName: moduleName,
-		Logger:     logger,
-		Level:      logger.GetLevel(),
-	}
-	modLogger.Log().Debugf("module logger initialized (level=%v)", modLogger.Level)
-	return modLogger
-}
-
-// LogF returns a new log entry containing additional info provided by fields,
-// which can be called upon with a corresponding logLevel.
-// Example:
-//  LogF("storage", F{"query": "..."}).Info("query error")
-func (l ModuleLogger) LogF(fields F) *logrus.Entry {
-	logFields := logrus.Fields{}
-	logFields["module"] = l.ModuleName
-	for k, v := range fields {
-		if k == TokenF && v != "" && config.IsProduction() {
-			logFields[k] = ValueMask
-		} else {
-			logFields[k] = v
-		}
-	}
-	return l.Logger.WithFields(logFields)
-}
-
-// Log returns a new log entry for the module
-// which can be called upon with a corresponding logLevel.
-// Example:
-//  Log().Info("query error")
-func (l ModuleLogger) Log() *logrus.Entry {
-	return l.Logger.WithFields(logrus.Fields{"module": l.ModuleName})
-}
-
-// Disable turns off logging output for this module logger
-func (l ModuleLogger) Disable() {
-	l.Logger.SetLevel(logrus.PanicLevel)
-	l.Logger.SetOutput(ioutil.Discard)
-}
-
 // LogSuccessfulQuery takes a remote method name, execution time and params and logs it
 func LogSuccessfulQuery(method string, time float64, params interface{}, response interface{}) {
 	fields := logrus.Fields{
-		"method": method,
-		"time":   time,
-		"params": params,
+		"method":   method,
+		"duration": time,
+		"params":   params,
 	}
 	if config.ShouldLogResponses() {
 		fields["response"] = response
@@ -134,8 +78,6 @@ func LogFailedQuery(method string, query interface{}, errorResponse interface{})
 		"query":    query,
 		"response": errorResponse,
 	}).Error("daemon responded with an error")
-
-	captureFailedQuery(method, query, errorResponse)
 }
 
 type QueryMonitor interface {
@@ -177,9 +119,9 @@ func NewProxyLogger() *ProxyLogger {
 
 func (l *ProxyLogger) LogSuccessfulQuery(method string, time float64, params interface{}, response interface{}) {
 	fields := logrus.Fields{
-		"method": method,
-		"time":   time,
-		"params": params,
+		"method":   method,
+		"duration": time,
+		"params":   params,
 	}
 	if config.ShouldLogResponses() {
 		fields["response"] = response
@@ -194,8 +136,6 @@ func (l *ProxyLogger) LogFailedQuery(method string, params interface{}, errorRes
 		"params":   params,
 		"response": errorResponse,
 	}).Error("error from the target endpoint")
-
-	captureFailedQuery(method, params, errorResponse)
 }
 
 func (l *ProxyLogger) Error(message string) {

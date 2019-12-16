@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/lbryio/lbry.go/v2/stream"
 )
 
 // CopyN copies n bytes (or until an error) from src to dst.
@@ -21,7 +19,7 @@ import (
 // If dst implements the ReaderFrom interface,
 // the copy is implemented using it.
 func CopyN(dst io.Writer, src io.Reader, n int64) (written int64, err error) {
-	buf := make([]byte, stream.MaxBlobSize)
+	buf := make([]byte, 1024*256)
 	written, err = io.CopyBuffer(dst, io.LimitReader(src, n), buf)
 	if written == n {
 		return n, nil
@@ -146,7 +144,7 @@ func serveContent(w http.ResponseWriter, r *http.Request, name string, modtime t
 	w.WriteHeader(code)
 
 	if r.Method != "HEAD" {
-		CopyN(w, sendContent, sendSize)
+		io.CopyN(w, sendContent, sendSize)
 	}
 }
 

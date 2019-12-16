@@ -22,30 +22,37 @@ var logger = monitor.NewModuleLogger("server")
 type Server struct {
 	monitor.ModuleLogger
 
-	InterruptChan  chan os.Signal
 	DefaultHeaders map[string]string
 	Environment    *environment.Env
 	ProxyService   *proxy.ProxyService
 
+	stopChan chan os.Signal
+	stopWait time.Duration
 	address  string
 	router   *mux.Router
 	listener *http.Server
 }
 
-// ServerOpts holds basic web server settings
-type ServerOpts struct {
-	Address      string
-	ProxyService *proxy.ProxyService
+// Options holds basic web server settings.
+type Options struct {
+	Address         string
+	ProxyService    *proxy.ProxyService
+	StopWaitSeconds int
 }
 
-// NewServer returns a server initialized with settings from global config.
-func NewServer(opts ServerOpts) *Server {
+// NewServer returns a server initialized with settings from supplied options.
+func NewServer(opts Options) *Server {
 	s := &Server{
 		ModuleLogger:   monitor.NewModuleLogger("server"),
-		InterruptChan:  make(chan os.Signal),
+		stopChan:       make(chan os.Signal),
 		DefaultHeaders: make(map[string]string),
 		ProxyService:   opts.ProxyService,
 		address:        opts.Address,
+	}
+	if opts.StopWaitSeconds != 0 {
+		s.stopWait = time.Second * time.Duration(opts.StopWaitSeconds)
+	} else {
+		s.stopWait = time.Second * 15
 	}
 	s.DefaultHeaders["Server"] = "api.lbry.tv"
 	s.DefaultHeaders["Access-Control-Allow-Origin"] = "*"
@@ -89,13 +96,9 @@ func (s *Server) configureRouter() *mux.Router {
 // Start starts a http server and returns immediately.
 func (s *Server) Start() error {
 	go func() {
-		err := s.listener.ListenAndServe()
-		if err != nil {
-			// Normal graceful shutdown error
-			if err.Error() == "http: Server closed" {
-				logger.Log().Info(err)
-			} else {
-				logger.Log().Fatal(err)
+		if err := s.listener.ListenAndServe(); err != nil {
+			if err.Error() != "http: Server closed" {
+				logger.Log().Error(err)
 			}
 		}
 	}()
@@ -105,9 +108,11 @@ func (s *Server) Start() error {
 
 // ServeUntilShutdown blocks until a shutdown signal is received, then shuts down the http server.
 func (s *Server) ServeUntilShutdown() {
-	signal.Notify(s.InterruptChan, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT)
-	sig := <-s.InterruptChan
+	signal.Notify(s.stopChan, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGINT)
+	sig := <-s.stopChan
+
 	logger.Log().Printf("caught a signal (%v), shutting down http server...", sig)
+
 	err := s.Shutdown()
 	if err != nil {
 		logger.Log().Error("error shutting down server: ", err)
@@ -118,6 +123,8 @@ func (s *Server) ServeUntilShutdown() {
 
 // Shutdown gracefully shuts down the peer server.
 func (s *Server) Shutdown() error {
-	err := s.listener.Shutdown(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), s.stopWait)
+	defer cancel()
+	err := s.listener.Shutdown(ctx)
 	return err
 }

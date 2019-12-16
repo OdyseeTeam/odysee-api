@@ -256,6 +256,9 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 		return r, NewInternalError(err)
 	}
 
+	// We want to account for method duration whether it succeeded or not
+	metrics.ProxyCallDurations.WithLabelValues(q.Method()).Observe(duration)
+
 	// This checks if LbrynetServer responded with missing wallet error and tries to reload it,
 	// then repeat the request again.
 	// TODO: Refactor this and move somewhere else
@@ -274,7 +277,6 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 			c.service.logger.LogFailedQuery(q.Method(), q.Params(), r.Error)
 		}
 	} else {
-		metrics.ProxyCallDurations.WithLabelValues(q.Method()).Observe(duration)
 		c.service.logger.LogSuccessfulQuery(q.Method(), duration, q.Params(), r)
 	}
 

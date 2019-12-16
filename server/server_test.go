@@ -15,7 +15,7 @@ import (
 )
 
 func TestStartAndServeUntilShutdown(t *testing.T) {
-	server := NewServer(ServerOpts{
+	server := NewServer(Options{
 		Address:      "localhost:40080",
 		ProxyService: proxy.NewService(router.NewDefault()),
 	})
@@ -27,7 +27,7 @@ func TestStartAndServeUntilShutdown(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, http.StatusOK, response.StatusCode)
-	server.InterruptChan <- syscall.SIGINT
+	server.stopChan <- syscall.SIGINT
 
 	// Retry 10 times to give the server a chance to shut down
 	for range [10]int{} {
@@ -46,7 +46,7 @@ func TestHeaders(t *testing.T) {
 		response *http.Response
 	)
 
-	server := NewServer(ServerOpts{
+	server := NewServer(Options{
 		Address:      "localhost:40080",
 		ProxyService: proxy.NewService(router.NewDefault()),
 	})
@@ -70,5 +70,5 @@ func TestHeaders(t *testing.T) {
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 	assert.Equal(t, "*", response.Header.Get("Access-Control-Allow-Origin"))
 
-	server.InterruptChan <- syscall.SIGINT
+	server.stopChan <- syscall.SIGINT
 }

@@ -120,8 +120,8 @@ func TestCallerCallResolve(t *testing.T) {
 	svc := NewService(router.NewDefault())
 	c := svc.NewCaller("")
 
-	resolvedURL := "one#3ae4ed38414e426c29c2bd6aeab7a6ac5da74a98"
-	resolvedClaimID := "3ae4ed38414e426c29c2bd6aeab7a6ac5da74a98"
+	resolvedURL := "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
+	resolvedClaimID := "6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
 
 	request := newRawRequest(t, "resolve", map[string]string{"urls": resolvedURL})
 	rawCallReponse := c.Call(request)
@@ -131,6 +131,32 @@ func TestCallerCallResolve(t *testing.T) {
 
 	parseRawResponse(t, rawCallReponse, &resolveResponse)
 	assert.Equal(t, resolvedClaimID, resolveResponse[resolvedURL].ClaimID)
+}
+
+func TestCallerCallWalletBalance(t *testing.T) {
+	var accountBalanceResponse ljsonrpc.AccountBalanceResponse
+
+	rand.Seed(time.Now().UnixNano())
+	dummyUserID := rand.Intn(10^6-10^3) + 10 ^ 3
+
+	_, wid, err := lbrynet.InitializeWallet(dummyUserID)
+	require.NoError(t, err)
+
+	svc := NewService(router.NewDefault())
+	request := newRawRequest(t, "wallet_balance", nil)
+
+	c := svc.NewCaller("")
+	result := c.Call(request)
+	assert.Contains(t, string(result), `"message": "account identificator required"`)
+
+	c = svc.NewCaller(wid)
+	hook := logrus_test.NewLocal(svc.logger.Logger())
+	result = c.Call(request)
+
+	parseRawResponse(t, result, &accountBalanceResponse)
+	assert.EqualValues(t, "0", fmt.Sprintf("%v", accountBalanceResponse.Available))
+	assert.Equal(t, map[string]interface{}{"wallet_id": fmt.Sprintf("%v", wid)}, hook.LastEntry().Data["params"])
+	assert.Equal(t, "wallet_balance", hook.LastEntry().Data["method"])
 }
 
 func TestCallerCallDoesReloadWallet(t *testing.T) {

@@ -48,22 +48,50 @@ var (
 		Subsystem: "blob",
 		Name:      "download_seconds",
 		Help:      "Blob download durations",
+		Buckets:   []float64{0.1, 0.3, 0.6, 1.2},
 	})
-	PlayerBlobDecodeDurations = promauto.NewHistogram(prometheus.HistogramOpts{
+	PlayerBlobDeliveryDurations = promauto.NewHistogram(prometheus.HistogramOpts{
 		Namespace: nsPlayer,
 		Subsystem: "blob",
-		Name:      "decode_seconds",
-		Help:      "Blob decode durations",
+		Name:      "delivery_seconds",
+		Help:      "Blob delivery durations",
+		Buckets:   []float64{0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0},
 	})
+
 	PlayerSuccessesCount = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: nsPlayer,
 		Name:      "successes_total",
-		Help:      "Total number of successfully served blobs",
+		Help:      "Total number of successfully loaded blobs",
 	})
 	PlayerFailuresCount = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: nsPlayer,
 		Name:      "failures_total",
-		Help:      "Total number of errors serving blobs",
+		Help:      "Total number of errors getting blobs",
+	})
+
+	PlayerCacheHitCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: nsPlayer,
+		Subsystem: "cache",
+		Name:      "hit_count",
+		Help:      "Total number of blobs found in the local cache",
+	})
+	PlayerCacheMissCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: nsPlayer,
+		Subsystem: "cache",
+		Name:      "miss_count",
+		Help:      "Total number of blobs that were not in the local cache",
+	})
+	PlayerCacheErrorCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: nsPlayer,
+		Subsystem: "cache",
+		Name:      "error_count",
+		Help:      "Total number of errors retrieving blobs from the local cache",
+	})
+	PlayerCacheSize = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: nsPlayer,
+		Subsystem: "cache",
+		Name:      "size",
+		Help:      "Current size of cache",
 	})
 
 	IAPIAuthSuccessDurations = promauto.NewHistogram(prometheus.HistogramOpts{
@@ -83,7 +111,7 @@ var (
 		prometheus.SummaryOpts{
 			Namespace:  nsProxy,
 			Subsystem:  "calls",
-			Name:       "successful_seconds",
+			Name:       "total_seconds",
 			Help:       "Method call latency distributions",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		},
@@ -99,4 +127,11 @@ var (
 		},
 		[]string{"method"},
 	)
+	ProxyCallHistogram = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: nsProxy,
+		Subsystem: "calls",
+		Name:      "histogram_seconds",
+		Help:      "Method calls latency histogram",
+		Buckets:   []float64{0.01, 0.05, 0.1, 0.3, 0.6, 1.2, 3.0},
+	})
 )
