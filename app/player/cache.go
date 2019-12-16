@@ -154,13 +154,13 @@ func (c *fsCache) Get(hash string) (ReadableChunk, bool) {
 			c.rCache.Del(value)
 			return nil, false
 		}
-		metrics.PlayerCacheHitCount.Inc()
 		cb, err := initCachedChunk(f)
 		f.Close()
 		if err != nil {
 			CacheLogger.Log().Errorf("chunk %v found in cache but couldn't read the file: %v", hash, err)
 			return nil, false
 		}
+		metrics.PlayerCacheHitCount.Inc()
 		return cb, true
 	}
 	metrics.PlayerCacheMissCount.Inc()
