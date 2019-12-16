@@ -37,6 +37,8 @@ func (h RequestHandler) processStreamError(w http.ResponseWriter, uri string, er
 		h.writeErrorResponse(w, http.StatusNotFound, err.Error())
 	} else if strings.Contains(err.Error(), "blob not found") {
 		h.writeErrorResponse(w, http.StatusServiceUnavailable, err.Error())
+	} else if strings.Contains(err.Error(), "hash in response does not match") {
+		h.writeErrorResponse(w, http.StatusServiceUnavailable, err.Error())
 	} else {
 		monitor.CaptureException(err, map[string]string{"uri": uri})
 		h.writeErrorResponse(w, http.StatusInternalServerError, err.Error())
