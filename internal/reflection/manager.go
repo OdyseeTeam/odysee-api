@@ -17,11 +17,12 @@ var logger = monitor.NewModuleLogger("reflection")
 
 // Manager represents an object for managing and scheduling published data upload to reflectors.
 type Manager struct {
-	blobsPath   string
-	reflector   string
-	uploader    *reflector.Client
-	abortTimer  chan bool
-	abortUpload chan bool
+	blobsPath       string
+	reflector       string
+	uploader        *reflector.Client
+	stopChan        chan bool
+	abortUploadChan chan bool
+	isInitialized   bool
 }
 
 // ReflError contains a blob file name and an error
@@ -41,33 +42,38 @@ type RunStats struct {
 // To initialize a returned instance (connect to the reflector DB), call Initialize() on it.
 func NewManager(blobsPath string, reflector string) *Manager {
 	return &Manager{
-		blobsPath:  blobsPath,
-		reflector:  reflector,
-		abortTimer: make(chan bool),
+		blobsPath: blobsPath,
+		reflector: reflector,
+		stopChan:  make(chan bool),
 	}
 }
 
 // Initialize connects to the reflector database
 func (r *Manager) Initialize() {
 	c := reflector.Client{}
-	err := c.Connect(r.reflector)
+	r.uploader = &c
+
+	err := r.uploader.Connect(r.reflector)
 	if err != nil {
-		logger.Log().Errorf("reflection was NOT initialized, cannot connect to reflector: %v", err)
+		logger.Log().Errorf("reflection was NOT initialized: %v", err)
 		return
 	}
+	defer r.uploader.Close()
+
 	f, err := os.Open(r.blobsPath)
 	if err != nil {
-		logger.Log().Errorf("reflection was NOT initialized, cannot open blob folder: %v", err)
+		logger.Log().Errorf("reflection was NOT initialized: %v", err)
 		return
 	}
 	defer f.Close()
-	r.uploader = &c
+
+	r.isInitialized = true
 	logger.Log().Infof("manager initialized")
 }
 
 // IsInitialized returns true whenever Manager object is ready to use.
 func (r *Manager) IsInitialized() bool {
-	return r.uploader != nil
+	return r.isInitialized
 }
 
 // Start launches blob upload procedure at specified intervals.
@@ -82,7 +88,7 @@ func (r *Manager) Start(interval time.Duration) {
 	go func() {
 		for {
 			select {
-			case <-r.abortTimer:
+			case <-r.stopChan:
 				logger.Log().Info("stopping reflection...")
 				ticker.Stop()
 				logger.Log().Info("stopped")
@@ -90,7 +96,7 @@ func (r *Manager) Start(interval time.Duration) {
 			case <-ticker.C:
 				stats, err := r.ReflectAll()
 				if err != nil {
-					logger.Log().Error("failed to start reflection: ", err)
+					logger.Log().Errorf("failed to reflect blobs: %v", err)
 				} else {
 					logger.Log().Infof(
 						"total blob: %v, reflected/removed: %v, errors encountered: %v",
@@ -108,8 +114,8 @@ func (r *Manager) Start(interval time.Duration) {
 // Abort resets the upload schedule and cancels blob upload
 // after the currently uploading blob is finished.
 func (r *Manager) Abort() {
-	r.abortTimer <- true
-	r.abortUpload <- true
+	r.stopChan <- true
+	r.abortUploadChan <- true
 }
 
 // ReflectAll uploads and then deletes all blobs in the blob directory.
@@ -141,9 +147,14 @@ func (r *Manager) ReflectAll() (*RunStats, error) {
 	stats.TotalBlobs = len(pendingFilenames)
 	log.Debugf("%v blobs found", stats.TotalBlobs)
 
+	err = r.uploader.Connect(r.reflector)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, f := range pendingFilenames {
 		select {
-		case <-r.abortUpload:
+		case <-r.abortUploadChan:
 			break
 		default:
 		}
@@ -153,6 +164,7 @@ func (r *Manager) ReflectAll() (*RunStats, error) {
 			stats.Errors = append(stats.Errors, ReflError{f, err})
 			continue
 		}
+
 		err = r.uploader.SendBlob(stream.Blob(b))
 		if errors.Is(err, reflector.ErrBlobExists) || err == nil {
 			stats.ReflectedBlobs++
