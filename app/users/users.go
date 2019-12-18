@@ -85,7 +85,7 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 		lbrynetServer models.LbrynetServer
 		wid           string
 	)
-	doWalletInit := true
+
 	token := q.Token
 
 	log := s.Logger.LogF(monitor.F{"token": token})
@@ -96,14 +96,18 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 	}
 
 	// Update log entry with extra context data
-	log = s.Logger.LogF(monitor.F{"token": token, "id": remoteUser.ID, "email": remoteUser.Email})
-	if remoteUser.Email == "" {
+	log = s.Logger.LogF(monitor.F{
+		"token":     token,
+		"id":        remoteUser.ID,
+		"has_email": remoteUser.HasVerifiedEmail,
+	})
+	if !remoteUser.HasVerifiedEmail {
 		return nil, nil
 	}
 
 	localUser, errStorage := s.getDBUser(remoteUser.ID)
 	if errStorage == sql.ErrNoRows {
-		log.Infof("user was not found in the database, creating")
+		log.Infof("user not found in the database, creating")
 		localUser, err = s.createDBUser(remoteUser.ID)
 		if err != nil {
 			return nil, err
@@ -119,8 +123,7 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 			return nil, err
 		}
 
-		doWalletInit = false
-		log = s.Logger.LogF(monitor.F{"token": token, "id": remoteUser.ID, "email": remoteUser.Email, "wallet_id": wid})
+		log.Data["wallet_id"] = wid
 	} else if errStorage != nil {
 		return nil, errStorage
 	}
@@ -132,20 +135,13 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 		if err != nil {
 			return nil, err
 		}
-		doWalletInit = false
+
 		err := s.postCreateUpdate(localUser, lbrynetServer, wid)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	// TODO: Marked for removal, check proxy/service.go for wallet reloading
-	if doWalletInit {
-		// err = s.initializeWallet(localUser)
-		// if err != nil && !errors.As(err, &lbrynet.WalletAlreadyLoaded{}) {
-		// 	return nil, err
-		// }
-	}
 	return localUser, nil
 }
 

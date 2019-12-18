@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path"
@@ -39,37 +37,6 @@ func copyToDocker(t *testing.T, fileName string) {
 	}
 }
 
-func launchDummyAPIServer() *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{
-			"success": true,
-			"error": null,
-			"data": {
-			  "id": 751365,
-			  "language": "en",
-			  "given_name": null,
-			  "family_name": null,
-			  "created_at": "2019-01-17T12:13:06Z",
-			  "updated_at": "2019-05-02T13:57:59Z",
-			  "invited_by_id": null,
-			  "invited_at": null,
-			  "invites_remaining": 0,
-			  "invite_reward_claimed": false,
-			  "is_email_enabled": true,
-			  "manual_approval_user_id": 837139,
-			  "reward_status_change_trigger": "manual",
-			  "primary_email": "andrey@lbry.com",
-			  "has_verified_email": true,
-			  "is_identity_verified": false,
-			  "is_reward_approved": true,
-			  "groups": []
-			}
-		}`))
-	}))
-}
-
 func TestLbrynetPublisher(t *testing.T) {
 	// dummyUserID := 751365
 	authToken := "zzz"
@@ -84,7 +51,7 @@ func TestLbrynetPublisher(t *testing.T) {
 	c.SetDefaultConnection()
 	defer connCleanup()
 
-	ts := launchDummyAPIServer()
+	ts := users.StartAuthenticatingAPIServer(751365)
 	defer ts.Close()
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()

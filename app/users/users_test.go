@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -26,79 +24,6 @@ import (
 
 const dummyUserID = 751365
 const dummyServerURL = "http://127.0.0.1:59988"
-
-func launchDummyAPIServer(response []byte) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		w.Write(response)
-	}))
-}
-
-func launchAuthenticatingAPIServer(userID int) *httptest.Server {
-	return launchDummyAPIServer([]byte(
-		fmt.Sprintf(`
-		{
-			"success": true,
-			"error": null,
-			"data": {
-			"id": %v,
-			"language": "en",
-			"given_name": null,
-			"family_name": null,
-			"created_at": "2019-01-17T12:13:06Z",
-			"updated_at": "2019-05-02T13:57:59Z",
-			"invited_by_id": null,
-			"invited_at": null,
-			"invites_remaining": 0,
-			"invite_reward_claimed": false,
-			"is_email_enabled": true,
-			"manual_approval_user_id": 837139,
-			"reward_status_change_trigger": "manual",
-			"primary_email": "user@domain.com",
-			"has_verified_email": true,
-			"is_identity_verified": false,
-			"is_reward_approved": true,
-			"groups": []
-			}
-		}`, userID)))
-}
-
-func launchEasyAPIServer() *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t := r.PostFormValue("auth_token")
-
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-
-		reply := fmt.Sprintf(`
-		{
-			"success": true,
-			"error": null,
-			"data": {
-				"id": %v,
-				"language": "en",
-				"given_name": null,
-				"family_name": null,
-				"created_at": "2019-01-17T12:13:06Z",
-				"updated_at": "2019-05-02T13:57:59Z",
-				"invited_by_id": null,
-				"invited_at": null,
-				"invites_remaining": 0,
-				"invite_reward_claimed": false,
-				"is_email_enabled": true,
-				"manual_approval_user_id": 837139,
-				"reward_status_change_trigger": "manual",
-				"primary_email": "user@domain.com",
-				"has_verified_email": true,
-				"is_identity_verified": false,
-				"is_reward_approved": true,
-				"groups": []
-			}
-		}`, t)
-		w.Write([]byte(reply))
-	}))
-}
 
 func TestMain(m *testing.M) {
 	dbConfig := config.GetDatabase()
@@ -128,7 +53,7 @@ func setupCleanupDummyUser(uidParam ...int) func() {
 		uid = dummyUserID
 	}
 
-	ts := launchAuthenticatingAPIServer(uid)
+	ts := StartAuthenticatingAPIServer(uid)
 	config.Override("InternalAPIHost", ts.URL)
 
 	return func() {
@@ -161,7 +86,7 @@ func TestWalletServiceRetrieveNewUser(t *testing.T) {
 func TestWalletServiceRetrieveNonexistentUser(t *testing.T) {
 	setupDBTables()
 
-	ts := launchDummyAPIServer([]byte(`{
+	ts := StartDummyAPIServer([]byte(`{
 		"success": false,
 		"error": "could not authenticate user",
 		"data": null
@@ -199,7 +124,7 @@ func TestWalletServiceRetrieveExistingUserMissingWalletID(t *testing.T) {
 	setupDBTables()
 
 	uid := int(rand.Int31())
-	ts := launchAuthenticatingAPIServer(uid)
+	ts := StartAuthenticatingAPIServer(uid)
 	defer ts.Close()
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
@@ -214,34 +139,10 @@ func TestWalletServiceRetrieveExistingUserMissingWalletID(t *testing.T) {
 	assert.NotEqual(t, "", u.WalletID)
 }
 
-func TestWalletServiceRetrieveEmptyEmailNoUser(t *testing.T) {
+func TestWalletServiceRetrieveNoVerifiedEmail(t *testing.T) {
 	setupDBTables()
 
-	// API server returns empty email
-	ts := launchDummyAPIServer([]byte(`{
-		"success": true,
-		"error": null,
-		"data": {
-		  "id": 111111111,
-		  "language": "en",
-		  "given_name": null,
-		  "family_name": null,
-		  "created_at": "2019-01-17T12:13:06Z",
-		  "updated_at": "2019-05-02T13:57:59Z",
-		  "invited_by_id": null,
-		  "invited_at": null,
-		  "invites_remaining": 0,
-		  "invite_reward_claimed": false,
-		  "is_email_enabled": true,
-		  "manual_approval_user_id": 837139,
-		  "reward_status_change_trigger": "manual",
-		  "primary_email": null,
-		  "has_verified_email": true,
-		  "is_identity_verified": false,
-		  "is_reward_approved": true,
-		  "groups": []
-		}
-	}`))
+	ts := StartDummyAPIServer([]byte(fmt.Sprintf(userDoesntHaveVerifiedEmailResponse, 111)))
 	defer ts.Close()
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
@@ -255,7 +156,7 @@ func TestWalletServiceRetrieveEmptyEmailNoUser(t *testing.T) {
 func BenchmarkWalletCommands(b *testing.B) {
 	setupDBTables()
 
-	ts := launchEasyAPIServer()
+	ts := StartEasyAPIServer()
 	defer ts.Close()
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()

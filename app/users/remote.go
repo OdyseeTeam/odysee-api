@@ -11,8 +11,8 @@ import (
 
 // RemoteUser encapsulates internal-apis user data
 type RemoteUser struct {
-	ID    int
-	Email string
+	ID               int
+	HasVerifiedEmail bool
 }
 
 func getRemoteUser(token string, remoteIP string) (*RemoteUser, error) {
@@ -23,7 +23,7 @@ func getRemoteUser(token string, remoteIP string) (*RemoteUser, error) {
 	})
 
 	start := time.Now()
-	r, err := c.UserMe()
+	r, err := c.UserHasVerifiedEmail()
 	duration := time.Now().Sub(start).Seconds()
 
 	if err != nil {
@@ -33,9 +33,7 @@ func getRemoteUser(token string, remoteIP string) (*RemoteUser, error) {
 	}
 	metrics.IAPIAuthSuccessDurations.Observe(duration)
 
-	u.ID = int(r["id"].(float64))
-	if r["primary_email"] != nil {
-		u.Email = r["primary_email"].(string)
-	}
+	u.ID = int(r["user_id"].(float64))
+	u.HasVerifiedEmail = r["has_verified_email"].(bool)
 	return u, nil
 }
