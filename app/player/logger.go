@@ -34,18 +34,12 @@ func (l localLogger) streamRead(s *Stream, n int, calc ChunkCalculator) {
 }
 
 func (l localLogger) streamReadFailed(s *Stream, calc ChunkCalculator, err error) {
-	excFields := map[string]string{
+	logFields := monitor.F{
 		"uri":         s.URI,
 		"blob_calc":   calc.String(),
 		"seek_offset": fmt.Sprintf("%v", calc.Offset),
 		"size":        fmt.Sprintf("%v", s.Size),
 	}
-	logFields := monitor.F{}
-	for k, v := range excFields {
-		logFields[k] = v
-	}
-
-	monitor.CaptureException(err, excFields)
 	l.WithFields(logFields).Info("stream read failed: ", err)
 }
 
