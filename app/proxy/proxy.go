@@ -13,292 +13,116 @@ package proxy
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/lbryio/lbrytv/app/router"
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/lbrynet"
+	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
-	log "github.com/sirupsen/logrus"
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
 
-const cacheResolveLongerThan = 10
+type Preprocessor func(q *Query)
 
-// relaxedMethods are methods which are allowed to be called without wallet_id.
-var relaxedMethods = []string{
-	"blob_announce",
-	"status",
-	"resolve",
-	"transaction_show",
-	"stream_cost_estimate",
-	"claim_search",
-	"comment_list",
-	"version",
-	"routing_table_get",
+// ProxyService generates Caller objects and keeps execution time metrics
+// for all calls proxied through those objects.
+type ProxyService struct {
+	Router router.SDKRouter
+	logger monitor.QueryMonitor
 }
 
-// walletSpecificMethods are methods which require wallet_id.
-// This list will inevitably turn stale sooner or later as new methods
-// are added to the SDK so relaxedMethods should be used for strict validation
-// whether wallet_id is required.
-var walletSpecificMethods = []string{
-	"publish",
-
-	"address_unused",
-	"address_list",
-	"address_is_mine",
-
-	"account_list",
-	"account_balance",
-	"account_send",
-	"account_max_address_gap",
-
-	"channel_abandon",
-	"channel_create",
-	"channel_list",
-	"channel_update",
-	"channel_export",
-	"channel_import",
-
-	"comment_abandon",
-	"comment_create",
-	"comment_hide",
-
-	"claim_list",
-
-	"stream_abandon",
-	"stream_create",
-	"stream_list",
-	"stream_update",
-
-	"support_abandon",
-	"support_create",
-	"support_list",
-
-	"sync_apply",
-	"sync_hash",
-
-	"preference_get",
-	"preference_set",
-
-	"transaction_list",
-
-	"utxo_list",
-	"utxo_release",
-
-	"wallet_list",
-	"wallet_send",
-	"wallet_balance",
-	"wallet_encrypt",
-	"wallet_decrypt",
-	"wallet_lock",
-	"wallet_unlock",
-	"wallet_status",
+// Caller patches through JSON-RPC requests from clients, doing pre/post-processing,
+// account processing and validation.
+type Caller struct {
+	walletID     string
+	query        *jsonrpc.RPCRequest
+	client       jsonrpc.RPCClient
+	endpoint     string
+	service      *ProxyService
+	preprocessor Preprocessor
+	retries      int
 }
 
-// forbiddenMethods are not allowed for remote calling.
-// DEPRECATED: a sum of relaxedMethods and walletSpecificMethods should be used instead.
-var forbiddenMethods = []string{
-	"stop",
-
-	"account_add",
-	"account_create",
-	"account_encrypt",
-	"account_decrypt",
-	"account_fund",
-	"account_lock",
-	"account_remove",
-	"account_unlock",
-
-	"file_delete",
-	"file_list",
-	"file_reflect",
-	"file_save",
-	"file_set_status",
-
-	"peer_list",
-	"peer_ping",
-
-	"get",
-	"sync_apply",
-
-	"settings_get",
-	"settings_set",
-
-	"wallet_add",
-	"wallet_create",
-	"wallet_remove",
-
-	"blob_get",
-	"blob_reflect_all",
-	"blob_list",
-	"blob_delete",
-	"blob_reflect",
+// Query is a wrapper around client JSON-RPC query for easier (un)marshaling and processing.
+type Query struct {
+	Request    *jsonrpc.RPCRequest
+	rawRequest []byte
+	walletID   string
 }
 
-const forbiddenParam = paramAccountID
-
-const MethodGet = "get"
-const MethodFileList = "file_list"
-const MethodAccountList = "account_list"
-const MethodAccountBalance = "account_balance"
-const MethodStatus = "status"
-const MethodResolve = "resolve"
-const MethodClaimSearch = "claim_search"
-const MethodCommentList = "comment_list"
-
-const paramAccountID = "account_id"
-const paramWalletID = "wallet_id"
-const paramFundingAccountIDs = "funding_account_ids"
-const paramUrls = "urls"
-
-var ignoreLog = []string{
-	MethodAccountBalance,
-	MethodStatus,
-}
-
-var ResolveTime float64
-
-// UnmarshalRequest takes a raw json request body and serializes it into RPCRequest struct for further processing.
-func UnmarshalRequest(r []byte) (*jsonrpc.RPCRequest, error) {
-	var ur jsonrpc.RPCRequest
-	err := json.Unmarshal(r, &ur)
-	if err != nil {
-		return nil, fmt.Errorf("client json parse error: %v", err)
+// NewService is the entry point to proxy module.
+// Normally only one instance of ProxyService should be created per running server.
+func NewService(sdkRouter router.SDKRouter) *ProxyService {
+	s := ProxyService{
+		Router: sdkRouter,
+		logger: monitor.NewProxyLogger(),
 	}
-	return &ur, nil
+	return &s
 }
 
-// Proxy takes a parsed jsonrpc request, calls processors on it and passes it over to the daemon.
-// If accountID is supplied, it's injected as a request param.
-func Proxy(r *jsonrpc.RPCRequest, accountID string) ([]byte, error) {
-	resp := preprocessRequest(r, accountID)
-	if resp != nil {
-		return MarshalResponse(resp)
+// NewCaller returns an instance of Caller ready to proxy requests.
+// Note that `SetWalletID` needs to be called if an authenticated user is making this call.
+func (ps *ProxyService) NewCaller(walletID string) *Caller {
+	endpoint := ps.Router.GetSDKServerAddress(walletID)
+	c := Caller{
+		walletID: walletID,
+		client:   jsonrpc.NewClient(endpoint),
+		endpoint: endpoint,
+		service:  ps,
 	}
-	return ForwardCall(*r)
+	return &c
 }
 
-// MarshalResponse takes a raw json request body and serializes it into RPCRequest struct for further processing.
-func MarshalResponse(r *jsonrpc.RPCResponse) ([]byte, error) {
-	sr, err := json.MarshalIndent(r, "", "  ")
+// NewQuery initializes Query object with JSON-RPC request supplied as bytes.
+// The object is immediately usable and returns an error in case request parsing fails.
+func NewQuery(r []byte) (*Query, error) {
+	q := &Query{rawRequest: r, Request: &jsonrpc.RPCRequest{}}
+	err := q.unmarshal()
 	if err != nil {
 		return nil, err
 	}
-	return sr, nil
+	return q, nil
 }
 
-// NewErrorResponse is a shorthand for creating an RPCResponse instance with specified error message and code
-func NewErrorResponse(message string, code int) *jsonrpc.RPCResponse {
-	return &jsonrpc.RPCResponse{Error: &jsonrpc.RPCError{
-		Code:    code,
-		Message: message,
-	}}
-}
-
-func preprocessRequest(r *jsonrpc.RPCRequest, accountID string) *jsonrpc.RPCResponse {
-	var resp *jsonrpc.RPCResponse
-
-	resp = getPreconditionedQueryResponse(r.Method, r.Params)
-	if resp != nil {
-		return resp
-	}
-
-	if accountID != "" && methodInList(r.Method, walletSpecificMethods) {
-		monitor.Logger.WithFields(log.Fields{
-			"method": r.Method, "params": r.Params,
-		}).Info("got an account-specific method call")
-
-		if paramsMap, ok := r.Params.(map[string]interface{}); ok {
-			paramsMap["account_id"] = accountID
-			r.Params = paramsMap
-		} else {
-			r.Params = map[string]string{"account_id": accountID}
-		}
-	}
-	processQuery(r)
-
-	if shouldCache(r.Method, r.Params) {
-		cResp := responseCache.Retrieve(r.Method, r.Params)
-		if cResp != nil {
-			// TODO: Temporary hack to find out why the following line doesn't work
-			// if mResp, ok := cResp.(map[string]interface{}); ok {
-			s, _ := json.Marshal(cResp)
-			err := json.Unmarshal(s, &resp)
-			if err == nil {
-				resp.ID = r.ID
-				resp.JSONRPC = r.JSONRPC
-				monitor.LogCachedQuery(r.Method)
-				return resp
-			}
-		}
-	}
-	return resp
-}
-
-func NewRequest(method string, params ...interface{}) jsonrpc.RPCRequest {
-	if len(params) > 0 {
-		return *jsonrpc.NewRequest(method, params[0])
-	}
-	return *jsonrpc.NewRequest(method)
-}
-
-// RawCall makes an arbitrary jsonrpc request to the SDK
-func RawCall(request jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
-	sdkRouter := router.New(config.GetLbrynetServers())
-	rpcClient := jsonrpc.NewClient(sdkRouter.GetBalancedSDKAddress())
-	response, err := rpcClient.CallRaw(&request)
+func (q *Query) unmarshal() error {
+	err := json.Unmarshal(q.rawRequest, q.Request)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return response, nil
+	return nil
 }
 
-// ForwardCall passes a prepared jsonrpc request to the SDK and calls post-processors on the response.
-func ForwardCall(request jsonrpc.RPCRequest) ([]byte, error) {
-	var processedResponse *jsonrpc.RPCResponse
-	queryStartTime := time.Now()
-	callResult, err := RawCall(request)
-	if err != nil {
-		return nil, err
-	}
-	if callResult.Error == nil {
-		execTime := time.Now().Sub(queryStartTime).Seconds()
-
-		processedResponse, err = processResponse(&request, callResult)
-		if err != nil {
-			return nil, err
-		}
-
-		if shouldLog(request.Method) {
-			monitor.LogSuccessfulQuery(request.Method, execTime, request.Params, callResult)
-		}
-
-		if request.Method == "resolve" {
-			ResolveTime = execTime
-		}
-
-		if shouldCache(request.Method, request.Params) {
-			responseCache.Save(request.Method, request.Params, processedResponse)
-		}
-	} else {
-		processedResponse = callResult
-		monitor.LogFailedQuery(request.Method, request.Params, callResult.Error)
-	}
-
-	resp, err := MarshalResponse(processedResponse)
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
+// Method is a shortcut for query method.
+func (q *Query) Method() string {
+	return q.Request.Method
 }
 
-// shouldCache returns true if we got a resolve query with more than `cacheResolveLongerThan` urls in it.
-func shouldCache(method string, params interface{}) bool {
-	if method == MethodResolve && params != nil {
-		paramsMap := params.(map[string]interface{})
+// Params is a shortcut for query params.
+func (q *Query) Params() interface{} {
+	return q.Request.Params
+}
+
+// ParamsAsMap returns query params converted to plain map.
+func (q *Query) ParamsAsMap() map[string]interface{} {
+	if paramsMap, ok := q.Params().(map[string]interface{}); ok {
+		return paramsMap
+	}
+	return nil
+}
+
+// ParamsToStruct returns query params parsed into a supplied structure.
+func (q *Query) ParamsToStruct(targetStruct interface{}) error {
+	return ljsonrpc.Decode(q.Params(), targetStruct)
+}
+
+// cacheHit returns true if we got a resolve query with more than `cacheResolveLongerThan` urls in it.
+func (q *Query) isCacheable() bool {
+	if q.Method() == MethodResolve && q.Params() != nil {
+		paramsMap := q.Params().(map[string]interface{})
 		if urls, ok := paramsMap[paramUrls].([]interface{}); ok {
 			if len(urls) > cacheResolveLongerThan {
 				return true
@@ -308,25 +132,186 @@ func shouldCache(method string, params interface{}) bool {
 	return false
 }
 
-func shouldLog(method string) bool {
-	for _, m := range ignoreLog {
-		if m == method {
-			return false
-		}
-	}
-	return true
+func (q *Query) newResponse() *jsonrpc.RPCResponse {
+	var r jsonrpc.RPCResponse
+	r.ID = q.Request.ID
+	r.JSONRPC = q.Request.JSONRPC
+	return &r
 }
 
-func getQueryParams(query *jsonrpc.RPCRequest) (queryParams map[string]interface{}, err error) {
-	stringifiedParams, err := json.Marshal(query.Params)
+func (q *Query) SetWalletID(id string) {
+	q.walletID = id
+}
+
+// cacheHit returns cached response or nil in case it's a miss or query shouldn't be cacheable.
+func (q *Query) cacheHit() *jsonrpc.RPCResponse {
+	if q.isCacheable() {
+		if cached := responseCache.Retrieve(q.Method(), q.Params()); cached != nil {
+			// TODO: Temporary hack to find out why the following line doesn't work
+			// if mResp, ok := cResp.(map[string]interface{}); ok {
+			s, _ := json.Marshal(cached)
+			response := q.newResponse()
+			err := json.Unmarshal(s, &response)
+			if err == nil {
+				monitor.LogCachedQuery(q.Method())
+				return response
+			}
+		}
+	}
+	return nil
+}
+
+func (q *Query) predefinedResponse() *jsonrpc.RPCResponse {
+	if q.Method() == MethodStatus {
+		response := q.newResponse()
+		response.Result = getStatusResponse()
+		return response
+	}
+	return nil
+}
+
+func (q *Query) validate() CallError {
+	if !methodInList(q.Method(), relaxedMethods) && !methodInList(q.Method(), walletSpecificMethods) {
+		return NewMethodError(errors.New("forbidden method"))
+	}
+	if q.ParamsAsMap() != nil {
+		if _, ok := q.ParamsAsMap()[forbiddenParam]; ok {
+			return NewParamsError(fmt.Errorf("forbidden parameter supplied: %v", forbiddenParam))
+		}
+	}
+
+	if !methodInList(q.Method(), relaxedMethods) {
+		if q.walletID == "" {
+			return NewParamsError(errors.New("account identificator required"))
+		}
+		if p := q.ParamsAsMap(); p != nil {
+			p[paramWalletID] = q.walletID
+			q.Request.Params = p
+		} else {
+			q.Request.Params = map[string]interface{}{paramWalletID: q.walletID}
+		}
+	}
+
+	return nil
+}
+
+// SetPreprocessor applies provided function to query before it's sent to the LbrynetServer.
+func (c *Caller) SetPreprocessor(p Preprocessor) {
+	c.preprocessor = p
+}
+
+// WalletID is an LbrynetServer wallet ID for the client this caller instance is serving.
+func (c *Caller) WalletID() string {
+	return c.walletID
+}
+
+func (c *Caller) marshal(r *jsonrpc.RPCResponse) ([]byte, CallError) {
+	serialized, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
+		return nil, NewError(err)
+	}
+	return serialized, nil
+}
+
+func (c *Caller) marshalError(e CallError) []byte {
+	serialized, err := json.MarshalIndent(e.AsRPCResponse(), "", "  ")
+	if err != nil {
+		return []byte(err.Error())
+	}
+	return serialized
+}
+
+func (c *Caller) sendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
+	response, err := c.client.CallRaw(q.Request)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
+	q, err := NewQuery(rawQuery)
+	if err != nil {
+		c.service.logger.Errorf("malformed JSON from client: %s", err.Error())
+		return nil, NewParseError(err)
+	}
+
+	if c.WalletID() != "" {
+		q.SetWalletID(c.WalletID())
+	}
+
+	// Check for account identificator (wallet ID) for account-specific methods happens here
+	if err := q.validate(); err != nil {
 		return nil, err
 	}
 
-	queryParams = map[string]interface{}{}
-	err = json.Unmarshal(stringifiedParams, &queryParams)
-	if err != nil {
-		return nil, err
+	if cachedResponse := q.cacheHit(); cachedResponse != nil {
+		return cachedResponse, nil
 	}
-	return
+	if predefinedResponse := q.predefinedResponse(); predefinedResponse != nil {
+		return predefinedResponse, nil
+	}
+
+	if c.preprocessor != nil {
+		c.preprocessor(q)
+	}
+
+	queryStartTime := time.Now()
+	r, err := c.sendQuery(q)
+	duration := time.Since(queryStartTime).Seconds()
+	if err != nil {
+		return r, NewInternalError(err)
+	}
+
+	// We want to account for method duration whether it succeeded or not
+	metrics.ProxyCallDurations.WithLabelValues(q.Method()).Observe(duration)
+
+	// This checks if LbrynetServer responded with missing wallet error and tries to reload it,
+	// then repeat the request again.
+	// TODO: Refactor this and move somewhere else
+	if r.Error != nil {
+		wErr := lbrynet.NewWalletError(0, errors.New(r.Error.Message))
+		if c.retries == 0 && errors.As(wErr, &lbrynet.WalletNotLoaded{}) {
+			// We need to use Lbry JSON-RPC client here for eqsier request/response processing
+			client := ljsonrpc.NewClient(c.service.Router.GetSDKServerAddress(c.WalletID()))
+			_, err := client.WalletAdd(c.WalletID())
+			if err == nil {
+				c.retries++
+				return c.call(rawQuery)
+			}
+		} else {
+			metrics.ProxyCallFailedDurations.WithLabelValues(q.Method()).Observe(duration)
+			c.service.logger.LogFailedQuery(q.Method(), q.Params(), r.Error)
+		}
+	} else {
+		c.service.logger.LogSuccessfulQuery(q.Method(), duration, q.Params(), r)
+	}
+
+	r, err = processResponse(q.Request, r)
+	if err != nil {
+		return r, NewInternalError(err)
+	}
+
+	if q.isCacheable() {
+		responseCache.Save(q.Method(), q.Params(), r)
+	}
+	return r, nil
+}
+
+// Call method processes a raw query received from JSON-RPC client and forwards it to LbrynetServer.
+// It returns a response that is ready to be sent back to the JSON-RPC client as is.
+func (c *Caller) Call(rawQuery []byte) []byte {
+	r, err := c.call(rawQuery)
+	if err != nil {
+		monitor.CaptureException(err, map[string]string{"query": string(rawQuery), "response": fmt.Sprintf("%v", r)})
+		c.service.logger.Errorf("error calling lbrynet: %v, query: %s", err, rawQuery)
+		return c.marshalError(err)
+	}
+	serialized, err := c.marshal(r)
+	if err != nil {
+		monitor.CaptureException(err)
+		c.service.logger.Errorf("error marshaling response: %v", err)
+		return c.marshalError(err)
+	}
+	return serialized
 }

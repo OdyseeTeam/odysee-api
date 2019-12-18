@@ -10,7 +10,6 @@ import (
 
 	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/storage"
 )
 
@@ -36,7 +35,6 @@ func TestMain(m *testing.M) {
 	c.SetDefaultConnection()
 
 	defer connCleanup()
-	defer lbrynet.RemoveAccount(dummyUserID)
 
 	code := m.Run()
 
@@ -44,13 +42,12 @@ func TestMain(m *testing.M) {
 }
 
 func testFuncSetup() {
-	lbrynet.RemoveAccount(dummyUserID)
 	storage.Conn.Truncate([]string{"users"})
 	time.Sleep(testSetupWait)
 }
 
 func testFuncTeardown() {
-	lbrynet.RemoveAccount(dummyUserID)
+
 }
 
 func launchDummyAPIServer(response []byte) *httptest.Server {

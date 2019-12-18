@@ -1,16 +1,11 @@
 package users
 
 import (
-	"database/sql"
-
-	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
 
 	"github.com/lib/pq"
-	"github.com/pkg/errors"
 	xerrors "github.com/pkg/errors"
-	"github.com/volatiletech/null"
 	"github.com/volatiletech/sqlboiler/boil"
 )
 
@@ -77,79 +72,4 @@ func (s *UserService) createDBUser(id int) (*models.User, error) {
 		}
 	}
 	return u, nil
-}
-
-// Retrieve authenticates user with internal-api and retrieves/creates locally stored user.
-// Deprecated: WalletService.Retrieve should be used instead
-func (s *UserService) Retrieve(q Query) (*models.User, error) {
-	token := q.Token
-	log := s.Logger.LogF(monitor.F{"token": token})
-	var localUser *models.User
-
-	remoteUser, err := getRemoteUser(token, q.MetaRemoteIP)
-	if err != nil {
-		log.Info("couldn't authenticate user with internal-apis")
-		return nil, errors.Errorf("cannot authenticate user with internal-apis: %v", err)
-	}
-
-	log = s.Logger.LogF(monitor.F{"token": token, "id": remoteUser.ID, "email": remoteUser.Email})
-
-	if remoteUser.Email == "" {
-		log.Info("cannot authenticate internal-api user: email not confirmed")
-		return nil, errors.New("cannot authenticate user: email not confirmed")
-	}
-
-	localUser, errStorage := s.getDBUser(remoteUser.ID)
-	if errStorage == sql.ErrNoRows {
-		log.Infof("user ID=%v not found in the database, creating", remoteUser.ID)
-		localUser, err = s.createDBUser(remoteUser.ID)
-		if err != nil {
-			return nil, err
-		}
-
-		err = s.createSDKAccount(localUser)
-		if err != nil {
-			return nil, err
-		}
-	} else if errStorage != nil {
-		return nil, errStorage
-	}
-
-	if localUser.SDKAccountID.IsZero() {
-		log.Warnf("user ID=%v has empty fields in the database, retrieving from the SDK", remoteUser.ID)
-		acc, err := lbrynet.GetAccount(remoteUser.ID)
-		if err != nil {
-			monitor.CaptureException(err, map[string]string{"internal-api-id": string(remoteUser.ID)})
-			log.Errorf("could not retrieve user ID=%v from the SDK: %v", remoteUser.ID, err)
-			return nil, err
-		}
-		err = s.saveAccFields(savedAccFields{ID: acc.ID, PublicKey: acc.PublicKey}, localUser)
-	}
-
-	return localUser, nil
-}
-
-func (s *UserService) createSDKAccount(u *models.User) error {
-	newAccount, err := lbrynet.CreateAccount(u.ID)
-	if err != nil {
-		switch err.(type) {
-		case lbrynet.AccountConflict:
-			s.Logger.Log().Info("account creation conflict, proceeding")
-		default:
-			return err
-		}
-	} else {
-		err = s.saveAccFields(savedAccFields{ID: newAccount.ID, PublicKey: newAccount.PublicKey}, u)
-		if err != nil {
-			return err
-		}
-		s.Logger.Log().Info("created an sdk account")
-	}
-	return nil
-}
-
-func (s *UserService) saveAccFields(accFields savedAccFields, u *models.User) error {
-	u.SDKAccountID = null.NewString(accFields.ID, true)
-	_, err := u.UpdateG(boil.Infer())
-	return err
 }

@@ -98,7 +98,6 @@ func TestMain(m *testing.M) {
 	dbConn, connCleanup := storage.CreateTestConn(params)
 	dbConn.SetDefaultConnection()
 	defer connCleanup()
-	defer lbrynet.RemoveAccount(dummyUserID)
 
 	code := m.Run()
 
