@@ -1,9 +1,5 @@
 package proxy
 
-import (
-	"github.com/ybbus/jsonrpc"
-)
-
 const cacheResolveLongerThan = 10
 
 // relaxedMethods are methods which are allowed to be called without wallet_id.
@@ -137,14 +133,6 @@ const paramUrls = "urls"
 var ignoreLog = []string{
 	MethodAccountBalance,
 	MethodStatus,
-}
-
-// NewErrorResponse is a shorthand for creating an RPCResponse instance with specified error message and code
-func NewErrorResponse(message string, code int) *jsonrpc.RPCResponse {
-	return &jsonrpc.RPCResponse{Error: &jsonrpc.RPCError{
-		Code:    code,
-		Message: message,
-	}}
 }
 
 func shouldLog(method string) bool {

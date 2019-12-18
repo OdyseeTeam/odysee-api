@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/models"
 )
 
@@ -45,8 +46,7 @@ func (r *TestUserRetriever) Retrieve(q Query) (*models.User, error) {
 
 func StartDummyAPIServer(response []byte) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
+		responses.PrepareJSONWriter(w)
 		w.Write(response)
 	}))
 }
@@ -59,11 +59,8 @@ func StartAuthenticatingAPIServer(userID int) *httptest.Server {
 func StartEasyAPIServer() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t := r.PostFormValue("auth_token")
-
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-
 		reply := fmt.Sprintf(userHasVerifiedEmailResponse, t)
+		responses.PrepareJSONWriter(w)
 		w.Write([]byte(reply))
 	}))
 }

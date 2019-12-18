@@ -13,6 +13,7 @@ import (
 	"github.com/lbryio/lbrytv/app/router"
 
 	"github.com/lbryio/lbrytv/internal/lbrynet"
+	"github.com/lbryio/lbrytv/internal/responses"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	logrus_test "github.com/sirupsen/logrus/hooks/test"
@@ -284,8 +285,7 @@ func TestCallerCallSDKError(t *testing.T) {
 	var rpcResponse jsonrpc.RPCResponse
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
+		responses.PrepareJSONWriter(w)
 		w.Write([]byte(`
 		{
 			"jsonrpc": "2.0",
@@ -330,8 +330,7 @@ func TestCallerCallClientJSONError(t *testing.T) {
 	var rpcResponse jsonrpc.RPCResponse
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
+		responses.PrepareJSONWriter(w)
 		w.Write([]byte(`{"method":"version}`))
 	}))
 	svc := NewService(router.New(router.SingleLbrynetServer(ts.URL)))

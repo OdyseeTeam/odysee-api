@@ -1,6 +1,8 @@
 package proxy
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 func getStatusResponse() map[string]interface{} {
 	var response map[string]interface{}

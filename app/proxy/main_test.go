@@ -11,6 +11,7 @@ import (
 	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/storage"
+	"github.com/lbryio/lbrytv/internal/responses"
 )
 
 const dummyUserID = 751365
@@ -52,8 +53,7 @@ func testFuncTeardown() {
 
 func launchDummyAPIServer(response []byte) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
+		responses.PrepareJSONWriter(w)
 		w.Write(response)
 	}))
 }
@@ -61,8 +61,7 @@ func launchDummyAPIServer(response []byte) *httptest.Server {
 func launchDummyAPIServerDelayed(response []byte, delayMsec time.Duration) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(delayMsec * time.Millisecond)
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
+		responses.PrepareJSONWriter(w)
 		w.Write(response)
 	}))
 }
