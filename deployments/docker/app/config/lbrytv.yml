@@ -9,8 +9,6 @@ Database:
   DBName: lbrytv
   Options: sslmode=disable
 
-AccountsEnabled: true
-
 MetricsAddress: :2112
 MetricsPath: /metrics
 

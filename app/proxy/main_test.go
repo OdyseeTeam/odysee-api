@@ -23,8 +23,7 @@ var svc *ProxyService
 
 func TestMain(m *testing.M) {
 	rand.Seed(time.Now().UnixNano())
-	config.Override("AccountsEnabled", true)
-	defer config.RestoreOverridden()
+
 	svc = NewService(router.New(config.GetLbrynetServers()))
 
 	dbConfig := config.GetDatabase()

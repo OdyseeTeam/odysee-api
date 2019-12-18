@@ -68,9 +68,6 @@ func (c *ConfigWrapper) Init() {
 	c.Viper.SetDefault("ReflectorTimeout", int64(10))
 	c.Viper.SetDefault("RefractorTimeout", int64(10))
 
-	c.Viper.SetDefault("AccountsEnabled", false)
-	c.Viper.BindEnv("AccountsEnabled")
-
 	c.Viper.SetConfigName("lbrytv") // name of config file (without extension)
 
 	c.Viper.AddConfigPath(os.Getenv("LBRYTV_CONFIG_DIR"))
@@ -125,12 +122,7 @@ func RestoreOverridden() {
 	c.overridden = make(map[string]interface{})
 }
 
-// Concrete v variables go here
-
-// AccountsEnabled enables or disables accounts subsystem
-func AccountsEnabled() bool {
-	return Config.Viper.GetBool("AccountsEnabled")
-}
+// Defined config variables go here
 
 // GetAddress determines address to bind http API server to
 func GetAddress() string {
