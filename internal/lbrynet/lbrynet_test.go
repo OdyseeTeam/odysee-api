@@ -70,16 +70,3 @@ func TestCreateWalletAddWallet(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, w.ID, wallet.MakeID(uid))
 }
-
-func BenchmarkCreateAccount(b *testing.B) {
-	uids := [100]int{}
-	for i := 0; i <= len(uids); i++ {
-		uids[i] = generateTestUID()
-		_, err := CreateAccount(uids[i])
-		require.Nil(b, err)
-	}
-	for i := 0; i <= len(uids); i++ {
-		_, err := RemoveAccount(uids[i])
-		require.Nil(b, err)
-	}
-}

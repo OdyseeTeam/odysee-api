@@ -81,7 +81,7 @@ func responseProcessorFileList(query *jsonrpc.RPCRequest, response *jsonrpc.RPCR
 }
 
 func getDefaultAccount(accounts *ljsonrpc.AccountListResponse) *ljsonrpc.Account {
-	for _, account := range accounts.LBCMainnet {
+	for _, account := range accounts.Items {
 		if account.IsDefault {
 			return &account
 		}

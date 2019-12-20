@@ -1,13 +1,12 @@
 package proxy
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/lbryio/lbrytv/app/users"
-	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/lbryio/lbrytv/internal/responses"
 )
 
 var logger = monitor.NewModuleLogger("proxy_handlers")
@@ -39,29 +38,24 @@ func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var walletID string
-	if config.AccountsEnabled() {
-		q, err := NewQuery(body)
-		if err != nil || !methodInList(q.Method(), relaxedMethods) {
-			retriever := users.NewWalletService()
-			auth := users.NewAuthenticator(retriever)
-			walletID, err = auth.GetWalletID(r)
 
-			// TODO: Refactor error response creation
-			if err != nil {
-				response, _ := json.Marshal(NewErrorResponse(err.Error(), ErrAuthFailed))
-				w.Header().Set("Content-Type", "application/json; charset=utf-8")
-				w.WriteHeader(http.StatusOK)
-				w.Write(response)
-				monitor.CaptureRequestError(err, r, w)
-				return
-			}
+	q, err := NewQuery(body)
+	if err != nil || !methodInList(q.Method(), relaxedMethods) {
+		retriever := users.NewWalletService()
+		auth := users.NewAuthenticator(retriever)
+		walletID, err = auth.GetWalletID(r)
+
+		if err != nil {
+			responses.JSONRPCError(w, err.Error(), ErrAuthFailed)
+			monitor.CaptureRequestError(err, r, w)
+			return
 		}
 	}
+
 	c := rh.ProxyService.NewCaller(walletID)
 
 	rawCallReponse := c.Call(body)
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
+	responses.PrepareJSONWriter(w)
 	w.Write(rawCallReponse)
 }
 

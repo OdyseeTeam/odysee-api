@@ -2,20 +2,20 @@ package users
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
+	"github.com/sirupsen/logrus"
 
 	"github.com/lib/pq"
-	"github.com/pkg/errors"
 	xerrors "github.com/pkg/errors"
-	"github.com/volatiletech/null"
 	"github.com/volatiletech/sqlboiler/boil"
 )
 
-// UserService stores manipulated user data
-type UserService struct {
+// WalletService retrieves user wallet data.
+type WalletService struct {
 	Logger monitor.ModuleLogger
 }
 
@@ -40,18 +40,17 @@ type Query struct {
 	MetaRemoteIP string
 }
 
-// NewUserService returns UserService instance for retrieving or creating user records and accounts.
-// Deprecated: NewWalletService should be used instead
-func NewUserService() *UserService {
-	s := &UserService{Logger: monitor.NewModuleLogger("users")}
+// NewWalletService returns WalletService instance for retrieving or creating wallet-based user records and accounts.
+func NewWalletService() *WalletService {
+	s := &WalletService{Logger: monitor.NewModuleLogger("users")}
 	return s
 }
 
-func (s *UserService) getDBUser(id int) (*models.User, error) {
+func (s *WalletService) getDBUser(id int) (*models.User, error) {
 	return models.Users(models.UserWhere.ID.EQ(id)).OneG()
 }
 
-func (s *UserService) createDBUser(id int) (*models.User, error) {
+func (s *WalletService) createDBUser(id int) (*models.User, error) {
 	log := s.Logger.LogF(monitor.F{"id": id})
 
 	u := &models.User{}
@@ -79,77 +78,96 @@ func (s *UserService) createDBUser(id int) (*models.User, error) {
 	return u, nil
 }
 
-// Retrieve authenticates user with internal-api and retrieves/creates locally stored user.
-// Deprecated: WalletService.Retrieve should be used instead
-func (s *UserService) Retrieve(q Query) (*models.User, error) {
+// Retrieve gets user by internal-apis auth token provided in the supplied Query.
+func (s *WalletService) Retrieve(q Query) (*models.User, error) {
+	var (
+		localUser     *models.User
+		lbrynetServer models.LbrynetServer
+		wid           string
+	)
+
 	token := q.Token
+
 	log := s.Logger.LogF(monitor.F{"token": token})
-	var localUser *models.User
 
 	remoteUser, err := getRemoteUser(token, q.MetaRemoteIP)
 	if err != nil {
-		log.Info("couldn't authenticate user with internal-apis")
-		return nil, errors.Errorf("cannot authenticate user with internal-apis: %v", err)
+		return nil, s.LogErrorAndReturn(log, "cannot authenticate user with internal-apis: %v", err)
 	}
 
-	log = s.Logger.LogF(monitor.F{"token": token, "id": remoteUser.ID, "email": remoteUser.Email})
-
-	if remoteUser.Email == "" {
-		log.Info("cannot authenticate internal-api user: email not confirmed")
-		return nil, errors.New("cannot authenticate user: email not confirmed")
+	// Update log entry with extra context data
+	log = s.Logger.LogF(monitor.F{
+		"token":     token,
+		"id":        remoteUser.ID,
+		"has_email": remoteUser.HasVerifiedEmail,
+	})
+	if !remoteUser.HasVerifiedEmail {
+		return nil, nil
 	}
 
 	localUser, errStorage := s.getDBUser(remoteUser.ID)
 	if errStorage == sql.ErrNoRows {
-		log.Infof("user ID=%v not found in the database, creating", remoteUser.ID)
+		log.Infof("user not found in the database, creating")
 		localUser, err = s.createDBUser(remoteUser.ID)
 		if err != nil {
 			return nil, err
 		}
 
-		err = s.createSDKAccount(localUser)
+		lbrynetServer, wid, err = s.createWallet(localUser)
 		if err != nil {
 			return nil, err
 		}
+
+		err := s.postCreateUpdate(localUser, lbrynetServer, wid)
+		if err != nil {
+			return nil, err
+		}
+
+		log.Data["wallet_id"] = wid
 	} else if errStorage != nil {
 		return nil, errStorage
 	}
 
-	if localUser.SDKAccountID.IsZero() {
-		log.Warnf("user ID=%v has empty fields in the database, retrieving from the SDK", remoteUser.ID)
-		acc, err := lbrynet.GetAccount(remoteUser.ID)
+	// This scenario may happen for legacy users who are present in the database but don't have a wallet yet
+	if localUser.WalletID == "" {
+		log.Warn("user doesn't have wallet ID set")
+		lbrynetServer, wid, err = s.createWallet(localUser)
 		if err != nil {
-			monitor.CaptureException(err, map[string]string{"internal-api-id": string(remoteUser.ID)})
-			log.Errorf("could not retrieve user ID=%v from the SDK: %v", remoteUser.ID, err)
 			return nil, err
 		}
-		err = s.saveAccFields(savedAccFields{ID: acc.ID, PublicKey: acc.PublicKey}, localUser)
+
+		err := s.postCreateUpdate(localUser, lbrynetServer, wid)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return localUser, nil
 }
 
-func (s *UserService) createSDKAccount(u *models.User) error {
-	newAccount, err := lbrynet.CreateAccount(u.ID)
-	if err != nil {
-		switch err.(type) {
-		case lbrynet.AccountConflict:
-			s.Logger.Log().Info("account creation conflict, proceeding")
-		default:
-			return err
-		}
-	} else {
-		err = s.saveAccFields(savedAccFields{ID: newAccount.ID, PublicKey: newAccount.PublicKey}, u)
-		if err != nil {
-			return err
-		}
-		s.Logger.Log().Info("created an sdk account")
-	}
-	return nil
+func (s *WalletService) createWallet(u *models.User) (models.LbrynetServer, string, error) {
+	return lbrynet.InitializeWallet(u.ID)
 }
 
-func (s *UserService) saveAccFields(accFields savedAccFields, u *models.User) error {
-	u.SDKAccountID = null.NewString(accFields.ID, true)
+func (s *WalletService) initializeWallet(u *models.User) error {
+	_, err := lbrynet.AddWallet(u.ID)
+	return err
+}
+
+func (s *WalletService) postCreateUpdate(u *models.User, server models.LbrynetServer, wid string) error {
+	s.Logger.LogF(monitor.F{"id": u.ID, "wallet_id": wid}).Info("saving wallet ID to user record")
+	u.WalletID = wid
+	if server.ID > 0 { //Ensure server is from DB
+		u.LbrynetServerID.SetValid(server.ID)
+	}
+
 	_, err := u.UpdateG(boil.Infer())
 	return err
+}
+
+// LogErrorAndReturn logs error with rich context and returns an error object
+// so it can be returned from the function
+func (s *WalletService) LogErrorAndReturn(log *logrus.Entry, message string, a ...interface{}) error {
+	log.Errorf(message, a...)
+	return fmt.Errorf(message, a...)
 }

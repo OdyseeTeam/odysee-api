@@ -22,6 +22,7 @@ func TestStartAndServeUntilShutdown(t *testing.T) {
 	server.Start()
 	go server.ServeUntilShutdown()
 
+	time.Sleep(100 * time.Millisecond)
 	response, err := http.Get("http://localhost:40080/")
 	if err != nil {
 		t.Fatal(err)

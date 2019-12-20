@@ -10,8 +10,8 @@ import (
 
 	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/storage"
+	"github.com/lbryio/lbrytv/internal/responses"
 )
 
 const dummyUserID = 751365
@@ -23,8 +23,7 @@ var svc *ProxyService
 
 func TestMain(m *testing.M) {
 	rand.Seed(time.Now().UnixNano())
-	config.Override("AccountsEnabled", true)
-	defer config.RestoreOverridden()
+
 	svc = NewService(router.New(config.GetLbrynetServers()))
 
 	dbConfig := config.GetDatabase()
@@ -37,7 +36,6 @@ func TestMain(m *testing.M) {
 	c.SetDefaultConnection()
 
 	defer connCleanup()
-	defer lbrynet.RemoveAccount(dummyUserID)
 
 	code := m.Run()
 
@@ -45,19 +43,17 @@ func TestMain(m *testing.M) {
 }
 
 func testFuncSetup() {
-	lbrynet.RemoveAccount(dummyUserID)
 	storage.Conn.Truncate([]string{"users"})
 	time.Sleep(testSetupWait)
 }
 
 func testFuncTeardown() {
-	lbrynet.RemoveAccount(dummyUserID)
+
 }
 
 func launchDummyAPIServer(response []byte) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
+		responses.PrepareJSONWriter(w)
 		w.Write(response)
 	}))
 }
@@ -65,8 +61,7 @@ func launchDummyAPIServer(response []byte) *httptest.Server {
 func launchDummyAPIServerDelayed(response []byte, delayMsec time.Duration) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(delayMsec * time.Millisecond)
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
+		responses.PrepareJSONWriter(w)
 		w.Write(response)
 	}))
 }

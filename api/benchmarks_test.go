@@ -20,6 +20,7 @@ import (
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/storage"
+	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/models"
 
 	"github.com/stretchr/testify/require"
@@ -32,8 +33,7 @@ func launchAuthenticatingAPIServer() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t := r.PostFormValue("auth_token")
 
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
+		responses.PrepareJSONWriter(w)
 
 		reply := fmt.Sprintf(`
 		{

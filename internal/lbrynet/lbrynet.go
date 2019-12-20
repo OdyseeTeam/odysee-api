@@ -2,7 +2,6 @@ package lbrynet
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/lbryio/lbrytv/models"
 
@@ -20,66 +19,6 @@ const accountNameTemplate string = accountNamePrefix + "%v"
 var defaultWalletOpts = ljsonrpc.WalletCreateOpts{SkipOnStartup: false, CreateAccount: true, SingleKey: true}
 
 var Logger = monitor.NewModuleLogger("lbrynet")
-
-// MakeAccountName formats user ID to use as an LbrynetServer account name.
-func MakeAccountName(uid int) string {
-	return fmt.Sprintf(accountNameTemplate, uid)
-}
-
-// GetAccount finds account in account_list by UID
-func GetAccount(uid int) (*ljsonrpc.Account, error) {
-	lbrynetRouter := router.New(config.GetLbrynetServers())
-	// Client is a LBRY LbrynetServer jsonrpc client instance
-	var Client = ljsonrpc.NewClient(lbrynetRouter.GetBalancedSDKAddress())
-	requiredAccountName := MakeAccountName(uid)
-	accounts, err := Client.AccountList()
-	if err != nil {
-		return nil, err
-	}
-	for _, account := range accounts.LBCMainnet {
-		if account.Name == requiredAccountName {
-			return &account, nil
-		}
-	}
-	return nil, AccountNotFound{UID: uid}
-}
-
-// CreateAccount creates a new account with the LbrynetServer.
-// Will return an error if account with this UID already exists.
-func CreateAccount(UID int) (*ljsonrpc.Account, error) {
-	lbrynetRouter := router.New(config.GetLbrynetServers())
-	// Client is a LBRY LbrynetServer jsonrpc client instance
-	var Client = ljsonrpc.NewClient(lbrynetRouter.GetBalancedSDKAddress())
-	accountName := MakeAccountName(UID)
-	account, err := GetAccount(UID)
-	if err == nil {
-		Logger.LogF(monitor.F{"uid": UID, "account_id": account.ID}).Error("account is already registered with lbrynet")
-		return nil, AccountConflict{UID: UID}
-	}
-	r, err := Client.AccountCreate(accountName, true)
-	if err != nil {
-		return nil, err
-	}
-	Logger.LogF(monitor.F{"uid": UID, "account_id": r.ID}).Info("registered a new account with lbrynet")
-	return r, nil
-}
-
-// RemoveAccount removes an account from the LbrynetServer by uid
-func RemoveAccount(UID int) (*ljsonrpc.Account, error) {
-	lbrynetRouter := router.New(config.GetLbrynetServers())
-	// Client is a LBRY LbrynetServer jsonrpc client instance
-	var Client = ljsonrpc.NewClient(lbrynetRouter.GetBalancedSDKAddress())
-	acc, err := GetAccount(UID)
-	if err != nil {
-		return nil, err
-	}
-	Logger.LogF(monitor.F{"uid": UID, "account_id": acc.ID}).Warn("removing account from lbrynet")
-	r, err := Client.AccountRemove(acc.ID)
-	if err != nil {
-		return nil, err
-	}
-	return r, nil
-}
 
 // InitializeWallet creates a wallet that can be immediately used
 // in subsequent commands.

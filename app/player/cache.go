@@ -155,11 +155,12 @@ func (c *fsCache) Get(hash string) (ReadableChunk, bool) {
 			return nil, false
 		}
 		cb, err := initCachedChunk(f)
-		f.Close()
 		if err != nil {
 			CacheLogger.Log().Errorf("chunk %v found in cache but couldn't read the file: %v", hash, err)
 			return nil, false
 		}
+		defer f.Close()
+
 		metrics.PlayerCacheHitCount.Inc()
 		return cb, true
 	}
@@ -181,12 +182,20 @@ func (c *fsCache) Set(hash string, body []byte) (ReadableChunk, error) {
 		CacheLogger.Log().Debugf("chunk %v already exists on the local filesystem, not overwriting", hash)
 	} else {
 		numWritten, err := f.Write(body)
-		f.Close()
+		defer f.Close()
 		if err != nil {
 			metrics.PlayerCacheErrorCount.Inc()
 			CacheLogger.Log().Errorf("error saving cache file %v: %v", chunkPath, err)
 			return nil, err
 		}
+
+		err = f.Close()
+		if err != nil {
+			metrics.PlayerCacheErrorCount.Inc()
+			CacheLogger.Log().Errorf("error closing cache file %v: %v", chunkPath, err)
+			return nil, err
+		}
+
 		CacheLogger.Log().Debugf("written %v bytes for chunk %v", numWritten, hash)
 	}
 

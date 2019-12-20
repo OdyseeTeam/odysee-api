@@ -17,7 +17,7 @@ import (
 func TestWithWrongAuthToken(t *testing.T) {
 	testFuncSetup()
 	defer testFuncTeardown()
-	config.Override("AccountsEnabled", true)
+
 	var (
 		q        *jsonrpc.RPCRequest
 		qBody    []byte
