@@ -85,7 +85,6 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	Logger.streamRetrieved(s)
 
-	fmt.Println("ZZZ", r.URL.Query().Get(ParamDownload))
 	if !h.isViewable(s.ContentType) || r.URL.Query().Get(ParamDownload) != "" {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Claim.Value.GetStream().Source.Name))
 	}

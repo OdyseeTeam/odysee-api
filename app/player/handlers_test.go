@@ -104,7 +104,7 @@ func TestHandleGet(t *testing.T) {
 			assert.Equal(t, fmt.Sprintf("%v", expectedLen), response.Header.Get("Content-Length"))
 			assert.Equal(t, "bytes", response.Header.Get("Accept-Ranges"))
 			assert.Equal(t, "video/mp4", response.Header.Get("Content-Type"))
-			assert.Nil(t, response.Header.Get("Content-Disposition"))
+			assert.Equal(t, "", response.Header.Get("Content-Disposition"))
 
 			responseStream := make([]byte, expectedLen)
 			_, err := response.Body.Read(responseStream)
