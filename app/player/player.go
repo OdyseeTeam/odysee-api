@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/app/router"
-	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
@@ -120,23 +119,7 @@ func (p *Player) getBlobStore() store.BlobStore {
 }
 
 // Play delivers requested URI onto the supplied http.ResponseWriter.
-func (p *Player) Play(uri string, w http.ResponseWriter, r *http.Request) error {
-	Logger.streamPlaybackRequested(uri, users.GetIPAddressForRequest(r))
-
-	s, err := p.ResolveStream(uri)
-	if err != nil {
-		Logger.streamResolveFailed(uri, err)
-		return err
-	}
-	Logger.streamResolved(s)
-
-	err = p.RetrieveStream(s)
-	if err != nil {
-		Logger.streamRetrievalFailed(uri, err)
-		return err
-	}
-	Logger.streamRetrieved(s)
-
+func (p *Player) Play(s *Stream, w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", s.ContentType)
 
 	metrics.PlayerStreamsRunning.Inc()

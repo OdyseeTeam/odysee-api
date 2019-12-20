@@ -7,8 +7,18 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/internal/monitor"
 )
+
+var viewableTypes = []string{
+	"audio/",
+	"video/",
+	"image/",
+	"text/markdown",
+}
+
+const ParamDownload = "download"
 
 // RequestHandler is a HTTP request handler for player package.
 type RequestHandler struct {
@@ -45,10 +55,42 @@ func (h RequestHandler) processStreamError(w http.ResponseWriter, uri string, er
 	}
 }
 
+func (h *RequestHandler) isViewable(mime string) bool {
+	for _, t := range viewableTypes {
+		if strings.HasPrefix(mime, t) {
+			return true
+		}
+	}
+	return false
+}
+
 // Handle is responsible for all HTTP media delivery via player module.
 func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	uri := h.getURI(r)
-	err := h.player.Play(uri, w, r)
+	Logger.streamPlaybackRequested(uri, users.GetIPAddressForRequest(r))
+
+	s, err := h.player.ResolveStream(uri)
+	if err != nil {
+		Logger.streamResolveFailed(uri, err)
+		h.processStreamError(w, uri, err)
+		return
+	}
+	Logger.streamResolved(s)
+
+	err = h.player.RetrieveStream(s)
+	if err != nil {
+		Logger.streamRetrievalFailed(uri, err)
+		h.processStreamError(w, uri, err)
+		return
+	}
+	Logger.streamRetrieved(s)
+
+	fmt.Println("ZZZ", r.URL.Query().Get(ParamDownload))
+	if !h.isViewable(s.ContentType) || r.URL.Query().Get(ParamDownload) != "" {
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Claim.Value.GetStream().Source.Name))
+	}
+
+	err = h.player.Play(s, w, r)
 	if err != nil {
 		h.processStreamError(w, uri, err)
 		return
