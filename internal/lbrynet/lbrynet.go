@@ -16,7 +16,7 @@ import (
 const accountNamePrefix string = "lbrytv-user-id:"
 const accountNameTemplate string = accountNamePrefix + "%v"
 
-var defaultWalletOpts = ljsonrpc.WalletCreateOpts{SkipOnStartup: false, CreateAccount: true, SingleKey: true}
+var defaultWalletOpts = ljsonrpc.WalletCreateOpts{SkipOnStartup: true, CreateAccount: true, SingleKey: true}
 
 var Logger = monitor.NewModuleLogger("lbrynet")
 
