@@ -260,6 +260,8 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 	Logger.Log().Tracef("done reading %v-%v bytes from stream", s.seekOffset, s.seekOffset+int64(n))
 	s.seekOffset += int64(n)
 
+	metrics.PlayerOutBytes.Add(float64(n))
+
 	if err != nil {
 		Logger.streamReadFailed(s, calc, err)
 	}
@@ -327,7 +329,7 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 	hash := hex.EncodeToString(bi.BlobHash)
 
 	if b.localCache != nil {
-		cached, cacheHit = b.localCache.Get(hash)
+		cached, cacheHit = b.getChunkFromCache(hash)
 	} else {
 		cacheHit = false
 	}
@@ -337,7 +339,6 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 		if err != nil {
 			return nil, err
 		}
-		Logger.blobRetrieved(b.sdBlob.StreamName, bi.BlobNum)
 		b.saveToHotCache(n, reflected)
 		go b.saveToLocalCache(hash, reflected)
 		go b.prefetchToLocalCache(n + 1)
@@ -384,8 +385,8 @@ func (b *chunkGetter) prefetchToLocalCache(startN int) {
 	chunksLeft := len(b.sdBlob.BlobInfos) - startN - 1 // Last blob is empty
 	if chunksLeft <= 0 {
 		return
-	} else if chunksLeft > 10 {
-		prefetchLen = 10
+	} else if chunksLeft > 3 {
+		prefetchLen = 3
 	} else {
 		prefetchLen = chunksLeft
 	}
@@ -409,6 +410,15 @@ func (b *chunkGetter) prefetchToLocalCache(startN int) {
 
 }
 
+func (b *chunkGetter) getChunkFromCache(hash string) (ReadableChunk, bool) {
+	c, ok := b.localCache.Get(hash)
+	RetLogger.WithFields(monitor.F{
+		"success": ok,
+		"hash":    hash,
+	}).Info("blob requested from cache")
+	return c, ok
+}
+
 func (b *chunkGetter) getReflectedChunkByHash(hash string, key, iv []byte) (*reflectedChunk, error) {
 	timer := metrics.TimerStart(metrics.PlayerBlobDownloadDurations)
 	bStore := GetBlobStore()
@@ -417,8 +427,16 @@ func (b *chunkGetter) getReflectedChunkByHash(hash string, key, iv []byte) (*ref
 		Logger.blobDownloadFailed(blob, err)
 		return nil, err
 	}
+
 	timer.Done()
-	Logger.blobDownloaded(blob, timer)
+	speed := float64(len(blob)) / (1024 * 1024) / timer.Duration
+	RetLogger.WithFields(monitor.F{
+		"duration":  fmt.Sprintf("%.2f", timer.Duration),
+		"speed_mbs": fmt.Sprintf("%.2f", speed),
+		"hash":      hash,
+	}).Info("blob downloaded")
+
+	metrics.PlayerInBytes.Add(float64(len(blob)))
 
 	body, err := stream.DecryptBlob(blob, key, iv)
 	if err != nil {

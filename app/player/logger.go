@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/lbryio/lbry.go/v2/stream"
-	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 )
 
@@ -20,6 +19,9 @@ var Logger = localLogger{monitor.NewModuleLogger("player")}
 // CacheLogger is for caching operations only.
 var CacheLogger = localLogger{monitor.NewModuleLogger("player_cache")}
 
+// RetLogger is for blob/chunk retrieval operations logging.
+var RetLogger = localLogger{monitor.NewModuleLogger("player_retriever")}
+
 func (l localLogger) streamPlaybackRequested(uri, remoteIP string) {
 	l.WithFields(monitor.F{"remote_ip": remoteIP, "uri": uri}).Info("starting stream playback")
 }
@@ -29,7 +31,6 @@ func (l localLogger) streamSeek(s *Stream, offset, newOffset int64, whence strin
 }
 
 func (l localLogger) streamRead(s *Stream, n int, calc ChunkCalculator) {
-	metrics.PlayerSuccessesCount.Inc()
 	l.WithFields(monitor.F{"uri": s.URI}).Debugf("read %v bytes (%v..%v) from stream", n, calc.Offset, s.seekOffset)
 }
 
@@ -48,7 +49,6 @@ func (l localLogger) streamResolved(s *Stream) {
 }
 
 func (l localLogger) streamResolveFailed(uri string, err error) {
-	metrics.PlayerFailuresCount.Inc()
 	l.WithFields(monitor.F{"uri": uri}).Error("failed to resolve stream: ", err)
 }
 
@@ -57,13 +57,7 @@ func (l localLogger) streamRetrieved(s *Stream) {
 }
 
 func (l localLogger) streamRetrievalFailed(uri string, err error) {
-	metrics.PlayerFailuresCount.Inc()
 	l.WithFields(monitor.F{"uri": uri}).Error("failed to retrieve stream: ", err)
-}
-
-func (l localLogger) blobDownloaded(b stream.Blob, t *metrics.Timer) {
-	speed := float64(len(b)) / (1024 * 1024) / t.Duration
-	l.WithFields(monitor.F{"duration": fmt.Sprintf("%.2f", t.Duration), "speed": fmt.Sprintf("%.2f", speed)}).Debug("blob downloaded")
 }
 
 func (l localLogger) blobRetrieved(uri string, n int) {
@@ -71,6 +65,5 @@ func (l localLogger) blobRetrieved(uri string, n int) {
 }
 
 func (l localLogger) blobDownloadFailed(b stream.Blob, err error) {
-	metrics.PlayerFailuresCount.Inc()
 	l.Log().Error("blob failed to download: ", err)
 }
