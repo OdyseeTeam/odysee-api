@@ -2,7 +2,6 @@ package player
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -337,37 +336,39 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 	}
 	timerCache.Done()
 
-	if !cacheHit {
-		timerReflector := metrics.TimerStart()
-		rChunk, err = b.getChunkFromReflector(hash, b.sdBlob.Key, bi.IV)
-		if err != nil {
-			return nil, err
-		}
-		timerReflector.Done()
-
+	if cacheHit {
+		metrics.PlayerCacheHitCount.Inc()
 		RetLogger.WithFields(monitor.F{
 			"hash":       hash,
-			"duration":   timerReflector.String(),
-			"from_cache": false,
-			"speed_mbs":  float64(rChunk.Size()) / (1024 * 1024) / timerReflector.Duration,
+			"duration":   timerCache.String(),
+			"from_cache": true,
+			"speed_mbs":  float64(cChunk.Size()) / (1024 * 1024) / timerCache.Duration,
 		}).Info("chunk retrieved")
 
-		b.saveToHotCache(n, rChunk)
-		go b.saveToLocalCache(hash, rChunk)
-		go b.prefetchToLocalCache(n + 1)
-
-		return rChunk, nil
+		b.saveToHotCache(n, cChunk)
+		return cChunk, nil
 	}
+
+	metrics.PlayerCacheMissCount.Inc()
+	timerReflector := metrics.TimerStart()
+	rChunk, err = b.getChunkFromReflector(hash, b.sdBlob.Key, bi.IV)
+	if err != nil {
+		return nil, err
+	}
+	timerReflector.Done()
 
 	RetLogger.WithFields(monitor.F{
 		"hash":       hash,
-		"duration":   timerCache.String(),
-		"from_cache": true,
-		"speed_mbs":  float64(cChunk.Size()) / (1024 * 1024) / timerCache.Duration,
+		"duration":   timerReflector.String(),
+		"from_cache": false,
+		"speed_mbs":  float64(rChunk.Size()) / (1024 * 1024) / timerReflector.Duration,
 	}).Info("chunk retrieved")
 
-	b.saveToHotCache(n, cChunk)
-	return cChunk, nil
+	b.saveToHotCache(n, rChunk)
+	go b.saveToCache(hash, rChunk)
+	go b.prefetchToCache(n + 1)
+
+	return rChunk, nil
 }
 
 func (b *chunkGetter) saveToHotCache(n int, chunk ReadableChunk) {
@@ -379,25 +380,20 @@ func (b *chunkGetter) saveToHotCache(n int, chunk ReadableChunk) {
 	}
 }
 
-func (b *chunkGetter) saveToLocalCache(hash string, chunk *reflectedChunk) (ReadableChunk, error) {
+func (b *chunkGetter) saveToCache(hash string, chunk *reflectedChunk) (ReadableChunk, error) {
 	if b.localCache == nil {
 		return nil, nil
 	}
 
 	body := make([]byte, len(chunk.body))
 	if _, err := chunk.Read(0, ChunkSize, body); err != nil {
-		Logger.Log().Errorf("couldn't read from chunk %v: %v", hash, err)
+		RetLogger.Log().Errorf("couldn't read from chunk %v: %v", hash, err)
 		return nil, err
 	}
 	return b.localCache.Set(hash, body)
 }
 
-func prettyPrint(i interface{}) {
-	s, _ := json.MarshalIndent(i, "", "\t")
-	fmt.Println(string(s))
-}
-
-func (b *chunkGetter) prefetchToLocalCache(startN int) {
+func (b *chunkGetter) prefetchToCache(startN int) {
 	if b.localCache == nil || !b.enablePrefetch {
 		return
 	}
@@ -412,21 +408,21 @@ func (b *chunkGetter) prefetchToLocalCache(startN int) {
 		prefetchLen = chunksLeft
 	}
 
-	CacheLogger.Log().Debugf("prefetching %v chunks to local cache", prefetchLen)
+	RetLogger.Log().Debugf("prefetching %v chunks to local cache", prefetchLen)
 	for _, bi := range b.sdBlob.BlobInfos[startN : startN+prefetchLen] {
 		hash := hex.EncodeToString(bi.BlobHash)
 		if b.localCache.Has(hash) {
-			CacheLogger.Log().Debugf("chunk %v found in cache, not prefetching", hash)
+			RetLogger.Log().Debugf("chunk %v found in cache, not prefetching", hash)
 			continue
 		}
-		CacheLogger.Log().Debugf("prefetching chunk %v", hash)
+		RetLogger.Log().Debugf("prefetching chunk %v", hash)
 		reflected, err := b.getChunkFromReflector(hash, b.sdBlob.Key, bi.IV)
 		if err != nil {
-			CacheLogger.Log().Warnf("failed to prefetch chunk %v: %v", hash, err)
+			RetLogger.Log().Warnf("failed to prefetch chunk %v: %v", hash, err)
 			return
 		}
 		Logger.blobRetrieved(b.sdBlob.StreamName, bi.BlobNum)
-		b.saveToLocalCache(hash, reflected)
+		b.saveToCache(hash, reflected)
 	}
 
 }
