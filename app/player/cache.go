@@ -80,10 +80,19 @@ func InitFSCache(opts *FSCacheOpts) (ChunkCache, error) {
 	c := &fsCache{storage, r}
 
 	sweepTicker := time.NewTicker(opts.SweepInterval)
+	metricsTicker := time.NewTicker(500 * time.Millisecond)
 	go func() {
 		for {
 			<-sweepTicker.C
 			c.sweep()
+		}
+	}()
+	go func() {
+		for {
+			<-metricsTicker.C
+			metrics.PlayerCacheDroppedCount.Set(float64(r.Metrics.SetsDropped()))
+			metrics.PlayerCacheRejectedCount.Set(float64(r.Metrics.SetsRejected()))
+			metrics.PlayerCacheSize.Set(float64(c.Size()))
 		}
 	}()
 
@@ -160,11 +169,9 @@ func (c *fsCache) Get(hash string) (ReadableChunk, bool) {
 			return nil, false
 		}
 		defer f.Close()
-
-		metrics.PlayerCacheHitCount.Inc()
 		return cb, true
 	}
-	metrics.PlayerCacheMissCount.Inc()
+
 	CacheLogger.Log().Debugf("cache miss for chunk %v", hash)
 	return nil, false
 }
@@ -209,8 +216,6 @@ func (c *fsCache) Set(hash string, body []byte) (ReadableChunk, error) {
 		}
 		return nil, err
 	}
-
-	metrics.PlayerCacheSize.Set(float64(c.Size()))
 	CacheLogger.Log().Debugf("chunk %v successfully cached", hash)
 
 	return &cachedChunk{reflectedChunk{body}}, nil

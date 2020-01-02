@@ -87,11 +87,24 @@ var (
 		Name:      "error_count",
 		Help:      "Total number of errors retrieving blobs from the local cache",
 	})
+
 	PlayerCacheSize = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: nsPlayer,
 		Subsystem: "cache",
 		Name:      "size",
 		Help:      "Current size of cache",
+	})
+	PlayerCacheDroppedCount = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: nsPlayer,
+		Subsystem: "cache",
+		Name:      "dropped_count",
+		Help:      "Total number of blobs dropped at the admission time",
+	})
+	PlayerCacheRejectedCount = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: nsPlayer,
+		Subsystem: "cache",
+		Name:      "rejected_count",
+		Help:      "Total number of blobs rejected at the admission time",
 	})
 
 	IAPIAuthSuccessDurations = promauto.NewHistogram(prometheus.HistogramOpts{
