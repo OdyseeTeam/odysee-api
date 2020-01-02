@@ -13,7 +13,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/metrics"
 )
 
-const defaultMaxCacheSize = 1 << 34 // 16GB
+const defaultMaxCacheSize = 1 << 35 // 32GB
 
 // ChunkCache can save and retrieve readable chunks.
 type ChunkCache interface {
