@@ -28,11 +28,8 @@ func init() {
 func SetupLogging() {
 	var mode string
 
-	// logrus.AddHook(logrus_stack.StandardHook())
-	// Logger.AddHook(logrus_stack.StandardHook())
 	if config.IsProduction() {
 		mode = "production"
-		configureSentry(version.GetDevVersion(), mode)
 
 		logrus.SetLevel(logrus.InfoLevel)
 		Logger.SetLevel(logrus.InfoLevel)
@@ -49,6 +46,8 @@ func SetupLogging() {
 
 	Logger.Infof("%v, running in %v mode", version.GetFullBuildName(), mode)
 	Logger.Infof("logging initialized (loglevel=%v)", Logger.Level.String())
+
+	configureSentry(version.GetDevVersion(), mode)
 }
 
 // LogSuccessfulQuery takes a remote method name, execution time and params and logs it
