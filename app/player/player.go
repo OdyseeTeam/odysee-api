@@ -25,8 +25,12 @@ import (
 )
 
 const (
-	// ChunkSize is a size of decrypted blob
+	// ChunkSize is a size of decrypted blob.
 	ChunkSize = stream.MaxBlobSize - 1
+
+	// DefaultPrefetchLen is how many blobs we should prefetch ahead.
+	// 3 should be enough to deliver 2 x 4 = 8MB/s streams.
+	DefaultPrefetchLen = 3
 )
 
 // Player is an entry-point object to the new player package.
@@ -398,13 +402,11 @@ func (b *chunkGetter) prefetchToCache(startN int) {
 		return
 	}
 
-	var prefetchLen int
+	prefetchLen := DefaultPrefetchLen
 	chunksLeft := len(b.sdBlob.BlobInfos) - startN - 1 // Last blob is empty
 	if chunksLeft <= 0 {
 		return
-	} else if chunksLeft > 3 {
-		prefetchLen = 3
-	} else {
+	} else if chunksLeft < DefaultPrefetchLen {
 		prefetchLen = chunksLeft
 	}
 
