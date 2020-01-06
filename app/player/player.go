@@ -2,7 +2,6 @@ package player
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -26,8 +25,12 @@ import (
 )
 
 const (
-	// ChunkSize is a size of decrypted blob
+	// ChunkSize is a size of decrypted blob.
 	ChunkSize = stream.MaxBlobSize - 1
+
+	// DefaultPrefetchLen is how many blobs we should prefetch ahead.
+	// 3 should be enough to deliver 2 x 4 = 8MB/s streams.
+	DefaultPrefetchLen = 3
 )
 
 // Player is an entry-point object to the new player package.
@@ -70,6 +73,7 @@ type chunkGetter struct {
 // ReadableChunk interface describes generic chunk object that Stream can Read() from.
 type ReadableChunk interface {
 	Read(offset, n int, dest []byte) (int, error)
+	Size() int
 }
 
 type reflectedChunk struct {
@@ -260,6 +264,8 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 	Logger.Log().Tracef("done reading %v-%v bytes from stream", s.seekOffset, s.seekOffset+int64(n))
 	s.seekOffset += int64(n)
 
+	metrics.PlayerOutBytes.Add(float64(n))
+
 	if err != nil {
 		Logger.streamReadFailed(s, calc, err)
 	}
@@ -309,10 +315,10 @@ func (s *Stream) readFromChunks(calc ChunkCalculator, dest []byte) (int, error) 
 // It first tries to get it from the local cache, and if it is not found, fetches it from the reflector.
 func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 	var (
-		cached    ReadableChunk
-		reflected *reflectedChunk
-		cacheHit  bool
-		err       error
+		cChunk   ReadableChunk
+		rChunk   *reflectedChunk
+		cacheHit bool
+		err      error
 	)
 
 	if n > len(b.sdBlob.BlobInfos) {
@@ -326,26 +332,47 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 	bi := b.sdBlob.BlobInfos[n]
 	hash := hex.EncodeToString(bi.BlobHash)
 
+	timerCache := metrics.TimerStart()
 	if b.localCache != nil {
-		cached, cacheHit = b.localCache.Get(hash)
+		cChunk, cacheHit = b.getChunkFromCache(hash)
 	} else {
 		cacheHit = false
 	}
+	timerCache.Done()
 
-	if !cacheHit {
-		reflected, err = b.getReflectedChunkByHash(hash, b.sdBlob.Key, bi.IV)
-		if err != nil {
-			return nil, err
-		}
-		Logger.blobRetrieved(b.sdBlob.StreamName, bi.BlobNum)
-		b.saveToHotCache(n, reflected)
-		go b.saveToLocalCache(hash, reflected)
-		go b.prefetchToLocalCache(n + 1)
-		return reflected, nil
+	if cacheHit {
+		metrics.PlayerCacheHitCount.Inc()
+		RetLogger.WithFields(monitor.F{
+			"hash":       hash,
+			"duration":   timerCache.String(),
+			"from_cache": true,
+			"speed_mbs":  float64(cChunk.Size()) / (1024 * 1024) / timerCache.Duration,
+		}).Info("chunk retrieved")
+
+		b.saveToHotCache(n, cChunk)
+		return cChunk, nil
 	}
 
-	b.saveToHotCache(n, cached)
-	return cached, nil
+	metrics.PlayerCacheMissCount.Inc()
+	timerReflector := metrics.TimerStart()
+	rChunk, err = b.getChunkFromReflector(hash, b.sdBlob.Key, bi.IV)
+	if err != nil {
+		return nil, err
+	}
+	timerReflector.Done()
+
+	RetLogger.WithFields(monitor.F{
+		"hash":       hash,
+		"duration":   timerReflector.String(),
+		"from_cache": false,
+		"speed_mbs":  float64(rChunk.Size()) / (1024 * 1024) / timerReflector.Duration,
+	}).Info("chunk retrieved")
+
+	b.saveToHotCache(n, rChunk)
+	go b.saveToCache(hash, rChunk)
+	go b.prefetchToCache(n + 1)
+
+	return rChunk, nil
 }
 
 func (b *chunkGetter) saveToHotCache(n int, chunk ReadableChunk) {
@@ -357,73 +384,71 @@ func (b *chunkGetter) saveToHotCache(n int, chunk ReadableChunk) {
 	}
 }
 
-func (b *chunkGetter) saveToLocalCache(hash string, chunk *reflectedChunk) (ReadableChunk, error) {
+func (b *chunkGetter) saveToCache(hash string, chunk *reflectedChunk) (ReadableChunk, error) {
 	if b.localCache == nil {
 		return nil, nil
 	}
 
 	body := make([]byte, len(chunk.body))
 	if _, err := chunk.Read(0, ChunkSize, body); err != nil {
-		Logger.Log().Errorf("couldn't read from chunk %v: %v", hash, err)
+		RetLogger.Log().Errorf("couldn't read from chunk %v: %v", hash, err)
 		return nil, err
 	}
 	return b.localCache.Set(hash, body)
 }
 
-func prettyPrint(i interface{}) {
-	s, _ := json.MarshalIndent(i, "", "\t")
-	fmt.Println(string(s))
-}
-
-func (b *chunkGetter) prefetchToLocalCache(startN int) {
+func (b *chunkGetter) prefetchToCache(startN int) {
 	if b.localCache == nil || !b.enablePrefetch {
 		return
 	}
 
-	var prefetchLen int
+	prefetchLen := DefaultPrefetchLen
 	chunksLeft := len(b.sdBlob.BlobInfos) - startN - 1 // Last blob is empty
 	if chunksLeft <= 0 {
 		return
-	} else if chunksLeft > 10 {
-		prefetchLen = 10
-	} else {
+	} else if chunksLeft < DefaultPrefetchLen {
 		prefetchLen = chunksLeft
 	}
 
-	CacheLogger.Log().Debugf("prefetching %v chunks to local cache", prefetchLen)
+	RetLogger.Log().Debugf("prefetching %v chunks to local cache", prefetchLen)
 	for _, bi := range b.sdBlob.BlobInfos[startN : startN+prefetchLen] {
 		hash := hex.EncodeToString(bi.BlobHash)
 		if b.localCache.Has(hash) {
-			CacheLogger.Log().Debugf("chunk %v found in cache, not prefetching", hash)
+			RetLogger.Log().Debugf("chunk %v found in cache, not prefetching", hash)
 			continue
 		}
-		CacheLogger.Log().Debugf("prefetching chunk %v", hash)
-		reflected, err := b.getReflectedChunkByHash(hash, b.sdBlob.Key, bi.IV)
+		RetLogger.Log().Debugf("prefetching chunk %v", hash)
+		reflected, err := b.getChunkFromReflector(hash, b.sdBlob.Key, bi.IV)
 		if err != nil {
-			CacheLogger.Log().Warnf("failed to prefetch chunk %v: %v", hash, err)
+			RetLogger.Log().Warnf("failed to prefetch chunk %v: %v", hash, err)
 			return
 		}
 		Logger.blobRetrieved(b.sdBlob.StreamName, bi.BlobNum)
-		b.saveToLocalCache(hash, reflected)
+		b.saveToCache(hash, reflected)
 	}
 
 }
 
-func (b *chunkGetter) getReflectedChunkByHash(hash string, key, iv []byte) (*reflectedChunk, error) {
-	timer := metrics.TimerStart(metrics.PlayerBlobDownloadDurations)
+func (b *chunkGetter) getChunkFromCache(hash string) (ReadableChunk, bool) {
+	c, ok := b.localCache.Get(hash)
+	return c, ok
+}
+
+func (b *chunkGetter) getChunkFromReflector(hash string, key, iv []byte) (*reflectedChunk, error) {
 	bStore := GetBlobStore()
 	blob, err := bStore.Get(hash)
 	if err != nil {
 		Logger.blobDownloadFailed(blob, err)
 		return nil, err
 	}
-	timer.Done()
-	Logger.blobDownloaded(blob, timer)
+
+	metrics.PlayerInBytes.Add(float64(len(blob)))
 
 	body, err := stream.DecryptBlob(blob, key, iv)
 	if err != nil {
 		return nil, err
 	}
+
 	chunk := &reflectedChunk{body}
 	return chunk, nil
 }
@@ -434,11 +459,15 @@ func (b *reflectedChunk) Read(offset, n int, dest []byte) (int, error) {
 		n = len(b.body) - offset
 	}
 
-	timer := metrics.TimerStart(metrics.PlayerBlobDeliveryDurations)
+	timer := metrics.TimerStart().Observe(metrics.PlayerBlobDeliveryDurations)
 	read := copy(dest, b.body[offset:offset+n])
 	timer.Done()
 
 	return read, nil
+}
+
+func (b *reflectedChunk) Size() int {
+	return len(b.body)
 }
 
 // ChunkCalculator provides handy blob calculations for a requested stream range.

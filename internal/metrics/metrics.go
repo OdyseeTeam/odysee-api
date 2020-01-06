@@ -58,15 +58,15 @@ var (
 		Buckets:   []float64{0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0},
 	})
 
-	PlayerSuccessesCount = promauto.NewCounter(prometheus.CounterOpts{
+	PlayerInBytes = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: nsPlayer,
-		Name:      "successes_total",
-		Help:      "Total number of successfully loaded blobs",
+		Name:      "in_bytes",
+		Help:      "Total number of bytes downloaded",
 	})
-	PlayerFailuresCount = promauto.NewCounter(prometheus.CounterOpts{
+	PlayerOutBytes = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: nsPlayer,
-		Name:      "failures_total",
-		Help:      "Total number of errors getting blobs",
+		Name:      "out_bytes",
+		Help:      "Total number of bytes streamed out",
 	})
 
 	PlayerCacheHitCount = promauto.NewCounter(prometheus.CounterOpts{
@@ -87,11 +87,24 @@ var (
 		Name:      "error_count",
 		Help:      "Total number of errors retrieving blobs from the local cache",
 	})
+
 	PlayerCacheSize = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: nsPlayer,
 		Subsystem: "cache",
 		Name:      "size",
 		Help:      "Current size of cache",
+	})
+	PlayerCacheDroppedCount = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: nsPlayer,
+		Subsystem: "cache",
+		Name:      "dropped_count",
+		Help:      "Total number of blobs dropped at the admission time",
+	})
+	PlayerCacheRejectedCount = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: nsPlayer,
+		Subsystem: "cache",
+		Name:      "rejected_count",
+		Help:      "Total number of blobs rejected at the admission time",
 	})
 
 	IAPIAuthSuccessDurations = promauto.NewHistogram(prometheus.HistogramOpts{
