@@ -8,6 +8,10 @@ import (
 	"github.com/getsentry/sentry-go"
 )
 
+var IgnoredExceptions = []string{
+	"account identificator required",
+}
+
 func configureSentry(release, env string) {
 	dsn := config.GetSentryDSN()
 	if dsn == "" {
@@ -19,9 +23,21 @@ func configureSentry(release, env string) {
 		Release:          release,
 		Environment:      env,
 		AttachStacktrace: true,
+		BeforeSend: func(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
+			if len(event.Exception) > 0 {
+				for _, ie := range IgnoredExceptions {
+					if event.Exception[0].Value == ie {
+						return nil
+					}
+				}
+			}
+			return event
+		},
 	})
 	if err != nil {
 		Logger.Errorf("sentry initialization failed: %v", err)
+	} else {
+		Logger.Info("Sentry initialized")
 	}
 }
 
