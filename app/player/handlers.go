@@ -11,13 +11,6 @@ import (
 	"github.com/lbryio/lbrytv/internal/monitor"
 )
 
-var viewableTypes = []string{
-	"audio/",
-	"video/",
-	"image/",
-	"text/markdown",
-}
-
 const ParamDownload = "download"
 
 // RequestHandler is a HTTP request handler for player package.
@@ -55,15 +48,6 @@ func (h RequestHandler) processStreamError(w http.ResponseWriter, uri string, er
 	}
 }
 
-func (h *RequestHandler) isViewable(mime string) bool {
-	for _, t := range viewableTypes {
-		if strings.HasPrefix(mime, t) {
-			return true
-		}
-	}
-	return false
-}
-
 // Handle is responsible for all HTTP media delivery via player module.
 func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	uri := h.getURI(r)
@@ -85,7 +69,7 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	Logger.streamRetrieved(s)
 
-	if !h.isViewable(s.ContentType) || r.URL.Query().Get(ParamDownload) != "" {
+	if r.URL.Query().Get(ParamDownload) != "" {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Claim.Value.GetStream().Source.Name))
 	}
 

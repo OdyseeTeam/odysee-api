@@ -140,11 +140,7 @@ func TestHandleOutOfBounds(t *testing.T) {
 }
 
 func TestHandleDownloadableFile(t *testing.T) {
-	r := makeRequest(nil, http.MethodGet, "/content/claims/zip-file-test-upload/55894c72e1cb1a0a5d17c3150c2cb2ab3355c317/stream", nil)
-	assert.Equal(t, http.StatusOK, r.StatusCode)
-	assert.Equal(t, "attachment; filename=363786888_vim-book.zip", r.Header.Get("Content-Disposition"))
-
-	r = makeRequest(nil, http.MethodGet, "/content/claims/scalable-test2/0a15a743ac078a83a02cc086fbb8b566e912b7c5/stream?download=true", nil)
+	r := makeRequest(nil, http.MethodGet, "/content/claims/scalable-test2/0a15a743ac078a83a02cc086fbb8b566e912b7c5/stream?download=true", nil)
 	assert.Equal(t, http.StatusOK, r.StatusCode)
 	assert.Equal(t, "attachment; filename=720424441_Screen Shot 2019-11-13 at 10.18.47.png", r.Header.Get("Content-Disposition"))
 }
