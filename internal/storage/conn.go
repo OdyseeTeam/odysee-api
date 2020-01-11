@@ -70,8 +70,7 @@ func (c *Connection) Connect() error {
 			break
 		}
 		secondsToWait := i + 1
-		c.logger.Log().Warning("Database Connection Err: ", err)
-		c.logger.Log().Warningf("Attempt %d - could not connect to database...retry in %d seconds", i, secondsToWait)
+		c.logger.Log().Warningf("Attempt %d - could not connect to database...retry in %d seconds: %s", i, secondsToWait, err)
 		time.Sleep(time.Duration(secondsToWait) * time.Second)
 	}
 
