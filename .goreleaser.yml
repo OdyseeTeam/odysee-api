@@ -22,7 +22,7 @@ builds:
   - '-s -w -X github.com/lbryio/lbrytv/version.version={{.Version}} -X github.com/lbryio/lbrytv/version.commit={{.ShortCommit}} -X github.com/lbryio/lbrytv/version.date={{.Date}}'
   main: ./main.go
 
-archive:
+archives:
   - id: zip
     replacements:
       darwin: Darwin
