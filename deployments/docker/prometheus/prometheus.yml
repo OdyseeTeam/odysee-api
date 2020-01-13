@@ -21,4 +21,7 @@ scrape_configs:
       - targets: ['app:2112']
   - job_name: 'reflector'
     static_configs:
+      - targets: ['reflector-origin.lbry.com:2112']
+  - job_name: 'blob-cache'
+    static_configs:
       - targets: ['reflector.lbry.com:2112']
