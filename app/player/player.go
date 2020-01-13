@@ -354,7 +354,7 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 		RetLogger.WithFields(monitor.F{
 			"hash":      hash,
 			"duration":  timerCache.String(),
-			"source":    true,
+			"source":    RetrieverSourceL2Cache,
 			"rate_mbps": rate,
 		}).Info("chunk retrieved")
 
@@ -374,10 +374,10 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 	metrics.PlayerRetrieverSpeed.With(map[string]string{metrics.LabelSource: RetrieverSourceReflector}).Set(rate)
 
 	RetLogger.WithFields(monitor.F{
-		"hash":       hash,
-		"duration":   timerReflector.String(),
-		"from_cache": false,
-		"rate_mbps":  rate,
+		"hash":      hash,
+		"duration":  timerReflector.String(),
+		"source":    RetrieverSourceReflector,
+		"rate_mbps": rate,
 	}).Info("chunk retrieved")
 
 	b.saveToHotCache(n, rChunk)
