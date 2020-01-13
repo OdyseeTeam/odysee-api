@@ -32,9 +32,13 @@ func (s *Server) Serve() {
 	s.Log().Infof("metrics server listening on %v%v", s.Address, s.Path)
 }
 
-const nsPlayer = "player"
-const nsIAPI = "iapi"
-const nsProxy = "proxy"
+const (
+	nsPlayer = "player"
+	nsIAPI   = "iapi"
+	nsProxy  = "proxy"
+
+	LabelSource = "source"
+)
 
 var (
 	PlayerStreamsRunning = promauto.NewGauge(prometheus.GaugeOpts{
@@ -57,6 +61,12 @@ var (
 		Help:      "Blob delivery durations",
 		Buckets:   []float64{0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0},
 	})
+	PlayerRetrieverSpeed = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: nsPlayer,
+		Subsystem: "retriever",
+		Name:      "speed",
+		Help:      "Speed of blob/chunk retrieval",
+	}, []string{LabelSource})
 
 	PlayerInBytes = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: nsPlayer,

@@ -31,6 +31,12 @@ const (
 	// DefaultPrefetchLen is how many blobs we should prefetch ahead.
 	// 3 should be enough to deliver 2 x 4 = 8MB/s streams.
 	DefaultPrefetchLen = 3
+
+	// RetrieverSourceL2Cache is for labeling cache speed sourced from level 2 chunk cache (LFU)
+	RetrieverSourceL2Cache = "l2_cache"
+
+	// RetrieverSourceReflector is for labeling cache speed sourced from reflector
+	RetrieverSourceReflector = "reflector"
 )
 
 // Player is an entry-point object to the new player package.
@@ -341,12 +347,15 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 	timerCache.Done()
 
 	if cacheHit {
+		rate := float64(cChunk.Size()) / (1024 * 1024) / timerCache.Duration
+		metrics.PlayerRetrieverSpeed.With(map[string]string{metrics.LabelSource: RetrieverSourceL2Cache}).Set(rate)
 		metrics.PlayerCacheHitCount.Inc()
+
 		RetLogger.WithFields(monitor.F{
-			"hash":       hash,
-			"duration":   timerCache.String(),
-			"from_cache": true,
-			"speed_mbs":  float64(cChunk.Size()) / (1024 * 1024) / timerCache.Duration,
+			"hash":     hash,
+			"duration": timerCache.String(),
+			"source":   true,
+			"rate_mbs": rate,
 		}).Info("chunk retrieved")
 
 		b.saveToHotCache(n, cChunk)
@@ -361,11 +370,14 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 	}
 	timerReflector.Done()
 
+	rate := float64(rChunk.Size()) / (1024 * 1024) / timerReflector.Duration
+	metrics.PlayerRetrieverSpeed.With(map[string]string{metrics.LabelSource: RetrieverSourceReflector}).Set(rate)
+
 	RetLogger.WithFields(monitor.F{
 		"hash":       hash,
 		"duration":   timerReflector.String(),
 		"from_cache": false,
-		"speed_mbs":  float64(rChunk.Size()) / (1024 * 1024) / timerReflector.Duration,
+		"rate_mbs":   rate,
 	}).Info("chunk retrieved")
 
 	b.saveToHotCache(n, rChunk)
