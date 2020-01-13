@@ -47,13 +47,6 @@ var (
 		Name:      "running",
 		Help:      "Number of streams currently playing",
 	})
-	PlayerBlobDeliveryDurations = promauto.NewHistogram(prometheus.HistogramOpts{
-		Namespace: nsPlayer,
-		Subsystem: "blob",
-		Name:      "delivery_seconds",
-		Help:      "Blob delivery durations",
-		Buckets:   []float64{0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0},
-	})
 	PlayerRetrieverSpeed = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: nsPlayer,
 		Subsystem: "retriever",
@@ -143,11 +136,4 @@ var (
 		},
 		[]string{"method"},
 	)
-	ProxyCallHistogram = promauto.NewHistogram(prometheus.HistogramOpts{
-		Namespace: nsProxy,
-		Subsystem: "calls",
-		Name:      "histogram_seconds",
-		Help:      "Method calls latency histogram",
-		Buckets:   []float64{0.01, 0.05, 0.1, 0.3, 0.6, 1.2, 3.0},
-	})
 )

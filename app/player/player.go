@@ -471,10 +471,7 @@ func (b *reflectedChunk) Read(offset, n int, dest []byte) (int, error) {
 		n = len(b.body) - offset
 	}
 
-	timer := metrics.TimerStart().Observe(metrics.PlayerBlobDeliveryDurations)
 	read := copy(dest, b.body[offset:offset+n])
-	timer.Done()
-
 	return read, nil
 }
 
