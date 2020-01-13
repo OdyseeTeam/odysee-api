@@ -130,8 +130,6 @@ func (p *Player) getBlobStore() store.BlobStore {
 
 // Play delivers requested URI onto the supplied http.ResponseWriter.
 func (p *Player) Play(s *Stream, w http.ResponseWriter, r *http.Request) error {
-	w.Header().Set("Content-Type", s.ContentType)
-
 	metrics.PlayerStreamsRunning.Inc()
 	defer metrics.PlayerStreamsRunning.Dec()
 	http.ServeContent(w, r, "stream", s.Timestamp(), s)

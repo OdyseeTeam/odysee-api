@@ -28,9 +28,19 @@ func (h RequestHandler) getURI(r *http.Request) string {
 	return fmt.Sprintf("%s#%s", vars["uri"], vars["claim"])
 }
 
-func (h RequestHandler) writeErrorResponse(w http.ResponseWriter, s int, msg string) {
-	w.WriteHeader(s)
+func (h RequestHandler) writeErrorResponse(w http.ResponseWriter, statusCode int, msg string) {
+	w.WriteHeader(statusCode)
 	w.Write([]byte(msg))
+}
+
+func (h RequestHandler) writeHeaders(w http.ResponseWriter, r *http.Request, s *Stream) {
+	header := w.Header()
+	header.Set("Content-Length", fmt.Sprintf("%v", s.Size))
+	header.Set("Content-Type", s.ContentType)
+	header.Set("Last-Modified", s.Timestamp().UTC().Format(http.TimeFormat))
+	if r.URL.Query().Get(ParamDownload) != "" {
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Claim.Value.GetStream().Source.Name))
+	}
 }
 
 func (h RequestHandler) processStreamError(w http.ResponseWriter, uri string, err error) {
@@ -69,9 +79,7 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	Logger.streamRetrieved(s)
 
-	if r.URL.Query().Get(ParamDownload) != "" {
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Claim.Value.GetStream().Source.Name))
-	}
+	h.writeHeaders(w, r, s)
 
 	err = h.player.Play(s, w, r)
 	if err != nil {
@@ -82,7 +90,6 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 // HandleHead handlers OPTIONS requests for media.
 func (h *RequestHandler) HandleHead(w http.ResponseWriter, r *http.Request) {
-	header := w.Header()
 	uri := h.getURI(r)
 
 	s, err := h.player.ResolveStream(uri)
@@ -97,8 +104,6 @@ func (h *RequestHandler) HandleHead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	header.Set("Content-Length", fmt.Sprintf("%v", s.Size))
-	header.Set("Content-Type", s.ContentType)
-	header.Set("Last-Modified", s.Timestamp().UTC().Format(http.TimeFormat))
+	h.writeHeaders(w, r, s)
 	w.WriteHeader(http.StatusOK)
 }
