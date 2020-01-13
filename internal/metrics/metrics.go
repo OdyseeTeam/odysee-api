@@ -32,9 +32,13 @@ func (s *Server) Serve() {
 	s.Log().Infof("metrics server listening on %v%v", s.Address, s.Path)
 }
 
-const nsPlayer = "player"
-const nsIAPI = "iapi"
-const nsProxy = "proxy"
+const (
+	nsPlayer = "player"
+	nsIAPI   = "iapi"
+	nsProxy  = "proxy"
+
+	LabelSource = "source"
+)
 
 var (
 	PlayerStreamsRunning = promauto.NewGauge(prometheus.GaugeOpts{
@@ -43,20 +47,12 @@ var (
 		Name:      "running",
 		Help:      "Number of streams currently playing",
 	})
-	PlayerBlobDownloadDurations = promauto.NewHistogram(prometheus.HistogramOpts{
+	PlayerRetrieverSpeed = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: nsPlayer,
-		Subsystem: "blob",
-		Name:      "download_seconds",
-		Help:      "Blob download durations",
-		Buckets:   []float64{0.1, 0.3, 0.6, 1.2},
-	})
-	PlayerBlobDeliveryDurations = promauto.NewHistogram(prometheus.HistogramOpts{
-		Namespace: nsPlayer,
-		Subsystem: "blob",
-		Name:      "delivery_seconds",
-		Help:      "Blob delivery durations",
-		Buckets:   []float64{0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0},
-	})
+		Subsystem: "retriever",
+		Name:      "speed_mbps",
+		Help:      "Speed of blob/chunk retrieval",
+	}, []string{LabelSource})
 
 	PlayerInBytes = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: nsPlayer,
@@ -140,11 +136,4 @@ var (
 		},
 		[]string{"method"},
 	)
-	ProxyCallHistogram = promauto.NewHistogram(prometheus.HistogramOpts{
-		Namespace: nsProxy,
-		Subsystem: "calls",
-		Name:      "histogram_seconds",
-		Help:      "Method calls latency histogram",
-		Buckets:   []float64{0.01, 0.05, 0.1, 0.3, 0.6, 1.2, 3.0},
-	})
 )
