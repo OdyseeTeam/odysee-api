@@ -347,15 +347,15 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 	timerCache.Done()
 
 	if cacheHit {
-		rate := float64(cChunk.Size()) / (1024 * 1024) / timerCache.Duration
+		rate := float64(cChunk.Size()) / (1024 * 1024) / timerCache.Duration * 8
 		metrics.PlayerRetrieverSpeed.With(map[string]string{metrics.LabelSource: RetrieverSourceL2Cache}).Set(rate)
 		metrics.PlayerCacheHitCount.Inc()
 
 		RetLogger.WithFields(monitor.F{
-			"hash":     hash,
-			"duration": timerCache.String(),
-			"source":   true,
-			"rate_mbs": rate,
+			"hash":      hash,
+			"duration":  timerCache.String(),
+			"source":    true,
+			"rate_mbps": rate,
 		}).Info("chunk retrieved")
 
 		b.saveToHotCache(n, cChunk)
@@ -370,14 +370,14 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 	}
 	timerReflector.Done()
 
-	rate := float64(rChunk.Size()) / (1024 * 1024) / timerReflector.Duration
+	rate := float64(rChunk.Size()) / (1024 * 1024) / timerReflector.Duration * 8
 	metrics.PlayerRetrieverSpeed.With(map[string]string{metrics.LabelSource: RetrieverSourceReflector}).Set(rate)
 
 	RetLogger.WithFields(monitor.F{
 		"hash":       hash,
 		"duration":   timerReflector.String(),
 		"from_cache": false,
-		"rate_mbs":   rate,
+		"rate_mbps":  rate,
 	}).Info("chunk retrieved")
 
 	b.saveToHotCache(n, rChunk)
