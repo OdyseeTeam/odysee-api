@@ -3,7 +3,7 @@ module github.com/lbryio/lbrytv
 require (
 	github.com/aws/aws-sdk-go v1.23.19 // indirect
 	github.com/dgraph-io/ristretto v0.0.0-20191114170855-99d1bbbf28e6
-	github.com/getsentry/sentry-go v0.3.1
+	github.com/getsentry/sentry-go v0.4.0
 	github.com/gobuffalo/packr v1.30.1 // indirect
 	github.com/gobuffalo/packr/v2 v2.7.1
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
