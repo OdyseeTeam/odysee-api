@@ -26,6 +26,8 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
+const walletLoadRetries = 3
+
 type Preprocessor func(q *Query)
 
 // ProxyService generates Caller objects and keeps execution time metrics
@@ -73,6 +75,7 @@ func (ps *ProxyService) NewCaller(walletID string) *Caller {
 		client:   jsonrpc.NewClient(endpoint),
 		endpoint: endpoint,
 		service:  ps,
+		retries:  walletLoadRetries,
 	}
 	return &c
 }
@@ -271,12 +274,12 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 	// TODO: Refactor this and move somewhere else
 	if r.Error != nil {
 		wErr := lbrynet.NewWalletError(0, errors.New(r.Error.Message))
-		if c.retries == 0 && errors.As(wErr, &lbrynet.WalletNotLoaded{}) {
-			// We need to use Lbry JSON-RPC client here for eqsier request/response processing
+		if c.retries > 0 && errors.As(wErr, &lbrynet.WalletNotLoaded{}) {
+			// We need to use Lbry JSON-RPC client here for easier request/response processing
 			client := ljsonrpc.NewClient(c.service.Router.GetSDKServerAddress(c.WalletID()))
 			_, err := client.WalletAdd(c.WalletID())
 			if err == nil {
-				c.retries++
+				c.retries--
 				return c.call(rawQuery)
 			}
 		} else {

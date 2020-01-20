@@ -178,7 +178,7 @@ func TestCallerCallDoesReloadWallet(t *testing.T) {
 	request := newRawRequest(t, "wallet_balance", nil)
 	result := c.Call(request)
 
-	assert.Equal(t, 1, c.retries)
+	assert.Equal(t, walletLoadRetries-1, c.retries)
 	err = json.Unmarshal(result, &response)
 	require.NoError(t, err)
 	require.Nil(t, response.Error)
