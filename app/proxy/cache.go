@@ -3,6 +3,7 @@ package proxy
 import (
 	"crypto/sha256"
 	"encoding/gob"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -62,18 +63,21 @@ func (s cacheStorage) Retrieve(method string, params interface{}) interface{} {
 }
 
 func (s cacheStorage) getKey(method string, params interface{}) (key string, err error) {
-	h := sha256.New()
-	paramsMap := params.(map[string]interface{})
-	gob.Register(paramsMap)
-	for _, v := range paramsMap {
-		gob.Register(v)
+	var paramsSuffix string
+
+	if params != nil {
+		h := sha256.New()
+		enc := gob.NewEncoder(h)
+		err = enc.Encode(fmt.Sprintf("%v", params))
+		if err != nil {
+			return "", err
+		}
+		paramsSuffix = hex.EncodeToString(h.Sum(nil))
+	} else {
+		paramsSuffix = "nil"
 	}
-	enc := gob.NewEncoder(h)
-	err = enc.Encode(params)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%v|%v", method, h.Sum(nil)), err
+
+	return fmt.Sprintf("%v|%v", method, paramsSuffix), err
 }
 
 func (s cacheStorage) flush() {

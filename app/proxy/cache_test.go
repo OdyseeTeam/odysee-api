@@ -39,3 +39,14 @@ func TestCache(t *testing.T) {
 	assert.Equal(t, 1, responseCache.Count())
 	assert.Equal(t, response.Result, responseCache.Retrieve("resolve", query.Params))
 }
+
+func TestCacheGetKey(t *testing.T) {
+	responseCache.flush()
+	key, err := responseCache.getKey("resolve", map[string]interface{}{"urls": "one"})
+	assert.Equal(t, "resolve|3600a4eed065d3ae3dd503cca56ce56ae6bd4778047fa1b17c999301681d3a1d", key)
+	assert.NoError(t, err)
+
+	key, err = responseCache.getKey("wallet_balance", nil)
+	assert.Equal(t, "wallet_balance|nil", key)
+	assert.NoError(t, err)
+}
