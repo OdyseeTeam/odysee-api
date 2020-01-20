@@ -3,6 +3,7 @@ package proxy
 import (
 	"crypto/sha256"
 	"encoding/gob"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -10,6 +11,9 @@ import (
 
 	"github.com/patrickmn/go-cache"
 )
+
+// CacheLogger is for logging query cache-related messages
+var CacheLogger = monitor.NewModuleLogger("proxy_cache")
 
 // ResponseCache interface describes methods for SDK response cache saving and retrieval
 type ResponseCache interface {
@@ -33,37 +37,47 @@ func InitResponseCache(c ResponseCache) {
 
 // Save puts a response object into cache, making it available for a later retrieval by method and query params
 func (s cacheStorage) Save(method string, params interface{}, r interface{}) {
+	l := CacheLogger.LogF(monitor.F{"method": method})
 	cacheKey, err := s.getKey(method, params)
 	if err != nil {
-		monitor.Logger.Error("unable to get key")
+		l.Errorf("unable to produce key for params: %v", params)
+	} else {
+		l.Info("saved query result")
 	}
 	s.c.Set(cacheKey, r, cache.DefaultExpiration)
 }
 
 // Retrieve earlier saved server response by method and query params
-func (s cacheStorage) Retrieve(method string, params interface{}) (cachedResponse interface{}) {
+func (s cacheStorage) Retrieve(method string, params interface{}) interface{} {
+	l := CacheLogger.LogF(monitor.F{"method": method})
 	cacheKey, err := s.getKey(method, params)
 	if err != nil {
-		monitor.Logger.Error("unable to get key")
+		l.Errorf("unable to produce key for params: %v", params)
 		return nil
 	}
-	cachedResponse, _ = s.c.Get(cacheKey)
+	cachedResponse, ok := s.c.Get(cacheKey)
+	if ok {
+		l.Debug("query result found in cache")
+	}
 	return cachedResponse
 }
 
 func (s cacheStorage) getKey(method string, params interface{}) (key string, err error) {
-	h := sha256.New()
-	paramsMap := params.(map[string]interface{})
-	gob.Register(paramsMap)
-	for _, v := range paramsMap {
-		gob.Register(v)
+	var paramsSuffix string
+
+	if params != nil {
+		h := sha256.New()
+		enc := gob.NewEncoder(h)
+		err = enc.Encode(fmt.Sprintf("%v", params))
+		if err != nil {
+			return "", err
+		}
+		paramsSuffix = hex.EncodeToString(h.Sum(nil))
+	} else {
+		paramsSuffix = "nil"
 	}
-	enc := gob.NewEncoder(h)
-	err = enc.Encode(params)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%v|%v", method, h.Sum(nil)), err
+
+	return fmt.Sprintf("%v|%v", method, paramsSuffix), err
 }
 
 func (s cacheStorage) flush() {

@@ -131,6 +131,8 @@ func (q *Query) isCacheable() bool {
 				return true
 			}
 		}
+	} else if q.Method() == MethodClaimSearch {
+		return true
 	}
 	return false
 }

@@ -186,23 +186,25 @@ func TestCallerCallDoesReloadWallet(t *testing.T) {
 
 func TestCallerCallRelaxedMethods(t *testing.T) {
 	for _, m := range relaxedMethods {
-		if m == MethodStatus {
-			continue
-		}
-		mockClient := &ClientMock{}
-		svc := NewService(router.NewDefault())
-		c := Caller{
-			client:  mockClient,
-			service: svc,
-		}
-		request := newRawRequest(t, m, nil)
-		result := c.Call(request)
-		expectedRequest := jsonrpc.RPCRequest{
-			Method:  m,
-			Params:  nil,
-			JSONRPC: "2.0",
-		}
-		assert.EqualValues(t, expectedRequest, mockClient.LastRequest, string(result))
+		t.Run(m, func(t *testing.T) {
+			if m == MethodStatus {
+				return
+			}
+			mockClient := &ClientMock{}
+			svc := NewService(router.NewDefault())
+			c := Caller{
+				client:  mockClient,
+				service: svc,
+			}
+			request := newRawRequest(t, m, nil)
+			result := c.Call(request)
+			expectedRequest := jsonrpc.RPCRequest{
+				Method:  m,
+				Params:  nil,
+				JSONRPC: "2.0",
+			}
+			assert.EqualValues(t, expectedRequest, mockClient.LastRequest, string(result))
+		})
 	}
 }
 
