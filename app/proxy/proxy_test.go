@@ -92,7 +92,7 @@ func TestNewCaller(t *testing.T) {
 		"default": "http://lbrynet1",
 		"second":  "http://lbrynet2",
 	}
-	svc := NewService(router.New(servers))
+	svc := NewService(Opts{SDKRouter: router.New(servers)})
 	c := svc.NewCaller("")
 	assert.Equal(t, svc, c.service)
 
@@ -107,7 +107,7 @@ func TestNewCaller(t *testing.T) {
 }
 
 func TestCallerSetWalletID(t *testing.T) {
-	svc := NewService(router.NewDefault())
+	svc := NewService(Opts{SDKRouter: router.NewDefault()})
 	c := svc.NewCaller("abc")
 	assert.Equal(t, "abc", c.walletID)
 }
@@ -118,7 +118,7 @@ func TestCallerCallResolve(t *testing.T) {
 		resolveResponse ljsonrpc.ResolveResponse
 	)
 
-	svc := NewService(router.NewDefault())
+	svc := NewService(Opts{SDKRouter: router.NewDefault()})
 	c := svc.NewCaller("")
 
 	resolvedURL := "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
@@ -143,7 +143,7 @@ func TestCallerCallWalletBalance(t *testing.T) {
 	_, wid, err := lbrynet.InitializeWallet(dummyUserID)
 	require.NoError(t, err)
 
-	svc := NewService(router.NewDefault())
+	svc := NewService(Opts{SDKRouter: router.NewDefault()})
 	request := newRawRequest(t, "wallet_balance", nil)
 
 	c := svc.NewCaller("")
@@ -172,7 +172,7 @@ func TestCallerCallDoesReloadWallet(t *testing.T) {
 	_, err := lbrynet.WalletRemove(dummyUserID)
 	require.NoError(t, err)
 
-	svc := NewService(router.NewDefault())
+	svc := NewService(Opts{SDKRouter: router.NewDefault()})
 	c := svc.NewCaller(wid)
 
 	request := newRawRequest(t, "wallet_balance", nil)
@@ -191,7 +191,7 @@ func TestCallerCallRelaxedMethods(t *testing.T) {
 				return
 			}
 			mockClient := &ClientMock{}
-			svc := NewService(router.NewDefault())
+			svc := NewService(Opts{SDKRouter: router.NewDefault()})
 			c := Caller{
 				client:  mockClient,
 				service: svc,
@@ -211,7 +211,7 @@ func TestCallerCallRelaxedMethods(t *testing.T) {
 func TestCallerCallNonRelaxedMethods(t *testing.T) {
 	for _, m := range walletSpecificMethods {
 		mockClient := &ClientMock{}
-		svc := NewService(router.NewDefault())
+		svc := NewService(Opts{SDKRouter: router.NewDefault()})
 		c := Caller{
 			client:  mockClient,
 			service: svc,
@@ -224,7 +224,7 @@ func TestCallerCallNonRelaxedMethods(t *testing.T) {
 
 func TestCallerCallForbiddenMethod(t *testing.T) {
 	mockClient := &ClientMock{}
-	svc := NewService(router.NewDefault())
+	svc := NewService(Opts{SDKRouter: router.NewDefault()})
 	c := Caller{
 		client:  mockClient,
 		service: svc,
@@ -240,7 +240,7 @@ func TestCallerCallAttachesWalletID(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	dummyWalletID := "abc123321"
 
-	svc := NewService(router.NewDefault())
+	svc := NewService(Opts{SDKRouter: router.NewDefault()})
 	c := Caller{
 		walletID: dummyWalletID,
 		client:   mockClient,
@@ -260,7 +260,7 @@ func TestCallerCallAttachesWalletID(t *testing.T) {
 }
 
 func TestCallerSetPreprocessor(t *testing.T) {
-	svc := NewService(router.NewDefault())
+	svc := NewService(Opts{SDKRouter: router.NewDefault()})
 	client := &ClientMock{}
 	c := Caller{
 		client:  client,
@@ -317,7 +317,7 @@ func TestCallerCallSDKError(t *testing.T) {
 		}
 		`))
 	}))
-	svc := NewService(router.New(router.SingleLbrynetServer(ts.URL)))
+	svc := NewService(Opts{SDKRouter: router.New(router.SingleLbrynetServer(ts.URL))})
 	c := svc.NewCaller("")
 
 	hook := logrus_test.NewLocal(svc.logger.Logger())
@@ -335,7 +335,7 @@ func TestCallerCallClientJSONError(t *testing.T) {
 		responses.PrepareJSONWriter(w)
 		w.Write([]byte(`{"method":"version}`))
 	}))
-	svc := NewService(router.New(router.SingleLbrynetServer(ts.URL)))
+	svc := NewService(Opts{SDKRouter: router.New(router.SingleLbrynetServer(ts.URL))})
 	c := svc.NewCaller("")
 
 	hook := logrus_test.NewLocal(svc.logger.Logger())
@@ -375,7 +375,7 @@ func TestQueryParamsAsMap(t *testing.T) {
 func TestSDKMethodStatus(t *testing.T) {
 	var rpcResponse jsonrpc.RPCResponse
 
-	svc := NewService(router.NewDefault())
+	svc := NewService(Opts{SDKRouter: router.NewDefault()})
 	c := svc.NewCaller("")
 	request := newRawRequest(t, "status", nil)
 	callResult := c.Call(request)

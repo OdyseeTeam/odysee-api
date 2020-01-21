@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/lbryio/lbrytv/app/router"
@@ -27,14 +28,16 @@ import (
 )
 
 const walletLoadRetries = 3
+const defaultRPCTimeout = time.Second * 30
 
 type Preprocessor func(q *Query)
 
 // ProxyService generates Caller objects and keeps execution time metrics
 // for all calls proxied through those objects.
 type ProxyService struct {
-	Router router.SDKRouter
-	logger monitor.QueryMonitor
+	Router     router.SDKRouter
+	rpcTimeout time.Duration
+	logger     monitor.QueryMonitor
 }
 
 // Caller patches through JSON-RPC requests from clients, doing pre/post-processing,
@@ -56,12 +59,22 @@ type Query struct {
 	walletID   string
 }
 
+// Opts is initialization parameters for NewService / proxy.ProxyService
+type Opts struct {
+	SDKRouter  router.SDKRouter
+	RPCTimeout time.Duration
+}
+
 // NewService is the entry point to proxy module.
 // Normally only one instance of ProxyService should be created per running server.
-func NewService(sdkRouter router.SDKRouter) *ProxyService {
+func NewService(opts Opts) *ProxyService {
 	s := ProxyService{
-		Router: sdkRouter,
-		logger: monitor.NewProxyLogger(),
+		Router:     opts.SDKRouter,
+		rpcTimeout: opts.RPCTimeout,
+		logger:     monitor.NewProxyLogger(),
+	}
+	if s.rpcTimeout == 0 {
+		s.rpcTimeout = defaultRPCTimeout
 	}
 	return &s
 }
@@ -70,9 +83,11 @@ func NewService(sdkRouter router.SDKRouter) *ProxyService {
 // Note that `SetWalletID` needs to be called if an authenticated user is making this call.
 func (ps *ProxyService) NewCaller(walletID string) *Caller {
 	endpoint := ps.Router.GetSDKServerAddress(walletID)
+	client := jsonrpc.NewClientWithOpts(endpoint, &jsonrpc.RPCClientOpts{
+		HTTPClient: &http.Client{Timeout: time.Second * ps.rpcTimeout}})
 	c := Caller{
 		walletID: walletID,
-		client:   jsonrpc.NewClient(endpoint),
+		client:   client,
 		endpoint: endpoint,
 		service:  ps,
 		retries:  walletLoadRetries,
