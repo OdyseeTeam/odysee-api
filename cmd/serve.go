@@ -20,7 +20,7 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		s := server.NewServer(server.Options{
 			Address:      config.GetAddress(),
-			ProxyService: proxy.NewService(router.New(config.GetLbrynetServers())),
+			ProxyService: proxy.NewService(proxy.Opts{SDKRouter: router.New(config.GetLbrynetServers())}),
 		})
 		err := s.Start()
 		if err != nil {

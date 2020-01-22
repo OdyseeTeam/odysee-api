@@ -17,7 +17,7 @@ import (
 func TestStartAndServeUntilShutdown(t *testing.T) {
 	server := NewServer(Options{
 		Address:      "localhost:40080",
-		ProxyService: proxy.NewService(router.NewDefault()),
+		ProxyService: proxy.NewService(proxy.Opts{SDKRouter: router.NewDefault()}),
 	})
 	server.Start()
 	go server.ServeUntilShutdown()
@@ -49,7 +49,7 @@ func TestHeaders(t *testing.T) {
 
 	server := NewServer(Options{
 		Address:      "localhost:40080",
-		ProxyService: proxy.NewService(router.NewDefault()),
+		ProxyService: proxy.NewService(proxy.Opts{SDKRouter: router.NewDefault()}),
 	})
 	server.Start()
 	go server.ServeUntilShutdown()

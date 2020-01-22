@@ -56,7 +56,7 @@ func TestLbrynetPublisher(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	p := &LbrynetPublisher{proxy.NewService(router.New(config.GetLbrynetServers()))}
+	p := &LbrynetPublisher{proxy.NewService(proxy.Opts{SDKRouter: router.New(config.GetLbrynetServers())})}
 
 	walletSvc := users.NewWalletService()
 	u, err := walletSvc.Retrieve(users.Query{Token: authToken})

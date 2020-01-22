@@ -24,7 +24,7 @@ var svc *ProxyService
 func TestMain(m *testing.M) {
 	rand.Seed(time.Now().UnixNano())
 
-	svc = NewService(router.New(config.GetLbrynetServers()))
+	svc = NewService(Opts{SDKRouter: router.New(config.GetLbrynetServers())})
 
 	dbConfig := config.GetDatabase()
 	params := storage.ConnParams{
