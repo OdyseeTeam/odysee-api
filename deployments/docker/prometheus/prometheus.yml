@@ -25,3 +25,17 @@ scrape_configs:
   - job_name: 'blob-cache'
     static_configs:
       - targets: ['reflector.lbry.com:2112']
+  - job_name: 'spv'
+    static_configs:
+      - targets: 
+        - 'spv1.lbry.com:2112'
+        - 'spv2.lbry.com:2112'
+        - 'spv3.lbry.com:2112'
+        - 'spv4.lbry.com:2112'
+        - 'spv5.lbry.com:2112'
+        - 'spv6.lbry.com:2112'
+        - 'spv7.lbry.com:2112'
+        - 'spv8.lbry.com:2112'
+        - 'spv9.lbry.com:2112'
+        - 'spv25.lbry.com:2112'
+        - 'spv26.lbry.com:2112'
