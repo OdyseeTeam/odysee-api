@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/lbryio/lbrytv/internal/monitor"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/volatiletech/sqlboiler/boil"
 )
+
+const maxDBConnectAttempts = 7
 
 // Handler implements the app database handler.
 type Handler interface {
@@ -59,7 +62,18 @@ func InitConn(params ConnParams) *Connection {
 func (c *Connection) Connect() error {
 	dsn := MakeDSN(c.params)
 	c.logger.LogF(monitor.F{"dsn": dsn}).Info("connecting to the DB")
-	db, err := sqlx.Connect(c.dialect, dsn)
+	var err error
+	var db *sqlx.DB
+	for i := 0; i < maxDBConnectAttempts; i++ {
+		db, err = sqlx.Connect(c.dialect, dsn)
+		if err == nil {
+			break
+		}
+		secondsToWait := i + 1
+		c.logger.Log().Warningf("Attempt %d - could not connect to database...retry in %d seconds: %s", i, secondsToWait, err)
+		time.Sleep(time.Duration(secondsToWait) * time.Second)
+	}
+
 	if err != nil {
 		c.logger.LogF(monitor.F{"dsn": dsn}).Info("DB connection failed")
 		return err
