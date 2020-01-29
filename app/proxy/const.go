@@ -41,6 +41,7 @@ var walletSpecificMethods = []string{
 	"comment_abandon",
 	"comment_create",
 	"comment_hide",
+	"comment_update",
 
 	"claim_list",
 
