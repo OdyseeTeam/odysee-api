@@ -70,15 +70,6 @@ func LogCachedQuery(method string) {
 	}).Info("cached query")
 }
 
-// LogFailedQuery takes a method name, query params, response error object and logs it
-func LogFailedQuery(method string, query interface{}, errorResponse interface{}) {
-	Logger.WithFields(logrus.Fields{
-		"method":   method,
-		"query":    query,
-		"response": errorResponse,
-	}).Error("daemon responded with an error")
-}
-
 type QueryMonitor interface {
 	LogSuccessfulQuery(method string, time float64, params interface{}, response interface{})
 	LogFailedQuery(method string, params interface{}, errorResponse interface{})
@@ -129,11 +120,12 @@ func (l *ProxyLogger) LogSuccessfulQuery(method string, time float64, params int
 
 }
 
-func (l *ProxyLogger) LogFailedQuery(method string, params interface{}, errorResponse interface{}) {
+func (l *ProxyLogger) LogFailedQuery(method string, time float64, params interface{}, errorResponse interface{}) {
 	l.entry.WithFields(logrus.Fields{
 		"method":   method,
 		"params":   params,
 		"response": errorResponse,
+		"duration": time,
 	}).Error("error from the target endpoint")
 }
 
