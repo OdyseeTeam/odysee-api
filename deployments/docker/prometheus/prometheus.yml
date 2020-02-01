@@ -25,10 +25,17 @@ scrape_configs:
   - job_name: 'blob-cache'
     static_configs:
       - targets: ['reflector.lbry.com:2112']
+  - job_name: 'player'
+    scheme: https
+    static_configs:
+      - targets:
+        - 'player1.lbry.tv'
+        - 'player2.lbry.tv'
+        - 'player3.lbry.tv'
   - job_name: 'spv'
     scrape_interval: 15s
     static_configs:
-      - targets: 
+      - targets:
         - 'core.freezepeach.fun:2112'
         - 'spv1.lbry.com:2112'
         - 'spv2.lbry.com:2112'
