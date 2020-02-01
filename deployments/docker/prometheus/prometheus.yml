@@ -26,6 +26,7 @@ scrape_configs:
     static_configs:
       - targets: ['reflector.lbry.com:2112']
   - job_name: 'spv'
+    scrape_interval: 15s
     static_configs:
       - targets: 
         - 'core.freezepeach.fun:2112'
