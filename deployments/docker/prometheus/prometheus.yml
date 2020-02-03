@@ -37,6 +37,7 @@ scrape_configs:
     static_configs:
       - targets:
         - 'core.freezepeach.fun:2112'
+        - 'community1.lbry.com:2112'
         - 'spv1.lbry.com:2112'
         - 'spv2.lbry.com:2112'
         - 'spv3.lbry.com:2112'
