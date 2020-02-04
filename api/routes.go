@@ -5,6 +5,7 @@ import (
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
 	"github.com/lbryio/lbrytv/app/users"
+	"github.com/lbryio/lbrytv/app/status"
 
 	"github.com/gorilla/mux"
 )
@@ -24,6 +25,8 @@ func InstallRoutes(proxyService *proxy.ProxyService, r *mux.Router) {
 	v1Router.HandleFunc("/proxy", proxyHandler.HandleOptions).Methods("OPTIONS")
 	v1Router.HandleFunc("/proxy", authenticator.Wrap(upHandler.Handle)).MatcherFunc(upHandler.CanHandle)
 	v1Router.HandleFunc("/proxy", proxyHandler.Handle)
+
+	v1Router.HandleFunc("/status", status.GetStatus)
 
 	player.InstallRoutes(r)
 }
