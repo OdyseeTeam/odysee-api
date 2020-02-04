@@ -15,20 +15,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"time"
 
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbrytv/app/router"
-	"github.com/lbryio/lbrytv/internal/lbrynet"
-	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
-	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
 
-const walletLoadRetries = 3
 const defaultRPCTimeout = time.Second * 30
+
+var Logger = monitor.NewProxyLogger()
 
 type Preprocessor func(q *Query)
 
@@ -45,11 +43,10 @@ type ProxyService struct {
 type Caller struct {
 	walletID     string
 	query        *jsonrpc.RPCRequest
-	client       jsonrpc.RPCClient
+	client       LbrynetClient
 	endpoint     string
 	service      *ProxyService
 	preprocessor Preprocessor
-	retries      int
 }
 
 // Query is a wrapper around client JSON-RPC query for easier (un)marshaling and processing.
@@ -71,7 +68,6 @@ func NewService(opts Opts) *ProxyService {
 	s := ProxyService{
 		Router:     opts.SDKRouter,
 		rpcTimeout: opts.RPCTimeout,
-		logger:     monitor.NewProxyLogger(),
 	}
 	if s.rpcTimeout == 0 {
 		s.rpcTimeout = defaultRPCTimeout
@@ -83,14 +79,12 @@ func NewService(opts Opts) *ProxyService {
 // Note that `SetWalletID` needs to be called if an authenticated user is making this call.
 func (ps *ProxyService) NewCaller(walletID string) *Caller {
 	endpoint := ps.Router.GetSDKServerAddress(walletID)
-	client := jsonrpc.NewClientWithOpts(endpoint, &jsonrpc.RPCClientOpts{
-		HTTPClient: &http.Client{Timeout: time.Second * ps.rpcTimeout}})
+	client := NewClient(endpoint, walletID, ps.rpcTimeout)
 	c := Caller{
 		walletID: walletID,
 		client:   client,
 		endpoint: endpoint,
 		service:  ps,
-		retries:  walletLoadRetries,
 	}
 	return &c
 }
@@ -241,18 +235,10 @@ func (c *Caller) marshalError(e CallError) []byte {
 	return serialized
 }
 
-func (c *Caller) sendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
-	response, err := c.client.CallRaw(q.Request)
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
-}
-
 func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 	q, err := NewQuery(rawQuery)
 	if err != nil {
-		c.service.logger.Errorf("malformed JSON from client: %s", err.Error())
+		Logger.Errorf("malformed JSON from client: %s", err.Error())
 		return nil, NewParseError(err)
 	}
 
@@ -276,35 +262,9 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 		c.preprocessor(q)
 	}
 
-	queryStartTime := time.Now()
-	r, err := c.sendQuery(q)
-	duration := time.Since(queryStartTime).Seconds()
+	r, err := c.client.Call(q)
 	if err != nil {
 		return r, NewInternalError(err)
-	}
-
-	// We want to account for method duration whether it succeeded or not
-	metrics.ProxyCallDurations.WithLabelValues(q.Method()).Observe(duration)
-
-	// This checks if LbrynetServer responded with missing wallet error and tries to reload it,
-	// then repeat the request again.
-	// TODO: Refactor this and move somewhere else
-	if r.Error != nil {
-		wErr := lbrynet.NewWalletError(0, errors.New(r.Error.Message))
-		if c.retries > 0 && errors.As(wErr, &lbrynet.WalletNotLoaded{}) {
-			// We need to use Lbry JSON-RPC client here for easier request/response processing
-			client := ljsonrpc.NewClient(c.service.Router.GetSDKServerAddress(c.WalletID()))
-			_, err := client.WalletAdd(c.WalletID())
-			if err == nil {
-				c.retries--
-				return c.call(rawQuery)
-			}
-		} else {
-			metrics.ProxyCallFailedDurations.WithLabelValues(q.Method()).Observe(duration)
-			c.service.logger.LogFailedQuery(q.Method(), q.Params(), r.Error)
-		}
-	} else {
-		c.service.logger.LogSuccessfulQuery(q.Method(), duration, q.Params(), r)
 	}
 
 	r, err = processResponse(q.Request, r)
@@ -324,13 +284,13 @@ func (c *Caller) Call(rawQuery []byte) []byte {
 	r, err := c.call(rawQuery)
 	if err != nil {
 		monitor.CaptureException(err, map[string]string{"query": string(rawQuery), "response": fmt.Sprintf("%v", r)})
-		c.service.logger.Errorf("error calling lbrynet: %v, query: %s", err, rawQuery)
+		Logger.Errorf("error calling lbrynet: %v, query: %s", err, rawQuery)
 		return c.marshalError(err)
 	}
 	serialized, err := c.marshal(r)
 	if err != nil {
 		monitor.CaptureException(err)
-		c.service.logger.Errorf("error marshaling response: %v", err)
+		Logger.Errorf("error marshaling response: %v", err)
 		return c.marshalError(err)
 	}
 	return serialized

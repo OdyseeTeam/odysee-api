@@ -1,8 +1,6 @@
 package api
 
 import (
-	"net/http/pprof"
-
 	"github.com/lbryio/lbrytv/app/player"
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
@@ -28,12 +26,4 @@ func InstallRoutes(proxyService *proxy.ProxyService, r *mux.Router) {
 	v1Router.HandleFunc("/proxy", proxyHandler.Handle)
 
 	player.InstallRoutes(r)
-
-	debugRouter := r.PathPrefix("/superdebug/pprof").Subrouter()
-	debugRouter.HandleFunc("/", pprof.Index)
-	debugRouter.HandleFunc("/cmdline", pprof.Cmdline)
-	debugRouter.HandleFunc("/profile", pprof.Profile)
-	debugRouter.HandleFunc("/symbol", pprof.Symbol)
-	debugRouter.HandleFunc("/trace", pprof.Trace)
-	debugRouter.Handle("/heap", pprof.Handler("heap"))
 }

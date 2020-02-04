@@ -53,7 +53,8 @@ func TestLogSuccessfulQuery(t *testing.T) {
 }
 
 func TestLogSuccessfulQueryWithResponse(t *testing.T) {
-	hook := test.NewLocal(Logger)
+	l := NewProxyLogger()
+	hook := test.NewLocal(l.logger)
 
 	config.Override("ShouldLogResponses", true)
 	defer config.RestoreOverridden()
@@ -71,7 +72,7 @@ func TestLogSuccessfulQueryWithResponse(t *testing.T) {
 		},
 	}
 
-	LogSuccessfulQuery("resolve", 0.025, map[string]string{"urls": "one"}, response)
+	l.LogSuccessfulQuery("resolve", 0.025, map[string]string{"urls": "one"}, response)
 
 	require.Equal(t, 1, len(hook.Entries))
 	require.Equal(t, log.InfoLevel, hook.LastEntry().Level)
@@ -85,7 +86,8 @@ func TestLogSuccessfulQueryWithResponse(t *testing.T) {
 }
 
 func TestLogFailedQuery(t *testing.T) {
-	hook := test.NewLocal(Logger)
+	l := NewProxyLogger()
+	hook := test.NewLocal(l.logger)
 
 	response := &jsonrpc.RPCError{
 		Code: 111,
@@ -94,14 +96,15 @@ func TestLogFailedQuery(t *testing.T) {
 		Message: "Method Not Found",
 	}
 	queryParams := map[string]string{"param1": "value1"}
-	LogFailedQuery("unknown_method", queryParams, response)
+	l.LogFailedQuery("unknown_method", 2.34, queryParams, response)
 
 	require.Equal(t, 1, len(hook.Entries))
 	require.Equal(t, log.ErrorLevel, hook.LastEntry().Level)
 	require.Equal(t, "unknown_method", hook.LastEntry().Data["method"])
-	require.Equal(t, queryParams, hook.LastEntry().Data["query"])
+	require.Equal(t, queryParams, hook.LastEntry().Data["params"])
 	require.Equal(t, response, hook.LastEntry().Data["response"])
-	require.Equal(t, "daemon responded with an error", hook.LastEntry().Message)
+	require.Equal(t, 2.34, hook.LastEntry().Data["duration"])
+	require.Equal(t, "error from the target endpoint", hook.LastEntry().Message)
 
 	hook.Reset()
 }

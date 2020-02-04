@@ -59,32 +59,13 @@ type ClientMock struct {
 	LastRequest jsonrpc.RPCRequest
 }
 
-func (c ClientMock) Call(method string, params ...interface{}) (*jsonrpc.RPCResponse, error) {
-	return &jsonrpc.RPCResponse{
-		JSONRPC: "2.0",
-		Result:  "0.0",
-	}, nil
-}
-
-func (c *ClientMock) CallRaw(request *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
-	c.LastRequest = *request
+func (c *ClientMock) Call(q *Query) (*jsonrpc.RPCResponse, error) {
+	c.LastRequest = *q.Request
 	time.Sleep(c.Delay)
 	return &jsonrpc.RPCResponse{
 		JSONRPC: "2.0",
 		Result:  "0.0",
 	}, nil
-}
-
-func (c ClientMock) CallFor(out interface{}, method string, params ...interface{}) error {
-	return nil
-}
-
-func (c ClientMock) CallBatch(requests jsonrpc.RPCRequests) (jsonrpc.RPCResponses, error) {
-	return nil, nil
-}
-
-func (c ClientMock) CallBatchRaw(requests jsonrpc.RPCRequests) (jsonrpc.RPCResponses, error) {
-	return nil, nil
 }
 
 func TestNewCaller(t *testing.T) {
@@ -151,37 +132,13 @@ func TestCallerCallWalletBalance(t *testing.T) {
 	assert.Contains(t, string(result), `"message": "account identificator required"`)
 
 	c = svc.NewCaller(wid)
-	hook := logrus_test.NewLocal(svc.logger.Logger())
+	hook := logrus_test.NewLocal(Logger.Logger())
 	result = c.Call(request)
 
 	parseRawResponse(t, result, &accountBalanceResponse)
 	assert.EqualValues(t, "0", fmt.Sprintf("%v", accountBalanceResponse.Available))
 	assert.Equal(t, map[string]interface{}{"wallet_id": fmt.Sprintf("%v", wid)}, hook.LastEntry().Data["params"])
 	assert.Equal(t, "wallet_balance", hook.LastEntry().Data["method"])
-}
-
-func TestCallerCallDoesReloadWallet(t *testing.T) {
-	var (
-		response jsonrpc.RPCResponse
-	)
-
-	rand.Seed(time.Now().UnixNano())
-	dummyUserID := rand.Intn(100)
-
-	_, wid, _ := lbrynet.InitializeWallet(dummyUserID)
-	_, err := lbrynet.WalletRemove(dummyUserID)
-	require.NoError(t, err)
-
-	svc := NewService(Opts{SDKRouter: router.NewDefault()})
-	c := svc.NewCaller(wid)
-
-	request := newRawRequest(t, "wallet_balance", nil)
-	result := c.Call(request)
-
-	assert.Equal(t, walletLoadRetries-1, c.retries)
-	err = json.Unmarshal(result, &response)
-	require.NoError(t, err)
-	require.Nil(t, response.Error)
 }
 
 func TestCallerCallRelaxedMethods(t *testing.T) {
@@ -320,7 +277,7 @@ func TestCallerCallSDKError(t *testing.T) {
 	svc := NewService(Opts{SDKRouter: router.New(router.SingleLbrynetServer(ts.URL))})
 	c := svc.NewCaller("")
 
-	hook := logrus_test.NewLocal(svc.logger.Logger())
+	hook := logrus_test.NewLocal(Logger.Logger())
 	response := c.Call([]byte(newRawRequest(t, "resolve", map[string]string{"urls": "what"})))
 	json.Unmarshal(response, &rpcResponse)
 	assert.Equal(t, rpcResponse.Error.Code, -32500)
@@ -338,7 +295,7 @@ func TestCallerCallClientJSONError(t *testing.T) {
 	svc := NewService(Opts{SDKRouter: router.New(router.SingleLbrynetServer(ts.URL))})
 	c := svc.NewCaller("")
 
-	hook := logrus_test.NewLocal(svc.logger.Logger())
+	hook := logrus_test.NewLocal(Logger.Logger())
 	response := c.Call([]byte(`{"method":"version}`))
 	json.Unmarshal(response, &rpcResponse)
 	assert.Equal(t, "2.0", rpcResponse.JSONRPC)

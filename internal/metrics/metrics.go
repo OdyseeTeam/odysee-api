@@ -124,7 +124,7 @@ var (
 			Help:       "Method call latency distributions",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		},
-		[]string{"method"},
+		[]string{"method", "endpoint"},
 	)
 	ProxyCallFailedDurations = promauto.NewSummaryVec(
 		prometheus.SummaryOpts{
@@ -134,6 +134,6 @@ var (
 			Help:       "Failed method call latency distributions",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		},
-		[]string{"method"},
+		[]string{"method", "endpoint"},
 	)
 )
