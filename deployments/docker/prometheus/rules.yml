@@ -1,6 +1,0 @@
-groups:
-  - name: app_down
-    rules:
-    - alert: app_down
-      expr: up == 0
-      for: 1m
