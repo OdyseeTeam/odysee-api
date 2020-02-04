@@ -68,6 +68,17 @@ func (c *ClientMock) Call(q *Query) (*jsonrpc.RPCResponse, error) {
 	}, nil
 }
 
+func TestNewQuery(t *testing.T) {
+	for _, rawQ := range []string{``, ` `, `{}`, `[]`, `[{}]`, `[""]`, `""`, `" "`, `{"method": " "}`} {
+		t.Run(rawQ, func(t *testing.T) {
+			q, err := NewQuery([]byte(rawQ))
+			assert.Nil(t, q)
+			assert.Error(t, err)
+		})
+	}
+
+}
+
 func TestNewCaller(t *testing.T) {
 	servers := map[string]string{
 		"default": "http://lbrynet1",

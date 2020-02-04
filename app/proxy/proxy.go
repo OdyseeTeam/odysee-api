@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
@@ -104,6 +105,9 @@ func (q *Query) unmarshal() error {
 	err := json.Unmarshal(q.rawRequest, q.Request)
 	if err != nil {
 		return err
+	}
+	if strings.TrimSpace(q.Request.Method) == "" {
+		return errors.New("invalid JSON-RPC request")
 	}
 	return nil
 }
