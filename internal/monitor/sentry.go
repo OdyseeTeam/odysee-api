@@ -58,8 +58,8 @@ func CaptureException(err error, params ...map[string]string) {
 	})
 }
 
-// captureFailedQuery sends to Sentry details of a failed daemon call.
-func captureFailedQuery(method string, query interface{}, errorResponse interface{}) {
+// CaptureFailedQuery sends to Sentry details of a failed daemon call.
+func CaptureFailedQuery(method string, query interface{}, errorResponse interface{}) {
 	CaptureException(
 		fmt.Errorf("daemon responded with an error when calling method %v", method),
 		map[string]string{

@@ -98,6 +98,17 @@ func TestNewCaller(t *testing.T) {
 	}
 }
 
+func TestCallerСall(t *testing.T) {
+	c := NewService(Opts{SDKRouter: router.NewDefault()}).NewCaller("abc")
+	for _, rawQ := range []string{``, ` `, `{}`, `[]`, `[{}]`, `[""]`, `""`, `" "`, `{"method": " "}`} {
+		t.Run(rawQ, func(t *testing.T) {
+			r := c.Call([]byte(rawQ))
+			assert.Contains(t, string(r), `"code": -32700`)
+		})
+	}
+
+}
+
 func TestCallerSetWalletID(t *testing.T) {
 	svc := NewService(Opts{SDKRouter: router.NewDefault()})
 	c := svc.NewCaller("abc")

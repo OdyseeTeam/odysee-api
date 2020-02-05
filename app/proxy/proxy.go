@@ -242,8 +242,7 @@ func (c *Caller) marshalError(e CallError) []byte {
 func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 	q, err := NewQuery(rawQuery)
 	if err != nil {
-		Logger.Errorf("malformed JSON from client: %s", err.Error())
-		return nil, NewParseError(err)
+		return nil, NewInputError(err)
 	}
 
 	if c.WalletID() != "" {
@@ -287,8 +286,10 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 func (c *Caller) Call(rawQuery []byte) []byte {
 	r, err := c.call(rawQuery)
 	if err != nil {
-		monitor.CaptureException(err, map[string]string{"query": string(rawQuery), "response": fmt.Sprintf("%v", r)})
-		Logger.Errorf("error calling lbrynet: %v, query: %s", err, rawQuery)
+		if !errors.Is(err, InputError{}) {
+			monitor.CaptureException(err, map[string]string{"query": string(rawQuery), "response": fmt.Sprintf("%v", r)})
+			Logger.Errorf("error calling lbrynet: %v, query: %s", err, rawQuery)
+		}
 		return c.marshalError(err)
 	}
 	serialized, err := c.marshal(r)
