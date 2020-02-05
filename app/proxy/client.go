@@ -15,7 +15,7 @@ import (
 )
 
 const walletLoadRetries = 3
-const walletLoadRetryWait = time.Millisecond * 200
+const walletLoadRetryWait = time.Millisecond * 100
 
 var ClientLogger = monitor.NewModuleLogger("proxy_client")
 
@@ -53,29 +53,34 @@ func (c Client) Call(q *Query) (*jsonrpc.RPCResponse, error) {
 		}
 
 		// This checks if LbrynetServer responded with missing wallet error and tries to reload it,
-		// then repeat the request again.
+		// then repeats the request again.
 		if c.isWalletNotLoaded(r) {
+			time.Sleep(walletLoadRetryWait)
 			// We need to use Lbry JSON-RPC client here for easier request/response processing
 			client := ljsonrpc.NewClient(c.endpoint)
 			_, err := client.WalletAdd(c.wallet)
 			if err != nil {
+				ClientLogger.WithFields(monitor.F{
+					"wallet_id": c.wallet, "endpoint": c.endpoint,
+				}).Errorf("encountered an error adding wallet manually: %v", err)
+			}
+
+			// Alert sentry on the last failed wallet load attempt
+			if i >= walletLoadRetries {
 				monitor.CaptureException(
-					fmt.Errorf("encountered an error adding wallet manually: %v", err), map[string]string{
+					fmt.Errorf("gave up on manually adding wallet: %v", r.Error.Message), map[string]string{
 						"wallet_id": c.wallet,
 						"endpoint":  c.endpoint,
+						"retries":   fmt.Sprintf("%v", i),
 					})
 			}
+		} else if c.isWalletAlreadyLoaded(r) {
+			continue
 		} else {
 			return r, nil
 		}
 	}
-	if c.isWalletNotLoaded(r) {
-		monitor.CaptureException(
-			fmt.Errorf("couldn't manually add wallet after %v retries", i), map[string]string{
-				"wallet_id": c.wallet,
-				"endpoint":  c.endpoint,
-			})
-	}
+
 	return r, err
 }
 
@@ -101,6 +106,16 @@ func (c *Client) isWalletNotLoaded(r *jsonrpc.RPCResponse) bool {
 	if r.Error != nil {
 		wErr := lbrynet.NewWalletError(0, errors.New(r.Error.Message))
 		if errors.As(wErr, &lbrynet.WalletNotLoaded{}) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Client) isWalletAlreadyLoaded(r *jsonrpc.RPCResponse) bool {
+	if r.Error != nil {
+		wErr := lbrynet.NewWalletError(0, errors.New(r.Error.Message))
+		if errors.As(wErr, &lbrynet.WalletAlreadyLoaded{}) {
 			return true
 		}
 	}
