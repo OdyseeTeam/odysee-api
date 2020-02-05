@@ -54,12 +54,12 @@ func parseRawResponse(t *testing.T, rawCallReponse []byte, destinationVar interf
 	rpcResponse.GetObject(destinationVar)
 }
 
-type ClientMock struct {
+type MockClient struct {
 	Delay       time.Duration
 	LastRequest jsonrpc.RPCRequest
 }
 
-func (c *ClientMock) Call(q *Query) (*jsonrpc.RPCResponse, error) {
+func (c *MockClient) Call(q *Query) (*jsonrpc.RPCResponse, error) {
 	c.LastRequest = *q.Request
 	time.Sleep(c.Delay)
 	return &jsonrpc.RPCResponse{
@@ -169,7 +169,7 @@ func TestCallerCallRelaxedMethods(t *testing.T) {
 			if m == MethodStatus {
 				return
 			}
-			mockClient := &ClientMock{}
+			mockClient := &MockClient{}
 			svc := NewService(Opts{SDKRouter: router.NewDefault()})
 			c := Caller{
 				client:  mockClient,
@@ -189,7 +189,7 @@ func TestCallerCallRelaxedMethods(t *testing.T) {
 
 func TestCallerCallNonRelaxedMethods(t *testing.T) {
 	for _, m := range walletSpecificMethods {
-		mockClient := &ClientMock{}
+		mockClient := &MockClient{}
 		svc := NewService(Opts{SDKRouter: router.NewDefault()})
 		c := Caller{
 			client:  mockClient,
@@ -202,7 +202,7 @@ func TestCallerCallNonRelaxedMethods(t *testing.T) {
 }
 
 func TestCallerCallForbiddenMethod(t *testing.T) {
-	mockClient := &ClientMock{}
+	mockClient := &MockClient{}
 	svc := NewService(Opts{SDKRouter: router.NewDefault()})
 	c := Caller{
 		client:  mockClient,
@@ -214,7 +214,7 @@ func TestCallerCallForbiddenMethod(t *testing.T) {
 }
 
 func TestCallerCallAttachesWalletID(t *testing.T) {
-	mockClient := &ClientMock{}
+	mockClient := &MockClient{}
 
 	rand.Seed(time.Now().UnixNano())
 	dummyWalletID := "abc123321"
@@ -240,7 +240,7 @@ func TestCallerCallAttachesWalletID(t *testing.T) {
 
 func TestCallerSetPreprocessor(t *testing.T) {
 	svc := NewService(Opts{SDKRouter: router.NewDefault()})
-	client := &ClientMock{}
+	client := &MockClient{}
 	c := Caller{
 		client:  client,
 		service: svc,
