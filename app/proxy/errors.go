@@ -35,8 +35,18 @@ type CallError interface {
 }
 
 type GenericError struct {
-	originalError error
-	code          int
+	err  error
+	code int
+}
+
+// InputError is a client JSON parsing error
+type InputError struct {
+	GenericError
+}
+
+// AuthFailed is for authentication failures when jsonrpc client has provided a token
+type AuthFailed struct {
+	err error
 }
 
 // AsRPCResponse returns error as jsonrpc.RPCResponse
@@ -50,19 +60,14 @@ func (e GenericError) AsRPCResponse() *jsonrpc.RPCResponse {
 	}
 }
 
-// AuthFailed is for authentication failures when jsonrpc client has provided a token
-type AuthFailed struct {
-	CallError
-}
-
 // NewError is for general internal errors
 func NewError(e error) GenericError {
 	return GenericError{e, ErrInternal}
 }
 
-// NewParseError is for json parsing errors
-func NewParseError(e error) GenericError {
-	return GenericError{e, ErrJSONParse}
+// NewInputError is for client JSON parsing errors
+func NewInputError(e error) InputError {
+	return InputError{GenericError{e, ErrJSONParse}}
 }
 
 // NewMethodError creates a call method error
@@ -81,7 +86,7 @@ func NewInternalError(e error) GenericError {
 }
 
 func (e GenericError) Error() string {
-	return e.originalError.Error()
+	return e.err.Error()
 }
 
 // Code returns JSRON-RPC error code
@@ -90,7 +95,7 @@ func (e GenericError) Code() int {
 }
 
 func (e GenericError) Unwrap() error {
-	return e.originalError
+	return e.err
 }
 
 func (e AuthFailed) Error() string {
@@ -100,4 +105,9 @@ func (e AuthFailed) Error() string {
 // Code returns JSRON-RPC error code
 func (e AuthFailed) Code() int {
 	return ErrAuthFailed
+}
+
+// Code returns JSRON-RPC error code
+func (e InputError) Code() int {
+	return ErrJSONParse
 }
