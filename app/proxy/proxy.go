@@ -286,7 +286,7 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 func (c *Caller) Call(rawQuery []byte) []byte {
 	r, err := c.call(rawQuery)
 	if err != nil {
-		if !errors.Is(err, InputError{}) {
+		if !errors.As(err, &InputError{}) {
 			monitor.CaptureException(err, map[string]string{"query": string(rawQuery), "response": fmt.Sprintf("%v", r)})
 			Logger.Errorf("error calling lbrynet: %v, query: %s", err, rawQuery)
 		}
