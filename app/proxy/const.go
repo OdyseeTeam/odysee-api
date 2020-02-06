@@ -49,6 +49,7 @@ var walletSpecificMethods = []string{
 	"stream_create",
 	"stream_list",
 	"stream_update",
+	"stream_repost",
 
 	"support_abandon",
 	"support_create",
