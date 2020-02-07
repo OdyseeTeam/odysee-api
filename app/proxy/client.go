@@ -41,14 +41,27 @@ func NewClient(endpoint string, wallet string, timeout time.Duration) LbrynetCli
 
 func (c Client) Call(q *Query) (*jsonrpc.RPCResponse, error) {
 	var (
-		i   int
-		r   *jsonrpc.RPCResponse
-		err error
+		i        int
+		r        *jsonrpc.RPCResponse
+		err      error
+		duration float64
 	)
-	for i = 0; i < walletLoadRetries; i++ {
-		r, err = c.call(q)
 
+	callMetrics := metrics.ProxyCallDurations.WithLabelValues(q.Method(), c.endpoint)
+	failureMetrics := metrics.ProxyCallFailedDurations.WithLabelValues(q.Method(), c.endpoint)
+
+	for i = 0; i < walletLoadRetries; i++ {
+		start := time.Now()
+
+		r, err = c.rpcClient.CallRaw(q.Request)
+
+		duration = time.Since(start).Seconds()
+		callMetrics.Observe(duration)
+
+		// Generally a HTTP transport failure (connect error etc)
 		if err != nil {
+			failureMetrics.Observe(duration)
+			Logger.LogFailedQuery(q.Method(), duration, q.Params(), r.Error)
 			return nil, err
 		}
 
@@ -77,28 +90,17 @@ func (c Client) Call(q *Query) (*jsonrpc.RPCResponse, error) {
 		} else if c.isWalletAlreadyLoaded(r) {
 			continue
 		} else {
-			return r, nil
+			break
 		}
 	}
 
-	return r, err
-}
-
-func (c *Client) call(q *Query) (*jsonrpc.RPCResponse, error) {
-	start := time.Now()
-	r, err := c.rpcClient.CallRaw(q.Request)
-	duration := time.Since(start).Seconds()
-	metrics.ProxyCallDurations.WithLabelValues(q.Method(), c.endpoint).Observe(duration)
-	if err != nil {
-		return nil, err
-	}
-
-	if r.Error != nil {
-		metrics.ProxyCallFailedDurations.WithLabelValues(q.Method(), c.endpoint).Observe(duration)
+	if (r != nil && r.Error != nil) || err != nil {
 		Logger.LogFailedQuery(q.Method(), duration, q.Params(), r.Error)
+		failureMetrics.Observe(duration)
 	} else {
 		Logger.LogSuccessfulQuery(q.Method(), duration, q.Params(), r)
 	}
+
 	return r, err
 }
 
