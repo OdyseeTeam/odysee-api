@@ -66,7 +66,7 @@ func (c Client) Call(q *Query) (*jsonrpc.RPCResponse, error) {
 			}
 
 			// Alert sentry on the last failed wallet load attempt
-			if i >= walletLoadRetries {
+			if i >= walletLoadRetries+1 {
 				monitor.CaptureException(
 					fmt.Errorf("gave up on manually adding wallet: %v", r.Error.Message), map[string]string{
 						"wallet_id": c.wallet,
