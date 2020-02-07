@@ -42,7 +42,7 @@ func (s cacheStorage) Save(method string, params interface{}, r interface{}) {
 	if err != nil {
 		l.Errorf("unable to produce key for params: %v", params)
 	} else {
-		l.Info("saved query result")
+		l.Debug("saved query result")
 	}
 	s.c.Set(cacheKey, r, cache.DefaultExpiration)
 }

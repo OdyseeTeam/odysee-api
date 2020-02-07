@@ -67,7 +67,7 @@ func LogSuccessfulQuery(method string, time float64, params interface{}, respons
 func LogCachedQuery(method string) {
 	Logger.WithFields(logrus.Fields{
 		"method": method,
-	}).Info("cached query")
+	}).Debug("cached query")
 }
 
 type QueryMonitor interface {
