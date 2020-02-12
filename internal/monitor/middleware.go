@@ -1,7 +1,6 @@
 package monitor
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,7 +13,7 @@ const responseSnippetLength = 500
 
 var errGeneric = errors.New("handler responded with an error")
 
-var httpLogger = NewModuleLogger("monitor")
+var httpLogger = NewModuleLogger("http_monitor")
 
 // loggingWriter mimics http.ResponseWriter but stores a snippet of response, status code
 // and response size for easier logging
@@ -107,15 +106,15 @@ func CaptureRequestError(err error, r *http.Request, w http.ResponseWriter, para
 		logFields[k] = v
 	}
 	httpLogger.LogF(logFields).Error(err)
+	CaptureException(err)
+	// if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+	// 	hub.WithScope(func(scope *sentry.Scope) {
+	// 		scope.SetExtras(extra)
 
-	if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
-		hub.WithScope(func(scope *sentry.Scope) {
-			scope.SetExtras(extra)
-
-		})
-		hub.RecoverWithContext(
-			context.WithValue(r.Context(), sentry.RequestContextKey, r),
-			err,
-		)
-	}
+	// 	})
+	// 	hub.RecoverWithContext(
+	// 		context.WithValue(r.Context(), sentry.RequestContextKey, r),
+	// 		err,
+	// 	)
+	// }
 }

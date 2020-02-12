@@ -69,19 +69,17 @@ func (c Client) Call(q *Query) (*jsonrpc.RPCResponse, error) {
 		// then repeats the request again.
 		if c.isWalletNotLoaded(r) {
 			time.Sleep(walletLoadRetryWait)
-			// We need to use Lbry JSON-RPC client here for easier request/response processing
+			// Using LBRY JSON-RPC client here for easier request/response processing
 			client := ljsonrpc.NewClient(c.endpoint)
 			_, err := client.WalletAdd(c.wallet)
-			if err != nil {
+			// Alert sentry on the last failed wallet load attempt
+			if err != nil && i >= walletLoadRetries-1 {
+				errMsg := "gave up on manually adding a wallet: %v"
 				ClientLogger.WithFields(monitor.F{
 					"wallet_id": c.wallet, "endpoint": c.endpoint,
-				}).Errorf("encountered an error adding wallet manually: %v", err)
-			}
-
-			// Alert sentry on the last failed wallet load attempt
-			if i >= walletLoadRetries-1 {
+				}).Errorf(errMsg, err)
 				monitor.CaptureException(
-					fmt.Errorf("gave up on manually adding wallet: %v", r.Error.Message), map[string]string{
+					fmt.Errorf(errMsg, err), map[string]string{
 						"wallet_id": c.wallet,
 						"endpoint":  c.endpoint,
 						"retries":   fmt.Sprintf("%v", i),
