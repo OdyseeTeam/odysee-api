@@ -60,8 +60,7 @@ func (c Client) Call(q *Query) (*jsonrpc.RPCResponse, error) {
 
 		// Generally a HTTP transport failure (connect error etc)
 		if err != nil {
-			failureMetrics.Observe(duration)
-			Logger.LogFailedQuery(q.Method(), duration, q.Params(), r.Error)
+			ClientLogger.Log().Errorf("error sending query to %v: %v", c.endpoint, err)
 			return nil, err
 		}
 
