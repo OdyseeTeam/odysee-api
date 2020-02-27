@@ -4,6 +4,8 @@ jobs:
     docker:
       - image: lbry/lbrytv-ci:latest
       - image: lbry/lbrynet-tv:latest
+        environment:
+          SDK_LBRYUM_SERVERS: "spv1.lbry.com:50001"
       - image: postgres:11-alpine
         environment:
           POSTGRES_USER: lbrytv
