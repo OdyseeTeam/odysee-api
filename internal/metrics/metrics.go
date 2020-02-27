@@ -116,23 +116,25 @@ var (
 		Help:      "Time to failed authentication response",
 	})
 
-	ProxyCallDurations = promauto.NewSummaryVec(
-		prometheus.SummaryOpts{
-			Namespace:  nsProxy,
-			Subsystem:  "calls",
-			Name:       "total_seconds",
-			Help:       "Method call latency distributions",
-			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+	callsSecondsBuckets = []float64{0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10}
+
+	ProxyCallDurations = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: nsProxy,
+			Subsystem: "calls",
+			Name:      "total_seconds",
+			Help:      "Method call latency distributions",
+			Buckets:   callsSecondsBuckets,
 		},
 		[]string{"method", "endpoint"},
 	)
-	ProxyCallFailedDurations = promauto.NewSummaryVec(
-		prometheus.SummaryOpts{
-			Namespace:  nsProxy,
-			Subsystem:  "calls",
-			Name:       "failed_seconds",
-			Help:       "Failed method call latency distributions",
-			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+	ProxyCallFailedDurations = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: nsProxy,
+			Subsystem: "calls",
+			Name:      "failed_seconds",
+			Help:      "Failed method call latency distributions",
+			Buckets:   callsSecondsBuckets,
 		},
 		[]string{"method", "endpoint"},
 	)
