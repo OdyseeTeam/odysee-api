@@ -116,7 +116,7 @@ var (
 		Help:      "Time to failed authentication response",
 	})
 
-	callsSecondsBuckets = []float64{0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10}
+	callsSecondsBuckets = []float64{0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10}
 
 	ProxyCallDurations = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
