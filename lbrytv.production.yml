@@ -2,8 +2,8 @@ BaseContentURL: https://api.lbry.tv/content/
 InternalAPIHost: https://api.lbry.com
 ProjectURL: https://lbry.tv
 
+DatabaseDSN: postgres://lbrytv:lbrytv@pgbouncer:5439
 Database:
-  Connection: postgres://lbrytv:lbrytv@pgbouncer:5439
   DBName: lbrytv
   Options: sslmode=disable
 
