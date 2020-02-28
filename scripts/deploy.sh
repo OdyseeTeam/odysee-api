@@ -3,11 +3,7 @@
 set -o xtrace
 
 
-if [ -z ${BASE_IMAGE+x} ]; then
-    echo "Please provide base docker image name as BASE_IMAGE variable."
-    exit 1
-fi
-
+BASE_IMAGE="lbry/lbrytv"
 TYPE=$1
 NAME=$2
 VERSION=`git describe --tags`
