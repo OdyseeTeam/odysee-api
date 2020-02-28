@@ -36,7 +36,7 @@ dev_image:
 
 .PHONY: publish_image
 publish_image:
-	docker push lbry/lbrytv
+	docker push lbry/lbrytv:$(VERSION)
 
 clean:
 	find . -name rice-box.go | xargs rm
