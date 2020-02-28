@@ -45,6 +45,13 @@ jobs:
             echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
             make publish_image
 
+  deploy-to-cluster:
+    docker:
+      - image: circleci/golang:1.13
+    steps:
+      - checkout
+      - run: ./scripts/deploy.sh deployment api
+
 workflows:
   version: 2
   integrate:
@@ -55,4 +62,9 @@ workflows:
             - test
           filters:
             branches:
-              only: master
+              only:
+                - master
+                - feature/cluster
+      - deploy-to-cluster:
+          requires:
+            - publish-image
