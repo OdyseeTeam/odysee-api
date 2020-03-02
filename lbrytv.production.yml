@@ -7,9 +7,6 @@ Database:
   DBName: lbrytv
   Options: sslmode=disable
 
-MetricsAddress: :2112
-MetricsPath: /metrics
-
 PublishSourceDir: /storage/publish
 BlobFilesDir: /storage/lbrynet/blobfiles
 

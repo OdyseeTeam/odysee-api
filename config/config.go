@@ -131,16 +131,6 @@ func GetAddress() string {
 	return Config.Viper.GetString("Address")
 }
 
-// MetricsAddress determines address to bind metrics HTTP server to
-func MetricsAddress() string {
-	return Config.Viper.GetString("MetricsAddress")
-}
-
-// MetricsPath determines the path to bind metrics HTTP server to
-func MetricsPath() string {
-	return Config.Viper.GetString("MetricsPath")
-}
-
 //GetLbrynetServers returns the names/addresses of every SDK server
 func GetLbrynetServers() map[string]string {
 	if Config.Viper.GetString(deprecatedLbrynet) != "" &&
