@@ -7,8 +7,8 @@ Debug: 1
 InternalAPIHost: https://api.lbry.com
 ProjectURL: https://lbry.tv
 
+DatabaseDSN: postgres://lbrytv:lbrytv@localhost
 Database:
-  Connection: postgres://lbrytv:lbrytv@localhost
   DBName: lbrytv
   Options: sslmode=disable
 
