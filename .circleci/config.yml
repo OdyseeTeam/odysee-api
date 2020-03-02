@@ -64,7 +64,6 @@ workflows:
             branches:
               only:
                 - master
-                - feature/cluster
       - deploy-to-cluster:
           requires:
             - publish-image
