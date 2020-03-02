@@ -8,7 +8,6 @@ import (
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/server"
 
 	"github.com/spf13/cobra"
@@ -26,9 +25,6 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		ms := metrics.NewServer(config.MetricsAddress(), config.MetricsPath())
-		ms.Serve()
 
 		// ServeUntilShutdown is blocking, should be last
 		s.ServeUntilShutdown()

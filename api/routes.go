@@ -4,8 +4,9 @@ import (
 	"github.com/lbryio/lbrytv/app/player"
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
-	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/app/status"
+	"github.com/lbryio/lbrytv/app/users"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/gorilla/mux"
 )
@@ -20,6 +21,7 @@ func InstallRoutes(proxyService *proxy.ProxyService, r *mux.Router) {
 	}
 
 	r.HandleFunc("/", Index)
+	r.Handle("/internal/metrics", promhttp.Handler())
 
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
 	v1Router.HandleFunc("/proxy", proxyHandler.HandleOptions).Methods("OPTIONS")

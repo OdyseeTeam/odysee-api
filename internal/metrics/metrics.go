@@ -1,36 +1,9 @@
 package metrics
 
 import (
-	"net/http"
-	"sync"
-
-	"github.com/lbryio/lbrytv/internal/monitor"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
-
-var once sync.Once
-
-type Server struct {
-	monitor.ModuleLogger
-
-	Address string
-	Path    string
-}
-
-func NewServer(address string, path string) *Server {
-	return &Server{monitor.NewModuleLogger("metrics"), address, path}
-}
-
-func (s *Server) Serve() {
-	go func() {
-		http.Handle(s.Path, promhttp.Handler())
-		http.ListenAndServe(s.Address, nil)
-	}()
-	s.Log().Infof("metrics server listening on %v%v", s.Address, s.Path)
-}
 
 const (
 	nsPlayer = "player"
