@@ -21,6 +21,7 @@ const (
 	StatusOK       = "ok"
 	StatusNotReady = "not_ready"
 	StatusOffline  = "offline"
+	StatusFailing  = "failing"
 )
 
 type ServerItem struct {
@@ -36,10 +37,12 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 		"player":  ServerList{},
 	}
 	response := map[string]interface{}{
-		"timestamp": fmt.Sprintf("%v", time.Now().UTC()),
-		"services":  services,
+		"timestamp":     fmt.Sprintf("%v", time.Now().UTC()),
+		"services":      services,
+		"general_state": StatusOK,
 	}
 	respStatus := http.StatusOK
+	failureDetected := false
 
 	router := router.NewDefault()
 	sdks := router.GetSDKServerList()
@@ -51,9 +54,11 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 			srv.Error = fmt.Sprintf("%v", err)
 			srv.Status = StatusOffline
 			respStatus = http.StatusServiceUnavailable
+			failureDetected = true
 		} else if !status.StartupStatus.Wallet {
 			srv.Status = StatusNotReady
 			respStatus = http.StatusServiceUnavailable
+			failureDetected = true
 		}
 		services["lbrynet"] = append(services["lbrynet"], srv)
 	}
@@ -65,12 +70,17 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 			srv.Error = fmt.Sprintf("%v", err)
 			srv.Status = StatusOffline
 			respStatus = http.StatusServiceUnavailable
+			failureDetected = true
 		} else if r.StatusCode != http.StatusNotFound {
 			srv.Status = StatusNotReady
 			srv.Error = fmt.Sprintf("http status %v", r.StatusCode)
 			respStatus = http.StatusServiceUnavailable
+			failureDetected = true
 		}
 		services["player"] = append(services["player"], srv)
+	}
+	if failureDetected {
+		response["general_state"] = StatusFailing
 	}
 
 	w.Header().Add("content-type", "application/json; charset=utf-8")
