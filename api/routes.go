@@ -21,14 +21,16 @@ func InstallRoutes(proxyService *proxy.ProxyService, r *mux.Router) {
 	}
 
 	r.HandleFunc("/", Index)
-	r.Handle("/internal/metrics", promhttp.Handler())
 
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
 	v1Router.HandleFunc("/proxy", proxyHandler.HandleOptions).Methods("OPTIONS")
 	v1Router.HandleFunc("/proxy", authenticator.Wrap(upHandler.Handle)).MatcherFunc(upHandler.CanHandle)
 	v1Router.HandleFunc("/proxy", proxyHandler.Handle)
 
-	v1Router.HandleFunc("/status", status.GetStatus)
+	internalRouter := r.PathPrefix("/internal").Subrouter()
+	internalRouter.Handle("/metrics", promhttp.Handler())
+	internalRouter.HandleFunc("/status", status.GetStatus)
+	internalRouter.HandleFunc("/whoami", status.WhoAMI)
 
 	player.InstallRoutes(r)
 }

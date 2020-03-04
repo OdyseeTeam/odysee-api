@@ -88,3 +88,15 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 	respByte, _ := json.MarshalIndent(&response, "", "  ")
 	w.Write(respByte)
 }
+
+func WhoAMI(w http.ResponseWriter, req *http.Request) {
+	details := map[string]string{
+		"ip":              fmt.Sprintf("%v", req.RemoteAddr),
+		"X-Forwarded-For": req.Header.Get("X-Forwarded-For"),
+		"X-Real-Ip":       req.Header.Get("X-Real-Ip"),
+	}
+
+	w.Header().Add("content-type", "application/json; charset=utf-8")
+	respByte, _ := json.MarshalIndent(&details, "", "  ")
+	w.Write(respByte)
+}
