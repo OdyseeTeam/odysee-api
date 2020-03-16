@@ -34,11 +34,11 @@ type ServerList []ServerItem
 type statusResponse map[string]interface{}
 var cachedResponse *statusResponse = nil
 var lastUpdate time.Time
-
+const statusCacheValidity = 60*time.Second
 func GetStatus(w http.ResponseWriter, req *http.Request) {
 	respStatus := http.StatusOK
 	var response *statusResponse
-	if cachedResponse != nil && lastUpdate.After(time.Now().Add(60*time.Second)) {
+	if cachedResponse != nil && lastUpdate.After(time.Now().Add(statusCacheValidity)) {
 		response = cachedResponse
 	} else {
 
