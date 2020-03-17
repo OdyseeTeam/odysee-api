@@ -4,8 +4,8 @@ import (
 	"github.com/lbryio/lbrytv/app/player"
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
-	"github.com/lbryio/lbrytv/app/status"
 	"github.com/lbryio/lbrytv/app/users"
+	"github.com/lbryio/lbrytv/internal/status"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/gorilla/mux"
