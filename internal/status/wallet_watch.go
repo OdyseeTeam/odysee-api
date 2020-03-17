@@ -1,18 +1,19 @@
 package status
 
 import (
+	"math/rand"
 	"time"
 
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/internal/metrics"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 )
 
-const walletWatchInterval = time.Minute * 5
-
 func WatchWallets() {
-	StatusLogger.Log().Info("starting wallets watcher")
+	r := router.NewDefault()
+	StatusLogger.Log().Infof("starting wallets watcher over %v instances", len(r.GetSDKServerList()))
+	walletWatchInterval := time.Duration(rand.Intn(10)+5) * time.Minute
 	ticker := time.NewTicker(walletWatchInterval)
 
 	go func() {
@@ -25,14 +26,14 @@ func WatchWallets() {
 }
 
 func countWallets() {
-	servers := config.GetLbrynetServers()
-	for _, server := range servers {
-		c := ljsonrpc.NewClient(server)
-		m := metrics.LbrynetWalletsLoaded.WithLabelValues(server)
+	r := router.NewDefault()
+	for _, server := range r.GetSDKServerList() {
+		c := ljsonrpc.NewClient(server.Address)
+		m := metrics.LbrynetWalletsLoaded.WithLabelValues(server.Address)
 
 		wl, err := c.WalletList("", 1, 1)
 		if err != nil {
-			StatusLogger.Log().Errorf("lbrynet instance %v is not responding", server)
+			StatusLogger.Log().Errorf("lbrynet instance %v is not responding: %v", server.Address, err)
 			m.Set(0.0)
 		} else {
 			m.Set(float64(wl.TotalPages - 1))
