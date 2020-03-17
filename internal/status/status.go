@@ -7,9 +7,12 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/app/router"
+	"github.com/lbryio/lbrytv/internal/monitor"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 )
+
+var StatusLogger = monitor.NewModuleLogger("status")
 
 var PlayerServers = []string{
 	"https://player1.lbry.tv",
