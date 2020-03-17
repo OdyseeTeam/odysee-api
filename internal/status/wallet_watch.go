@@ -9,7 +9,7 @@ import (
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 )
 
-const walletWatchInterval = time.Minute * 1
+const walletWatchInterval = time.Minute * 5
 
 func WatchWallets() {
 	StatusLogger.Log().Info("starting wallets watcher")
