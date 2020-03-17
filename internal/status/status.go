@@ -7,9 +7,12 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/app/router"
+	"github.com/lbryio/lbrytv/internal/monitor"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 )
+
+var StatusLogger = monitor.NewModuleLogger("status")
 
 var PlayerServers = []string{
 	"https://player1.lbry.tv",
@@ -17,11 +20,17 @@ var PlayerServers = []string{
 	"https://player3.lbry.tv",
 }
 
+var (
+	cachedResponse *statusResponse = nil
+	lastUpdate     time.Time
+)
+
 const (
-	StatusOK       = "ok"
-	StatusNotReady = "not_ready"
-	StatusOffline  = "offline"
-	StatusFailing  = "failing"
+	StatusOK            = "ok"
+	StatusNotReady      = "not_ready"
+	StatusOffline       = "offline"
+	StatusFailing       = "failing"
+	statusCacheValidity = 60 * time.Second
 )
 
 type ServerItem struct {
@@ -30,18 +39,15 @@ type ServerItem struct {
 	Error   string `json:"error,omitempty"`
 }
 type ServerList []ServerItem
-
 type statusResponse map[string]interface{}
-var cachedResponse *statusResponse = nil
-var lastUpdate time.Time
-const statusCacheValidity = 60*time.Second
+
 func GetStatus(w http.ResponseWriter, req *http.Request) {
 	respStatus := http.StatusOK
 	var response *statusResponse
+
 	if cachedResponse != nil && lastUpdate.After(time.Now().Add(statusCacheValidity)) {
 		response = cachedResponse
 	} else {
-
 		services := map[string]ServerList{
 			"lbrynet": ServerList{},
 			"player":  ServerList{},

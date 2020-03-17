@@ -2,7 +2,7 @@ version: '3.2'
 
 services:
   lbrynet:
-    image: lbry/lbrynet-tv:latest
+    image: lbry/lbrynet-tv:cluster3
     ports:
       - "5581:5279"
     volumes:

@@ -6,11 +6,13 @@ import (
 )
 
 const (
-	nsPlayer = "player"
-	nsIAPI   = "iapi"
-	nsProxy  = "proxy"
+	nsPlayer  = "player"
+	nsIAPI    = "iapi"
+	nsProxy   = "proxy"
+	nsLbrynet = "lbrynet"
 
-	LabelSource = "source"
+	LabelSource   = "source"
+	LabelInstance = "instance"
 )
 
 var (
@@ -111,4 +113,11 @@ var (
 		},
 		[]string{"method", "endpoint"},
 	)
+
+	LbrynetWalletsLoaded = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: nsLbrynet,
+		Subsystem: "wallets",
+		Name:      "count",
+		Help:      "Number of wallets currently loaded",
+	}, []string{LabelSource})
 )

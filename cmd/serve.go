@@ -8,6 +8,7 @@ import (
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/status"
 	"github.com/lbryio/lbrytv/server"
 
 	"github.com/spf13/cobra"
@@ -25,6 +26,8 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		status.WatchWallets()
 
 		// ServeUntilShutdown is blocking, should be last
 		s.ServeUntilShutdown()
