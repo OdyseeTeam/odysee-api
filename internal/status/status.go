@@ -63,6 +63,7 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 		sdks := router.GetSDKServerList()
 		for _, s := range sdks {
 			c := ljsonrpc.NewClient(s.Address)
+			c.SetRPCTimeout(5*time.Second)
 			status, err := c.Status()
 			srv := ServerItem{Address: s.Address, Status: StatusOK}
 			if err != nil {
