@@ -61,7 +61,7 @@ After that, launch the containers:
 
 **3. Start lbrytv API server**
 
-`go run . serve`
+`go run .`
 
 **4. Clone [lbry-desktop](https://github.com/lbryio/lbry-desktop/) repo, if you don't have it**
 
@@ -73,7 +73,7 @@ git clone git@github.com:lbryio/lbry-desktop.git
 **5. Launch UI in lbry-desktop repo folder**
 
 ```
-SDK_API_URL=http://localhost:8080/api/v1/proxy yarn dev:web
+SDK_API_URL=http://localhost:8080 yarn dev:web
 ```
 
 **6. Open http://localhost:8081/ in Chrome**
