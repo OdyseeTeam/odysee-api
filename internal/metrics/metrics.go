@@ -10,6 +10,7 @@ const (
 	nsIAPI    = "iapi"
 	nsProxy   = "proxy"
 	nsLbrynet = "lbrynet"
+	nsUI      = "ui"
 
 	LabelSource   = "source"
 	LabelInstance = "instance"
@@ -120,4 +121,18 @@ var (
 		Name:      "count",
 		Help:      "Number of wallets currently loaded",
 	}, []string{LabelSource})
+
+	UIBufferCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: nsUI,
+		Subsystem: "buffer",
+		Name:      "count",
+		Help:      "Video buffer events",
+	})
+	UITimeToStart = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: nsUI,
+		Subsystem: "buffer",
+		Name:      "time_to_start",
+		Help:      "How long it takes the video to start",
+		Buckets:   []float64{0.1, 0.25, 0.5, 1, 2, 4, 8, 16, 32},
+	})
 )
