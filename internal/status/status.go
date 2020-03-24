@@ -12,7 +12,7 @@ import (
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 )
 
-var StatusLogger = monitor.NewModuleLogger("status")
+var Logger = monitor.NewModuleLogger("status")
 
 var PlayerServers = []string{
 	"https://player1.lbry.tv",
@@ -63,7 +63,7 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 		sdks := router.GetSDKServerList()
 		for _, s := range sdks {
 			c := ljsonrpc.NewClient(s.Address)
-			c.SetRPCTimeout(5*time.Second)
+			c.SetRPCTimeout(5 * time.Second)
 			status, err := c.Status()
 			srv := ServerItem{Address: s.Address, Status: StatusOK}
 			if err != nil {

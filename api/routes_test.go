@@ -58,11 +58,11 @@ func TestRoutesOptions(t *testing.T) {
 	InstallRoutes(proxy, r)
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Equal(t, "7200", rr.HeaderMap.Get("Access-Control-Max-Age"))
-	assert.Equal(t, "*", rr.HeaderMap.Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, "7200", rr.Result().Header.Get("Access-Control-Max-Age"))
+	assert.Equal(t, "*", rr.Result().Header.Get("Access-Control-Allow-Origin"))
 	assert.Equal(
 		t,
 		"X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept",
-		rr.HeaderMap.Get("Access-Control-Allow-Headers"),
+		rr.Result().Header.Get("Access-Control-Allow-Headers"),
 	)
 }

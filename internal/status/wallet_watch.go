@@ -12,7 +12,7 @@ import (
 
 func WatchWallets() {
 	r := router.NewDefault()
-	StatusLogger.Log().Infof("starting wallets watcher over %v instances", len(r.GetSDKServerList()))
+	Logger.Log().Infof("starting wallets watcher over %v instances", len(r.GetSDKServerList()))
 	walletWatchInterval := time.Duration(rand.Intn(10)+5) * time.Minute
 	ticker := time.NewTicker(walletWatchInterval)
 
@@ -33,7 +33,7 @@ func countWallets() {
 
 		wl, err := c.WalletList("", 1, 1)
 		if err != nil {
-			StatusLogger.Log().Errorf("lbrynet instance %v is not responding: %v", server.Address, err)
+			Logger.Log().Errorf("lbrynet instance %v is not responding: %v", server.Address, err)
 			m.Set(0.0)
 		} else {
 			m.Set(float64(wl.TotalPages - 1))
