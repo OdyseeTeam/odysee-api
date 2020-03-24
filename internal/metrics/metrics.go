@@ -124,13 +124,13 @@ var (
 
 	UIBufferCount = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: nsUI,
-		Subsystem: "buffer",
-		Name:      "count",
+		Subsystem: "content",
+		Name:      "buffer_count",
 		Help:      "Video buffer events",
 	})
 	UITimeToStart = promauto.NewHistogram(prometheus.HistogramOpts{
 		Namespace: nsUI,
-		Subsystem: "buffer",
+		Subsystem: "content",
 		Name:      "time_to_start",
 		Help:      "How long it takes the video to start",
 		Buckets:   []float64{0.1, 0.25, 0.5, 1, 2, 4, 8, 16, 32},
