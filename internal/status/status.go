@@ -32,7 +32,7 @@ const (
 	StatusNotReady      = "not_ready"
 	StatusOffline       = "offline"
 	StatusFailing       = "failing"
-	statusCacheValidity = 60 * time.Second
+	statusCacheValidity = 120 * time.Second
 )
 
 type ServerItem struct {
@@ -65,7 +65,7 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 		sdks := router.GetSDKServerList()
 		for _, s := range sdks {
 			c := ljsonrpc.NewClient(s.Address)
-			c.SetRPCTimeout(30 * time.Second)
+			c.SetRPCTimeout(60 * time.Second)
 			status, err := c.Status()
 			srv := ServerItem{Address: s.Address, Status: StatusOK}
 			if err != nil {
