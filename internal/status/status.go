@@ -18,6 +18,8 @@ var PlayerServers = []string{
 	"https://player1.lbry.tv",
 	"https://player2.lbry.tv",
 	"https://player3.lbry.tv",
+	"https://player4.lbry.tv",
+	"https://player5.lbry.tv",
 }
 
 var (
@@ -63,7 +65,7 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 		sdks := router.GetSDKServerList()
 		for _, s := range sdks {
 			c := ljsonrpc.NewClient(s.Address)
-			c.SetRPCTimeout(5 * time.Second)
+			c.SetRPCTimeout(30 * time.Second)
 			status, err := c.Status()
 			srv := ServerItem{Address: s.Address, Status: StatusOK}
 			if err != nil {
