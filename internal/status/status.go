@@ -8,8 +8,6 @@ import (
 
 	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/internal/monitor"
-
-	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 )
 
 var Logger = monitor.NewModuleLogger("status")
@@ -64,20 +62,7 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 		router := router.NewDefault()
 		sdks := router.GetSDKServerList()
 		for _, s := range sdks {
-			c := ljsonrpc.NewClient(s.Address)
-			c.SetRPCTimeout(60 * time.Second)
-			status, err := c.Status()
 			srv := ServerItem{Address: s.Address, Status: StatusOK}
-			if err != nil {
-				srv.Error = fmt.Sprintf("%v", err)
-				srv.Status = StatusOffline
-				respStatus = http.StatusServiceUnavailable
-				failureDetected = true
-			} else if !status.StartupStatus.Wallet {
-				srv.Status = StatusNotReady
-				respStatus = http.StatusServiceUnavailable
-				failureDetected = true
-			}
 			services["lbrynet"] = append(services["lbrynet"], srv)
 		}
 
