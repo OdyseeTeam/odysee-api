@@ -1,10 +1,12 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
+	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/status"
@@ -15,7 +17,7 @@ import (
 
 // InstallRoutes sets up global API handlers
 func InstallRoutes(proxyService *proxy.ProxyService, r *mux.Router) {
-	authenticator := users.NewAuthenticator(users.NewWalletService())
+	authenticator := users.NewAuthenticator(users.NewWalletService(proxyService.SDKRouter))
 	proxyHandler := proxy.NewRequestHandler(proxyService)
 	upHandler, err := publish.NewUploadHandler(publish.UploadOpts{ProxyService: proxyService})
 	if err != nil {
@@ -32,6 +34,13 @@ func InstallRoutes(proxyService *proxy.ProxyService, r *mux.Router) {
 
 	internalRouter := r.PathPrefix("/internal").Subrouter()
 	internalRouter.Handle("/metrics", promhttp.Handler())
-	internalRouter.HandleFunc("/status", status.GetStatus)
+	internalRouter.HandleFunc("/status", injectSDKRouter(proxyService.SDKRouter, status.GetStatus))
 	internalRouter.HandleFunc("/whoami", status.WhoAMI)
+}
+
+// i can't tell if this is really a best practice or a hack
+func injectSDKRouter(rt *router.SDK, fn http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fn(w, r.Clone(context.WithValue(r.Context(), status.SDKRouterContextKey, rt)))
+	}
 }

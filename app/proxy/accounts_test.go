@@ -7,8 +7,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbrytv/config"
+
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"

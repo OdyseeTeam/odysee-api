@@ -9,12 +9,11 @@ import (
 	"path"
 	"testing"
 
-	"github.com/lbryio/lbrytv/app/router"
-
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/storage"
+	"github.com/lbryio/lbrytv/internal/test"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,9 +55,9 @@ func TestLbrynetPublisher(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	p := &LbrynetPublisher{proxy.NewService(proxy.Opts{SDKRouter: router.New(config.GetLbrynetServers())})}
-
-	walletSvc := users.NewWalletService()
+	rt := test.SDKRouter()
+	p := &LbrynetPublisher{proxy.NewService(proxy.Opts{SDKRouter: rt})}
+	walletSvc := users.NewWalletService(rt)
 	u, err := walletSvc.Retrieve(users.Query{Token: authToken})
 	require.Nil(t, err)
 

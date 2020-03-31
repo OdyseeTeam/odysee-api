@@ -3,12 +3,13 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
+	"time"
 
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/status"
 	"github.com/lbryio/lbrytv/server"
 
 	"github.com/spf13/cobra"
@@ -18,16 +19,18 @@ var rootCmd = &cobra.Command{
 	Use:   "lbrytv",
 	Short: "lbrytv is a backend API server for lbry.tv frontend",
 	Run: func(cmd *cobra.Command, args []string) {
+		rand.Seed(time.Now().UTC().UnixNano()) // always seed random!
+		sdkRouter := router.New(config.GetLbrynetServers())
+		go sdkRouter.WatchLoad()
+
 		s := server.NewServer(server.Options{
 			Address:      config.GetAddress(),
-			ProxyService: proxy.NewService(proxy.Opts{SDKRouter: router.New(config.GetLbrynetServers())}),
+			ProxyService: proxy.NewService(proxy.Opts{SDKRouter: sdkRouter}),
 		})
 		err := s.Start()
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		status.WatchWallets()
 
 		// ServeUntilShutdown is blocking, should be last
 		s.ServeUntilShutdown()

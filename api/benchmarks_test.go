@@ -15,12 +15,12 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/app/proxy"
-	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/internal/storage"
+	"github.com/lbryio/lbrytv/internal/test"
 	"github.com/lbryio/lbrytv/models"
 
 	"github.com/stretchr/testify/require"
@@ -94,7 +94,8 @@ func BenchmarkWalletCommands(b *testing.B) {
 
 	walletsNum := 30
 	wallets := make([]*models.User, walletsNum)
-	svc := users.NewWalletService()
+	rt := test.SDKRouter()
+	svc := users.NewWalletService(rt)
 
 	svc.Logger.Disable()
 	lbrynet.Logger.Disable()
@@ -110,11 +111,7 @@ func BenchmarkWalletCommands(b *testing.B) {
 		wallets[i] = u
 	}
 
-	handler := proxy.NewRequestHandler(
-		proxy.NewService(
-			proxy.Opts{SDKRouter: router.New(config.GetLbrynetServers())},
-		),
-	)
+	handler := proxy.NewRequestHandler(proxy.NewService(proxy.Opts{SDKRouter: rt}))
 
 	b.SetParallelism(30)
 	b.ResetTimer()

@@ -138,11 +138,10 @@ func GetLbrynetServers() map[string]string {
 		logrus.Panicf("Both %s and %s are set. This is a highlander situation...there can be only 1.", deprecatedLbrynet, lbrynetServers)
 	}
 
-	var serverMap = make(map[string]string)
 	if len(Config.Viper.GetStringMapString(lbrynetServers)) > 0 {
-		serverMap = Config.Viper.GetStringMapString(lbrynetServers)
+		return Config.Viper.GetStringMapString(lbrynetServers)
 	} else if Config.Viper.GetString(deprecatedLbrynet) != "" {
-		serverMap = map[string]string{"default": Config.Viper.GetString(deprecatedLbrynet)}
+		return map[string]string{"default": Config.Viper.GetString(deprecatedLbrynet)}
 	} else {
 		servers, err := models.LbrynetServers().AllG()
 		if err != nil {
@@ -151,8 +150,8 @@ func GetLbrynetServers() map[string]string {
 		if len(servers) == 0 {
 			panic("There are no servers listed in the db and config is not set.")
 		}
+		return nil
 	}
-	return serverMap
 }
 
 // GetInternalAPIHost returns the address of internal-api server

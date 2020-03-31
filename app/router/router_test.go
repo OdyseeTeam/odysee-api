@@ -22,7 +22,7 @@ func TestGetFirstDigit(t *testing.T) {
 
 func TestInitializeWithYML(t *testing.T) {
 	sdkRouter := New(config.GetLbrynetServers())
-	assert.True(t, len(sdkRouter.GetSDKServerList()) > 0, "No servers")
+	assert.True(t, len(sdkRouter.GetAll()) > 0, "No servers")
 }
 
 func TestFirstServer(t *testing.T) {
@@ -33,13 +33,13 @@ func TestFirstServer(t *testing.T) {
 	})
 	defer config.RestoreOverridden()
 	sdkRouter := New(config.GetLbrynetServers())
-	server := sdkRouter.GetSDKServerAddress("lbrytv-id.756130.wallet")
+	server := sdkRouter.GetServer("lbrytv-id.756130.wallet").Address
 	assert.Equal(t, "http://lbrynet1:5279/", server)
 
-	server = sdkRouter.GetSDKServerAddress("lbrytv-id.1767731.wallet")
+	server = sdkRouter.GetServer("lbrytv-id.1767731.wallet").Address
 	assert.Equal(t, "http://lbrynet2:5279/", server)
 
-	server = sdkRouter.GetSDKServerAddress("lbrytv-id.751365.wallet")
+	server = sdkRouter.GetServer("lbrytv-id.751365.wallet").Address
 	assert.Equal(t, "http://lbrynet3:5279/", server)
 }
 
@@ -51,17 +51,17 @@ func TestServerRetrieval(t *testing.T) {
 	})
 	defer config.RestoreOverridden()
 	sdkRouter := New(config.GetLbrynetServers())
-	servers := sdkRouter.GetSDKServerList()
+	servers := sdkRouter.GetAll()
 	for i := 0; i < 10000; i++ {
 		walletID := wallet.MakeID(i)
-		server := sdkRouter.GetSDKServerAddress(walletID)
+		server := sdkRouter.GetServer(walletID).Address
 		assert.Equal(t, servers[i%10%3].Address, server)
 	}
 }
 
 func TestDefaultLbrynetServer(t *testing.T) {
 	sdkRouter := New(config.GetLbrynetServers())
-	_, ok := sdkRouter.LbrynetServers["default"]
+	_, ok := sdkRouter.hardcoded["default"] // QUESTION: should I use router.DefaultServer constant in tests? or should this stay a string?
 	if !ok {
 		t.Error("No default lbrynet server is specified in the lbrytv.yml")
 	}
@@ -86,10 +86,10 @@ func TestMain(m *testing.M) {
 func TestOverrideLbrynetDefault(t *testing.T) {
 	config.Override("LbrynetServers", map[string]string{"default": "http://localhost:5279"})
 	defer config.RestoreOverridden()
-	sdkRouter := NewDefault()
+	sdkRouter := New(config.GetLbrynetServers())
 	dummyID := 2343465345
 	wallet.MakeID(dummyID)
-	server := sdkRouter.GetSDKServer(wallet.MakeID(dummyID))
+	server := sdkRouter.GetServer(wallet.MakeID(dummyID))
 	assert.Equal(t, server.Address, "http://localhost:5279")
 }
 
@@ -100,7 +100,7 @@ func TestOverrideLbrynet(t *testing.T) {
 	sdkRouter := New(config.GetLbrynetServers())
 	dummyID := 2343465345
 	wallet.MakeID(dummyID)
-	server := sdkRouter.GetSDKServer(wallet.MakeID(dummyID))
+	server := sdkRouter.GetServer(wallet.MakeID(dummyID))
 	assert.Equal(t, server.Address, "http://localhost:5279")
 }
 

@@ -6,9 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/lbrytv/app/router"
-
 	"github.com/lbryio/lbrytv/app/proxy"
+	"github.com/lbryio/lbrytv/internal/test"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +16,7 @@ import (
 func TestStartAndServeUntilShutdown(t *testing.T) {
 	server := NewServer(Options{
 		Address:      "localhost:40080",
-		ProxyService: proxy.NewService(proxy.Opts{SDKRouter: router.NewDefault()}),
+		ProxyService: proxy.NewService(proxy.Opts{SDKRouter: test.SDKRouter()}),
 	})
 	server.Start()
 	go server.ServeUntilShutdown()
@@ -49,7 +48,7 @@ func TestHeaders(t *testing.T) {
 
 	server := NewServer(Options{
 		Address:      "localhost:40080",
-		ProxyService: proxy.NewService(proxy.Opts{SDKRouter: router.NewDefault()}),
+		ProxyService: proxy.NewService(proxy.Opts{SDKRouter: test.SDKRouter()}),
 	})
 	server.Start()
 	go server.ServeUntilShutdown()

@@ -43,15 +43,9 @@ SDK_API_URL=http://localhost:8080/api/v1/proxy yarn dev:web
 
 You still might want to use `docker` and `docker-compose` for running SDK and DB containers.
 
-**1. Initialize and launch the containers**
+**1. Launch the containers**
 
-If this is your first launch, initialize:
-
-`docker-compose up --no-start postgres lbrynet`
-
-After that, launch the containers:
-
-`docker-compose start postgres lbrynet`
+`docker-compose up -d postgres lbrynet`
 
 *Note: if you're running a LBRY desktop app or lbrynet instance, you will have to either shut it down or change ports*
 
@@ -80,7 +74,7 @@ SDK_API_URL=http://localhost:8080 yarn dev:web
 
 ## Testing
 
-Make sure you got `lbrynet` and `postgres` containers running and run `make test`.
+Make sure you have `lbrynet` and `postgres` containers running and run `make test`.
 
 ## Modifying and building a Docker image
 

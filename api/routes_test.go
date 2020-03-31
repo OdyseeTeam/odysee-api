@@ -8,8 +8,7 @@ import (
 
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
-	"github.com/lbryio/lbrytv/app/router"
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/test"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +17,7 @@ import (
 
 func TestRoutesProxy(t *testing.T) {
 	r := mux.NewRouter()
-	proxy := proxy.NewService(proxy.Opts{SDKRouter: router.New(config.GetLbrynetServers())})
+	proxy := proxy.NewService(proxy.Opts{SDKRouter: test.SDKRouter()})
 
 	req, err := http.NewRequest("POST", "/api/v1/proxy", bytes.NewBuffer([]byte(`{"method": "status"}`)))
 	require.Nil(t, err)
@@ -33,7 +32,7 @@ func TestRoutesProxy(t *testing.T) {
 
 func TestRoutesPublish(t *testing.T) {
 	r := mux.NewRouter()
-	proxy := proxy.NewService(proxy.Opts{SDKRouter: router.New(config.GetLbrynetServers())})
+	proxy := proxy.NewService(proxy.Opts{SDKRouter: test.SDKRouter()})
 
 	req := publish.CreatePublishRequest(t, []byte("test file"))
 	rr := httptest.NewRecorder()
@@ -49,7 +48,7 @@ func TestRoutesPublish(t *testing.T) {
 
 func TestRoutesOptions(t *testing.T) {
 	r := mux.NewRouter()
-	proxy := proxy.NewService(proxy.Opts{SDKRouter: router.New(config.GetLbrynetServers())})
+	proxy := proxy.NewService(proxy.Opts{SDKRouter: test.SDKRouter()})
 
 	req, err := http.NewRequest("OPTIONS", "/api/v1/proxy", nil)
 	require.Nil(t, err)

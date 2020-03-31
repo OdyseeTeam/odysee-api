@@ -11,23 +11,19 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/app/router"
-
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/responses"
+	"github.com/lbryio/lbrytv/internal/test"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
-	logrus_test "github.com/sirupsen/logrus/hooks/test"
+
+	logrusTest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"
 )
 
 const endpoint = "http://localhost:5279/"
-
-func prettyPrint(i interface{}) {
-	s, _ := json.MarshalIndent(i, "", "\t")
-	fmt.Println(string(s))
-}
 
 func newRawRequest(t *testing.T, method string, params interface{}) []byte {
 	var (
@@ -88,7 +84,7 @@ func TestNewCaller(t *testing.T) {
 	c := svc.NewCaller("")
 	assert.Equal(t, svc, c.service)
 
-	sList := svc.Router.GetSDKServerList()
+	sList := svc.SDKRouter.GetAll()
 	rand.Seed(time.Now().UnixNano())
 	for i := 1; i <= 100; i++ {
 		id := rand.Intn(10^6-10^3) + 10 ^ 3
@@ -99,7 +95,7 @@ func TestNewCaller(t *testing.T) {
 }
 
 func TestCallerСall(t *testing.T) {
-	c := NewService(Opts{SDKRouter: router.NewDefault()}).NewCaller("abc")
+	c := NewService(Opts{SDKRouter: test.SDKRouter()}).NewCaller("abc")
 	for _, rawQ := range []string{``, ` `, `{}`, `[]`, `[{}]`, `[""]`, `""`, `" "`, `{"method": " "}`} {
 		t.Run(rawQ, func(t *testing.T) {
 			r := c.Call([]byte(rawQ))
@@ -110,7 +106,7 @@ func TestCallerСall(t *testing.T) {
 }
 
 func TestCallerSetWalletID(t *testing.T) {
-	svc := NewService(Opts{SDKRouter: router.NewDefault()})
+	svc := NewService(Opts{SDKRouter: test.SDKRouter()})
 	c := svc.NewCaller("abc")
 	assert.Equal(t, "abc", c.walletID)
 }
@@ -121,7 +117,7 @@ func TestCallerCallResolve(t *testing.T) {
 		resolveResponse ljsonrpc.ResolveResponse
 	)
 
-	svc := NewService(Opts{SDKRouter: router.NewDefault()})
+	svc := NewService(Opts{SDKRouter: test.SDKRouter()})
 	c := svc.NewCaller("")
 
 	resolvedURL := "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
@@ -143,10 +139,11 @@ func TestCallerCallWalletBalance(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	dummyUserID := rand.Intn(10^6-10^3) + 10 ^ 3
 
-	_, wid, err := lbrynet.InitializeWallet(dummyUserID)
+	rt := test.SDKRouter()
+	_, wid, err := lbrynet.InitializeWallet(rt, dummyUserID)
 	require.NoError(t, err)
 
-	svc := NewService(Opts{SDKRouter: router.NewDefault()})
+	svc := NewService(Opts{SDKRouter: rt})
 	request := newRawRequest(t, "wallet_balance", nil)
 
 	c := svc.NewCaller("")
@@ -154,7 +151,7 @@ func TestCallerCallWalletBalance(t *testing.T) {
 	assert.Contains(t, string(result), `"message": "account identificator required"`)
 
 	c = svc.NewCaller(wid)
-	hook := logrus_test.NewLocal(Logger.Logger())
+	hook := logrusTest.NewLocal(Logger.Logger())
 	result = c.Call(request)
 
 	parseRawResponse(t, result, &accountBalanceResponse)
@@ -170,7 +167,7 @@ func TestCallerCallRelaxedMethods(t *testing.T) {
 				return
 			}
 			mockClient := &MockClient{}
-			svc := NewService(Opts{SDKRouter: router.NewDefault()})
+			svc := NewService(Opts{SDKRouter: test.SDKRouter()})
 			c := Caller{
 				client:  mockClient,
 				service: svc,
@@ -190,7 +187,7 @@ func TestCallerCallRelaxedMethods(t *testing.T) {
 func TestCallerCallNonRelaxedMethods(t *testing.T) {
 	for _, m := range walletSpecificMethods {
 		mockClient := &MockClient{}
-		svc := NewService(Opts{SDKRouter: router.NewDefault()})
+		svc := NewService(Opts{SDKRouter: test.SDKRouter()})
 		c := Caller{
 			client:  mockClient,
 			service: svc,
@@ -203,7 +200,7 @@ func TestCallerCallNonRelaxedMethods(t *testing.T) {
 
 func TestCallerCallForbiddenMethod(t *testing.T) {
 	mockClient := &MockClient{}
-	svc := NewService(Opts{SDKRouter: router.NewDefault()})
+	svc := NewService(Opts{SDKRouter: test.SDKRouter()})
 	c := Caller{
 		client:  mockClient,
 		service: svc,
@@ -219,7 +216,7 @@ func TestCallerCallAttachesWalletID(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	dummyWalletID := "abc123321"
 
-	svc := NewService(Opts{SDKRouter: router.NewDefault()})
+	svc := NewService(Opts{SDKRouter: test.SDKRouter()})
 	c := Caller{
 		walletID: dummyWalletID,
 		client:   mockClient,
@@ -239,7 +236,7 @@ func TestCallerCallAttachesWalletID(t *testing.T) {
 }
 
 func TestCallerSetPreprocessor(t *testing.T) {
-	svc := NewService(Opts{SDKRouter: router.NewDefault()})
+	svc := NewService(Opts{SDKRouter: test.SDKRouter()})
 	client := &MockClient{}
 	c := Caller{
 		client:  client,
@@ -296,10 +293,10 @@ func TestCallerCallSDKError(t *testing.T) {
 		}
 		`))
 	}))
-	svc := NewService(Opts{SDKRouter: router.New(router.SingleLbrynetServer(ts.URL))})
+	svc := NewService(Opts{SDKRouter: router.New(map[string]string{router.DefaultServer: ts.URL})})
 	c := svc.NewCaller("")
 
-	hook := logrus_test.NewLocal(Logger.Logger())
+	hook := logrusTest.NewLocal(Logger.Logger())
 	response := c.Call([]byte(newRawRequest(t, "resolve", map[string]string{"urls": "what"})))
 	json.Unmarshal(response, &rpcResponse)
 	assert.Equal(t, rpcResponse.Error.Code, -32500)
@@ -314,7 +311,7 @@ func TestCallerCallClientJSONError(t *testing.T) {
 		responses.PrepareJSONWriter(w)
 		w.Write([]byte(`{"method":"version}`))
 	}))
-	svc := NewService(Opts{SDKRouter: router.New(router.SingleLbrynetServer(ts.URL))})
+	svc := NewService(Opts{SDKRouter: router.New(map[string]string{router.DefaultServer: ts.URL})})
 	c := svc.NewCaller("")
 
 	response := c.Call([]byte(`{"method":"version}`))
@@ -352,7 +349,7 @@ func TestQueryParamsAsMap(t *testing.T) {
 func TestSDKMethodStatus(t *testing.T) {
 	var rpcResponse jsonrpc.RPCResponse
 
-	svc := NewService(Opts{SDKRouter: router.NewDefault()})
+	svc := NewService(Opts{SDKRouter: test.SDKRouter()})
 	c := svc.NewCaller("")
 	request := newRawRequest(t, "status", nil)
 	callResult := c.Call(request)

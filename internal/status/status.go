@@ -10,7 +10,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/monitor"
 )
 
-var Logger = monitor.NewModuleLogger("status")
+var logger = monitor.NewModuleLogger("status")
 
 var PlayerServers = []string{
 	"https://player1.lbry.tv",
@@ -30,6 +30,7 @@ const (
 	StatusNotReady      = "not_ready"
 	StatusOffline       = "offline"
 	StatusFailing       = "failing"
+	SDKRouterContextKey = "sdkrouter"
 	statusCacheValidity = 120 * time.Second
 )
 
@@ -49,8 +50,8 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 		response = cachedResponse
 	} else {
 		services := map[string]ServerList{
-			"lbrynet": ServerList{},
-			"player":  ServerList{},
+			"lbrynet": {},
+			"player":  {},
 		}
 		response = &statusResponse{
 			"timestamp":     fmt.Sprintf("%v", time.Now().UTC()),
@@ -59,8 +60,7 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 		}
 		failureDetected := false
 
-		router := router.NewDefault()
-		sdks := router.GetSDKServerList()
+		sdks := req.Context().Value(SDKRouterContextKey).(*router.SDK).GetAll()
 		for _, s := range sdks {
 			srv := ServerItem{Address: s.Address, Status: StatusOK}
 			services["lbrynet"] = append(services["lbrynet"], srv)

@@ -41,7 +41,7 @@ func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	q, err := NewQuery(body)
 	if err != nil || !methodInList(q.Method(), relaxedMethods) {
-		retriever := users.NewWalletService()
+		retriever := users.NewWalletService(rh.SDKRouter)
 		auth := users.NewAuthenticator(retriever)
 		walletID, err = auth.GetWalletID(r)
 
@@ -52,7 +52,7 @@ func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	c := rh.ProxyService.NewCaller(walletID)
+	c := rh.NewCaller(walletID)
 
 	rawCallReponse := c.Call(body)
 	responses.PrepareJSONWriter(w)

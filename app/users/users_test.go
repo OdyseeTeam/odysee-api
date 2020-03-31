@@ -13,6 +13,7 @@ import (
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/storage"
+	"github.com/lbryio/lbrytv/internal/test"
 	"github.com/lbryio/lbrytv/models"
 	"github.com/lbryio/lbrytv/util/wallet"
 
@@ -45,7 +46,7 @@ func setupDBTables() {
 	storage.Conn.Truncate([]string{"users"})
 }
 
-func setupCleanupDummyUser(uidParam ...int) func() {
+func setupCleanupDummyUser(rt *router.SDK, uidParam ...int) func() {
 	var uid int
 	if len(uidParam) > 0 {
 		uid = uidParam[0]
@@ -59,16 +60,17 @@ func setupCleanupDummyUser(uidParam ...int) func() {
 	return func() {
 		ts.Close()
 		config.RestoreOverridden()
-		lbrynet.WalletRemove(uid)
+		lbrynet.WalletRemove(rt, uid)
 	}
 }
 
 func TestWalletServiceRetrieveNewUser(t *testing.T) {
+	rt := test.SDKRouter()
 	setupDBTables()
-	defer setupCleanupDummyUser()()
+	defer setupCleanupDummyUser(rt)()
 
 	wid := wallet.MakeID(dummyUserID)
-	svc := NewWalletService()
+	svc := NewWalletService(rt)
 	u, err := svc.Retrieve(Query{Token: "abc"})
 	require.NoError(t, err, errors.Unwrap(err))
 	require.NotNil(t, u)
@@ -95,7 +97,7 @@ func TestWalletServiceRetrieveNonexistentUser(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	svc := NewWalletService()
+	svc := NewWalletService(test.SDKRouter())
 	u, err := svc.Retrieve(Query{Token: "non-existent-token"})
 	require.Error(t, err)
 	require.Nil(t, u)
@@ -103,10 +105,11 @@ func TestWalletServiceRetrieveNonexistentUser(t *testing.T) {
 }
 
 func TestWalletServiceRetrieveExistingUser(t *testing.T) {
+	rt := test.SDKRouter()
 	setupDBTables()
-	defer setupCleanupDummyUser()()
+	defer setupCleanupDummyUser(rt)()
 
-	s := NewWalletService()
+	s := NewWalletService(rt)
 	u, err := s.Retrieve(Query{Token: "abc"})
 	require.NoError(t, err)
 	require.NotNil(t, u)
@@ -129,7 +132,7 @@ func TestWalletServiceRetrieveExistingUserMissingWalletID(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	s := NewWalletService()
+	s := NewWalletService(test.SDKRouter())
 	u, err := s.createDBUser(uid)
 	require.NoError(t, err)
 	require.NotNil(t, u)
@@ -147,7 +150,7 @@ func TestWalletServiceRetrieveNoVerifiedEmail(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	svc := NewWalletService()
+	svc := NewWalletService(test.SDKRouter())
 	u, err := svc.Retrieve(Query{Token: "abc"})
 	assert.Nil(t, u)
 	assert.NoError(t, err)
@@ -163,9 +166,9 @@ func BenchmarkWalletCommands(b *testing.B) {
 
 	walletsNum := 60
 	users := make([]*models.User, walletsNum)
-	svc := NewWalletService()
-	sdkRouter := router.NewDefault()
-	cl := jsonrpc.NewClient(sdkRouter.GetBalancedSDKAddress())
+	svc := NewWalletService(test.SDKRouter())
+	sdkRouter := test.SDKRouter()
+	cl := jsonrpc.NewClient(sdkRouter.GetBalancedSDK().Address)
 
 	svc.Logger.Disable()
 	lbrynet.Logger.Disable()

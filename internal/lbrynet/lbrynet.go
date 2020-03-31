@@ -3,18 +3,16 @@ package lbrynet
 import (
 	"errors"
 
-	"github.com/lbryio/lbrytv/models"
-
 	"github.com/lbryio/lbrytv/app/router"
-	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/lbryio/lbrytv/models"
 	"github.com/lbryio/lbrytv/util/wallet"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 )
 
-const accountNamePrefix string = "lbrytv-user-id:"
-const accountNameTemplate string = accountNamePrefix + "%v"
+const accountNamePrefix = "lbrytv-user-id:"
+const accountNameTemplate = accountNamePrefix + "%v"
 
 var defaultWalletOpts = ljsonrpc.WalletCreateOpts{SkipOnStartup: true, CreateAccount: true, SingleKey: true}
 
@@ -24,17 +22,17 @@ var Logger = monitor.NewModuleLogger("lbrynet")
 // in subsequent commands.
 // It can recover from errors like existing wallets, but if a wallet is known to exist
 // (eg. a wallet ID stored in the database already), AddWallet should be called instead.
-func InitializeWallet(uid int) (models.LbrynetServer, string, error) {
+func InitializeWallet(rt *router.SDK, uid int) (*models.LbrynetServer, string, error) {
 	wid := wallet.MakeID(uid)
 	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
-	wallet, lbrynetServer, err := CreateWallet(uid)
+	wallet, lbrynetServer, err := CreateWallet(rt, uid)
 	if err != nil {
 		if errors.As(err, &WalletExists{}) {
 			log.Warn(err.Error())
 			return lbrynetServer, wid, nil
 		} else if errors.As(err, &WalletNeedsLoading{}) {
 			log.Info(err.Error())
-			wallet, err = AddWallet(uid)
+			wallet, err = AddWallet(rt, uid)
 			if err != nil && errors.As(err, &WalletAlreadyLoaded{}) {
 				log.Info(err.Error())
 				return lbrynetServer, wid, nil
@@ -57,11 +55,10 @@ func InitializeWallet(uid int) (models.LbrynetServer, string, error) {
 // 	if errors.Is(err, lbrynet.WalletNeedsLoading) {
 // 	 // AddWallet() needs to be called before the wallet can be used
 //  }
-func CreateWallet(uid int) (*ljsonrpc.Wallet, models.LbrynetServer, error) {
-	lbrynetRouter := router.New(config.GetLbrynetServers())
+func CreateWallet(rt *router.SDK, uid int) (*ljsonrpc.Wallet, *models.LbrynetServer, error) {
 	wid := wallet.MakeID(uid)
 	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
-	lbrynetServer := lbrynetRouter.GetSDKServer(wid)
+	lbrynetServer := rt.GetServer(wid)
 	client := ljsonrpc.NewClient(lbrynetServer.Address)
 	wallet, err := client.WalletCreate(wid, &defaultWalletOpts)
 	if err != nil {
@@ -75,11 +72,10 @@ func CreateWallet(uid int) (*ljsonrpc.Wallet, models.LbrynetServer, error) {
 // May return errors:
 //  WalletAlreadyLoaded - wallet is already loaded and operational
 //  WalletNotFound - wallet file does not exist and won't be loaded.
-func AddWallet(uid int) (*ljsonrpc.Wallet, error) {
-	lbrynetRouter := router.New(config.GetLbrynetServers())
+func AddWallet(rt *router.SDK, uid int) (*ljsonrpc.Wallet, error) {
 	wid := wallet.MakeID(uid)
 	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
-	client := ljsonrpc.NewClient(lbrynetRouter.GetSDKServerAddress(wid))
+	client := ljsonrpc.NewClient(rt.GetServer(wid).Address)
 	wallet, err := client.WalletAdd(wid)
 	if err != nil {
 		return nil, NewWalletError(uid, err)
@@ -92,33 +88,14 @@ func AddWallet(uid int) (*ljsonrpc.Wallet, error) {
 // May return errors:
 //  WalletAlreadyLoaded - wallet is already loaded and operational
 //  WalletNotFound - wallet file does not exist and won't be loaded.
-func WalletRemove(uid int) (*ljsonrpc.Wallet, error) {
-	lbrynetRouter := router.New(config.GetLbrynetServers())
+func WalletRemove(rt *router.SDK, uid int) (*ljsonrpc.Wallet, error) {
 	wid := wallet.MakeID(uid)
 	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
-	client := ljsonrpc.NewClient(lbrynetRouter.GetSDKServerAddress(wid))
+	client := ljsonrpc.NewClient(rt.GetServer(wid).Address)
 	wallet, err := client.WalletRemove(wid)
 	if err != nil {
 		return nil, NewWalletError(uid, err)
 	}
 	log.Info("wallet removed")
 	return wallet, nil
-}
-
-// Resolve calls resolve method on the daemon and handles
-// *frequent* LbrynetServer response format changes with grace instead of panicking.
-func Resolve(url string) (*ljsonrpc.Claim, error) {
-	lbrynetRouter := router.New(config.GetLbrynetServers())
-	// Client is a LBRY LbrynetServer jsonrpc client instance
-	var Client = ljsonrpc.NewClient(lbrynetRouter.GetBalancedSDKAddress())
-	r, err := Client.Resolve(url)
-	if err != nil {
-		return nil, err
-	}
-	item := (*r)[url]
-
-	if item.CanonicalURL == "" {
-		return nil, errors.New("invalid resolve response structure from sdk client")
-	}
-	return &item, nil
 }

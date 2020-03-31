@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/lbrytv/app/router"
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/responses"
+	"github.com/lbryio/lbrytv/internal/storage"
+	"github.com/lbryio/lbrytv/internal/test"
 )
 
 const dummyUserID = 751365
@@ -24,7 +24,7 @@ var svc *ProxyService
 func TestMain(m *testing.M) {
 	rand.Seed(time.Now().UnixNano())
 
-	svc = NewService(Opts{SDKRouter: router.New(config.GetLbrynetServers())})
+	svc = NewService(Opts{SDKRouter: test.SDKRouter()})
 
 	dbConfig := config.GetDatabase()
 	params := storage.ConnParams{
