@@ -3,7 +3,6 @@ package api
 import (
 	"net/http"
 
-	"github.com/lbryio/lbrytv/app/player"
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
 	"github.com/lbryio/lbrytv/app/users"
@@ -35,6 +34,4 @@ func InstallRoutes(proxyService *proxy.ProxyService, r *mux.Router) {
 	internalRouter.Handle("/metrics", promhttp.Handler())
 	internalRouter.HandleFunc("/status", status.GetStatus)
 	internalRouter.HandleFunc("/whoami", status.WhoAMI)
-
-	player.InstallRoutes(r)
 }
