@@ -3,7 +3,7 @@ package lbrynet
 import (
 	"errors"
 
-	"github.com/lbryio/lbrytv/app/router"
+	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
 	"github.com/lbryio/lbrytv/util/wallet"
@@ -22,7 +22,7 @@ var Logger = monitor.NewModuleLogger("lbrynet")
 // in subsequent commands.
 // It can recover from errors like existing wallets, but if a wallet is known to exist
 // (eg. a wallet ID stored in the database already), AddWallet should be called instead.
-func InitializeWallet(rt *router.SDK, uid int) (*models.LbrynetServer, string, error) {
+func InitializeWallet(rt *sdkrouter.Router, uid int) (*models.LbrynetServer, string, error) {
 	wid := wallet.MakeID(uid)
 	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
 	wallet, lbrynetServer, err := CreateWallet(rt, uid)
@@ -55,7 +55,7 @@ func InitializeWallet(rt *router.SDK, uid int) (*models.LbrynetServer, string, e
 // 	if errors.Is(err, lbrynet.WalletNeedsLoading) {
 // 	 // AddWallet() needs to be called before the wallet can be used
 //  }
-func CreateWallet(rt *router.SDK, uid int) (*ljsonrpc.Wallet, *models.LbrynetServer, error) {
+func CreateWallet(rt *sdkrouter.Router, uid int) (*ljsonrpc.Wallet, *models.LbrynetServer, error) {
 	wid := wallet.MakeID(uid)
 	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
 	lbrynetServer := rt.GetServer(wid)
@@ -72,7 +72,7 @@ func CreateWallet(rt *router.SDK, uid int) (*ljsonrpc.Wallet, *models.LbrynetSer
 // May return errors:
 //  WalletAlreadyLoaded - wallet is already loaded and operational
 //  WalletNotFound - wallet file does not exist and won't be loaded.
-func AddWallet(rt *router.SDK, uid int) (*ljsonrpc.Wallet, error) {
+func AddWallet(rt *sdkrouter.Router, uid int) (*ljsonrpc.Wallet, error) {
 	wid := wallet.MakeID(uid)
 	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
 	client := ljsonrpc.NewClient(rt.GetServer(wid).Address)
@@ -88,7 +88,7 @@ func AddWallet(rt *router.SDK, uid int) (*ljsonrpc.Wallet, error) {
 // May return errors:
 //  WalletAlreadyLoaded - wallet is already loaded and operational
 //  WalletNotFound - wallet file does not exist and won't be loaded.
-func WalletRemove(rt *router.SDK, uid int) (*ljsonrpc.Wallet, error) {
+func WalletRemove(rt *sdkrouter.Router, uid int) (*ljsonrpc.Wallet, error) {
 	wid := wallet.MakeID(uid)
 	log := Logger.LogF(monitor.F{"wallet_id": wid, "user_id": uid})
 	client := ljsonrpc.NewClient(rt.GetServer(wid).Address)

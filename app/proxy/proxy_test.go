@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/lbrytv/app/router"
+	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/internal/test"
@@ -77,10 +77,10 @@ func TestNewQuery(t *testing.T) {
 
 func TestNewCaller(t *testing.T) {
 	servers := map[string]string{
-		"default": "http://lbrynet1",
-		"second":  "http://lbrynet2",
+		"first":  "http://lbrynet1",
+		"second": "http://lbrynet2",
 	}
-	svc := NewService(Opts{SDKRouter: router.New(servers)})
+	svc := NewService(Opts{SDKRouter: sdkrouter.New(servers)})
 	c := svc.NewCaller("")
 	assert.Equal(t, svc, c.service)
 
@@ -293,7 +293,7 @@ func TestCallerCallSDKError(t *testing.T) {
 		}
 		`))
 	}))
-	svc := NewService(Opts{SDKRouter: router.New(map[string]string{router.DefaultServer: ts.URL})})
+	svc := NewService(Opts{SDKRouter: sdkrouter.New(map[string]string{"sdk": ts.URL})})
 	c := svc.NewCaller("")
 
 	hook := logrusTest.NewLocal(Logger.Logger())
@@ -311,7 +311,7 @@ func TestCallerCallClientJSONError(t *testing.T) {
 		responses.PrepareJSONWriter(w)
 		w.Write([]byte(`{"method":"version}`))
 	}))
-	svc := NewService(Opts{SDKRouter: router.New(map[string]string{router.DefaultServer: ts.URL})})
+	svc := NewService(Opts{SDKRouter: sdkrouter.New(map[string]string{"sdk": ts.URL})})
 	c := svc.NewCaller("")
 
 	response := c.Call([]byte(`{"method":"version}`))

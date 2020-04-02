@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/lbryio/lbrytv/app/router"
+	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
@@ -18,7 +18,7 @@ import (
 // WalletService retrieves user wallet data.
 type WalletService struct {
 	Logger monitor.ModuleLogger
-	Router *router.SDK
+	Router *sdkrouter.Router
 }
 
 // TokenHeader is the name of HTTP header which is supplied by client and should contain internal-api auth_token.
@@ -43,7 +43,7 @@ type Query struct {
 }
 
 // NewWalletService returns WalletService instance for retrieving or creating wallet-based user records and accounts.
-func NewWalletService(r *router.SDK) *WalletService {
+func NewWalletService(r *sdkrouter.Router) *WalletService {
 	s := &WalletService{Logger: monitor.NewModuleLogger("users"), Router: r}
 	return s
 }

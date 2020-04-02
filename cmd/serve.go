@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/app/proxy"
-	"github.com/lbryio/lbrytv/app/router"
+	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/server"
 
@@ -20,7 +20,7 @@ var rootCmd = &cobra.Command{
 	Short: "lbrytv is a backend API server for lbry.tv frontend",
 	Run: func(cmd *cobra.Command, args []string) {
 		rand.Seed(time.Now().UTC().UnixNano()) // always seed random!
-		sdkRouter := router.New(config.GetLbrynetServers())
+		sdkRouter := sdkrouter.New(config.GetLbrynetServers())
 		go sdkRouter.WatchLoad()
 
 		s := server.NewServer(server.Options{

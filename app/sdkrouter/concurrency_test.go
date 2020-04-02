@@ -1,4 +1,4 @@
-package router
+package sdkrouter
 
 import (
 	"math/rand"
@@ -15,8 +15,8 @@ func TestRouterConcurrency(t *testing.T) {
 	r := New(config.GetLbrynetServers())
 	servers := r.servers
 	servers2 := []*models.LbrynetServer{
-		{Name: "default", Address: "1.2.3.4"},
-		{Name: "another", Address: "2.3.4.5"},
+		{Name: "one", Address: "1.2.3.4"},
+		{Name: "two", Address: "2.3.4.5"},
 	}
 	wg := sync.WaitGroup{}
 
@@ -52,3 +52,23 @@ func TestRouterConcurrency(t *testing.T) {
 
 	wg.Wait()
 }
+
+//func TestWatcherConcurrency(t *testing.T) {
+//	r := New(config.GetLbrynetServers())
+//	wg := sync.WaitGroup{}
+//
+//	db := boil.GetDB()
+//	boil.SetDB(nil) // so we don't get errors about too many Postgres connections
+//	defer func() { boil.SetDB(db) }()
+//
+//	for i := 0; i < 2000; i++ {
+//		wg.Add(1)
+//		go func() {
+//			time.Sleep(time.Duration(rand.Intn(150)) * time.Millisecond)
+//			r.updateLoadAndMetrics()
+//			wg.Done()
+//		}()
+//	}
+//
+//	wg.Wait()
+//}

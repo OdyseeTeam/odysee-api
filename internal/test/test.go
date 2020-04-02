@@ -1,10 +1,10 @@
 package test
 
 import (
-	"github.com/lbryio/lbrytv/app/router"
+	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
 )
 
-func SDKRouter() *router.SDK {
-	return router.New(config.GetLbrynetServers())
+func SDKRouter() *sdkrouter.Router {
+	return sdkrouter.New(config.GetLbrynetServers())
 }

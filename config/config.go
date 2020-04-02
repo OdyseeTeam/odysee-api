@@ -141,7 +141,7 @@ func GetLbrynetServers() map[string]string {
 	if len(Config.Viper.GetStringMapString(lbrynetServers)) > 0 {
 		return Config.Viper.GetStringMapString(lbrynetServers)
 	} else if Config.Viper.GetString(deprecatedLbrynet) != "" {
-		return map[string]string{"default": Config.Viper.GetString(deprecatedLbrynet)}
+		return map[string]string{"sdk": Config.Viper.GetString(deprecatedLbrynet)}
 	} else {
 		servers, err := models.LbrynetServers().AllG()
 		if err != nil {

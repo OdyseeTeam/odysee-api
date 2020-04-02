@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/lbrytv/app/router"
+	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/storage"
@@ -46,7 +46,7 @@ func setupDBTables() {
 	storage.Conn.Truncate([]string{"users"})
 }
 
-func setupCleanupDummyUser(rt *router.SDK, uidParam ...int) func() {
+func setupCleanupDummyUser(rt *sdkrouter.Router, uidParam ...int) func() {
 	var uid int
 	if len(uidParam) > 0 {
 		uid = uidParam[0]

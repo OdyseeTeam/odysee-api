@@ -1,5 +1,5 @@
-// Package proxy handles incoming JSON-RPC requests from UI client (lbry-desktop or any other), forwards them to the actual SDK instance running nearby and returns its response to the client.
-// The purpose of it is to expose SDK over a publicly accessible http interface,  fixing aspects of it which normally would prevent SDK from being safely or efficiently shared between multiple remote clients.
+// Package proxy handles incoming JSON-RPC requests from UI client (lbry-desktop or any other), forwards them to the actual Router instance running nearby and returns its response to the client.
+// The purpose of it is to expose Router over a publicly accessible http interface,  fixing aspects of it which normally would prevent Router from being safely or efficiently shared between multiple remote clients.
 
 // Currently it does:
 
@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lbryio/lbrytv/app/router"
+	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
@@ -35,7 +35,7 @@ type Preprocessor func(q *Query)
 // ProxyService generates Caller objects and keeps execution time metrics
 // for all calls proxied through those objects.
 type ProxyService struct {
-	SDKRouter  *router.SDK
+	SDKRouter  *sdkrouter.Router
 	rpcTimeout time.Duration
 	logger     monitor.QueryMonitor
 }
@@ -60,7 +60,7 @@ type Query struct {
 
 // Opts is initialization parameters for NewService / proxy.ProxyService
 type Opts struct {
-	SDKRouter  *router.SDK
+	SDKRouter  *sdkrouter.Router
 	RPCTimeout time.Duration
 }
 

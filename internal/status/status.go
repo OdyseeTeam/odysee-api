@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/lbryio/lbrytv/app/router"
+	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/internal/monitor"
 )
 
@@ -60,7 +60,7 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 		}
 		failureDetected := false
 
-		sdks := req.Context().Value(SDKRouterContextKey).(*router.SDK).GetAll()
+		sdks := req.Context().Value(SDKRouterContextKey).(*sdkrouter.Router).GetAll()
 		for _, s := range sdks {
 			srv := ServerItem{Address: s.Address, Status: StatusOK}
 			services["lbrynet"] = append(services["lbrynet"], srv)

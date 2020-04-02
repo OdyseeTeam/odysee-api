@@ -6,7 +6,7 @@ import (
 
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
-	"github.com/lbryio/lbrytv/app/router"
+	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/status"
@@ -39,7 +39,7 @@ func InstallRoutes(proxyService *proxy.ProxyService, r *mux.Router) {
 }
 
 // i can't tell if this is really a best practice or a hack
-func injectSDKRouter(rt *router.SDK, fn http.HandlerFunc) http.HandlerFunc {
+func injectSDKRouter(rt *sdkrouter.Router, fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fn(w, r.Clone(context.WithValue(r.Context(), status.SDKRouterContextKey, rt)))
 	}
