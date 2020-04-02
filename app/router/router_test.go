@@ -12,12 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetFirstDigit(t *testing.T) {
+func TestGetLastDigit(t *testing.T) {
 	userID := getUserID("lbrytv-id.756135.wallet")
-	digit := userID % 10
-	if digit != 5 {
-		t.Error("digit of number does not match")
-	}
+	assert.Equal(t, 5, userID%10)
 }
 
 func TestInitializeWithYML(t *testing.T) {
@@ -26,6 +23,7 @@ func TestInitializeWithYML(t *testing.T) {
 }
 
 func TestFirstServer(t *testing.T) {
+	t.Skip("maps are not ordered")
 	config.Override("LbrynetServers", map[string]string{
 		"default": "http://lbrynet1:5279/",
 		"sdk1":    "http://lbrynet2:5279/",
@@ -61,10 +59,12 @@ func TestServerRetrieval(t *testing.T) {
 
 func TestDefaultLbrynetServer(t *testing.T) {
 	sdkRouter := New(config.GetLbrynetServers())
-	_, ok := sdkRouter.hardcoded["default"] // QUESTION: should I use router.DefaultServer constant in tests? or should this stay a string?
-	if !ok {
-		t.Error("No default lbrynet server is specified in the lbrytv.yml")
+	for _, s := range sdkRouter.servers {
+		if s.Name == "default" { // QUESTION: should I use router.DefaultServer constant in tests? or should this stay a string?
+			return
+		}
 	}
+	t.Error("No default lbrynet server is specified in the lbrytv.yml")
 }
 
 func TestMain(m *testing.M) {
