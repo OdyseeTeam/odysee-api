@@ -67,7 +67,3 @@ func TestGetUserID(t *testing.T) {
 	userID := getUserID("sjdfkjhsdkjs.1234235.sdfsgf")
 	assert.Equal(t, 1234235, userID)
 }
-
-func TestLoadWatcher(t *testing.T) {
-
-}

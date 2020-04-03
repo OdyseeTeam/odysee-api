@@ -19,19 +19,22 @@ type RequestData struct {
 	Body    string
 }
 
-func MockJSONRPCServer() (*httptest.Server, chan *RequestData, func(string)) {
+// MockJSONRPCServer creates a JSONRPC server that can be used to test clients
+// NOTE: if you want to make sure that you get requests in your requestChan one by one, limit the
+// channel to a buffer size of 1. then writes to the chan will block until you read it
+func MockJSONRPCServer(requestChan chan *RequestData) (*httptest.Server, func(string)) {
 	// needed to retrieve requests that arrived at httpServer for further investigation
-	requestChan := make(chan *RequestData, 1)
-
-	responseBody := ""
-	setNextResponse := func(s string) { responseBody = s }
+	presetResponse := ""
+	setNextResponse := func(s string) { presetResponse = s }
 
 	httpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		data, _ := ioutil.ReadAll(r.Body)
 		defer r.Body.Close()
-		requestChan <- &RequestData{r, string(data)} // store the request
-		fmt.Fprintf(w, responseBody)                 // write the preset response
+		if requestChan != nil {
+			requestChan <- &RequestData{r, string(data)} // store the request for inspection
+		}
+		fmt.Fprintf(w, presetResponse) // respond with the preset response
 	}))
 
-	return httpServer, requestChan, setNextResponse
+	return httpServer, setNextResponse
 }

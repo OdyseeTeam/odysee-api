@@ -35,7 +35,9 @@ type Router struct {
 }
 
 func New(servers map[string]string) *Router {
-	r := &Router{}
+	r := &Router{
+		load: make(map[*models.LbrynetServer]uint64),
+	}
 	if servers != nil && len(servers) > 0 {
 		s := make([]*models.LbrynetServer, len(servers))
 		i := 0
@@ -156,9 +158,6 @@ func (r *Router) WatchLoad() {
 }
 
 func (r *Router) updateLoadAndMetrics() {
-	if r.load == nil {
-		r.load = make(map[*models.LbrynetServer]uint64)
-	}
 	for _, server := range r.GetAll() {
 		metric := metrics.LbrynetWalletsLoaded.WithLabelValues(server.Address)
 		walletList, err := jr.NewClient(server.Address).WalletList("", 1, 1)
