@@ -9,6 +9,7 @@ import (
 
 	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/config"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"

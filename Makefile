@@ -21,10 +21,10 @@ test_circleci:
 	goveralls -coverprofile=coverage.out -service=circle-ci -repotoken $(COVERALLS_TOKEN)
 
 release:
-	goreleaser --rm-dist
+	GO111MODULE=on goreleaser --rm-dist
 
 snapshot:
-	goreleaser --snapshot --rm-dist
+	GO111MODULE=on goreleaser --snapshot --rm-dist
 
 .PHONY: image
 image:

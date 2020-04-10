@@ -4,19 +4,21 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
-	"github.com/sirupsen/logrus"
 
 	"github.com/lib/pq"
 	xerrors "github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/volatiletech/sqlboiler/boil"
 )
 
 // WalletService retrieves user wallet data.
 type WalletService struct {
 	Logger monitor.ModuleLogger
+	Router *sdkrouter.Router
 }
 
 // TokenHeader is the name of HTTP header which is supplied by client and should contain internal-api auth_token.
@@ -41,8 +43,8 @@ type Query struct {
 }
 
 // NewWalletService returns WalletService instance for retrieving or creating wallet-based user records and accounts.
-func NewWalletService() *WalletService {
-	s := &WalletService{Logger: monitor.NewModuleLogger("users")}
+func NewWalletService(r *sdkrouter.Router) *WalletService {
+	s := &WalletService{Logger: monitor.NewModuleLogger("users"), Router: r}
 	return s
 }
 
@@ -82,13 +84,13 @@ func (s *WalletService) createDBUser(id int) (*models.User, error) {
 func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 	var (
 		localUser     *models.User
-		lbrynetServer models.LbrynetServer
+		lbrynetServer *models.LbrynetServer
 		wid           string
 	)
 
 	token := q.Token
 
-	log := s.Logger.LogF(monitor.F{"token": token})
+	log := s.Logger.LogF(monitor.F{monitor.TokenF: token})
 
 	remoteUser, err := getRemoteUser(token, q.MetaRemoteIP)
 	if err != nil {
@@ -97,9 +99,9 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 
 	// Update log entry with extra context data
 	log = s.Logger.LogF(monitor.F{
-		"token":     token,
-		"id":        remoteUser.ID,
-		"has_email": remoteUser.HasVerifiedEmail,
+		monitor.TokenF: token,
+		"id":           remoteUser.ID,
+		"has_email":    remoteUser.HasVerifiedEmail,
 	})
 	if !remoteUser.HasVerifiedEmail {
 		return nil, nil
@@ -145,16 +147,11 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 	return localUser, nil
 }
 
-func (s *WalletService) createWallet(u *models.User) (models.LbrynetServer, string, error) {
-	return lbrynet.InitializeWallet(u.ID)
+func (s *WalletService) createWallet(u *models.User) (*models.LbrynetServer, string, error) {
+	return lbrynet.InitializeWallet(s.Router, u.ID)
 }
 
-func (s *WalletService) initializeWallet(u *models.User) error {
-	_, err := lbrynet.AddWallet(u.ID)
-	return err
-}
-
-func (s *WalletService) postCreateUpdate(u *models.User, server models.LbrynetServer, wid string) error {
+func (s *WalletService) postCreateUpdate(u *models.User, server *models.LbrynetServer, wid string) error {
 	s.Logger.LogF(monitor.F{"id": u.ID, "wallet_id": wid}).Info("saving wallet ID to user record")
 	u.WalletID = wid
 	if server.ID > 0 { //Ensure server is from DB

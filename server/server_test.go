@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/lbrytv/app/router"
-
 	"github.com/lbryio/lbrytv/app/proxy"
+	"github.com/lbryio/lbrytv/app/sdkrouter"
+	"github.com/lbryio/lbrytv/config"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +17,7 @@ import (
 func TestStartAndServeUntilShutdown(t *testing.T) {
 	server := NewServer(Options{
 		Address:      "localhost:40080",
-		ProxyService: proxy.NewService(proxy.Opts{SDKRouter: router.NewDefault()}),
+		ProxyService: proxy.NewService(proxy.Opts{SDKRouter: sdkrouter.New(config.GetLbrynetServers())}),
 	})
 	server.Start()
 	go server.ServeUntilShutdown()
@@ -49,7 +49,7 @@ func TestHeaders(t *testing.T) {
 
 	server := NewServer(Options{
 		Address:      "localhost:40080",
-		ProxyService: proxy.NewService(proxy.Opts{SDKRouter: router.NewDefault()}),
+		ProxyService: proxy.NewService(proxy.Opts{SDKRouter: sdkrouter.New(config.GetLbrynetServers())}),
 	})
 	server.Start()
 	go server.ServeUntilShutdown()
@@ -66,7 +66,7 @@ func TestHeaders(t *testing.T) {
 		}
 	}
 
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 	assert.Equal(t, "*", response.Header.Get("Access-Control-Allow-Origin"))
