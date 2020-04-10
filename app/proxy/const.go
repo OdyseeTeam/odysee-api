@@ -63,6 +63,10 @@ var walletSpecificMethods = []string{
 
 	"transaction_list",
 
+	"txo_list",
+	"txo_sum",
+	"txo_plot",
+
 	"utxo_list",
 	"utxo_release",
 
