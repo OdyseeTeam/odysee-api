@@ -6,14 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
-
-	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/config"
 )
-
-func SDKRouter() *sdkrouter.Router {
-	return sdkrouter.New(config.GetLbrynetServers())
-}
 
 type RequestData struct {
 	Request *http.Request

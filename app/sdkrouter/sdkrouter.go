@@ -185,6 +185,11 @@ func (r *Router) LeastLoaded() *models.LbrynetServer {
 	r.loadMu.RLock()
 	defer r.loadMu.RUnlock()
 
+	if len(r.load) == 0 {
+		// updateLoadAndMetrics() was never run, so return a random server
+		return r.RandomServer()
+	}
+
 	for server, numWallets := range r.load {
 		if best == nil || numWallets < min {
 			best = server

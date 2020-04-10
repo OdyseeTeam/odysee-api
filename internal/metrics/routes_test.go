@@ -47,7 +47,7 @@ func TestTimeToStartEventNoValue(t *testing.T) {
 
 func testMetricUIEvent(t *testing.T, method, name, value string) *httptest.ResponseRecorder {
 	req, err := http.NewRequest(method, "/api/v1/metric/ui", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	q := req.URL.Query()
 	q.Add("name", name)

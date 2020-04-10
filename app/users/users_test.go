@@ -13,7 +13,6 @@ import (
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/storage"
-	"github.com/lbryio/lbrytv/internal/test"
 	"github.com/lbryio/lbrytv/models"
 	"github.com/lbryio/lbrytv/util/wallet"
 
@@ -24,7 +23,6 @@ import (
 )
 
 const dummyUserID = 751365
-const dummyServerURL = "http://127.0.0.1:59988"
 
 func TestMain(m *testing.M) {
 	dbConfig := config.GetDatabase()
@@ -65,7 +63,7 @@ func setupCleanupDummyUser(rt *sdkrouter.Router, uidParam ...int) func() {
 }
 
 func TestWalletServiceRetrieveNewUser(t *testing.T) {
-	rt := test.SDKRouter()
+	rt := sdkrouter.New(config.GetLbrynetServers())
 	setupDBTables()
 	defer setupCleanupDummyUser(rt)()
 
@@ -97,7 +95,7 @@ func TestWalletServiceRetrieveNonexistentUser(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	svc := NewWalletService(test.SDKRouter())
+	svc := NewWalletService(sdkrouter.New(config.GetLbrynetServers()))
 	u, err := svc.Retrieve(Query{Token: "non-existent-token"})
 	require.Error(t, err)
 	require.Nil(t, u)
@@ -105,7 +103,7 @@ func TestWalletServiceRetrieveNonexistentUser(t *testing.T) {
 }
 
 func TestWalletServiceRetrieveExistingUser(t *testing.T) {
-	rt := test.SDKRouter()
+	rt := sdkrouter.New(config.GetLbrynetServers())
 	setupDBTables()
 	defer setupCleanupDummyUser(rt)()
 
@@ -132,7 +130,7 @@ func TestWalletServiceRetrieveExistingUserMissingWalletID(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	s := NewWalletService(test.SDKRouter())
+	s := NewWalletService(sdkrouter.New(config.GetLbrynetServers()))
 	u, err := s.createDBUser(uid)
 	require.NoError(t, err)
 	require.NotNil(t, u)
@@ -150,7 +148,7 @@ func TestWalletServiceRetrieveNoVerifiedEmail(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	svc := NewWalletService(test.SDKRouter())
+	svc := NewWalletService(sdkrouter.New(config.GetLbrynetServers()))
 	u, err := svc.Retrieve(Query{Token: "abc"})
 	assert.Nil(t, u)
 	assert.NoError(t, err)
@@ -166,8 +164,8 @@ func BenchmarkWalletCommands(b *testing.B) {
 
 	walletsNum := 60
 	users := make([]*models.User, walletsNum)
-	svc := NewWalletService(test.SDKRouter())
-	sdkRouter := test.SDKRouter()
+	svc := NewWalletService(sdkrouter.New(config.GetLbrynetServers()))
+	sdkRouter := sdkrouter.New(config.GetLbrynetServers())
 	cl := jsonrpc.NewClient(sdkRouter.RandomServer().Address)
 
 	svc.Logger.Disable()

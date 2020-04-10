@@ -46,7 +46,7 @@ func TestWithWrongAuthToken(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rr.Code)
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "cannot authenticate user with internal-apis: could not authenticate user", response.Error.Message)
 }
 
@@ -71,11 +71,11 @@ func TestWithoutToken(t *testing.T) {
 	require.Equal(t, http.StatusOK, rr.Code)
 
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Nil(t, response.Error)
 
 	err = ljsonrpc.Decode(response.Result, &statusResponse)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.True(t, statusResponse.IsRunning)
 }
 
@@ -99,7 +99,7 @@ func TestAccountSpecificWithoutToken(t *testing.T) {
 	require.Equal(t, http.StatusOK, rr.Code)
 
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, response.Error)
 	require.Equal(t, "account identificator required", response.Error.Message)
 }

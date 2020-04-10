@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lbryio/lbrytv/app/sdkrouter"
+	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
-	"github.com/lbryio/lbrytv/internal/test"
 	"github.com/lbryio/lbrytv/util/wallet"
 
 	"github.com/stretchr/testify/require"
@@ -57,7 +58,7 @@ func TestClientCallDoesReloadWallet(t *testing.T) {
 
 	rand.Seed(time.Now().UnixNano())
 	dummyUserID := rand.Intn(100)
-	rt := test.SDKRouter()
+	rt := sdkrouter.New(config.GetLbrynetServers())
 
 	_, wid, _ := lbrynet.InitializeWallet(rt, dummyUserID)
 	_, err := lbrynet.WalletRemove(rt, dummyUserID)

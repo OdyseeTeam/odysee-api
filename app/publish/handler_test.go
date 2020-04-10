@@ -14,10 +14,10 @@ import (
 
 	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
-	"github.com/ybbus/jsonrpc"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/ybbus/jsonrpc"
 )
 
 type DummyPublisher struct {
@@ -43,9 +43,9 @@ func TestUploadHandler(t *testing.T) {
 	authenticator := users.NewAuthenticator(&users.TestUserRetriever{WalletID: "UPldrAcc", Token: "uPldrToken"})
 	publisher := &DummyPublisher{}
 	pubHandler, err := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
-	http.HandlerFunc(authenticator.Wrap(pubHandler.Handle)).ServeHTTP(rr, req)
+	authenticator.Wrap(pubHandler.Handle).ServeHTTP(rr, req)
 	response := rr.Result()
 	respBody, _ := ioutil.ReadAll(response.Body)
 
@@ -70,14 +70,14 @@ func TestUploadHandlerAuthRequired(t *testing.T) {
 	authenticator := users.NewAuthenticator(&users.TestUserRetriever{})
 	publisher := &DummyPublisher{}
 	pubHandler, err := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
-	http.HandlerFunc(authenticator.Wrap(pubHandler.Handle)).ServeHTTP(rr, req)
+	authenticator.Wrap(pubHandler.Handle).ServeHTTP(rr, req)
 	response := rr.Result()
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 	err = json.Unmarshal(rr.Body.Bytes(), &rpcResponse)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "authentication required", rpcResponse.Error.Message)
 	require.False(t, publisher.called)
 }
@@ -93,17 +93,18 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	writer := multipart.NewWriter(body)
 
 	fileBody, err := writer.CreateFormFile(FileFieldName, "lbry_auto_test_file")
-	require.Nil(t, err)
-	io.Copy(fileBody, readSeeker)
+	require.NoError(t, err)
+	_, err = io.Copy(fileBody, readSeeker)
+	require.NoError(t, err)
 
 	jsonPayload, err := writer.CreateFormField(JSONRPCFieldName)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	jsonPayload.Write([]byte(lbrynet.ExampleStreamCreateRequest))
 
 	// <--- Not calling writer.Close() here to create an unexpected EOF
 
 	req, err := http.NewRequest("POST", "/", bytes.NewReader(body.Bytes()))
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	req.Header.Set(users.TokenHeader, "uPldrToken")
 	req.Header.Set("Content-Type", writer.FormDataContentType())
@@ -112,15 +113,15 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	authenticator := users.NewAuthenticator(&users.TestUserRetriever{WalletID: "UPldrAcc", Token: "uPldrToken"})
 	publisher := &DummyPublisher{}
 	pubHandler, err := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
-	http.HandlerFunc(authenticator.Wrap(pubHandler.Handle)).ServeHTTP(rr, req)
+	authenticator.Wrap(pubHandler.Handle).ServeHTTP(rr, req)
 	response := rr.Result()
 
 	require.False(t, publisher.called)
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 	err = json.Unmarshal(rr.Body.Bytes(), &rpcResponse)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "unexpected EOF", rpcResponse.Error.Message)
 	require.False(t, publisher.called)
 }
