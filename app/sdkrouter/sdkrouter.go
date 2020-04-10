@@ -29,9 +29,9 @@ type Router struct {
 	loadMu sync.RWMutex
 	load   map[*models.LbrynetServer]uint64
 
-	useDB        bool
-	lastDBAccess time.Time
-	rpcClient    *ljsonrpc.Client
+	useDB      bool
+	lastLoaded time.Time
+	rpcClient  *ljsonrpc.Client
 }
 
 func New(servers map[string]string) *Router {
@@ -114,12 +114,12 @@ func (r *Router) RandomServer() *models.LbrynetServer {
 }
 
 func (r *Router) reloadServersFromDB() {
-	if !r.useDB || time.Since(r.lastDBAccess) < 5*time.Second {
+	if !r.useDB || time.Since(r.lastLoaded) < 5*time.Second {
 		// don't hammer the DB
 		return
 	}
 
-	r.lastDBAccess = time.Now()
+	r.lastLoaded = time.Now()
 	servers, err := models.LbrynetServers().AllG()
 	if err != nil {
 		logger.Log().Error("Error retrieving lbrynet servers: ", err)
