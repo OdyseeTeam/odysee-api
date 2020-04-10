@@ -14,7 +14,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
 
-	jr "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
 	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/volatiletech/sqlboiler/queries/qm"
@@ -31,7 +31,7 @@ type Router struct {
 
 	useDB        bool
 	lastDBAccess time.Time
-	rpcClient    *jr.Client
+	rpcClient    *ljsonrpc.Client
 }
 
 func New(servers map[string]string) *Router {
@@ -65,7 +65,7 @@ func (r *Router) GetServer(walletID string) *models.LbrynetServer {
 
 	var sdk *models.LbrynetServer
 	if walletID == "" {
-		sdk = r.RandomServer()
+		sdk = r.LeastLoaded()
 	} else {
 		sdk = r.serverForWallet(walletID)
 		if sdk.Address == "" {
@@ -93,7 +93,7 @@ func (r *Router) serverForWallet(walletID string) *models.LbrynetServer {
 	defer r.mu.RUnlock()
 
 	if user == nil || user.R == nil || user.R.LbrynetServer == nil {
-		return r.servers[userID%len(r.servers)] // r.RandomServer()
+		return r.servers[getServerForUserID(userID, len(r.servers))]
 	}
 
 	for _, s := range r.servers {
@@ -103,7 +103,7 @@ func (r *Router) serverForWallet(walletID string) *models.LbrynetServer {
 	}
 
 	logger.Log().Errorf("Server for user %d is set in db but is not in current servers list", userID)
-	return r.servers[userID%len(r.servers)] // r.RandomServer()
+	return r.servers[getServerForUserID(userID, len(r.servers))]
 }
 
 func (r *Router) RandomServer() *models.LbrynetServer {
@@ -160,7 +160,7 @@ func (r *Router) WatchLoad() {
 func (r *Router) updateLoadAndMetrics() {
 	for _, server := range r.GetAll() {
 		metric := metrics.LbrynetWalletsLoaded.WithLabelValues(server.Address)
-		walletList, err := jr.NewClient(server.Address).WalletList("", 1, 1)
+		walletList, err := ljsonrpc.NewClient(server.Address).WalletList("", 1, 1)
 		if err != nil {
 			logger.Log().Errorf("lbrynet instance %v is not responding: %v", server.Address, err)
 			r.loadMu.Lock()
@@ -170,9 +170,9 @@ func (r *Router) updateLoadAndMetrics() {
 			// TODO: maybe mark this instance as unresponsive so new traffic is routed to other instances
 		} else {
 			r.loadMu.Lock()
-			r.load[server] = walletList.TotalPages - 1
+			r.load[server] = walletList.TotalPages
 			r.loadMu.Unlock()
-			metric.Set(float64(walletList.TotalPages - 1))
+			metric.Set(float64(walletList.TotalPages))
 		}
 	}
 }
@@ -201,4 +201,8 @@ func getUserID(walletID string) int {
 		return 0
 	}
 	return int(userID)
+}
+
+func getServerForUserID(userID, numServers int) int {
+	return userID % numServers
 }

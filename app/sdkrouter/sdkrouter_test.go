@@ -7,6 +7,7 @@ import (
 
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/storage"
+	"github.com/lbryio/lbrytv/internal/test"
 	"github.com/lbryio/lbrytv/util/wallet"
 
 	"github.com/stretchr/testify/assert"
@@ -66,4 +67,38 @@ func TestOverrideLbrynetConf(t *testing.T) {
 func TestGetUserID(t *testing.T) {
 	userID := getUserID("sjdfkjhsdkjs.1234235.sdfsgf")
 	assert.Equal(t, 1234235, userID)
+}
+
+func TestLeastLoaded(t *testing.T) {
+	reqChan := make(chan *test.RequestData, 1)
+	rpcServer, nextResp := test.MockJSONRPCServer(reqChan)
+	defer rpcServer.Close()
+
+	servers := map[string]string{
+		"srv1": rpcServer.URL,
+		"srv2": rpcServer.URL,
+		"srv3": rpcServer.URL,
+	}
+	r := New(servers)
+
+	// try doing the load in increasing order
+	go func() {
+		for i := 0; i < len(servers); i++ {
+			nextResp(fmt.Sprintf(`{"result":{"total_pages":%d}}`, i))
+			<-reqChan
+		}
+	}()
+	r.updateLoadAndMetrics()
+	assert.Equal(t, "srv1", r.LeastLoaded().Name)
+
+	// now do the load in decreasing order
+	go func() {
+		for i := 0; i < len(servers); i++ {
+			nextResp(fmt.Sprintf(`{"result":{"total_pages":%d}}`, len(servers)-i))
+			<-reqChan
+		}
+	}()
+	r.updateLoadAndMetrics()
+	assert.Equal(t, "srv3", r.LeastLoaded().Name)
+
 }

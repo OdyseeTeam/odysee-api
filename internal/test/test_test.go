@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	jr "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +15,7 @@ func TestMockRPCServer(t *testing.T) {
 	defer rpcServer.Close()
 	nextResp(`{"result": {"items": [], "page": 1, "page_size": 2, "total_pages": 3}}`)
 
-	rsp, err := jr.NewClient(rpcServer.URL).WalletList("", 1, 2)
+	rsp, err := ljsonrpc.NewClient(rpcServer.URL).WalletList("", 1, 2)
 	if err != nil {
 		t.Error(err)
 	}
