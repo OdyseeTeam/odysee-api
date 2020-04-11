@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
@@ -24,6 +25,8 @@ func InstallRoutes(proxyService *proxy.ProxyService, r *mux.Router) {
 		panic(err)
 	}
 
+	r.Use(methodTimer)
+
 	r.HandleFunc("/", Index)
 
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
@@ -43,4 +46,18 @@ func injectSDKRouter(rt *sdkrouter.Router, fn http.HandlerFunc) http.HandlerFunc
 	return func(w http.ResponseWriter, r *http.Request) {
 		fn(w, r.Clone(context.WithValue(r.Context(), status.SDKRouterContextKey, rt)))
 	}
+}
+
+func methodTimer(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		next.ServeHTTP(w, r)
+
+		path := r.URL.Path
+		if r.URL.RawQuery != "" {
+			path += "?" + r.URL.RawQuery
+		}
+		metrics.LbrytvCallDurations.WithLabelValues(path).Observe(time.Since(start).Seconds())
+	})
 }
