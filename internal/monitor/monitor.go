@@ -107,11 +107,13 @@ func NewProxyLogger() *ProxyLogger {
 	return &l
 }
 
-func (l *ProxyLogger) LogSuccessfulQuery(method string, time float64, params interface{}, response interface{}) {
+func (l *ProxyLogger) LogSuccessfulQuery(method, endpoint, wallet string, time float64, params interface{}, response interface{}) {
 	fields := logrus.Fields{
 		"method":   method,
 		"duration": time,
 		"params":   params,
+		"endpoint": endpoint,
+		"wallet":   wallet,
 	}
 	if config.ShouldLogResponses() {
 		fields["response"] = response
@@ -120,12 +122,14 @@ func (l *ProxyLogger) LogSuccessfulQuery(method string, time float64, params int
 
 }
 
-func (l *ProxyLogger) LogFailedQuery(method string, time float64, params interface{}, errorResponse interface{}) {
+func (l *ProxyLogger) LogFailedQuery(method, endpoint, wallet string, time float64, params interface{}, errorResponse interface{}) {
 	l.entry.WithFields(logrus.Fields{
 		"method":   method,
-		"params":   params,
-		"response": errorResponse,
 		"duration": time,
+		"params":   params,
+		"endpoint": endpoint,
+		"wallet":   wallet,
+		"response": errorResponse,
 	}).Error("error from the target endpoint")
 }
 

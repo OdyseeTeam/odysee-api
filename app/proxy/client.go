@@ -92,10 +92,10 @@ func (c Client) Call(q *Query) (*jsonrpc.RPCResponse, error) {
 	}
 
 	if (r != nil && r.Error != nil) || err != nil {
-		Logger.LogFailedQuery(q.Method(), duration, q.Params(), r.Error)
+		Logger.LogFailedQuery(q.Method(), c.endpoint, c.wallet, duration, q.Params(), r.Error)
 		failureMetrics.Observe(duration)
 	} else {
-		Logger.LogSuccessfulQuery(q.Method(), duration, q.Params(), r)
+		Logger.LogSuccessfulQuery(q.Method(), c.endpoint, c.wallet, duration, q.Params(), r)
 	}
 
 	return r, err
