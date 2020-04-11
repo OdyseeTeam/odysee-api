@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/lbryio/lbrytv/app/proxy"
@@ -55,7 +56,7 @@ func methodTimer(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 
 		path := r.URL.Path
-		if r.URL.RawQuery != "" {
+		if r.URL.RawQuery != "" && !strings.HasPrefix(path, "/api/v1/metric") {
 			path += "?" + r.URL.RawQuery
 		}
 		metrics.LbrytvCallDurations.WithLabelValues(path).Observe(time.Since(start).Seconds())
