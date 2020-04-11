@@ -44,7 +44,7 @@ clean:
 
 .PHONY: server
 server:
-	LW_DEBUG=1 go run . serve
+	LW_DEBUG=1 go run .
 
 tag := $(shell git describe --abbrev=0 --tags)
 .PHONY: retag
