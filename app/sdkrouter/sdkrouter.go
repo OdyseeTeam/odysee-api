@@ -20,7 +20,7 @@ import (
 	"github.com/volatiletech/sqlboiler/queries/qm"
 )
 
-var logger = monitor.NewModuleLogger("router")
+var logger = monitor.NewModuleLogger("sdkrouter")
 
 type Router struct {
 	mu      sync.RWMutex
@@ -85,7 +85,7 @@ func (r *Router) serverForWallet(walletID string) *models.LbrynetServer {
 	if boil.GetDB() != nil {
 		user, err = models.Users(qm.Load(models.UserRels.LbrynetServer), models.UserWhere.ID.EQ(userID)).OneG()
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			logger.Log().Errorf("Error getting user %d from db: %s", userID, err.Error())
+			logger.Log().Errorf("Error getting user %d from db: %v", userID, err.Error())
 		}
 	}
 
@@ -93,17 +93,21 @@ func (r *Router) serverForWallet(walletID string) *models.LbrynetServer {
 	defer r.mu.RUnlock()
 
 	if user == nil || user.R == nil || user.R.LbrynetServer == nil {
-		return r.servers[getServerForUserID(userID, len(r.servers))]
+		srv := r.servers[getServerForUserID(userID, len(r.servers))]
+		logger.Log().Debugf("User %d has no wallet in db. Giving them %s", userID, srv.Address)
+		return srv
 	}
 
 	for _, s := range r.servers {
 		if s.ID == user.R.LbrynetServer.ID {
+			logger.Log().Debugf("User %d has wallet %s set in db", userID, s.Address)
 			return s
 		}
 	}
 
-	logger.Log().Errorf("Server for user %d is set in db but is not in current servers list", userID)
-	return r.servers[getServerForUserID(userID, len(r.servers))]
+	srv := r.servers[getServerForUserID(userID, len(r.servers))]
+	logger.Log().Errorf("Server for user %d is set in db but is not in current servers list. Giving them %s", userID, srv.Address)
+	return srv
 }
 
 func (r *Router) RandomServer() *models.LbrynetServer {
@@ -140,13 +144,14 @@ func (r *Router) setServers(servers []*models.LbrynetServer) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.servers = servers
+	logger.Log().Debugf("updated server list to %d servers", len(r.servers))
 }
 
 // WatchLoad keeps updating the metrics on the number of wallets loaded for each instance
 func (r *Router) WatchLoad() {
 	ticker := time.NewTicker(2 * time.Minute)
 
-	logger.Log().Infof("Router router watching over %v instances", len(r.servers))
+	logger.Log().Infof("SDK router watching load on %d instances", len(r.servers))
 	r.reloadServersFromDB()
 	r.updateLoadAndMetrics()
 
@@ -162,7 +167,7 @@ func (r *Router) updateLoadAndMetrics() {
 		metric := metrics.LbrynetWalletsLoaded.WithLabelValues(server.Address)
 		walletList, err := ljsonrpc.NewClient(server.Address).WalletList("", 1, 1)
 		if err != nil {
-			logger.Log().Errorf("lbrynet instance %v is not responding: %v", server.Address, err)
+			logger.Log().Errorf("lbrynet instance %s is not responding: %v", server.Address, err)
 			r.loadMu.Lock()
 			delete(r.load, server)
 			r.loadMu.Unlock()
@@ -175,6 +180,8 @@ func (r *Router) updateLoadAndMetrics() {
 			metric.Set(float64(walletList.TotalPages))
 		}
 	}
+	leastLoaded := r.LeastLoaded()
+	logger.Log().Infof("After updating load, least loaded server is %s", leastLoaded.Address)
 }
 
 // LeastLoaded returns the least-loaded wallet
@@ -187,6 +194,7 @@ func (r *Router) LeastLoaded() *models.LbrynetServer {
 
 	if len(r.load) == 0 {
 		// updateLoadAndMetrics() was never run, so return a random server
+		logger.Log().Debugf("LeastLoaded() called before updating load metrics. Returning random server.")
 		return r.RandomServer()
 	}
 
