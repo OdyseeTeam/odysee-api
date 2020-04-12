@@ -3,6 +3,7 @@ package sdkrouter
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"math/rand"
 	"regexp"
 	"sort"
@@ -134,8 +135,8 @@ func (r *Router) reloadServersFromDB() {
 
 func (r *Router) setServers(servers []*models.LbrynetServer) {
 	if len(servers) == 0 {
-		logger.Log().Fatal("Setting servers to empty list")
-		// TODO: fatal? really? maybe just don't update the servers in this case?
+		logger.Log().Error("Setting servers to empty list")
+		return
 	}
 
 	// we do this partially to make sure that ids are assigned to servers more consistently,
@@ -218,4 +219,15 @@ func getUserID(walletID string) int {
 
 func getServerForUserID(userID, numServers int) int {
 	return userID % numServers
+}
+
+func (r *Router) Client(userID int) *ljsonrpc.Client {
+	c := ljsonrpc.NewClient(r.GetServer(WalletID(userID)).Address)
+	//c.SetRPCTimeout(5 * time.Second)
+	return c
+}
+
+// WalletID formats user ID to use as an LbrynetServer wallet ID.
+func WalletID(userID int) string {
+	return fmt.Sprintf("lbrytv-id.%d.wallet", userID)
 }

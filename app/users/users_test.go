@@ -14,8 +14,6 @@ import (
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/models"
-	"github.com/lbryio/lbrytv/util/wallet"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,7 +56,7 @@ func setupCleanupDummyUser(rt *sdkrouter.Router, uidParam ...int) func() {
 	return func() {
 		ts.Close()
 		config.RestoreOverridden()
-		lbrynet.WalletRemove(rt, uid)
+		lbrynet.UnloadWallet(rt, uid)
 	}
 }
 
@@ -67,7 +65,7 @@ func TestWalletServiceRetrieveNewUser(t *testing.T) {
 	setupDBTables()
 	defer setupCleanupDummyUser(rt)()
 
-	wid := wallet.MakeID(dummyUserID)
+	wid := sdkrouter.WalletID(dummyUserID)
 	svc := NewWalletService(rt)
 	u, err := svc.Retrieve(Query{Token: "abc"})
 	require.NoError(t, err, errors.Unwrap(err))

@@ -13,8 +13,6 @@ import (
 	"testing"
 
 	"github.com/lbryio/lbrytv/app/users"
-	"github.com/lbryio/lbrytv/internal/lbrynet"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"
@@ -32,7 +30,7 @@ func (p *DummyPublisher) Publish(filePath, accountID string, rawQuery []byte) []
 	p.filePath = filePath
 	p.accountID = accountID
 	p.rawQuery = rawQuery
-	return []byte(lbrynet.ExampleStreamCreateResponse)
+	return []byte(expectedStreamCreateResponse)
 }
 
 func TestUploadHandler(t *testing.T) {
@@ -50,13 +48,13 @@ func TestUploadHandler(t *testing.T) {
 	respBody, _ := ioutil.ReadAll(response.Body)
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
-	assert.Equal(t, lbrynet.ExampleStreamCreateResponse, string(respBody))
+	assert.Equal(t, expectedStreamCreateResponse, string(respBody))
 
 	require.True(t, publisher.called)
 	expectedPath := path.Join(os.TempDir(), "UPldrAcc", ".*_lbry_auto_test_file")
 	assert.Regexp(t, expectedPath, publisher.filePath)
 	assert.Equal(t, "UPldrAcc", publisher.accountID)
-	assert.Equal(t, lbrynet.ExampleStreamCreateRequest, string(publisher.rawQuery))
+	assert.Equal(t, expectedStreamCreateRequest, string(publisher.rawQuery))
 
 	_, err = os.Stat(publisher.filePath)
 	assert.True(t, os.IsNotExist(err))
@@ -99,7 +97,7 @@ func TestUploadHandlerSystemError(t *testing.T) {
 
 	jsonPayload, err := writer.CreateFormField(JSONRPCFieldName)
 	require.NoError(t, err)
-	jsonPayload.Write([]byte(lbrynet.ExampleStreamCreateRequest))
+	jsonPayload.Write([]byte(expectedStreamCreateRequest))
 
 	// <--- Not calling writer.Close() here to create an unexpected EOF
 

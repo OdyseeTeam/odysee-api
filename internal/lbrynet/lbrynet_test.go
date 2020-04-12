@@ -9,8 +9,6 @@ import (
 
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/util/wallet"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,34 +23,34 @@ func TestInitializeWallet(t *testing.T) {
 	uid := rand.Int()
 	r := sdkrouter.New(config.GetLbrynetServers())
 
-	_, wid, err := InitializeWallet(r, uid)
+	wid, err := InitializeWallet(r, uid)
 	require.NoError(t, err)
-	assert.Equal(t, wid, wallet.MakeID(uid))
+	assert.Equal(t, wid, sdkrouter.WalletID(uid))
 
-	_, err = WalletRemove(r, uid)
+	err = UnloadWallet(r, uid)
 	require.NoError(t, err)
 
-	_, wid, err = InitializeWallet(r, uid)
+	wid, err = InitializeWallet(r, uid)
 	require.NoError(t, err)
-	assert.Equal(t, wid, wallet.MakeID(uid))
+	assert.Equal(t, wid, sdkrouter.WalletID(uid))
 }
 
-func TestCreateWalletAddWallet(t *testing.T) {
+func TestCreateWalletLoadWallet(t *testing.T) {
 	uid := rand.Int()
 	r := sdkrouter.New(config.GetLbrynetServers())
 
-	w, _, err := CreateWallet(r, uid)
+	w, err := createWallet(r, uid)
 	require.NoError(t, err)
-	assert.Equal(t, w.ID, wallet.MakeID(uid))
+	assert.Equal(t, w.ID, sdkrouter.WalletID(uid))
 
-	_, _, err = CreateWallet(r, uid)
+	_, err = createWallet(r, uid)
 	require.NotNil(t, err)
-	assert.True(t, errors.As(err, &WalletExists{}))
+	assert.True(t, errors.Is(err, ErrWalletExists))
 
-	_, err = WalletRemove(r, uid)
+	err = UnloadWallet(r, uid)
 	require.NoError(t, err)
 
-	w, err = AddWallet(r, uid)
+	w, err = loadWallet(r, uid)
 	require.NoError(t, err)
-	assert.Equal(t, w.ID, wallet.MakeID(uid))
+	assert.Equal(t, w.ID, sdkrouter.WalletID(uid))
 }

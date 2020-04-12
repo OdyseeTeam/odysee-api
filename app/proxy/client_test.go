@@ -8,7 +8,6 @@ import (
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
-	"github.com/lbryio/lbrytv/util/wallet"
 
 	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"
@@ -52,23 +51,19 @@ func (c MockRPCClient) CallBatchRaw(requests jsonrpc.RPCRequests) (jsonrpc.RPCRe
 }
 
 func TestClientCallDoesReloadWallet(t *testing.T) {
-	var (
-		r *jsonrpc.RPCResponse
-	)
-
 	rand.Seed(time.Now().UnixNano())
 	dummyUserID := rand.Intn(100)
 	rt := sdkrouter.New(config.GetLbrynetServers())
 
-	_, wid, _ := lbrynet.InitializeWallet(rt, dummyUserID)
-	_, err := lbrynet.WalletRemove(rt, dummyUserID)
+	wid, _ := lbrynet.InitializeWallet(rt, dummyUserID)
+	err := lbrynet.UnloadWallet(rt, dummyUserID)
 	require.NoError(t, err)
 
 	c := NewClient(rt.GetServer(wid).Address, wid, time.Second*1)
 
 	q, _ := NewQuery(newRawRequest(t, "wallet_balance", nil))
 	q.SetWalletID(wid)
-	r, err = c.Call(q)
+	r, err := c.Call(q)
 
 	// err = json.Unmarshal(result, response)
 	require.NoError(t, err)
@@ -76,17 +71,13 @@ func TestClientCallDoesReloadWallet(t *testing.T) {
 }
 
 func TestClientCallDoesNotReloadWalletAfterOtherErrors(t *testing.T) {
-	var (
-		r *jsonrpc.RPCResponse
-	)
-
 	rand.Seed(time.Now().UnixNano())
-	wid := wallet.MakeID(rand.Intn(100))
+	walletID := sdkrouter.WalletID(rand.Intn(100))
 
 	mc := NewMockRPCClient()
 	c := &Client{rpcClient: mc}
 	q, _ := NewQuery(newRawRequest(t, "wallet_balance", nil))
-	q.SetWalletID(wid)
+	q.SetWalletID(walletID)
 
 	mc.AddNextResponse(&jsonrpc.RPCResponse{
 		JSONRPC: "2.0",
@@ -107,12 +98,8 @@ func TestClientCallDoesNotReloadWalletAfterOtherErrors(t *testing.T) {
 }
 
 func TestClientCallDoesNotReloadWalletIfAlreadyLoaded(t *testing.T) {
-	var (
-		r *jsonrpc.RPCResponse
-	)
-
 	rand.Seed(time.Now().UnixNano())
-	wid := wallet.MakeID(rand.Intn(100))
+	wid := sdkrouter.WalletID(rand.Intn(100))
 
 	mc := NewMockRPCClient()
 	c := &Client{rpcClient: mc}
@@ -137,6 +124,7 @@ func TestClientCallDoesNotReloadWalletIfAlreadyLoaded(t *testing.T) {
 	})
 
 	r, err := c.Call(q)
+
 	require.NoError(t, err)
 	require.Nil(t, r.Error)
 	require.Equal(t, `"99999.00"`, r.Result)

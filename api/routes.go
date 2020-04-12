@@ -10,6 +10,7 @@ import (
 	"github.com/lbryio/lbrytv/app/publish"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/users"
+	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/status"
 
@@ -28,7 +29,9 @@ func InstallRoutes(proxyService *proxy.ProxyService, r *mux.Router) {
 
 	r.Use(methodTimer)
 
-	r.HandleFunc("/", Index)
+	r.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, config.GetProjectURL(), http.StatusSeeOther)
+	})
 
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
 	v1Router.HandleFunc("/proxy", proxyHandler.HandleOptions).Methods(http.MethodOptions)

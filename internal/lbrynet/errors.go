@@ -1,101 +1,48 @@
 package lbrynet
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 )
 
-type AccountNotFound struct {
-	UID int
-	Err error
-}
-
-type AccountConflict struct {
-	UID int
-	Err error
-}
-
 type WalletError struct {
-	error
-	UID int
-	Err error
+	UserID int
+	Err    error
 }
 
-type WalletExists struct {
-	WalletError
-}
+func (e WalletError) Error() string { return fmt.Sprintf("user %d: %s", e.UserID, e.Err.Error()) }
+func (e WalletError) Unwrap() error { return e.Err }
 
-type WalletNeedsLoading struct {
-	WalletError
-}
+var (
+	ErrWalletNotFound      = errors.New("wallet not found")
+	ErrWalletExists        = errors.New("wallet exists and is loaded")
+	ErrWalletNeedsLoading  = errors.New("wallet exists and needs to be loaded")
+	ErrWalletNotLoaded     = errors.New("wallet is not loaded")
+	ErrWalletAlreadyLoaded = errors.New("wallet is already loaded")
 
-type WalletAlreadyLoaded struct {
-	WalletError
-}
-
-type WalletNotFound struct {
-	WalletError
-}
-
-type WalletNotLoaded struct {
-	WalletError
-}
-
-func (e AccountNotFound) Error() string {
-	return fmt.Sprintf("couldn't find account for %v in lbrynet", e.UID)
-}
-
-func (e AccountConflict) Error() string {
-	return fmt.Sprintf("account for %v already registered with lbrynet", e.UID)
-}
-
-// Workaround for non-existent SDK error codes
-var reWalletExists = regexp.MustCompile(`Wallet at path .+ already exists and is loaded`)
-var reWalletNeedsLoading = regexp.MustCompile(`Wallet at path .+ already exists, use 'wallet_add' to load wallet`)
-var reWalletAlreadyLoaded = regexp.MustCompile(`Wallet at path .+ is already loaded`)
-var reWalletNotFound = regexp.MustCompile(`Wallet at path .+ was not found`)
-var reWalletNotLoaded = regexp.MustCompile(`Couldn't find wallet:`)
+	// Workaround for non-existent SDK error codes
+	reWalletNotFound      = regexp.MustCompile(`Wallet at path .+ was not found`)
+	reWalletExists        = regexp.MustCompile(`Wallet at path .+ already exists and is loaded`)
+	reWalletNeedsLoading  = regexp.MustCompile(`Wallet at path .+ already exists, use 'wallet_add' to load wallet`)
+	reWalletNotLoaded     = regexp.MustCompile(`Couldn't find wallet:`)
+	reWalletAlreadyLoaded = regexp.MustCompile(`Wallet at path .+ is already loaded`)
+)
 
 // NewWalletError converts plain SDK error to the typed one
-func NewWalletError(uid int, err error) error {
-	wErr := WalletError{UID: uid, Err: err}
-
+func NewWalletError(userID int, err error) error {
 	switch {
-	case reWalletExists.MatchString(err.Error()):
-		return WalletExists{wErr}
-	case reWalletNeedsLoading.MatchString(err.Error()):
-		return WalletNeedsLoading{wErr}
-	case reWalletAlreadyLoaded.MatchString(err.Error()):
-		return WalletAlreadyLoaded{wErr}
 	case reWalletNotFound.MatchString(err.Error()):
-		return WalletNotFound{wErr}
+		return WalletError{UserID: userID, Err: ErrWalletNotFound}
+	case reWalletExists.MatchString(err.Error()):
+		return WalletError{UserID: userID, Err: ErrWalletExists}
+	case reWalletNeedsLoading.MatchString(err.Error()):
+		return WalletError{UserID: userID, Err: ErrWalletNeedsLoading}
 	case reWalletNotLoaded.MatchString(err.Error()):
-		return WalletNotLoaded{wErr}
+		return WalletError{UserID: userID, Err: ErrWalletNotLoaded}
+	case reWalletAlreadyLoaded.MatchString(err.Error()):
+		return WalletError{UserID: userID, Err: ErrWalletAlreadyLoaded}
 	default:
-		return wErr
+		return WalletError{UserID: userID, Err: err}
 	}
-}
-
-func (e WalletError) Unwrap() error {
-	return e.Err
-}
-
-func (e WalletError) Error() string {
-	return fmt.Sprintf("unknown wallet error: %v", e.Unwrap())
-}
-
-func (e WalletExists) Error() string {
-	return "wallet is already loaded"
-}
-
-func (e WalletNeedsLoading) Error() string {
-	return "wallet already exists but is not loaded"
-}
-
-func (e WalletAlreadyLoaded) Error() string {
-	return "wallet is already loaded"
-}
-
-func (e WalletNotLoaded) Error() string {
-	return "wallet not found"
 }

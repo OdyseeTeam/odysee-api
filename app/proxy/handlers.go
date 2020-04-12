@@ -43,8 +43,8 @@ func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	if err != nil || !methodInList(q.Method(), relaxedMethods) {
 		retriever := users.NewWalletService(rh.SDKRouter)
 		auth := users.NewAuthenticator(retriever)
-		walletID, err = auth.GetWalletID(r)
 
+		walletID, err = auth.GetWalletID(r)
 		if err != nil {
 			responses.JSONRPCError(w, err.Error(), ErrAuthFailed)
 			monitor.CaptureRequestError(err, r, w)

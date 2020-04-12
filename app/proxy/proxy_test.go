@@ -140,7 +140,7 @@ func TestCallerCallWalletBalance(t *testing.T) {
 	dummyUserID := rand.Intn(10^6-10^3) + 10 ^ 3
 
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	_, wid, err := lbrynet.InitializeWallet(rt, dummyUserID)
+	wid, err := lbrynet.InitializeWallet(rt, dummyUserID)
 	require.NoError(t, err)
 
 	svc := NewService(Opts{SDKRouter: rt})

@@ -41,7 +41,6 @@ func NewClient(endpoint string, wallet string, timeout time.Duration) LbrynetCli
 
 func (c Client) Call(q *Query) (*jsonrpc.RPCResponse, error) {
 	var (
-		i        int
 		r        *jsonrpc.RPCResponse
 		err      error
 		duration float64
@@ -50,7 +49,7 @@ func (c Client) Call(q *Query) (*jsonrpc.RPCResponse, error) {
 	callMetrics := metrics.ProxyCallDurations.WithLabelValues(q.Method(), c.endpoint)
 	failureMetrics := metrics.ProxyCallFailedDurations.WithLabelValues(q.Method(), c.endpoint)
 
-	for i = 0; i < walletLoadRetries; i++ {
+	for i := 0; i < walletLoadRetries; i++ {
 		start := time.Now()
 
 		r, err = c.rpcClient.CallRaw(q.Request)
@@ -102,21 +101,9 @@ func (c Client) Call(q *Query) (*jsonrpc.RPCResponse, error) {
 }
 
 func (c *Client) isWalletNotLoaded(r *jsonrpc.RPCResponse) bool {
-	if r.Error != nil {
-		wErr := lbrynet.NewWalletError(0, errors.New(r.Error.Message))
-		if errors.As(wErr, &lbrynet.WalletNotLoaded{}) {
-			return true
-		}
-	}
-	return false
+	return r.Error != nil && errors.Is(lbrynet.NewWalletError(0, errors.New(r.Error.Message)), lbrynet.ErrWalletNotLoaded)
 }
 
 func (c *Client) isWalletAlreadyLoaded(r *jsonrpc.RPCResponse) bool {
-	if r.Error != nil {
-		wErr := lbrynet.NewWalletError(0, errors.New(r.Error.Message))
-		if errors.As(wErr, &lbrynet.WalletAlreadyLoaded{}) {
-			return true
-		}
-	}
-	return false
+	return r.Error != nil && errors.Is(lbrynet.NewWalletError(0, errors.New(r.Error.Message)), lbrynet.ErrWalletAlreadyLoaded)
 }

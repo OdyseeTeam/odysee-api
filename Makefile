@@ -11,6 +11,10 @@ prepare_test:
 test:
 	go test -cover ./...
 
+.PHONY: test_race
+test_race:
+	go test -race -gcflags=all=-d=checkptr=0 ./...
+
 .PHONY: test_circleci
 test_circleci:
 	scripts/wait_for_wallet.sh

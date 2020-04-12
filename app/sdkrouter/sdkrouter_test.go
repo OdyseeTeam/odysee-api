@@ -8,8 +8,6 @@ import (
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/test"
-	"github.com/lbryio/lbrytv/util/wallet"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -42,7 +40,7 @@ func TestServerOrder(t *testing.T) {
 	sdkRouter := New(servers)
 
 	for i := 0; i < 100; i++ {
-		server := sdkRouter.GetServer(wallet.MakeID(i)).Address
+		server := sdkRouter.GetServer(WalletID(i)).Address
 		assert.Equal(t, fmt.Sprintf("%d", i%len(servers)), server)
 	}
 }
@@ -51,7 +49,7 @@ func TestOverrideLbrynetDefaultConf(t *testing.T) {
 	address := "http://space.com:1234"
 	config.Override("LbrynetServers", map[string]string{"x": address})
 	defer config.RestoreOverridden()
-	server := New(config.GetLbrynetServers()).GetServer(wallet.MakeID(343465345))
+	server := New(config.GetLbrynetServers()).GetServer(WalletID(343465345))
 	assert.Equal(t, address, server.Address)
 }
 
@@ -60,7 +58,7 @@ func TestOverrideLbrynetConf(t *testing.T) {
 	config.Override("Lbrynet", address)
 	config.Override("LbrynetServers", map[string]string{})
 	defer config.RestoreOverridden()
-	server := New(config.GetLbrynetServers()).GetServer(wallet.MakeID(1343465345))
+	server := New(config.GetLbrynetServers()).GetServer(WalletID(1343465345))
 	assert.Equal(t, address, server.Address)
 }
 

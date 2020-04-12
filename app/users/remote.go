@@ -9,14 +9,13 @@ import (
 	"github.com/lbryio/lbry.go/v2/extras/lbryinc"
 )
 
-// RemoteUser encapsulates internal-apis user data
-type RemoteUser struct {
+// remoteUser encapsulates internal-apis user data
+type remoteUser struct {
 	ID               int
 	HasVerifiedEmail bool
 }
 
-func getRemoteUser(token string, remoteIP string) (*RemoteUser, error) {
-	u := &RemoteUser{}
+func getRemoteUser(token string, remoteIP string) (*remoteUser, error) {
 	c := lbryinc.NewClient(token, &lbryinc.ClientOpts{
 		ServerAddress: config.GetInternalAPIHost(),
 		RemoteIP:      remoteIP,
@@ -31,9 +30,11 @@ func getRemoteUser(token string, remoteIP string) (*RemoteUser, error) {
 		metrics.IAPIAuthFailedDurations.Observe(duration)
 		return nil, err
 	}
+
 	metrics.IAPIAuthSuccessDurations.Observe(duration)
 
-	u.ID = int(r["user_id"].(float64))
-	u.HasVerifiedEmail = r["has_verified_email"].(bool)
-	return u, nil
+	return &remoteUser{
+		ID:               int(r["user_id"].(float64)),
+		HasVerifiedEmail: r["has_verified_email"].(bool),
+	}, nil
 }
