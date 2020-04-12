@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
 
@@ -105,10 +104,9 @@ func (s *WalletService) Retrieve(q Query) (*models.User, error) {
 	return localUser, nil
 }
 
-// TODO: this is the function where users are assigned to SDKs. assign them randomly
 func createWalletForUser(user *models.User, router *sdkrouter.Router, log *logrus.Entry) error {
 	// either a new user or a legacy user without a wallet
-	walletID, err := lbrynet.InitializeWallet(router, user.ID)
+	walletID, err := router.InitializeWallet(user.ID)
 	if err != nil {
 		return err
 	}
@@ -118,7 +116,7 @@ func createWalletForUser(user *models.User, router *sdkrouter.Router, log *logru
 
 	user.WalletID = walletID
 
-	server := router.GetServer(sdkrouter.WalletID(user.ID))
+	server := router.GetServer(user.ID)
 	if server.ID > 0 { // Ensure server is from DB
 		user.LbrynetServerID.SetValid(server.ID)
 	}

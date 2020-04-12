@@ -11,7 +11,6 @@ import (
 
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/models"
 	log "github.com/sirupsen/logrus"
@@ -56,7 +55,7 @@ func setupCleanupDummyUser(rt *sdkrouter.Router, uidParam ...int) func() {
 	return func() {
 		ts.Close()
 		config.RestoreOverridden()
-		lbrynet.UnloadWallet(rt, uid)
+		rt.UnloadWallet(uid)
 	}
 }
 
@@ -167,7 +166,7 @@ func BenchmarkWalletCommands(b *testing.B) {
 	cl := jsonrpc.NewClient(sdkRouter.RandomServer().Address)
 
 	svc.Logger.Disable()
-	lbrynet.Logger.Disable()
+	sdkrouter.DisableLogger()
 	log.SetOutput(ioutil.Discard)
 
 	rand.Seed(time.Now().UnixNano())

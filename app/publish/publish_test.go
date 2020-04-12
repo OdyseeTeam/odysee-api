@@ -45,7 +45,7 @@ func TestLbrynetPublisher(t *testing.T) {
 	defer config.RestoreOverridden()
 
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	p := &LbrynetPublisher{proxy.NewService(proxy.Opts{SDKRouter: rt})}
+	p := &LbrynetPublisher{proxy.NewService(rt)}
 	walletSvc := users.NewWalletService(rt)
 	u, err := walletSvc.Retrieve(users.Query{Token: authToken})
 	require.NoError(t, err)

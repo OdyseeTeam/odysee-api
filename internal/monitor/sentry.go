@@ -9,7 +9,7 @@ import (
 )
 
 var IgnoredExceptions = []string{
-	"account identificator required",
+	"account identifier required",
 }
 
 func configureSentry(release, env string) {

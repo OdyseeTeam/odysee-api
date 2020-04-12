@@ -15,26 +15,23 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
-	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
-
 	"github.com/ybbus/jsonrpc"
 )
 
-const defaultRPCTimeout = time.Second * 30
+const defaultRPCTimeout = 30 * time.Second
 
 var Logger = monitor.NewProxyLogger()
 
 type Preprocessor func(q *Query)
 
-// ProxyService generates Caller objects and keeps execution time metrics
+// Service generates Caller objects and keeps execution time metrics
 // for all calls proxied through those objects.
-type ProxyService struct {
+type Service struct {
 	SDKRouter  *sdkrouter.Router
 	rpcTimeout time.Duration
 	logger     monitor.QueryMonitor
@@ -45,197 +42,53 @@ type ProxyService struct {
 type Caller struct {
 	walletID     string
 	query        *jsonrpc.RPCRequest
-	client       LbrynetClient
+	client       Client
 	endpoint     string
-	service      *ProxyService
+	service      *Service
 	preprocessor Preprocessor
 }
 
-// Query is a wrapper around client JSON-RPC query for easier (un)marshaling and processing.
-type Query struct {
-	Request    *jsonrpc.RPCRequest
-	rawRequest []byte
-	walletID   string
-}
-
-// Opts is initialization parameters for NewService / proxy.ProxyService
-type Opts struct {
-	SDKRouter  *sdkrouter.Router
-	RPCTimeout time.Duration
-}
-
 // NewService is the entry point to proxy module.
-// Normally only one instance of ProxyService should be created per running server.
-func NewService(opts Opts) *ProxyService {
-	s := ProxyService{
-		SDKRouter:  opts.SDKRouter,
-		rpcTimeout: opts.RPCTimeout,
+// Normally only one instance of Service should be created per running server.
+func NewService(router *sdkrouter.Router) *Service {
+	return &Service{
+		SDKRouter:  router,
+		rpcTimeout: defaultRPCTimeout,
 	}
-	if s.rpcTimeout == 0 {
-		s.rpcTimeout = defaultRPCTimeout
-	}
-	return &s
+}
+
+func (ps *Service) SetRPCTimeout(timeout time.Duration) {
+	ps.rpcTimeout = timeout
 }
 
 // NewCaller returns an instance of Caller ready to proxy requests.
 // Note that `SetWalletID` needs to be called if an authenticated user is making this call.
-func (ps *ProxyService) NewCaller(walletID string) *Caller {
-	endpoint := ps.SDKRouter.GetServer(walletID).Address
-	client := NewClient(endpoint, walletID, ps.rpcTimeout)
-	c := Caller{
+func (ps *Service) NewCaller(walletID string) *Caller {
+	endpoint := ps.SDKRouter.GetServer(sdkrouter.UserID(walletID)).Address
+	return &Caller{
 		walletID: walletID,
-		client:   client,
+		client:   NewClient(endpoint, walletID, ps.rpcTimeout),
 		endpoint: endpoint,
 		service:  ps,
 	}
-	return &c
 }
 
-// NewQuery initializes Query object with JSON-RPC request supplied as bytes.
-// The object is immediately usable and returns an error in case request parsing fails.
-func NewQuery(r []byte) (*Query, error) {
-	q := &Query{rawRequest: r, Request: &jsonrpc.RPCRequest{}}
-	err := q.unmarshal()
+// Call method processes a raw query received from JSON-RPC client and forwards it to LbrynetServer.
+// It returns a response that is ready to be sent back to the JSON-RPC client as is.
+func (c *Caller) Call(rawQuery []byte) []byte {
+	r, err := c.call(rawQuery)
 	if err != nil {
-		return nil, err
+		if !errors.As(err, &InputError{}) {
+			monitor.CaptureException(err, map[string]string{"query": string(rawQuery), "response": fmt.Sprintf("%v", r)})
+			Logger.Errorf("error calling lbrynet: %v, query: %s", err, rawQuery)
+		}
+		return c.marshalError(err)
 	}
-	return q, nil
-}
-
-func (q *Query) unmarshal() error {
-	err := json.Unmarshal(q.rawRequest, q.Request)
+	serialized, err := c.marshal(r)
 	if err != nil {
-		return err
-	}
-	if strings.TrimSpace(q.Request.Method) == "" {
-		return errors.New("invalid JSON-RPC request")
-	}
-	return nil
-}
-
-// Method is a shortcut for query method.
-func (q *Query) Method() string {
-	return q.Request.Method
-}
-
-// Params is a shortcut for query params.
-func (q *Query) Params() interface{} {
-	return q.Request.Params
-}
-
-// ParamsAsMap returns query params converted to plain map.
-func (q *Query) ParamsAsMap() map[string]interface{} {
-	if paramsMap, ok := q.Params().(map[string]interface{}); ok {
-		return paramsMap
-	}
-	return nil
-}
-
-// ParamsToStruct returns query params parsed into a supplied structure.
-func (q *Query) ParamsToStruct(targetStruct interface{}) error {
-	return ljsonrpc.Decode(q.Params(), targetStruct)
-}
-
-// cacheHit returns true if we got a resolve query with more than `cacheResolveLongerThan` urls in it.
-func (q *Query) isCacheable() bool {
-	if q.Method() == MethodResolve && q.Params() != nil {
-		paramsMap := q.Params().(map[string]interface{})
-		if urls, ok := paramsMap[paramUrls].([]interface{}); ok {
-			if len(urls) > cacheResolveLongerThan {
-				return true
-			}
-		}
-	} else if q.Method() == MethodClaimSearch {
-		return true
-	}
-	return false
-}
-
-func (q *Query) newResponse() *jsonrpc.RPCResponse {
-	var r jsonrpc.RPCResponse
-	r.ID = q.Request.ID
-	r.JSONRPC = q.Request.JSONRPC
-	return &r
-}
-
-func (q *Query) SetWalletID(id string) {
-	q.walletID = id
-}
-
-// cacheHit returns cached response or nil in case it's a miss or query shouldn't be cacheable.
-func (q *Query) cacheHit() *jsonrpc.RPCResponse {
-	if q.isCacheable() {
-		if cached := responseCache.Retrieve(q.Method(), q.Params()); cached != nil {
-			// TODO: Temporary hack to find out why the following line doesn't work
-			// if mResp, ok := cResp.(map[string]interface{}); ok {
-			s, _ := json.Marshal(cached)
-			response := q.newResponse()
-			err := json.Unmarshal(s, &response)
-			if err == nil {
-				monitor.LogCachedQuery(q.Method())
-				return response
-			}
-		}
-	}
-	return nil
-}
-
-func (q *Query) predefinedResponse() *jsonrpc.RPCResponse {
-	if q.Method() == MethodStatus {
-		response := q.newResponse()
-		response.Result = getStatusResponse()
-		return response
-	}
-	return nil
-}
-
-func (q *Query) validate() CallError {
-	if !methodInList(q.Method(), relaxedMethods) && !methodInList(q.Method(), walletSpecificMethods) {
-		return NewMethodError(errors.New("forbidden method"))
-	}
-	if q.ParamsAsMap() != nil {
-		if _, ok := q.ParamsAsMap()[forbiddenParam]; ok {
-			return NewParamsError(fmt.Errorf("forbidden parameter supplied: %v", forbiddenParam))
-		}
-	}
-
-	if !methodInList(q.Method(), relaxedMethods) {
-		if q.walletID == "" {
-			return NewParamsError(errors.New("account identificator required"))
-		}
-		if p := q.ParamsAsMap(); p != nil {
-			p[paramWalletID] = q.walletID
-			q.Request.Params = p
-		} else {
-			q.Request.Params = map[string]interface{}{paramWalletID: q.walletID}
-		}
-	}
-
-	return nil
-}
-
-// SetPreprocessor applies provided function to query before it's sent to the LbrynetServer.
-func (c *Caller) SetPreprocessor(p Preprocessor) {
-	c.preprocessor = p
-}
-
-// WalletID is an LbrynetServer wallet ID for the client this caller instance is serving.
-func (c *Caller) WalletID() string {
-	return c.walletID
-}
-
-func (c *Caller) marshal(r *jsonrpc.RPCResponse) ([]byte, CallError) {
-	serialized, err := json.MarshalIndent(r, "", "  ")
-	if err != nil {
-		return nil, NewError(err)
-	}
-	return serialized, nil
-}
-
-func (c *Caller) marshalError(e CallError) []byte {
-	serialized, err := json.MarshalIndent(e.AsRPCResponse(), "", "  ")
-	if err != nil {
-		return []byte(err.Error())
+		monitor.CaptureException(err)
+		Logger.Errorf("error marshaling response: %v", err)
+		return c.marshalError(err)
 	}
 	return serialized
 }
@@ -246,20 +99,20 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 		return nil, NewInputError(err)
 	}
 
-	if c.WalletID() != "" {
-		q.SetWalletID(c.WalletID())
+	if c.walletID != "" {
+		q.SetWalletID(c.walletID)
 	}
 
-	// Check for account identificator (wallet ID) for account-specific methods happens here
+	// Check for account identifier (wallet ID) for account-specific methods happens here
 	if err := q.validate(); err != nil {
 		return nil, err
 	}
 
-	if cachedResponse := q.cacheHit(); cachedResponse != nil {
-		return cachedResponse, nil
+	if cached := q.cacheHit(); cached != nil {
+		return cached, nil
 	}
-	if predefinedResponse := q.predefinedResponse(); predefinedResponse != nil {
-		return predefinedResponse, nil
+	if pr := q.predefinedResponse(); pr != nil {
+		return pr, nil
 	}
 
 	if c.preprocessor != nil {
@@ -282,22 +135,23 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 	return r, nil
 }
 
-// Call method processes a raw query received from JSON-RPC client and forwards it to LbrynetServer.
-// It returns a response that is ready to be sent back to the JSON-RPC client as is.
-func (c *Caller) Call(rawQuery []byte) []byte {
-	r, err := c.call(rawQuery)
+func (c *Caller) marshal(r *jsonrpc.RPCResponse) ([]byte, CallError) {
+	serialized, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
-		if !errors.As(err, &InputError{}) {
-			monitor.CaptureException(err, map[string]string{"query": string(rawQuery), "response": fmt.Sprintf("%v", r)})
-			Logger.Errorf("error calling lbrynet: %v, query: %s", err, rawQuery)
-		}
-		return c.marshalError(err)
+		return nil, NewError(err)
 	}
-	serialized, err := c.marshal(r)
+	return serialized, nil
+}
+
+func (c *Caller) marshalError(e CallError) []byte {
+	serialized, err := json.MarshalIndent(e.AsRPCResponse(), "", "  ")
 	if err != nil {
-		monitor.CaptureException(err)
-		Logger.Errorf("error marshaling response: %v", err)
-		return c.marshalError(err)
+		return []byte(err.Error())
 	}
 	return serialized
+}
+
+// SetPreprocessor applies provided function to query before it's sent to the LbrynetServer.
+func (c *Caller) SetPreprocessor(p Preprocessor) {
+	c.preprocessor = p
 }

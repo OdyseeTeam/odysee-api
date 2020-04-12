@@ -57,7 +57,7 @@ func testMetricUIEvent(t *testing.T, method, name, value string) *httptest.Respo
 	req.URL.RawQuery = q.Encode()
 
 	r := mux.NewRouter()
-	api.InstallRoutes(proxy.NewService(proxy.Opts{}), r)
+	api.InstallRoutes(proxy.NewService(nil), r)
 	rr := httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 	return rr

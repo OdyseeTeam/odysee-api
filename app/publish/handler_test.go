@@ -126,6 +126,6 @@ func TestUploadHandlerSystemError(t *testing.T) {
 
 func TestNewUploadHandler(t *testing.T) {
 	h, err := NewUploadHandler(UploadOpts{})
-	assert.Error(t, err, "need either a ProxyService or a Publisher instance")
+	assert.Error(t, err, "need either a Service or a Publisher instance")
 	assert.Nil(t, h)
 }

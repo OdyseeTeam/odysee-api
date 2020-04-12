@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
@@ -22,6 +23,8 @@ import (
 )
 
 var logger = monitor.NewModuleLogger("sdkrouter")
+
+func DisableLogger() { logger.Disable() } // for testing
 
 type Router struct {
 	mu      sync.RWMutex
@@ -61,26 +64,25 @@ func (r *Router) GetAll() []*models.LbrynetServer {
 	return r.servers
 }
 
-func (r *Router) GetServer(walletID string) *models.LbrynetServer {
+func (r *Router) GetServer(userID int) *models.LbrynetServer {
 	r.reloadServersFromDB()
 
 	var sdk *models.LbrynetServer
-	if walletID == "" {
+	if userID == 0 {
 		sdk = r.LeastLoaded()
 	} else {
-		sdk = r.serverForWallet(walletID)
+		sdk = r.serverForUser(userID)
 		if sdk.Address == "" {
-			logger.Log().Errorf("wallet [%s] is set but there is no server associated with it.", walletID)
+			logger.Log().Errorf("user %d has server but server has no address.", userID)
 			sdk = r.RandomServer()
 		}
 	}
 
-	logger.Log().Tracef("Using [%s] server for wallet [%s]", sdk.Address, walletID)
+	logger.Log().Tracef("Using server %s for user %d", sdk.Address, userID)
 	return sdk
 }
 
-func (r *Router) serverForWallet(walletID string) *models.LbrynetServer {
-	userID := getUserID(walletID)
+func (r *Router) serverForUser(userID int) *models.LbrynetServer {
 	var user *models.User
 	var err error
 	if boil.GetDB() != nil {
@@ -95,19 +97,19 @@ func (r *Router) serverForWallet(walletID string) *models.LbrynetServer {
 
 	if user == nil || user.R == nil || user.R.LbrynetServer == nil {
 		srv := r.servers[getServerForUserID(userID, len(r.servers))]
-		logger.Log().Debugf("User %d has no wallet in db. Giving them %s", userID, srv.Address)
+		logger.Log().Debugf("User %d has no server assigned in db. Giving them server %s", userID, srv.Address)
 		return srv
 	}
 
 	for _, s := range r.servers {
 		if s.ID == user.R.LbrynetServer.ID {
-			logger.Log().Debugf("User %d has wallet %s set in db", userID, s.Address)
+			logger.Log().Debugf("User %d has server %s assigned in db", userID, s.Address)
 			return s
 		}
 	}
 
 	srv := r.servers[getServerForUserID(userID, len(r.servers))]
-	logger.Log().Errorf("Server for user %d is set in db but is not in current servers list. Giving them %s", userID, srv.Address)
+	logger.Log().Errorf("User %d has server assigned in db but is not in current servers list. Giving them server %s", userID, srv.Address)
 	return srv
 }
 
@@ -209,7 +211,98 @@ func (r *Router) LeastLoaded() *models.LbrynetServer {
 	return best
 }
 
-func getUserID(walletID string) int {
+func (r *Router) Client(userID int) *ljsonrpc.Client {
+	c := ljsonrpc.NewClient(r.GetServer(userID).Address)
+	//c.SetRPCTimeout(5 * time.Second)
+	return c
+}
+
+// InitializeWallet creates a wallet that can be immediately used in subsequent commands.
+// It can recover from errors like existing wallets, but if a wallet is known to exist
+// (eg. a wallet ID stored in the database already), loadWallet() should be called instead.
+func (r *Router) InitializeWallet(userID int) (string, error) {
+	wallet, err := r.createWallet(userID)
+	if err == nil {
+		return wallet.ID, nil
+	}
+
+	walletID := WalletID(userID)
+	log := logger.LogF(monitor.F{"user_id": userID})
+
+	if errors.Is(err, lbrynet.ErrWalletExists) {
+		log.Warn(err.Error())
+		return walletID, nil
+	}
+
+	if errors.Is(err, lbrynet.ErrWalletNeedsLoading) {
+		log.Info(err.Error())
+		wallet, err = r.loadWallet(userID)
+		if err != nil {
+			if errors.Is(err, lbrynet.ErrWalletAlreadyLoaded) {
+				log.Info(err.Error())
+				return walletID, nil
+			}
+			return "", err
+		}
+		return wallet.ID, nil
+	}
+
+	log.Errorf("don't know how to recover from error: %v", err)
+	return "", err
+}
+
+// createWallet creates a new wallet on the LbrynetServer.
+// Returned error doesn't necessarily mean that the wallet is not operational:
+//
+// 	if errors.Is(err, lbrynet.WalletExists) {
+// 	 // Okay to proceed with the account
+//  }
+//
+// 	if errors.Is(err, lbrynet.WalletNeedsLoading) {
+// 	 // loadWallet() needs to be called before the wallet can be used
+//  }
+func (r *Router) createWallet(userID int) (*ljsonrpc.Wallet, error) {
+	wallet, err := r.Client(userID).WalletCreate(WalletID(userID), &ljsonrpc.WalletCreateOpts{
+		SkipOnStartup: true, CreateAccount: true, SingleKey: true})
+	if err != nil {
+		return nil, lbrynet.NewWalletError(userID, err)
+	}
+	logger.LogF(monitor.F{"user_id": userID}).Info("wallet created")
+	return wallet, nil
+}
+
+// loadWallet loads an existing wallet in the LbrynetServer.
+// May return errors:
+//  WalletAlreadyLoaded - wallet is already loaded and operational
+//  WalletNotFound - wallet file does not exist and won't be loaded.
+func (r *Router) loadWallet(userID int) (*ljsonrpc.Wallet, error) {
+	wallet, err := r.Client(userID).WalletAdd(WalletID(userID))
+	if err != nil {
+		return nil, lbrynet.NewWalletError(userID, err)
+	}
+	logger.LogF(monitor.F{"user_id": userID}).Info("wallet loaded")
+	return wallet, nil
+}
+
+// UnloadWallet unloads an existing wallet from the LbrynetServer.
+// May return errors:
+//  WalletAlreadyLoaded - wallet is already loaded and operational
+//  WalletNotFound - wallet file does not exist and won't be loaded.
+func (r *Router) UnloadWallet(userID int) error {
+	_, err := r.Client(userID).WalletRemove(WalletID(userID))
+	if err != nil {
+		return lbrynet.NewWalletError(userID, err)
+	}
+	logger.LogF(monitor.F{"user_id": userID}).Info("wallet unloaded")
+	return nil
+}
+
+// WalletID formats user ID to use as an LbrynetServer wallet ID.
+func WalletID(userID int) string {
+	return fmt.Sprintf("lbrytv-id.%d.wallet", userID)
+}
+
+func UserID(walletID string) int {
 	userID, err := strconv.ParseInt(regexp.MustCompile(`\d+`).FindString(walletID), 10, 64)
 	if err != nil {
 		return 0
@@ -219,15 +312,4 @@ func getUserID(walletID string) int {
 
 func getServerForUserID(userID, numServers int) int {
 	return userID % numServers
-}
-
-func (r *Router) Client(userID int) *ljsonrpc.Client {
-	c := ljsonrpc.NewClient(r.GetServer(WalletID(userID)).Address)
-	//c.SetRPCTimeout(5 * time.Second)
-	return c
-}
-
-// WalletID formats user ID to use as an LbrynetServer wallet ID.
-func WalletID(userID int) string {
-	return fmt.Sprintf("lbrytv-id.%d.wallet", userID)
 }

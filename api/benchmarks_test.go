@@ -18,7 +18,6 @@ import (
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/models"
@@ -98,7 +97,7 @@ func BenchmarkWalletCommands(b *testing.B) {
 	svc := users.NewWalletService(rt)
 
 	svc.Logger.Disable()
-	lbrynet.Logger.Disable()
+	sdkrouter.DisableLogger()
 	log.SetOutput(ioutil.Discard)
 
 	rand.Seed(time.Now().UnixNano())
@@ -111,7 +110,7 @@ func BenchmarkWalletCommands(b *testing.B) {
 		wallets[i] = u
 	}
 
-	handler := proxy.NewRequestHandler(proxy.NewService(proxy.Opts{SDKRouter: rt}))
+	handler := proxy.NewRequestHandler(proxy.NewService(rt))
 
 	b.SetParallelism(30)
 	b.ResetTimer()

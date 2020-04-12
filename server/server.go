@@ -20,7 +20,7 @@ var logger = monitor.NewModuleLogger("server")
 // Server holds entities that can be used to control the web server
 type Server struct {
 	defaultHeaders map[string]string
-	proxyService   *proxy.ProxyService
+	proxyService   *proxy.Service
 	stopChan       chan os.Signal
 	stopWait       time.Duration
 	address        string
@@ -31,7 +31,7 @@ type Server struct {
 // Options holds basic web server settings.
 type Options struct {
 	Address         string
-	ProxyService    *proxy.ProxyService
+	ProxyService    *proxy.Service
 	StopWaitSeconds int
 }
 

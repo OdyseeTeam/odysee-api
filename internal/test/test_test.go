@@ -11,9 +11,9 @@ import (
 
 func TestMockRPCServer(t *testing.T) {
 	reqChan := make(chan *RequestData, 1)
-	rpcServer, nextResp := MockJSONRPCServer(reqChan)
+	rpcServer := MockHTTPServer(reqChan)
 	defer rpcServer.Close()
-	nextResp(`{"result": {"items": [], "page": 1, "page_size": 2, "total_pages": 3}}`)
+	rpcServer.NextResponse <- `{"result": {"items": [], "page": 1, "page_size": 2, "total_pages": 3}}`
 
 	rsp, err := ljsonrpc.NewClient(rpcServer.URL).WalletList("", 1, 2)
 	if err != nil {
@@ -21,7 +21,7 @@ func TestMockRPCServer(t *testing.T) {
 	}
 
 	req := <-reqChan // read the request for inspection
-	assert.Equal(t, req.Request.Method, http.MethodPost)
+	assert.Equal(t, req.R.Method, http.MethodPost)
 	assert.Equal(t, req.Body, `{"method":"wallet_list","params":{"page":1,"page_size":2},"id":0,"jsonrpc":"2.0"}`)
 
 	assert.Equal(t, rsp.Page, uint64(1))

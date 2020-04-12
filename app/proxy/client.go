@@ -19,23 +19,20 @@ const walletLoadRetryWait = time.Millisecond * 100
 
 var ClientLogger = monitor.NewModuleLogger("proxy_client")
 
-type LbrynetClient interface {
-	Call(q *Query) (*jsonrpc.RPCResponse, error)
-}
-
 type Client struct {
 	rpcClient jsonrpc.RPCClient
 	endpoint  string
-	wallet    string
+	walletID  string
 	retries   int
 }
 
-func NewClient(endpoint string, wallet string, timeout time.Duration) LbrynetClient {
+func NewClient(endpoint string, walletID string, timeout time.Duration) Client {
 	return Client{
 		endpoint: endpoint,
 		rpcClient: jsonrpc.NewClientWithOpts(endpoint, &jsonrpc.RPCClientOpts{
-			HTTPClient: &http.Client{Timeout: time.Second * timeout}}),
-		wallet: wallet,
+			HTTPClient: &http.Client{Timeout: timeout},
+		}),
+		walletID: walletID,
 	}
 }
 
@@ -69,16 +66,17 @@ func (c Client) Call(q *Query) (*jsonrpc.RPCResponse, error) {
 			time.Sleep(walletLoadRetryWait)
 			// Using LBRY JSON-RPC client here for easier request/response processing
 			client := ljsonrpc.NewClient(c.endpoint)
-			_, err := client.WalletAdd(c.wallet)
+			_, err := client.WalletAdd(c.walletID)
 			// Alert sentry on the last failed wallet load attempt
 			if err != nil && i >= walletLoadRetries-1 {
 				errMsg := "gave up on manually adding a wallet: %v"
 				ClientLogger.WithFields(monitor.F{
-					"wallet_id": c.wallet, "endpoint": c.endpoint,
+					"wallet_id": c.walletID,
+					"endpoint":  c.endpoint,
 				}).Errorf(errMsg, err)
 				monitor.CaptureException(
 					fmt.Errorf(errMsg, err), map[string]string{
-						"wallet_id": c.wallet,
+						"wallet_id": c.walletID,
 						"endpoint":  c.endpoint,
 						"retries":   fmt.Sprintf("%v", i),
 					})
@@ -91,10 +89,10 @@ func (c Client) Call(q *Query) (*jsonrpc.RPCResponse, error) {
 	}
 
 	if (r != nil && r.Error != nil) || err != nil {
-		Logger.LogFailedQuery(q.Method(), c.endpoint, c.wallet, duration, q.Params(), r.Error)
+		Logger.LogFailedQuery(q.Method(), c.endpoint, c.walletID, duration, q.Params(), r.Error)
 		failureMetrics.Observe(duration)
 	} else {
-		Logger.LogSuccessfulQuery(q.Method(), c.endpoint, c.wallet, duration, q.Params(), r)
+		Logger.LogSuccessfulQuery(q.Method(), c.endpoint, c.walletID, duration, q.Params(), r)
 	}
 
 	return r, err

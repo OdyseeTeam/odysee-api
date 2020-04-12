@@ -7,8 +7,7 @@ import (
 
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/lbrynet"
-
+	"github.com/lbryio/lbrytv/internal/test"
 	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"
 )
@@ -55,14 +54,15 @@ func TestClientCallDoesReloadWallet(t *testing.T) {
 	dummyUserID := rand.Intn(100)
 	rt := sdkrouter.New(config.GetLbrynetServers())
 
-	wid, _ := lbrynet.InitializeWallet(rt, dummyUserID)
-	err := lbrynet.UnloadWallet(rt, dummyUserID)
+	walletID, err := rt.InitializeWallet(dummyUserID)
+	require.NoError(t, err)
+	err = rt.UnloadWallet(dummyUserID)
 	require.NoError(t, err)
 
-	c := NewClient(rt.GetServer(wid).Address, wid, time.Second*1)
+	c := NewClient(rt.GetServer(dummyUserID).Address, walletID, 1*time.Second)
 
 	q, _ := NewQuery(newRawRequest(t, "wallet_balance", nil))
-	q.SetWalletID(wid)
+	q.SetWalletID(walletID)
 	r, err := c.Call(q)
 
 	// err = json.Unmarshal(result, response)
@@ -74,23 +74,30 @@ func TestClientCallDoesNotReloadWalletAfterOtherErrors(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	walletID := sdkrouter.WalletID(rand.Intn(100))
 
-	mc := NewMockRPCClient()
-	c := &Client{rpcClient: mc}
-	q, _ := NewQuery(newRawRequest(t, "wallet_balance", nil))
+	srv := test.MockHTTPServer(nil)
+	defer srv.Close()
+
+	c := NewClient(srv.URL, "", 0)
+	q, err := NewQuery(newRawRequest(t, "wallet_balance", nil))
+	require.NoError(t, err)
 	q.SetWalletID(walletID)
 
-	mc.AddNextResponse(&jsonrpc.RPCResponse{
-		JSONRPC: "2.0",
-		Error: &jsonrpc.RPCError{
-			Message: "Couldn't find wallet: //",
-		},
-	})
-	mc.AddNextResponse(&jsonrpc.RPCResponse{
-		JSONRPC: "2.0",
-		Error: &jsonrpc.RPCError{
-			Message: "Wallet at path // was not found",
-		},
-	})
+	go func() {
+		srv.NextResponse <- test.ResToStr(t, jsonrpc.RPCResponse{
+			JSONRPC: "2.0",
+			Error: &jsonrpc.RPCError{
+				Message: "Couldn't find wallet: //",
+			},
+		})
+		srv.NextResponse <- "" // for the wallet_add call
+		srv.NextResponse <- test.ResToStr(t, jsonrpc.RPCResponse{
+			JSONRPC: "2.0",
+			Error: &jsonrpc.RPCError{
+				Message: "Wallet at path // was not found",
+			},
+		})
+		srv.NoMoreResponses()
+	}()
 
 	r, err := c.Call(q)
 	require.NoError(t, err)
@@ -99,12 +106,12 @@ func TestClientCallDoesNotReloadWalletAfterOtherErrors(t *testing.T) {
 
 func TestClientCallDoesNotReloadWalletIfAlreadyLoaded(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
-	wid := sdkrouter.WalletID(rand.Intn(100))
+	walletID := sdkrouter.WalletID(rand.Intn(100))
 
 	mc := NewMockRPCClient()
 	c := &Client{rpcClient: mc}
 	q, _ := NewQuery(newRawRequest(t, "wallet_balance", nil))
-	q.SetWalletID(wid)
+	q.SetWalletID(walletID)
 
 	mc.AddNextResponse(&jsonrpc.RPCResponse{
 		JSONRPC: "2.0",

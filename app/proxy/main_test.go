@@ -19,12 +19,12 @@ const dummyServerURL = "http://127.0.0.1:59999"
 const proxySuffix = "/api/v1/proxy"
 const testSetupWait = 200 * time.Millisecond
 
-var svc *ProxyService
+var svc *Service
 
 func TestMain(m *testing.M) {
 	rand.Seed(time.Now().UnixNano())
 
-	svc = NewService(Opts{SDKRouter: sdkrouter.New(config.GetLbrynetServers())})
+	svc = NewService(sdkrouter.New(config.GetLbrynetServers()))
 
 	dbConfig := config.GetDatabase()
 	params := storage.ConnParams{

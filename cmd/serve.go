@@ -25,7 +25,7 @@ var rootCmd = &cobra.Command{
 
 		s := server.NewServer(server.Options{
 			Address:      config.GetAddress(),
-			ProxyService: proxy.NewService(proxy.Opts{SDKRouter: sdkRouter}),
+			ProxyService: proxy.NewService(sdkRouter),
 		})
 		err := s.Start()
 		if err != nil {

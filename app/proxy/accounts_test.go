@@ -101,5 +101,5 @@ func TestAccountSpecificWithoutToken(t *testing.T) {
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 	require.NotNil(t, response.Error)
-	require.Equal(t, "account identificator required", response.Error.Message)
+	require.Equal(t, "account identifier required", response.Error.Message)
 }
