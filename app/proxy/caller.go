@@ -37,10 +37,12 @@ const (
 // Caller patches through JSON-RPC requests from clients, doing pre/post-processing,
 // account processing and validation.
 type Caller struct {
-	client       jsonrpc.RPCClient
-	walletID     string
-	endpoint     string
-	preprocessor func(q *Query)
+	// Preprocessor is applied to query before it's sent to the SDK.
+	Preprocessor func(q *Query)
+
+	client   jsonrpc.RPCClient
+	walletID string
+	endpoint string
 }
 
 func NewCaller(endpoint, walletID string) *Caller {
@@ -56,25 +58,27 @@ func NewCaller(endpoint, walletID string) *Caller {
 func (c *Caller) Call(rawQuery []byte) []byte {
 	r, err := c.call(rawQuery)
 	if err != nil {
-		if !errors.As(err, &InputError{}) {
+		if !isJSONParseError(err) {
 			monitor.CaptureException(err, map[string]string{"query": string(rawQuery), "response": fmt.Sprintf("%v", r)})
 			Logger.Errorf("error calling lbrynet: %v, query: %s", err, rawQuery)
 		}
-		return c.marshalError(err)
+		return marshalError(err)
 	}
-	serialized, err := c.marshal(r)
+
+	serialized, err := marshalResponse(r)
 	if err != nil {
 		monitor.CaptureException(err)
 		Logger.Errorf("error marshaling response: %v", err)
-		return c.marshalError(err)
+		return marshalError(err)
 	}
+
 	return serialized
 }
 
-func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
+func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, error) {
 	q, err := NewQuery(rawQuery)
 	if err != nil {
-		return nil, NewInputError(err)
+		return nil, err
 	}
 
 	if c.walletID != "" {
@@ -93,18 +97,18 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 		return pr, nil
 	}
 
-	if c.preprocessor != nil {
-		c.preprocessor(q)
+	if c.Preprocessor != nil {
+		c.Preprocessor(q)
 	}
 
 	r, err := c.callQueryWithRetry(q)
 	if err != nil {
-		return r, NewInternalError(err)
+		return r, NewSDKError(err)
 	}
 
-	r, err = processResponse(q.Request, r)
+	err = postProcessResponse(r, q.Request)
 	if err != nil {
-		return r, NewInternalError(err)
+		return r, NewSDKError(err)
 	}
 
 	if q.isCacheable() {
@@ -175,25 +179,20 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 	return r, err
 }
 
-func (c *Caller) marshal(r *jsonrpc.RPCResponse) ([]byte, CallError) {
+func marshalResponse(r *jsonrpc.RPCResponse) ([]byte, error) {
 	serialized, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
-		return nil, NewError(err)
+		return nil, NewInternalError(err)
 	}
 	return serialized, nil
 }
 
-func (c *Caller) marshalError(e CallError) []byte {
-	serialized, err := json.MarshalIndent(e.AsRPCResponse(), "", "  ")
-	if err != nil {
-		return []byte(err.Error())
+func marshalError(err error) []byte {
+	var rpcErr RPCError
+	if errors.As(err, &rpcErr) {
+		return rpcErr.JSON()
 	}
-	return serialized
-}
-
-// SetPreprocessor applies provided function to query before it's sent to the LbrynetServer.
-func (c *Caller) SetPreprocessor(p func(q *Query)) {
-	c.preprocessor = p
+	return []byte(err.Error())
 }
 
 func isErrWalletNotLoaded(r *jsonrpc.RPCResponse) bool {

@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lbryio/lbrytv/internal/monitor"
-	"github.com/lbryio/lbrytv/internal/responses"
-
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
+	"github.com/lbryio/lbrytv/internal/monitor"
 
 	"github.com/ybbus/jsonrpc"
 )
@@ -27,7 +25,7 @@ func NewQuery(r []byte) (*Query, error) {
 	q := &Query{rawRequest: r, Request: &jsonrpc.RPCRequest{}}
 	err := q.unmarshal()
 	if err != nil {
-		return nil, err
+		return nil, NewJSONParseError(err)
 	}
 	return q, nil
 }
@@ -43,20 +41,20 @@ func (q *Query) unmarshal() error {
 	return nil
 }
 
-func (q *Query) validate() CallError {
+func (q *Query) validate() error {
 	if !methodInList(q.Method(), relaxedMethods) && !methodInList(q.Method(), walletSpecificMethods) {
-		return NewMethodError(errors.New("forbidden method"))
+		return NewMethodNotAllowedError(errors.New("forbidden method"))
 	}
 
 	if q.ParamsAsMap() != nil {
 		if _, ok := q.ParamsAsMap()[forbiddenParam]; ok {
-			return NewParamsError(fmt.Errorf("forbidden parameter supplied: %v", forbiddenParam))
+			return NewInvalidParamsError(fmt.Errorf("forbidden parameter supplied: %v", forbiddenParam))
 		}
 	}
 
 	if !methodInList(q.Method(), relaxedMethods) {
 		if q.walletID == "" {
-			return NewParamsError(errors.New("account identifier required"))
+			return NewInvalidParamsError(errors.New("account identifier required"))
 		}
 		if p := q.ParamsAsMap(); p != nil {
 			p[paramWalletID] = q.walletID
@@ -163,24 +161,4 @@ func methodInList(method string, checkMethods []string) bool {
 		}
 	}
 	return false
-}
-
-// getPreconditionedQueryResponse returns true if we got a resolve query with more than `cacheResolveLongerThan` urls in it
-func getPreconditionedQueryResponse(method string, params interface{}) *jsonrpc.RPCResponse {
-	if methodInList(method, forbiddenMethods) {
-		return responses.NewJSONRPCError(fmt.Sprintf("Forbidden method requested: %v", method), ErrMethodUnavailable)
-	}
-
-	if paramsMap, ok := params.(map[string]interface{}); ok {
-		if _, ok := paramsMap[forbiddenParam]; ok {
-			return responses.NewJSONRPCError(fmt.Sprintf("Forbidden parameter supplied: %v", forbiddenParam), ErrInvalidParams)
-		}
-	}
-
-	if method == MethodStatus {
-		var r jsonrpc.RPCResponse
-		r.Result = getStatusResponse()
-		return &r
-	}
-	return nil
 }

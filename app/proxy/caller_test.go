@@ -204,7 +204,7 @@ func TestCallerSetPreprocessor(t *testing.T) {
 
 	c := NewCaller(srv.URL, "")
 
-	c.SetPreprocessor(func(q *Query) {
+	c.Preprocessor = func(q *Query) {
 		params := q.ParamsAsMap()
 		if params == nil {
 			q.Request.Params = map[string]string{"param": "123"}
@@ -212,7 +212,7 @@ func TestCallerSetPreprocessor(t *testing.T) {
 			params["param"] = "123"
 			q.Request.Params = params
 		}
-	})
+	}
 
 	srv.NextResponse <- ""
 
@@ -276,7 +276,7 @@ func TestCallerCallClientJSONError(t *testing.T) {
 	var rpcResponse jsonrpc.RPCResponse
 	json.Unmarshal(response, &rpcResponse)
 	assert.Equal(t, "2.0", rpcResponse.JSONRPC)
-	assert.Equal(t, ErrJSONParse, rpcResponse.Error.Code)
+	assert.Equal(t, rpcErrorCodeJSONParse, rpcResponse.Error.Code)
 	assert.Equal(t, "unexpected end of JSON input", rpcResponse.Error.Message)
 }
 

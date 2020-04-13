@@ -46,7 +46,7 @@ func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 		walletID, err = auth.GetWalletID(r)
 		if err != nil {
-			responses.JSONRPCError(w, err.Error(), ErrAuthFailed)
+			responses.JSONRPCError(w, err.Error(), rpcErrorCodeUnauthorized)
 			monitor.CaptureRequestError(err, r, w)
 			return
 		}

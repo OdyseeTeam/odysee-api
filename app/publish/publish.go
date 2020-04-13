@@ -80,11 +80,11 @@ func NewUploadHandler(opts UploadOpts) (*UploadHandler, error) {
 // Resulting response is then returned back as a slice of bytes.
 func (p *LbrynetPublisher) Publish(filePath, walletID string, rawQuery []byte) []byte {
 	c := p.Service.NewCaller(walletID)
-	c.SetPreprocessor(func(q *proxy.Query) {
+	c.Preprocessor = func(q *proxy.Query) {
 		params := q.ParamsAsMap()
 		params[fileNameParam] = filePath
 		q.Request.Params = params
-	})
+	}
 	r := c.Call(rawQuery)
 	return r
 }
@@ -95,13 +95,11 @@ func (p *LbrynetPublisher) Publish(filePath, walletID string, rawQuery []byte) [
 func (h UploadHandler) Handle(w http.ResponseWriter, r *users.AuthenticatedRequest) {
 	w.WriteHeader(http.StatusOK)
 	if !r.IsAuthenticated() {
-		var authErr Error
 		if r.AuthFailed() {
-			authErr = NewAuthError(r.AuthError)
+			w.Write(proxy.NewUnauthorizedError(r.AuthError).JSON())
 		} else {
-			authErr = ErrUnauthorized
+			w.Write(proxy.NewAuthRequiredError(errors.New("authentication required")).JSON())
 		}
-		w.Write(authErr.AsBytes())
 		return
 	}
 
@@ -109,7 +107,7 @@ func (h UploadHandler) Handle(w http.ResponseWriter, r *users.AuthenticatedReque
 	if err != nil {
 		logger.Log().Error(err)
 		monitor.CaptureException(err)
-		w.Write(NewInternalError(err).AsBytes())
+		w.Write(proxy.NewInternalError(err).JSON())
 		return
 	}
 
