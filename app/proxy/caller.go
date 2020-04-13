@@ -17,59 +17,37 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lbryio/lbrytv/app/sdkrouter"
+	"github.com/lbryio/lbrytv/internal/lbrynet"
+	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
+
+	"github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
 )
 
-const defaultRPCTimeout = 30 * time.Second
-
 var Logger = monitor.NewProxyLogger()
 
-type Preprocessor func(q *Query)
-
-// Service generates Caller objects and keeps execution time metrics
-// for all calls proxied through those objects.
-type Service struct {
-	SDKRouter  *sdkrouter.Router
-	rpcTimeout time.Duration
-	logger     monitor.QueryMonitor
-}
+const (
+	walletLoadRetries   = 3
+	walletLoadRetryWait = 100 * time.Millisecond
+)
 
 // Caller patches through JSON-RPC requests from clients, doing pre/post-processing,
 // account processing and validation.
 type Caller struct {
+	client       jsonrpc.RPCClient
 	walletID     string
-	query        *jsonrpc.RPCRequest
-	client       Client
 	endpoint     string
-	service      *Service
-	preprocessor Preprocessor
+	preprocessor func(q *Query)
 }
 
-// NewService is the entry point to proxy module.
-// Normally only one instance of Service should be created per running server.
-func NewService(router *sdkrouter.Router) *Service {
-	return &Service{
-		SDKRouter:  router,
-		rpcTimeout: defaultRPCTimeout,
-	}
-}
-
-func (ps *Service) SetRPCTimeout(timeout time.Duration) {
-	ps.rpcTimeout = timeout
-}
-
-// NewCaller returns an instance of Caller ready to proxy requests.
-// Note that `SetWalletID` needs to be called if an authenticated user is making this call.
-func (ps *Service) NewCaller(walletID string) *Caller {
-	endpoint := ps.SDKRouter.GetServer(sdkrouter.UserID(walletID)).Address
+func NewCaller(endpoint, walletID string) *Caller {
 	return &Caller{
-		walletID: walletID,
-		client:   NewClient(endpoint, walletID, ps.rpcTimeout),
+		client:   jsonrpc.NewClient(endpoint),
 		endpoint: endpoint,
-		service:  ps,
+		walletID: walletID,
 	}
 }
 
@@ -119,7 +97,7 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 		c.preprocessor(q)
 	}
 
-	r, err := c.client.Call(q)
+	r, err := c.callQueryWithRetry(q)
 	if err != nil {
 		return r, NewInternalError(err)
 	}
@@ -133,6 +111,68 @@ func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, CallError) {
 		responseCache.Save(q.Method(), q.Params(), r)
 	}
 	return r, nil
+}
+
+func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
+	var (
+		r        *jsonrpc.RPCResponse
+		err      error
+		duration float64
+	)
+
+	callMetrics := metrics.ProxyCallDurations.WithLabelValues(q.Method(), c.endpoint)
+	failureMetrics := metrics.ProxyCallFailedDurations.WithLabelValues(q.Method(), c.endpoint)
+
+	for i := 0; i < walletLoadRetries; i++ {
+		start := time.Now()
+
+		r, err = c.client.CallRaw(q.Request)
+
+		duration = time.Since(start).Seconds()
+		callMetrics.Observe(duration)
+
+		// Generally a HTTP transport failure (connect error etc)
+		if err != nil {
+			Logger.Errorf("error sending query to %v: %v", c.endpoint, err)
+			return nil, err
+		}
+
+		// This checks if LbrynetServer responded with missing wallet error and tries to reload it,
+		// then repeats the request again.
+		if isErrWalletNotLoaded(r) {
+			time.Sleep(walletLoadRetryWait)
+			// Using LBRY JSON-RPC client here for easier request/response processing
+			client := ljsonrpc.NewClient(c.endpoint)
+			_, err := client.WalletAdd(c.walletID)
+			// Alert sentry on the last failed wallet load attempt
+			if err != nil && i >= walletLoadRetries-1 {
+				errMsg := "gave up on manually adding a wallet: %v"
+				Logger.Logger().WithFields(logrus.Fields{
+					"wallet_id": c.walletID,
+					"endpoint":  c.endpoint,
+				}).Errorf(errMsg, err)
+				monitor.CaptureException(
+					fmt.Errorf(errMsg, err), map[string]string{
+						"wallet_id": c.walletID,
+						"endpoint":  c.endpoint,
+						"retries":   fmt.Sprintf("%v", i),
+					})
+			}
+		} else if isErrWalletAlreadyLoaded(r) {
+			continue
+		} else {
+			break
+		}
+	}
+
+	if (r != nil && r.Error != nil) || err != nil {
+		Logger.LogFailedQuery(q.Method(), c.endpoint, c.walletID, duration, q.Params(), r.Error)
+		failureMetrics.Observe(duration)
+	} else {
+		Logger.LogSuccessfulQuery(q.Method(), c.endpoint, c.walletID, duration, q.Params(), r)
+	}
+
+	return r, err
 }
 
 func (c *Caller) marshal(r *jsonrpc.RPCResponse) ([]byte, CallError) {
@@ -152,6 +192,14 @@ func (c *Caller) marshalError(e CallError) []byte {
 }
 
 // SetPreprocessor applies provided function to query before it's sent to the LbrynetServer.
-func (c *Caller) SetPreprocessor(p Preprocessor) {
+func (c *Caller) SetPreprocessor(p func(q *Query)) {
 	c.preprocessor = p
+}
+
+func isErrWalletNotLoaded(r *jsonrpc.RPCResponse) bool {
+	return r.Error != nil && errors.Is(lbrynet.NewWalletError(0, errors.New(r.Error.Message)), lbrynet.ErrWalletNotLoaded)
+}
+
+func isErrWalletAlreadyLoaded(r *jsonrpc.RPCResponse) bool {
+	return r.Error != nil && errors.Is(lbrynet.NewWalletError(0, errors.New(r.Error.Message)), lbrynet.ErrWalletAlreadyLoaded)
 }
