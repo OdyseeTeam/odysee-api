@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
@@ -215,86 +214,6 @@ func (r *Router) Client(userID int) *ljsonrpc.Client {
 	c := ljsonrpc.NewClient(r.GetServer(userID).Address)
 	//c.SetRPCTimeout(5 * time.Second)
 	return c
-}
-
-// InitializeWallet creates a wallet that can be immediately used in subsequent commands.
-// It can recover from errors like existing wallets, but if a wallet is known to exist
-// (eg. a wallet ID stored in the database already), loadWallet() should be called instead.
-func (r *Router) InitializeWallet(userID int) (string, error) {
-	wallet, err := r.createWallet(userID)
-	if err == nil {
-		return wallet.ID, nil
-	}
-
-	walletID := WalletID(userID)
-	log := logger.LogF(monitor.F{"user_id": userID})
-
-	if errors.Is(err, lbrynet.ErrWalletExists) {
-		log.Warn(err.Error())
-		return walletID, nil
-	}
-
-	if errors.Is(err, lbrynet.ErrWalletNeedsLoading) {
-		log.Info(err.Error())
-		wallet, err = r.loadWallet(userID)
-		if err != nil {
-			if errors.Is(err, lbrynet.ErrWalletAlreadyLoaded) {
-				log.Info(err.Error())
-				return walletID, nil
-			}
-			return "", err
-		}
-		return wallet.ID, nil
-	}
-
-	log.Errorf("don't know how to recover from error: %v", err)
-	return "", err
-}
-
-// createWallet creates a new wallet on the LbrynetServer.
-// Returned error doesn't necessarily mean that the wallet is not operational:
-//
-// 	if errors.Is(err, lbrynet.WalletExists) {
-// 	 // Okay to proceed with the account
-//  }
-//
-// 	if errors.Is(err, lbrynet.WalletNeedsLoading) {
-// 	 // loadWallet() needs to be called before the wallet can be used
-//  }
-func (r *Router) createWallet(userID int) (*ljsonrpc.Wallet, error) {
-	wallet, err := r.Client(userID).WalletCreate(WalletID(userID), &ljsonrpc.WalletCreateOpts{
-		SkipOnStartup: true, CreateAccount: true, SingleKey: true})
-	if err != nil {
-		return nil, lbrynet.NewWalletError(userID, err)
-	}
-	logger.LogF(monitor.F{"user_id": userID}).Info("wallet created")
-	return wallet, nil
-}
-
-// loadWallet loads an existing wallet in the LbrynetServer.
-// May return errors:
-//  WalletAlreadyLoaded - wallet is already loaded and operational
-//  WalletNotFound - wallet file does not exist and won't be loaded.
-func (r *Router) loadWallet(userID int) (*ljsonrpc.Wallet, error) {
-	wallet, err := r.Client(userID).WalletAdd(WalletID(userID))
-	if err != nil {
-		return nil, lbrynet.NewWalletError(userID, err)
-	}
-	logger.LogF(monitor.F{"user_id": userID}).Info("wallet loaded")
-	return wallet, nil
-}
-
-// UnloadWallet unloads an existing wallet from the LbrynetServer.
-// May return errors:
-//  WalletAlreadyLoaded - wallet is already loaded and operational
-//  WalletNotFound - wallet file does not exist and won't be loaded.
-func (r *Router) UnloadWallet(userID int) error {
-	_, err := r.Client(userID).WalletRemove(WalletID(userID))
-	if err != nil {
-		return lbrynet.NewWalletError(userID, err)
-	}
-	logger.LogF(monitor.F{"user_id": userID}).Info("wallet unloaded")
-	return nil
 }
 
 // WalletID formats user ID to use as an LbrynetServer wallet ID.

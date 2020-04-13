@@ -140,12 +140,3 @@ var ignoreLog = []string{
 	MethodAccountBalance,
 	MethodStatus,
 }
-
-func shouldLog(method string) bool {
-	for _, m := range ignoreLog {
-		if m == method {
-			return false
-		}
-	}
-	return true
-}

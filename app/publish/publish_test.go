@@ -10,9 +10,11 @@ import (
 
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/app/users"
+	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/internal/storage"
+	"github.com/lbryio/lbrytv/internal/test"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,15 +41,28 @@ func TestLbrynetPublisher(t *testing.T) {
 	c.SetDefaultConnection()
 	defer connCleanup()
 
-	ts := users.StartAuthenticatingAPIServer(751365)
+	reqChan := test.ReqChan()
+	ts := test.MockHTTPServer(reqChan)
 	defer ts.Close()
+	go func() {
+		req := <-reqChan
+		responses.AddJSONContentType(req.W)
+		ts.NextResponse <- fmt.Sprintf(`{
+			"success": true,
+			"error": null,
+			"data": {
+			  "user_id": %v,
+			  "has_verified_email": true
+			}
+		}`, 751365)
+	}()
+
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
 	rt := sdkrouter.New(config.GetLbrynetServers())
 	p := &LbrynetPublisher{proxy.NewService(rt)}
-	walletSvc := users.NewWalletService(rt)
-	u, err := walletSvc.Retrieve(users.Query{Token: authToken})
+	u, err := wallet.GetUserWithWallet(rt, authToken, "")
 	require.NoError(t, err)
 
 	data := []byte("test file")

@@ -34,7 +34,7 @@ func InstallRoutes(proxyService *proxy.Service, r *mux.Router) {
 	})
 
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
-	v1Router.HandleFunc("/proxy", proxyHandler.HandleOptions).Methods(http.MethodOptions)
+	v1Router.HandleFunc("/proxy", proxy.HandleCORS).Methods(http.MethodOptions)
 	v1Router.HandleFunc("/proxy", authenticator.Wrap(upHandler.Handle)).MatcherFunc(upHandler.CanHandle)
 	v1Router.HandleFunc("/proxy", proxyHandler.Handle)
 	v1Router.HandleFunc("/metric/ui", metrics.TrackUIMetric).Methods(http.MethodPost)

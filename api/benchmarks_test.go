@@ -16,7 +16,7 @@ import (
 
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/app/users"
+	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/internal/storage"
@@ -32,7 +32,7 @@ func launchAuthenticatingAPIServer() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t := r.PostFormValue("auth_token")
 
-		responses.PrepareJSONWriter(w)
+		responses.AddJSONContentType(w)
 
 		reply := fmt.Sprintf(`
 		{
@@ -94,9 +94,8 @@ func BenchmarkWalletCommands(b *testing.B) {
 	walletsNum := 30
 	wallets := make([]*models.User, walletsNum)
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	svc := users.NewWalletService(rt)
 
-	svc.Logger.Disable()
+	wallet.DisableLogger()
 	sdkrouter.DisableLogger()
 	log.SetOutput(ioutil.Discard)
 
@@ -104,7 +103,7 @@ func BenchmarkWalletCommands(b *testing.B) {
 
 	for i := 0; i < walletsNum; i++ {
 		uid := int(rand.Int31())
-		u, err := svc.Retrieve(users.Query{Token: fmt.Sprintf("%v", uid)})
+		u, err := wallet.GetUserWithWallet(rt, fmt.Sprintf("%v", uid), "")
 		require.NoError(b, err, errors.Unwrap(err))
 		require.NotNil(b, u)
 		wallets[i] = u

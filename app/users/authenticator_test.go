@@ -7,32 +7,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/models"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-type DummyRetriever struct {
-	remoteIP string
-}
-
-func (r *DummyRetriever) Retrieve(q Query) (*models.User, error) {
-	r.remoteIP = q.MetaRemoteIP
-	if q.Token == "XyZ" {
-		return &models.User{WalletID: "aBc"}, nil
-	}
-	return nil, errors.New("cannot authenticate")
-}
-
-type UnverifiedRetriever struct {
-	remoteIP string
-}
-
-func (r *UnverifiedRetriever) Retrieve(q Query) (*models.User, error) {
-	return nil, nil
-}
-
-func AuthenticatedHandler(w http.ResponseWriter, r *AuthenticatedRequest) {
+func authedHandler(w http.ResponseWriter, r *AuthenticatedRequest) {
 	if r.IsAuthenticated() {
 		w.WriteHeader(http.StatusAccepted)
 		w.Write([]byte(r.WalletID))
@@ -43,43 +25,55 @@ func AuthenticatedHandler(w http.ResponseWriter, r *AuthenticatedRequest) {
 }
 
 func TestAuthenticator(t *testing.T) {
-	retriever := &DummyRetriever{}
-	r, _ := http.NewRequest("GET", "/api/proxy", nil)
-	r.Header.Set(TokenHeader, "XyZ")
+	r, err := http.NewRequest("GET", "/api/proxy", nil)
+	require.NoError(t, err)
+	r.Header.Set(wallet.TokenHeader, "XyZ")
 	r.Header.Set("X-Forwarded-For", "8.8.8.8")
 
+	var receivedRemoteIP string
+	authenticator := &Authenticator{
+		Retriever: func(token, ip string) (*models.User, error) {
+			receivedRemoteIP = ip
+			if token == "XyZ" {
+				return &models.User{WalletID: "aBc"}, nil
+			}
+			return nil, errors.New(GenericRetrievalErr)
+		},
+	}
+
 	rr := httptest.NewRecorder()
-	authenticator := NewAuthenticator(retriever)
-
-	http.HandlerFunc(authenticator.Wrap(AuthenticatedHandler)).ServeHTTP(rr, r)
-
+	authenticator.Wrap(authedHandler).ServeHTTP(rr, r)
 	response := rr.Result()
-	body, _ := ioutil.ReadAll(response.Body)
+	body, err := ioutil.ReadAll(response.Body)
+	require.NoError(t, err)
 	assert.Equal(t, "aBc", string(body))
-	assert.Equal(t, "8.8.8.8", retriever.remoteIP)
+	assert.Equal(t, "8.8.8.8", receivedRemoteIP)
 }
 
 func TestAuthenticatorFailure(t *testing.T) {
-	r, _ := http.NewRequest("GET", "/api/proxy", nil)
-	r.Header.Set(TokenHeader, "ALSDJ")
+	r, err := http.NewRequest("GET", "/api/proxy", nil)
+	require.NoError(t, err)
+	r.Header.Set(wallet.TokenHeader, "ALSDJ")
 	rr := httptest.NewRecorder()
 
-	authenticator := NewAuthenticator(&DummyRetriever{})
+	authenticator := &Authenticator{Retriever: DummyRetriever("XyZ", "")}
 
-	http.HandlerFunc(authenticator.Wrap(AuthenticatedHandler)).ServeHTTP(rr, r)
+	authenticator.Wrap(authedHandler).ServeHTTP(rr, r)
 	response := rr.Result()
-	body, _ := ioutil.ReadAll(response.Body)
-	assert.Equal(t, "cannot authenticate", string(body))
+	body, err := ioutil.ReadAll(response.Body)
+	require.NoError(t, err)
+	assert.Equal(t, GenericRetrievalErr, string(body))
 	assert.Equal(t, http.StatusForbidden, response.StatusCode)
 }
 
 func TestAuthenticatorGetWalletIDUnverifiedUser(t *testing.T) {
-	r, _ := http.NewRequest("GET", "/api/proxy", nil)
-	r.Header.Set(TokenHeader, "zzz")
+	r, err := http.NewRequest("GET", "/api/proxy", nil)
+	require.NoError(t, err)
+	r.Header.Set(wallet.TokenHeader, "zzz")
 
-	a := NewAuthenticator(&UnverifiedRetriever{})
+	a := &Authenticator{Retriever: func(token, ip string) (*models.User, error) { return nil, nil }}
 
-	wid, err := a.GetWalletID(r)
+	walletID, err := a.GetWalletID(r)
 	assert.NoError(t, err)
-	assert.Equal(t, "", wid)
+	assert.Equal(t, "", walletID)
 }

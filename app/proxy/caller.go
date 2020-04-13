@@ -192,7 +192,7 @@ func marshalError(err error) []byte {
 	if errors.As(err, &rpcErr) {
 		return rpcErr.JSON()
 	}
-	return []byte(err.Error())
+	return NewInternalError(err).JSON()
 }
 
 func isErrWalletNotLoaded(r *jsonrpc.RPCResponse) bool {

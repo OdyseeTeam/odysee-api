@@ -1,20 +1,15 @@
 package sdkrouter
 
 import (
-	"errors"
 	"fmt"
-	"math/rand"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/test"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
@@ -101,42 +96,4 @@ func TestLeastLoaded(t *testing.T) {
 	r.updateLoadAndMetrics()
 	assert.Equal(t, "srv3", r.LeastLoaded().Name)
 
-}
-
-func TestInitializeWallet(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-	userID := rand.Int()
-	r := New(config.GetLbrynetServers())
-
-	walletID, err := r.InitializeWallet(userID)
-	require.NoError(t, err)
-	assert.Equal(t, walletID, WalletID(userID))
-
-	err = r.UnloadWallet(userID)
-	require.NoError(t, err)
-
-	walletID, err = r.InitializeWallet(userID)
-	require.NoError(t, err)
-	assert.Equal(t, walletID, WalletID(userID))
-}
-
-func TestCreateWalletLoadWallet(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-	userID := rand.Int()
-	r := New(config.GetLbrynetServers())
-
-	wallet, err := r.createWallet(userID)
-	require.NoError(t, err)
-	assert.Equal(t, wallet.ID, WalletID(userID))
-
-	wallet, err = r.createWallet(userID)
-	require.NotNil(t, err)
-	assert.True(t, errors.Is(err, lbrynet.ErrWalletExists))
-
-	err = r.UnloadWallet(userID)
-	require.NoError(t, err)
-
-	wallet, err = r.loadWallet(userID)
-	require.NoError(t, err)
-	assert.Equal(t, wallet.ID, WalletID(userID))
 }

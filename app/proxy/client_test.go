@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/internal/test"
+
 	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"
 )
@@ -15,18 +16,18 @@ import (
 func TestClientCallDoesReloadWallet(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	dummyUserID := rand.Intn(100)
-	rt := sdkrouter.New(config.GetLbrynetServers())
+	addr := test.RandServerAddress(t)
 
-	walletID, err := rt.InitializeWallet(dummyUserID)
+	walletID, err := wallet.Create(addr, dummyUserID)
 	require.NoError(t, err)
-	err = rt.UnloadWallet(dummyUserID)
+	err = wallet.UnloadWallet(addr, dummyUserID)
 	require.NoError(t, err)
 
 	q, err := NewQuery(newRawRequest(t, "wallet_balance", nil))
 	require.NoError(t, err)
 	q.SetWalletID(walletID)
 
-	c := NewCaller(rt.GetServer(dummyUserID).Address, walletID)
+	c := NewCaller(addr, walletID)
 	r, err := c.callQueryWithRetry(q)
 	// err = json.Unmarshal(result, response)
 	require.NoError(t, err)

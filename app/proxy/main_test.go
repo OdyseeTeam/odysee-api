@@ -53,7 +53,7 @@ func testFuncTeardown() {
 
 func launchDummyAPIServer(response []byte) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		responses.PrepareJSONWriter(w)
+		responses.AddJSONContentType(w)
 		w.Write(response)
 	}))
 }
@@ -61,7 +61,7 @@ func launchDummyAPIServer(response []byte) *httptest.Server {
 func launchDummyAPIServerDelayed(response []byte, delayMsec time.Duration) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(delayMsec * time.Millisecond)
-		responses.PrepareJSONWriter(w)
+		responses.AddJSONContentType(w)
 		w.Write(response)
 	}))
 }

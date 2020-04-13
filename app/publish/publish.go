@@ -17,11 +17,11 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// FileFieldName refers to the POST field containing file upload
-const FileFieldName = "file"
+// fileFieldName refers to the POST field containing file upload
+const fileFieldName = "file"
 
-// JSONRPCFieldName is a name of the POST field containing JSONRPC request accompanying the uploaded file
-const JSONRPCFieldName = "json_payload"
+// jsonRPCFieldName is a name of the POST field containing JSONRPC request accompanying the uploaded file
+const jsonRPCFieldName = "json_payload"
 
 const fileNameParam = "file_path"
 
@@ -56,6 +56,7 @@ func NewUploadHandler(opts UploadOpts) (*UploadHandler, error) {
 		publisher  Publisher
 		uploadPath string
 	)
+
 	if opts.ProxyService != nil {
 		publisher = &LbrynetPublisher{Service: opts.ProxyService}
 	} else if opts.Publisher != nil {
@@ -111,7 +112,7 @@ func (h UploadHandler) Handle(w http.ResponseWriter, r *users.AuthenticatedReque
 		return
 	}
 
-	response := h.Publisher.Publish(f.Name(), r.WalletID, []byte(r.FormValue(JSONRPCFieldName)))
+	response := h.Publisher.Publish(f.Name(), r.WalletID, []byte(r.FormValue(jsonRPCFieldName)))
 
 	if err := os.Remove(f.Name()); err != nil {
 		monitor.CaptureException(err, map[string]string{"file_path": f.Name()})
@@ -123,8 +124,8 @@ func (h UploadHandler) Handle(w http.ResponseWriter, r *users.AuthenticatedReque
 // CanHandle checks if http.Request contains POSTed data in an accepted format.
 // Supposed to be used in gorilla mux router MatcherFunc.
 func (h UploadHandler) CanHandle(r *http.Request, _ *mux.RouteMatch) bool {
-	_, _, err := r.FormFile(FileFieldName)
-	payload := r.FormValue(JSONRPCFieldName)
+	_, _, err := r.FormFile(fileFieldName)
+	payload := r.FormValue(jsonRPCFieldName)
 	return err != http.ErrMissingFile && payload != ""
 }
 
@@ -147,7 +148,7 @@ func (h UploadHandler) preparePath(walletID string) (string, error) {
 
 func (h UploadHandler) saveFile(r *users.AuthenticatedRequest) (*os.File, error) {
 	log := logger.LogF(monitor.F{"account_id": r.WalletID})
-	file, header, err := r.FormFile(FileFieldName)
+	file, header, err := r.FormFile(fileFieldName)
 	if err != nil {
 		return nil, err
 	}

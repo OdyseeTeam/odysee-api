@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/lbryio/lbrytv/app/users"
+	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"
@@ -35,10 +36,10 @@ func (p *DummyPublisher) Publish(filePath, accountID string, rawQuery []byte) []
 
 func TestUploadHandler(t *testing.T) {
 	req := CreatePublishRequest(t, []byte("test file"))
-	req.Header.Set(users.TokenHeader, "uPldrToken")
+	req.Header.Set(wallet.TokenHeader, "uPldrToken")
 
 	rr := httptest.NewRecorder()
-	authenticator := users.NewAuthenticator(&users.TestUserRetriever{WalletID: "UPldrAcc", Token: "uPldrToken"})
+	authenticator := &users.Authenticator{Retriever: users.DummyRetriever("uPldrToken", "UPldrAcc")}
 	publisher := &DummyPublisher{}
 	pubHandler, err := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
 	assert.NoError(t, err)
@@ -65,7 +66,7 @@ func TestUploadHandlerAuthRequired(t *testing.T) {
 	req := CreatePublishRequest(t, []byte("test file"))
 
 	rr := httptest.NewRecorder()
-	authenticator := users.NewAuthenticator(&users.TestUserRetriever{})
+	authenticator := &users.Authenticator{Retriever: users.DummyRetriever("", "")}
 	publisher := &DummyPublisher{}
 	pubHandler, err := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
 	assert.NoError(t, err)
@@ -90,12 +91,12 @@ func TestUploadHandlerSystemError(t *testing.T) {
 
 	writer := multipart.NewWriter(body)
 
-	fileBody, err := writer.CreateFormFile(FileFieldName, "lbry_auto_test_file")
+	fileBody, err := writer.CreateFormFile(fileFieldName, "lbry_auto_test_file")
 	require.NoError(t, err)
 	_, err = io.Copy(fileBody, readSeeker)
 	require.NoError(t, err)
 
-	jsonPayload, err := writer.CreateFormField(JSONRPCFieldName)
+	jsonPayload, err := writer.CreateFormField(jsonRPCFieldName)
 	require.NoError(t, err)
 	jsonPayload.Write([]byte(expectedStreamCreateRequest))
 
@@ -104,11 +105,11 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	req, err := http.NewRequest("POST", "/", bytes.NewReader(body.Bytes()))
 	require.NoError(t, err)
 
-	req.Header.Set(users.TokenHeader, "uPldrToken")
+	req.Header.Set(wallet.TokenHeader, "uPldrToken")
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	rr := httptest.NewRecorder()
-	authenticator := users.NewAuthenticator(&users.TestUserRetriever{WalletID: "UPldrAcc", Token: "uPldrToken"})
+	authenticator := &users.Authenticator{Retriever: users.DummyRetriever("uPldrToken", "UPldrAcc")}
 	publisher := &DummyPublisher{}
 	pubHandler, err := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
 	assert.NoError(t, err)

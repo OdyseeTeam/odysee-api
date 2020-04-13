@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/app/sdkrouter"
+	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/internal/test"
@@ -38,11 +39,13 @@ func newRawRequest(t *testing.T, method string, params interface{}) []byte {
 	return body
 }
 
-func parseRawResponse(t *testing.T, rawCallReponse []byte, destinationVar interface{}) {
-	var rpcResponse jsonrpc.RPCResponse
+func parseRawResponse(t *testing.T, rawCallReponse []byte, v interface{}) {
 	assert.NotNil(t, rawCallReponse)
-	json.Unmarshal(rawCallReponse, &rpcResponse)
-	rpcResponse.GetObject(destinationVar)
+	var res jsonrpc.RPCResponse
+	err := json.Unmarshal(rawCallReponse, &res)
+	require.NoError(t, err)
+	err = res.GetObject(v)
+	require.NoError(t, err)
 }
 
 func TestNewQuery(t *testing.T) {
@@ -90,11 +93,6 @@ func TestCallerSetWalletID(t *testing.T) {
 }
 
 func TestCallerCallResolve(t *testing.T) {
-	var (
-		errorResponse   jsonrpc.RPCResponse
-		resolveResponse ljsonrpc.ResolveResponse
-	)
-
 	svc := NewService(sdkrouter.New(config.GetLbrynetServers()))
 
 	resolvedURL := "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
@@ -102,33 +100,35 @@ func TestCallerCallResolve(t *testing.T) {
 
 	request := newRawRequest(t, "resolve", map[string]string{"urls": resolvedURL})
 	rawCallReponse := svc.NewCaller("").Call(request)
+
+	var errorResponse jsonrpc.RPCResponse
 	err := json.Unmarshal(rawCallReponse, &errorResponse)
 	require.NoError(t, err)
 	require.Nil(t, errorResponse.Error)
 
+	var resolveResponse ljsonrpc.ResolveResponse
 	parseRawResponse(t, rawCallReponse, &resolveResponse)
 	assert.Equal(t, resolvedClaimID, resolveResponse[resolvedURL].ClaimID)
 }
 
 func TestCallerCallWalletBalance(t *testing.T) {
-	var accountBalanceResponse ljsonrpc.AccountBalanceResponse
-
 	rand.Seed(time.Now().UnixNano())
 	dummyUserID := rand.Intn(10^6-10^3) + 10 ^ 3
-
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	walletID, err := rt.InitializeWallet(dummyUserID)
-	require.NoError(t, err)
-
 	svc := NewService(rt)
+
 	request := newRawRequest(t, "wallet_balance", nil)
 
 	result := svc.NewCaller("").Call(request)
 	assert.Contains(t, string(result), `"message": "account identifier required"`)
 
+	walletID, err := wallet.Create(test.RandServerAddress(t), dummyUserID)
+	require.NoError(t, err)
+
 	hook := logrusTest.NewLocal(Logger.Logger())
 	result = svc.NewCaller(walletID).Call(request)
 
+	var accountBalanceResponse ljsonrpc.AccountBalanceResponse
 	parseRawResponse(t, result, &accountBalanceResponse)
 	assert.EqualValues(t, "0", fmt.Sprintf("%v", accountBalanceResponse.Available))
 	assert.Equal(t, map[string]interface{}{"wallet_id": fmt.Sprintf("%v", walletID)}, hook.LastEntry().Data["params"])
@@ -268,7 +268,7 @@ func TestCallerCallSDKError(t *testing.T) {
 
 func TestCallerCallClientJSONError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		responses.PrepareJSONWriter(w)
+		responses.AddJSONContentType(w)
 		w.Write([]byte(`{"method":"version}`))
 	}))
 	c := NewCaller(ts.URL, "")

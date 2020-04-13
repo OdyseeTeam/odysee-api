@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/lbryio/lbrytv/app/users"
+	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/config"
 
 	"github.com/stretchr/testify/assert"
@@ -16,11 +16,11 @@ import (
 )
 
 func TestProxyOptions(t *testing.T) {
-	r, _ := http.NewRequest("OPTIONS", "/api/proxy", nil)
+	r, err := http.NewRequest("OPTIONS", "/api/proxy", nil)
+	require.NoError(t, err)
 
 	rr := httptest.NewRecorder()
-	handler := NewRequestHandler(svc)
-	handler.HandleOptions(rr, r)
+	HandleCORS(rr, r)
 
 	response := rr.Result()
 	assert.Equal(t, http.StatusOK, response.StatusCode)
@@ -62,7 +62,7 @@ func TestProxyDontAuthRelaxedMethods(t *testing.T) {
 	config.Override("InternalAPIHost", ts.URL)
 
 	r, _ := http.NewRequest("POST", "", bytes.NewBuffer([]byte(newRawRequest(t, "resolve", map[string]string{"urls": "what"}))))
-	r.Header.Set(users.TokenHeader, "abc")
+	r.Header.Set(wallet.TokenHeader, "abc")
 
 	rr := httptest.NewRecorder()
 	handler := NewRequestHandler(svc)

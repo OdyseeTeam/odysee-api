@@ -1,9 +1,8 @@
-package users
+package wallet
 
 import (
 	"time"
 
-	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
 
 	"github.com/lbryio/lbry.go/v2/extras/lbryinc"
@@ -15,9 +14,9 @@ type remoteUser struct {
 	HasVerifiedEmail bool
 }
 
-func getRemoteUser(token string, remoteIP string) (*remoteUser, error) {
+func getRemoteUser(url, token string, remoteIP string) (remoteUser, error) {
 	c := lbryinc.NewClient(token, &lbryinc.ClientOpts{
-		ServerAddress: config.GetInternalAPIHost(),
+		ServerAddress: url,
 		RemoteIP:      remoteIP,
 	})
 
@@ -28,12 +27,12 @@ func getRemoteUser(token string, remoteIP string) (*remoteUser, error) {
 	if err != nil {
 		// No user found in internal-apis database, give up at this point
 		metrics.IAPIAuthFailedDurations.Observe(duration)
-		return nil, err
+		return remoteUser{}, err
 	}
 
 	metrics.IAPIAuthSuccessDurations.Observe(duration)
 
-	return &remoteUser{
+	return remoteUser{
 		ID:               int(r["user_id"].(float64)),
 		HasVerifiedEmail: r["has_verified_email"].(bool),
 	}, nil

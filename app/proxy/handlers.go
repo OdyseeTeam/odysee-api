@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/lbryio/lbrytv/app/users"
+	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
 )
@@ -29,6 +30,7 @@ func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		proxyHandlerLogger.Log().Errorf("empty request body")
 		return
 	}
+
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -41,12 +43,12 @@ func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	q, err := NewQuery(body)
 	if err != nil || !methodInList(q.Method(), relaxedMethods) {
-		retriever := users.NewWalletService(rh.SDKRouter)
-		auth := users.NewAuthenticator(retriever)
+		auth := users.NewAuthenticator(rh.SDKRouter)
 
 		walletID, err = auth.GetWalletID(r)
 		if err != nil {
-			responses.JSONRPCError(w, err.Error(), rpcErrorCodeUnauthorized)
+			responses.AddJSONContentType(w)
+			w.Write(marshalError(err))
 			monitor.CaptureRequestError(err, r, w)
 			return
 		}
@@ -55,15 +57,15 @@ func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	c := rh.NewCaller(walletID)
 
 	rawCallReponse := c.Call(body)
-	responses.PrepareJSONWriter(w)
+	responses.AddJSONContentType(w)
 	w.Write(rawCallReponse)
 }
 
-// HandleOptions returns necessary CORS headers for pre-flight requests to proxy API
-func (rh *RequestHandler) HandleOptions(w http.ResponseWriter, r *http.Request) {
+// HandleCORS returns necessary CORS headers for pre-flight requests to proxy API
+func HandleCORS(w http.ResponseWriter, r *http.Request) {
 	hs := w.Header()
 	hs.Set("Access-Control-Max-Age", "7200")
 	hs.Set("Access-Control-Allow-Origin", "*")
-	hs.Set("Access-Control-Allow-Headers", "X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept")
+	hs.Set("Access-Control-Allow-Headers", wallet.TokenHeader+", Origin, X-Requested-With, Content-Type, Accept")
 	w.WriteHeader(http.StatusOK)
 }

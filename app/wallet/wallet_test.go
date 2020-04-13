@@ -1,4 +1,4 @@
-package users
+package wallet
 
 import (
 	"errors"
@@ -11,9 +11,14 @@ import (
 
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/lbrynet"
+	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/internal/storage"
+	"github.com/lbryio/lbrytv/internal/test"
 	"github.com/lbryio/lbrytv/models"
-	log "github.com/sirupsen/logrus"
+
+	jsonrpc2 "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"
@@ -33,7 +38,6 @@ func TestMain(m *testing.M) {
 	defer connCleanup()
 
 	code := m.Run()
-
 	os.Exit(code)
 }
 
@@ -41,21 +45,30 @@ func setupDBTables() {
 	storage.Conn.Truncate([]string{"users"})
 }
 
-func setupCleanupDummyUser(rt *sdkrouter.Router, uidParam ...int) func() {
-	var uid int
-	if len(uidParam) > 0 {
-		uid = uidParam[0]
-	} else {
-		uid = dummyUserID
-	}
+func setupCleanupDummyUser(rt *sdkrouter.Router) func() {
+	reqChan := test.ReqChan()
+	ts := test.MockHTTPServer(reqChan)
+	go func() {
+		for {
+			req := <-reqChan
+			responses.AddJSONContentType(req.W)
+			ts.NextResponse <- fmt.Sprintf(`{
+				"success": true,
+				"error": null,
+				"data": {
+				  "user_id": %v,
+				  "has_verified_email": true
+				}
+			}`, dummyUserID)
+		}
+	}()
 
-	ts := StartAuthenticatingAPIServer(uid)
 	config.Override("InternalAPIHost", ts.URL)
 
 	return func() {
 		ts.Close()
 		config.RestoreOverridden()
-		rt.UnloadWallet(uid)
+		UnloadWallet(rt.GetServer(dummyUserID).Address, dummyUserID)
 	}
 }
 
@@ -65,8 +78,7 @@ func TestWalletServiceRetrieveNewUser(t *testing.T) {
 	defer setupCleanupDummyUser(rt)()
 
 	wid := sdkrouter.WalletID(dummyUserID)
-	svc := NewWalletService(rt)
-	u, err := svc.Retrieve(Query{Token: "abc"})
+	u, err := GetUserWithWallet(rt, "abc", "")
 	require.NoError(t, err, errors.Unwrap(err))
 	require.NotNil(t, u)
 	require.Equal(t, wid, u.WalletID)
@@ -75,7 +87,7 @@ func TestWalletServiceRetrieveNewUser(t *testing.T) {
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, count)
 
-	u, err = svc.Retrieve(Query{Token: "abc"})
+	u, err = GetUserWithWallet(rt, "abc", "")
 	require.NoError(t, err, errors.Unwrap(err))
 	require.Equal(t, wid, u.WalletID)
 }
@@ -83,17 +95,19 @@ func TestWalletServiceRetrieveNewUser(t *testing.T) {
 func TestWalletServiceRetrieveNonexistentUser(t *testing.T) {
 	setupDBTables()
 
-	ts := StartDummyAPIServer([]byte(`{
+	ts := test.MockHTTPServer(nil)
+	defer ts.Close()
+	ts.NextResponse <- `{
 		"success": false,
 		"error": "could not authenticate user",
 		"data": null
-	}`))
-	defer ts.Close()
+	}`
+
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	svc := NewWalletService(sdkrouter.New(config.GetLbrynetServers()))
-	u, err := svc.Retrieve(Query{Token: "non-existent-token"})
+	rt := sdkrouter.New(config.GetLbrynetServers())
+	u, err := GetUserWithWallet(rt, "non-existent-token", "")
 	require.Error(t, err)
 	require.Nil(t, u)
 	assert.Equal(t, "cannot authenticate user with internal-apis: could not authenticate user", err.Error())
@@ -104,12 +118,11 @@ func TestWalletServiceRetrieveExistingUser(t *testing.T) {
 	setupDBTables()
 	defer setupCleanupDummyUser(rt)()
 
-	s := NewWalletService(rt)
-	u, err := s.Retrieve(Query{Token: "abc"})
+	u, err := GetUserWithWallet(rt, "abc", "")
 	require.NoError(t, err)
 	require.NotNil(t, u)
 
-	u, err = s.Retrieve(Query{Token: "abc"})
+	u, err = GetUserWithWallet(rt, "abc", "")
 	require.NoError(t, err)
 	assert.EqualValues(t, dummyUserID, u.ID)
 
@@ -121,18 +134,33 @@ func TestWalletServiceRetrieveExistingUser(t *testing.T) {
 func TestWalletServiceRetrieveExistingUserMissingWalletID(t *testing.T) {
 	setupDBTables()
 
-	uid := int(rand.Int31())
-	ts := StartAuthenticatingAPIServer(uid)
+	userID := int(rand.Int31())
+
+	reqChan := test.ReqChan()
+	ts := test.MockHTTPServer(reqChan)
 	defer ts.Close()
+	go func() {
+		req := <-reqChan
+		responses.AddJSONContentType(req.W)
+		ts.NextResponse <- fmt.Sprintf(`{
+			"success": true,
+			"error": null,
+			"data": {
+			  "user_id": %v,
+			  "has_verified_email": true
+			}
+		}`, userID)
+	}()
+
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	s := NewWalletService(sdkrouter.New(config.GetLbrynetServers()))
-	u, err := s.createDBUser(uid)
+	rt := sdkrouter.New(config.GetLbrynetServers())
+	u, err := createDBUser(userID)
 	require.NoError(t, err)
 	require.NotNil(t, u)
 
-	u, err = s.Retrieve(Query{Token: "abc"})
+	u, err = GetUserWithWallet(rt, "abc", "")
 	require.NoError(t, err)
 	assert.NotEqual(t, "", u.WalletID)
 }
@@ -140,40 +168,62 @@ func TestWalletServiceRetrieveExistingUserMissingWalletID(t *testing.T) {
 func TestWalletServiceRetrieveNoVerifiedEmail(t *testing.T) {
 	setupDBTables()
 
-	ts := StartDummyAPIServer([]byte(fmt.Sprintf(userDoesntHaveVerifiedEmailResponse, 111)))
+	ts := test.MockHTTPServer(nil)
 	defer ts.Close()
+	ts.NextResponse <- `{
+		"success": true,
+		"error": null,
+		"data": {
+		  "user_id": 111,
+		  "has_verified_email": false
+		}
+	}`
+
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
-	svc := NewWalletService(sdkrouter.New(config.GetLbrynetServers()))
-	u, err := svc.Retrieve(Query{Token: "abc"})
-	assert.Nil(t, u)
+	rt := sdkrouter.New(config.GetLbrynetServers())
+	u, err := GetUserWithWallet(rt, "abc", "")
 	assert.NoError(t, err)
+	assert.Nil(t, u)
 }
 
 func BenchmarkWalletCommands(b *testing.B) {
 	setupDBTables()
 
-	ts := StartEasyAPIServer()
+	reqChan := test.ReqChan()
+	ts := test.MockHTTPServer(reqChan)
 	defer ts.Close()
+	go func() {
+		req := <-reqChan
+		responses.AddJSONContentType(req.W)
+		ts.NextResponse <- fmt.Sprintf(`{
+			"success": true,
+			"error": null,
+			"data": {
+			  "user_id": %v,
+			  "has_verified_email": true
+			}
+		}`, req.R.PostFormValue("auth_token"))
+	}()
+
 	config.Override("InternalAPIHost", ts.URL)
 	defer config.RestoreOverridden()
 
 	walletsNum := 60
 	users := make([]*models.User, walletsNum)
-	svc := NewWalletService(sdkrouter.New(config.GetLbrynetServers()))
-	sdkRouter := sdkrouter.New(config.GetLbrynetServers())
-	cl := jsonrpc.NewClient(sdkRouter.RandomServer().Address)
+	rt := sdkrouter.New(config.GetLbrynetServers())
+	cl := jsonrpc.NewClient(rt.RandomServer().Address)
 
-	svc.Logger.Disable()
+	logger.Disable()
 	sdkrouter.DisableLogger()
-	log.SetOutput(ioutil.Discard)
+	logrus.SetOutput(ioutil.Discard)
 
 	rand.Seed(time.Now().UnixNano())
 
 	for i := 0; i < walletsNum; i++ {
 		uid := int(rand.Int31())
-		u, err := svc.Retrieve(Query{Token: fmt.Sprintf("%v", uid)})
+		u, err := GetUserWithWallet(rt, fmt.Sprintf("%v", uid), "")
 		require.NoError(b, err, errors.Unwrap(err))
 		require.NotNil(b, u)
 		users[i] = u
@@ -192,4 +242,43 @@ func BenchmarkWalletCommands(b *testing.B) {
 	})
 
 	b.StopTimer()
+}
+
+func TestInitializeWallet(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+	userID := rand.Int()
+	addr := test.RandServerAddress(t)
+
+	walletID, err := Create(addr, userID)
+	require.NoError(t, err)
+	assert.Equal(t, walletID, sdkrouter.WalletID(userID))
+
+	err = UnloadWallet(addr, userID)
+	require.NoError(t, err)
+
+	walletID, err = Create(addr, userID)
+	require.NoError(t, err)
+	assert.Equal(t, walletID, sdkrouter.WalletID(userID))
+}
+
+func TestCreateWalletLoadWallet(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+	userID := rand.Int()
+	addr := test.RandServerAddress(t)
+	client := jsonrpc2.NewClient(addr)
+
+	wallet, err := createWallet(client, userID)
+	require.NoError(t, err)
+	assert.Equal(t, wallet.ID, sdkrouter.WalletID(userID))
+
+	wallet, err = createWallet(client, userID)
+	require.NotNil(t, err)
+	assert.True(t, errors.Is(err, lbrynet.ErrWalletExists))
+
+	err = UnloadWallet(addr, userID)
+	require.NoError(t, err)
+
+	wallet, err = loadWallet(client, userID)
+	require.NoError(t, err)
+	assert.Equal(t, wallet.ID, sdkrouter.WalletID(userID))
 }

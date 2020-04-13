@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/lbryio/lbrytv/config"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -18,6 +19,7 @@ type MockServer struct {
 
 type Request struct {
 	R    *http.Request
+	W    http.ResponseWriter
 	Body string
 }
 
@@ -33,7 +35,7 @@ func MockHTTPServer(requestChan chan *Request) *MockServer {
 			defer r.Body.Close()
 			if requestChan != nil {
 				data, _ := ioutil.ReadAll(r.Body)
-				requestChan <- &Request{r, string(data)}
+				requestChan <- &Request{r, w, string(data)}
 			}
 			fmt.Fprintf(w, <-next)
 		})),
@@ -72,4 +74,12 @@ func ResToStr(t *testing.T, res jsonrpc.RPCResponse) string {
 		t.Fatal(err)
 	}
 	return string(r)
+}
+
+func RandServerAddress(t *testing.T) string {
+	for _, addr := range config.GetLbrynetServers() {
+		return addr
+	}
+	t.Fatal("no lbrynet servers configured")
+	return ""
 }
