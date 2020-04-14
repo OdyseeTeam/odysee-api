@@ -30,7 +30,6 @@ const (
 	StatusNotReady      = "not_ready"
 	StatusOffline       = "offline"
 	StatusFailing       = "failing"
-	SDKRouterContextKey = "sdkrouter"
 	statusCacheValidity = 120 * time.Second
 )
 
@@ -60,7 +59,7 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 		}
 		failureDetected := false
 
-		sdks := req.Context().Value(SDKRouterContextKey).(*sdkrouter.Router).GetAll()
+		sdks := sdkrouter.FromRequest(req).GetAll()
 		for _, s := range sdks {
 			srv := ServerItem{Address: s.Address, Status: StatusOK}
 			services["lbrynet"] = append(services["lbrynet"], srv)

@@ -6,25 +6,23 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/lbryio/lbrytv/app/proxy"
+	"github.com/gorilla/mux"
 	"github.com/lbryio/lbrytv/app/publish"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
-
-	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRoutesProxy(t *testing.T) {
 	r := mux.NewRouter()
-	proxy := proxy.NewService(sdkrouter.New(config.GetLbrynetServers()))
+	rt := sdkrouter.New(config.GetLbrynetServers())
 
 	req, err := http.NewRequest("POST", "/api/v1/proxy", bytes.NewBuffer([]byte(`{"method": "status"}`)))
 	require.NoError(t, err)
 	rr := httptest.NewRecorder()
 
-	InstallRoutes(proxy, r)
+	InstallRoutes(r, rt)
 	r.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -33,12 +31,12 @@ func TestRoutesProxy(t *testing.T) {
 
 func TestRoutesPublish(t *testing.T) {
 	r := mux.NewRouter()
-	proxy := proxy.NewService(sdkrouter.New(config.GetLbrynetServers()))
+	rt := sdkrouter.New(config.GetLbrynetServers())
 
 	req := publish.CreatePublishRequest(t, []byte("test file"))
 	rr := httptest.NewRecorder()
 
-	InstallRoutes(proxy, r)
+	InstallRoutes(r, rt)
 	r.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -49,13 +47,13 @@ func TestRoutesPublish(t *testing.T) {
 
 func TestRoutesOptions(t *testing.T) {
 	r := mux.NewRouter()
-	proxy := proxy.NewService(sdkrouter.New(config.GetLbrynetServers()))
+	rt := sdkrouter.New(config.GetLbrynetServers())
 
 	req, err := http.NewRequest("OPTIONS", "/api/v1/proxy", nil)
 	require.NoError(t, err)
 	rr := httptest.NewRecorder()
 
-	InstallRoutes(proxy, r)
+	InstallRoutes(r, rt)
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, "7200", rr.Result().Header.Get("Access-Control-Max-Age"))

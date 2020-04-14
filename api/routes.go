@@ -1,15 +1,14 @@
 package api
 
 import (
-	"context"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/app/users"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/status"
@@ -19,12 +18,11 @@ import (
 )
 
 // InstallRoutes sets up global API handlers
-func InstallRoutes(proxyService *proxy.Service, r *mux.Router) {
-	authenticator := users.NewAuthenticator(users.NewWalletService(proxyService.SDKRouter))
-	proxyHandler := proxy.NewRequestHandler(proxyService)
-	upHandler, err := publish.NewUploadHandler(publish.UploadOpts{ProxyService: proxyService})
-	if err != nil {
-		panic(err)
+func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
+	upHandler := &publish.Handler{
+		Publisher:       &publish.LbrynetPublisher{Router: sdkRouter},
+		UploadPath:      config.GetPublishSourceDir(),
+		InternalAPIHost: config.GetInternalAPIHost(),
 	}
 
 	r.Use(methodTimer)
@@ -34,22 +32,18 @@ func InstallRoutes(proxyService *proxy.Service, r *mux.Router) {
 	})
 
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
+	v1Router.Use(sdkrouter.Middleware(sdkRouter))
+	retriever := auth.AllInOneRetrieverThatNeedsRefactoring(sdkRouter, config.GetInternalAPIHost())
+	v1Router.Use(auth.Middleware(retriever))
 	v1Router.HandleFunc("/proxy", proxy.HandleCORS).Methods(http.MethodOptions)
-	v1Router.HandleFunc("/proxy", authenticator.Wrap(upHandler.Handle)).MatcherFunc(upHandler.CanHandle)
-	v1Router.HandleFunc("/proxy", proxyHandler.Handle)
+	v1Router.HandleFunc("/proxy", upHandler.Handle).MatcherFunc(upHandler.CanHandle)
+	v1Router.HandleFunc("/proxy", proxy.Handle)
 	v1Router.HandleFunc("/metric/ui", metrics.TrackUIMetric).Methods(http.MethodPost)
 
 	internalRouter := r.PathPrefix("/internal").Subrouter()
 	internalRouter.Handle("/metrics", promhttp.Handler())
-	internalRouter.HandleFunc("/status", injectSDKRouter(proxyService.SDKRouter, status.GetStatus))
+	internalRouter.HandleFunc("/status", sdkrouter.AddToRequest(sdkRouter, status.GetStatus))
 	internalRouter.HandleFunc("/whoami", status.WhoAMI)
-}
-
-// i can't tell if this is really a best practice or a hack
-func injectSDKRouter(rt *sdkrouter.Router, fn http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		fn(w, r.Clone(context.WithValue(r.Context(), status.SDKRouterContextKey, rt)))
-	}
 }
 
 func methodTimer(next http.Handler) http.Handler {

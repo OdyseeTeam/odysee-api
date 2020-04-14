@@ -7,7 +7,6 @@ import (
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
@@ -28,10 +27,10 @@ const pgUniqueConstraintViolation = "23505"
 
 // Retrieve gets user by internal-apis auth token. If the user does not have a wallet yet, they
 // are assigned an SDK and a wallet is created for them on that SDK.
-func GetUserWithWallet(rt *sdkrouter.Router, token, metaRemoteIP string) (*models.User, error) {
+func GetUserWithWallet(rt *sdkrouter.Router, internalAPIHost, token, metaRemoteIP string) (*models.User, error) {
 	log := logger.LogF(monitor.F{monitor.TokenF: token})
 
-	remoteUser, err := getRemoteUser(config.GetInternalAPIHost(), token, metaRemoteIP)
+	remoteUser, err := getRemoteUser(internalAPIHost, token, metaRemoteIP)
 	if err != nil {
 		msg := "cannot authenticate user with internal-apis: %v"
 		log.Errorf(msg, err)

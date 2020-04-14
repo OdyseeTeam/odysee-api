@@ -4,12 +4,13 @@ import (
 	"fmt"
 
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/responses"
 
 	"github.com/getsentry/sentry-go"
 )
 
 var IgnoredExceptions = []string{
-	"account identifier required",
+	responses.AuthRequiredErrorMessage,
 }
 
 func configureSentry(release, env string) {

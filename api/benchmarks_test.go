@@ -39,7 +39,7 @@ func launchAuthenticatingAPIServer() *httptest.Server {
 			"success": true,
 			"error": null,
 			"data": {
-				"id": %v,
+				"id": %s,
 				"language": "en",
 				"given_name": null,
 				"family_name": null,
@@ -86,30 +86,29 @@ func setupDBTables() {
 func BenchmarkWalletCommands(b *testing.B) {
 	setupDBTables()
 
-	ts := launchAuthenticatingAPIServer()
-	defer ts.Close()
-	config.Override("InternalAPIHost", ts.URL)
-	defer config.RestoreOverridden()
-
-	walletsNum := 30
-	wallets := make([]*models.User, walletsNum)
-	rt := sdkrouter.New(config.GetLbrynetServers())
-
 	wallet.DisableLogger()
 	sdkrouter.DisableLogger()
 	log.SetOutput(ioutil.Discard)
 
 	rand.Seed(time.Now().UnixNano())
 
+	rt := sdkrouter.New(config.GetLbrynetServers())
+
+	ts := launchAuthenticatingAPIServer()
+	defer ts.Close()
+
+	walletsNum := 30
+	wallets := make([]*models.User, walletsNum)
+
 	for i := 0; i < walletsNum; i++ {
 		uid := int(rand.Int31())
-		u, err := wallet.GetUserWithWallet(rt, fmt.Sprintf("%v", uid), "")
+		u, err := wallet.GetUserWithWallet(rt, ts.URL, fmt.Sprintf("%d", uid), "")
 		require.NoError(b, err, errors.Unwrap(err))
 		require.NotNil(b, u)
 		wallets[i] = u
 	}
 
-	handler := proxy.NewRequestHandler(proxy.NewService(rt))
+	handler := sdkrouter.Middleware(rt)(http.HandlerFunc(proxy.Handle))
 
 	b.SetParallelism(30)
 	b.ResetTimer()
@@ -118,17 +117,20 @@ func BenchmarkWalletCommands(b *testing.B) {
 		for pb.Next() {
 			u := wallets[rand.Intn(len(wallets))]
 
-			var response jsonrpc.RPCResponse
 			q := jsonrpc.NewRequest("wallet_balance", map[string]string{"wallet_id": u.WalletID})
 
-			qBody, _ := json.Marshal(q)
-			r, _ := http.NewRequest("POST", proxySuffix, bytes.NewBuffer(qBody))
-			r.Header.Add("X-Lbry-Auth-Token", fmt.Sprintf("%v", u.ID))
+			qBody, err := json.Marshal(q)
+			require.NoError(b, err)
+			r, err := http.NewRequest("POST", proxySuffix, bytes.NewBuffer(qBody))
+			require.NoError(b, err)
+			r.Header.Add("X-Lbry-Auth-Token", fmt.Sprintf("%d", u.ID))
 
 			rr := httptest.NewRecorder()
-			handler.Handle(rr, r)
+			handler.ServeHTTP(rr, r)
 
 			require.Equal(b, http.StatusOK, rr.Code)
+
+			var response jsonrpc.RPCResponse
 			json.Unmarshal(rr.Body.Bytes(), &response)
 			require.Nil(b, response.Error)
 		}

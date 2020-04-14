@@ -23,11 +23,11 @@ func TestClientCallDoesReloadWallet(t *testing.T) {
 	err = wallet.UnloadWallet(addr, dummyUserID)
 	require.NoError(t, err)
 
-	q, err := NewQuery(newRawRequest(t, "wallet_balance", nil))
+	q, err := NewQuery(jsonrpc.NewRequest("wallet_balance"))
 	require.NoError(t, err)
-	q.SetWalletID(walletID)
+	q.WalletID = walletID
 
-	c := NewCaller(addr, walletID)
+	c := NewCaller(addr, dummyUserID)
 	r, err := c.callQueryWithRetry(q)
 	// err = json.Unmarshal(result, response)
 	require.NoError(t, err)
@@ -43,10 +43,10 @@ func TestClientCallDoesNotReloadWalletAfterOtherErrors(t *testing.T) {
 	srv := test.MockHTTPServer(nil)
 	defer srv.Close()
 
-	c := NewCaller(srv.URL, "")
-	q, err := NewQuery(newRawRequest(t, "wallet_balance", nil))
+	c := NewCaller(srv.URL, 0)
+	q, err := NewQuery(jsonrpc.NewRequest("wallet_balance"))
 	require.NoError(t, err)
-	q.SetWalletID(walletID)
+	q.WalletID = walletID
 
 	go func() {
 		srv.NextResponse <- test.ResToStr(t, jsonrpc.RPCResponse{
@@ -76,10 +76,10 @@ func TestClientCallDoesNotReloadWalletIfAlreadyLoaded(t *testing.T) {
 	srv := test.MockHTTPServer(nil)
 	defer srv.Close()
 
-	c := NewCaller(srv.URL, "")
-	q, err := NewQuery(newRawRequest(t, "wallet_balance", nil))
+	c := NewCaller(srv.URL, 0)
+	q, err := NewQuery(jsonrpc.NewRequest("wallet_balance"))
 	require.NoError(t, err)
-	q.SetWalletID(walletID)
+	q.WalletID = walletID
 
 	go func() {
 		srv.NextResponse <- test.ResToStr(t, jsonrpc.RPCResponse{

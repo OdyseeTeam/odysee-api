@@ -68,7 +68,7 @@ func (r *Router) GetServer(userID int) *models.LbrynetServer {
 
 	var sdk *models.LbrynetServer
 	if userID == 0 {
-		sdk = r.LeastLoaded()
+		sdk = r.RandomServer()
 	} else {
 		sdk = r.serverForUser(userID)
 		if sdk.Address == "" {

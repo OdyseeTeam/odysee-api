@@ -1,29 +1,22 @@
 package proxy
 
 import (
+	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 
-	"github.com/lbryio/lbrytv/app/users"
+	"github.com/lbryio/lbrytv/app/auth"
+	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
+	"github.com/ybbus/jsonrpc"
 )
 
-var proxyHandlerLogger = monitor.NewModuleLogger("proxy_handlers")
-
-// RequestHandler is a wrapper for passing proxy.Service instance to proxy HTTP handler.
-type RequestHandler struct {
-	*Service
-}
-
-// NewRequestHandler initializes request handler with a provided Proxy Service instance
-func NewRequestHandler(svc *Service) *RequestHandler {
-	return &RequestHandler{Service: svc}
-}
-
 // Handle forwards client JSON-RPC request to proxy.
-func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
+func Handle(w http.ResponseWriter, r *http.Request) {
+	var proxyHandlerLogger = monitor.NewModuleLogger("proxy_handlers")
 	if r.Body == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("empty request body"))
@@ -39,26 +32,33 @@ func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var walletID string
+	// We're in RPC-response-land from here on down
+	responses.AddJSONContentType(w)
 
-	q, err := NewQuery(body)
-	if err != nil || !methodInList(q.Method(), relaxedMethods) {
-		auth := users.NewAuthenticator(rh.SDKRouter)
-
-		walletID, err = auth.GetWalletID(r)
-		if err != nil {
-			responses.AddJSONContentType(w)
-			w.Write(marshalError(err))
-			monitor.CaptureRequestError(err, r, w)
-			return
-		}
+	var req jsonrpc.RPCRequest
+	err = json.Unmarshal(body, &req)
+	if err != nil {
+		w.Write(NewJSONParseError(err).JSON())
+		return
 	}
 
-	c := rh.NewCaller(walletID)
+	var userID int
+	if MethodNeedsAuth(req.Method) {
+		authResult := auth.FromRequest(r)
+		if !authResult.AuthAttempted() {
+			w.Write(NewAuthRequiredError(errors.New(responses.AuthRequiredErrorMessage)).JSON())
+			return
+		}
+		if !authResult.Authenticated() {
+			w.Write(NewForbiddenError(authResult.Err).JSON())
+			return
+		}
+		userID = authResult.User.ID
+	}
 
-	rawCallReponse := c.Call(body)
-	responses.AddJSONContentType(w)
-	w.Write(rawCallReponse)
+	rt := sdkrouter.FromRequest(r)
+	c := NewCaller(rt.GetServer(userID).Address, userID)
+	w.Write(c.Call(&req))
 }
 
 // HandleCORS returns necessary CORS headers for pre-flight requests to proxy API

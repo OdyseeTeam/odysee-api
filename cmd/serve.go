@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/server"
@@ -23,10 +22,7 @@ var rootCmd = &cobra.Command{
 		sdkRouter := sdkrouter.New(config.GetLbrynetServers())
 		go sdkRouter.WatchLoad()
 
-		s := server.NewServer(server.Options{
-			Address:      config.GetAddress(),
-			ProxyService: proxy.NewService(sdkRouter),
-		})
+		s := server.NewServer(config.GetAddress(), sdkRouter)
 		err := s.Start()
 		if err != nil {
 			log.Fatal(err)

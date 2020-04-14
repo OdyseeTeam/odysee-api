@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
 
@@ -15,10 +14,7 @@ import (
 )
 
 func TestStartAndServeUntilShutdown(t *testing.T) {
-	server := NewServer(Options{
-		Address:      "localhost:40080",
-		ProxyService: proxy.NewService(sdkrouter.New(config.GetLbrynetServers())),
-	})
+	server := NewServer("localhost:40080", sdkrouter.New(config.GetLbrynetServers()))
 	server.Start()
 	go server.ServeUntilShutdown()
 
@@ -47,10 +43,7 @@ func TestHeaders(t *testing.T) {
 		response *http.Response
 	)
 
-	server := NewServer(Options{
-		Address:      "localhost:40080",
-		ProxyService: proxy.NewService(sdkrouter.New(config.GetLbrynetServers())),
-	})
+	server := NewServer("localhost:40080", sdkrouter.New(config.GetLbrynetServers()))
 	server.Start()
 	go server.ServeUntilShutdown()
 

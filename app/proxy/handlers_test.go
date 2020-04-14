@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/config"
 
@@ -27,50 +28,58 @@ func TestProxyOptions(t *testing.T) {
 }
 
 func TestProxyNilQuery(t *testing.T) {
-	r, _ := http.NewRequest("POST", "", nil)
+	r, err := http.NewRequest("POST", "", nil)
+	require.NoError(t, err)
 
 	rr := httptest.NewRecorder()
-	handler := NewRequestHandler(svc)
-	handler.Handle(rr, r)
+	rt := sdkrouter.New(config.GetLbrynetServers())
+	handler := sdkrouter.Middleware(rt)(http.HandlerFunc(Handle))
+	handler.ServeHTTP(rr, r)
 
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
 	assert.Equal(t, "empty request body", rr.Body.String())
 }
 
 func TestProxyInvalidQuery(t *testing.T) {
-	var parsedResponse jsonrpc.RPCResponse
 
-	r, _ := http.NewRequest("POST", "", bytes.NewBuffer([]byte("yo")))
+	r, err := http.NewRequest("POST", "", bytes.NewBuffer([]byte("yo")))
+	require.NoError(t, err)
 
 	rr := httptest.NewRecorder()
-	handler := NewRequestHandler(svc)
-	handler.Handle(rr, r)
+	rt := sdkrouter.New(config.GetLbrynetServers())
+	handler := sdkrouter.Middleware(rt)(http.HandlerFunc(Handle))
+	handler.ServeHTTP(rr, r)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	err := json.Unmarshal(rr.Body.Bytes(), &parsedResponse)
+	var parsedResponse jsonrpc.RPCResponse
+	err = json.Unmarshal(rr.Body.Bytes(), &parsedResponse)
 	require.NoError(t, err)
 	assert.Contains(t, parsedResponse.Error.Message, "invalid character 'y' looking for beginning of value")
 }
 
 func TestProxyDontAuthRelaxedMethods(t *testing.T) {
-	var parsedResponse jsonrpc.RPCResponse
 	var apiCalls int
-
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		apiCalls++
 	}))
 	config.Override("InternalAPIHost", ts.URL)
 
-	r, _ := http.NewRequest("POST", "", bytes.NewBuffer([]byte(newRawRequest(t, "resolve", map[string]string{"urls": "what"}))))
+	rawReq := jsonrpc.NewRequest("resolve", map[string]string{"urls": "what"})
+	raw, err := json.Marshal(rawReq)
+	require.NoError(t, err)
+
+	r, err := http.NewRequest("POST", "", bytes.NewBuffer(raw))
+	require.NoError(t, err)
 	r.Header.Set(wallet.TokenHeader, "abc")
 
 	rr := httptest.NewRecorder()
-	handler := NewRequestHandler(svc)
-	handler.Handle(rr, r)
+	rt := sdkrouter.New(config.GetLbrynetServers())
+	handler := sdkrouter.Middleware(rt)(http.HandlerFunc(Handle))
+	handler.ServeHTTP(rr, r)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	err := json.Unmarshal(rr.Body.Bytes(), &parsedResponse)
+	var parsedResponse jsonrpc.RPCResponse
+	err = json.Unmarshal(rr.Body.Bytes(), &parsedResponse)
 	require.NoError(t, err)
-
 	assert.Equal(t, 0, apiCalls)
 }

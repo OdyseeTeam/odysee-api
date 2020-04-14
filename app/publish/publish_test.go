@@ -8,7 +8,6 @@ import (
 	"path"
 	"testing"
 
-	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/config"
@@ -57,12 +56,9 @@ func TestLbrynetPublisher(t *testing.T) {
 		}`, 751365)
 	}()
 
-	config.Override("InternalAPIHost", ts.URL)
-	defer config.RestoreOverridden()
-
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	p := &LbrynetPublisher{proxy.NewService(rt)}
-	u, err := wallet.GetUserWithWallet(rt, authToken, "")
+	p := &LbrynetPublisher{rt}
+	u, err := wallet.GetUserWithWallet(rt, ts.URL, authToken, "")
 	require.NoError(t, err)
 
 	data := []byte("test file")
@@ -96,7 +92,7 @@ func TestLbrynetPublisher(t *testing.T) {
 		"id": 1567580184168
 	}`)
 
-	rawResp := p.Publish(path.Join("/storage", path.Base(f.Name())), u.WalletID, query)
+	rawResp := p.Publish(path.Join("/storage", path.Base(f.Name())), u.ID, query)
 
 	// This is all we can check for now without running on testnet or crediting some funds to the test account
 	assert.Regexp(t, "Not enough funds to cover this transaction", string(rawResp))

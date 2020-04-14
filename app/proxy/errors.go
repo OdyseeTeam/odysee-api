@@ -11,7 +11,7 @@ const (
 	rpcErrorCodeInternal         int = -32080 // general errors that originate inside the proxy module
 	rpcErrorCodeSDK              int = -32603 // otherwise-unspecified errors from the SDK
 	rpcErrorCodeAuthRequired     int = -32084 // auth info is required but is not provided
-	rpcErrorCodeUnauthorized     int = -32085 // auth info is provided but is not found in the database
+	rpcErrorCodeForbidden        int = -32085 // auth info is provided but is not found in the database
 	rpcErrorCodeJSONParse        int = -32700 // invalid JSON was received by the server
 	rpcErrorCodeInvalidParams    int = -32602 // error in params that the client provided
 	rpcErrorCodeMethodNotAllowed int = -32601 // the requested method is not allowed to be called
@@ -45,7 +45,7 @@ func NewJSONParseError(e error) RPCError        { return RPCError{e, rpcErrorCod
 func NewMethodNotAllowedError(e error) RPCError { return RPCError{e, rpcErrorCodeMethodNotAllowed} }
 func NewInvalidParamsError(e error) RPCError    { return RPCError{e, rpcErrorCodeInvalidParams} }
 func NewSDKError(e error) RPCError              { return RPCError{e, rpcErrorCodeSDK} }
-func NewUnauthorizedError(e error) RPCError     { return RPCError{e, rpcErrorCodeUnauthorized} }
+func NewForbiddenError(e error) RPCError        { return RPCError{e, rpcErrorCodeForbidden} }
 func NewAuthRequiredError(e error) RPCError     { return RPCError{e, rpcErrorCodeAuthRequired} }
 
 func isJSONParseError(err error) bool {

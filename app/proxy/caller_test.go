@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -23,40 +22,13 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func newRawRequest(t *testing.T, method string, params interface{}) []byte {
-	var (
-		body []byte
-		err  error
-	)
-	if params != nil {
-		body, err = json.Marshal(jsonrpc.NewRequest(method, params))
-	} else {
-		body, err = json.Marshal(jsonrpc.NewRequest(method))
-	}
-	if err != nil {
-		t.Fatal(err)
-	}
-	return body
-}
-
-func parseRawResponse(t *testing.T, rawCallReponse []byte, v interface{}) {
-	assert.NotNil(t, rawCallReponse)
+func parseRawResponse(t *testing.T, rawCallResponse []byte, v interface{}) {
+	assert.NotNil(t, rawCallResponse)
 	var res jsonrpc.RPCResponse
-	err := json.Unmarshal(rawCallReponse, &res)
+	err := json.Unmarshal(rawCallResponse, &res)
 	require.NoError(t, err)
 	err = res.GetObject(v)
 	require.NoError(t, err)
-}
-
-func TestNewQuery(t *testing.T) {
-	for _, rawQ := range []string{``, ` `, `{}`, `[]`, `[{}]`, `[""]`, `""`, `" "`, `{"method": " "}`} {
-		t.Run(rawQ, func(t *testing.T) {
-			q, err := NewQuery([]byte(rawQ))
-			assert.Nil(t, q)
-			assert.Error(t, err)
-		})
-	}
-
 }
 
 func TestNewCaller(t *testing.T) {
@@ -64,50 +36,49 @@ func TestNewCaller(t *testing.T) {
 		"first":  "http://lbrynet1",
 		"second": "http://lbrynet2",
 	}
-	svc := NewService(sdkrouter.New(servers))
-	sList := svc.SDKRouter.GetAll()
+	rt := sdkrouter.New(servers)
+	sList := rt.GetAll()
 	rand.Seed(time.Now().UnixNano())
 	for i := 1; i <= 100; i++ {
 		id := rand.Intn(10^6-10^3) + 10 ^ 3
-		wc := svc.NewCaller(fmt.Sprintf("wallet.%v", id))
+		wc := NewCaller(rt.GetServer(id).Address, id)
 		lastDigit := id % 10
 		assert.Equal(t, sList[lastDigit%len(sList)].Address, wc.endpoint)
 	}
 }
 
-func TestCallerСall(t *testing.T) {
-	c := NewService(sdkrouter.New(config.GetLbrynetServers())).NewCaller("abc")
-	for _, rawQ := range []string{``, ` `, `{}`, `[]`, `[{}]`, `[""]`, `""`, `" "`, `{"method": " "}`} {
+func TestCallerCallRaw(t *testing.T) {
+	c := NewCaller(test.RandServerAddress(t), 0)
+	for _, rawQ := range []string{``, ` `, `[]`, `[{}]`, `[""]`, `""`, `" "`} {
 		t.Run(rawQ, func(t *testing.T) {
-			r := c.Call([]byte(rawQ))
-			assert.Contains(t, string(r), `"code": -32700`)
+			r := c.CallRaw([]byte(rawQ))
+			assert.Contains(t, string(r), `"code": -32700`, `raw query: `+rawQ)
 		})
 	}
-
-}
-
-func TestCallerSetWalletID(t *testing.T) {
-	svc := NewService(sdkrouter.New(config.GetLbrynetServers()))
-	c := svc.NewCaller("abc")
-	assert.Equal(t, "abc", c.walletID)
+	for _, rawQ := range []string{`{}`, `{"method": " "}`} {
+		t.Run(rawQ, func(t *testing.T) {
+			r := c.CallRaw([]byte(rawQ))
+			assert.Contains(t, string(r), `"code": -32080`, `raw query: `+rawQ)
+		})
+	}
 }
 
 func TestCallerCallResolve(t *testing.T) {
-	svc := NewService(sdkrouter.New(config.GetLbrynetServers()))
+	rt := sdkrouter.New(config.GetLbrynetServers())
 
 	resolvedURL := "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
 	resolvedClaimID := "6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
 
-	request := newRawRequest(t, "resolve", map[string]string{"urls": resolvedURL})
-	rawCallReponse := svc.NewCaller("").Call(request)
+	request := jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": resolvedURL})
+	rawCallResponse := NewCaller(rt.RandomServer().Address, 0).Call(request)
 
 	var errorResponse jsonrpc.RPCResponse
-	err := json.Unmarshal(rawCallReponse, &errorResponse)
+	err := json.Unmarshal(rawCallResponse, &errorResponse)
 	require.NoError(t, err)
 	require.Nil(t, errorResponse.Error)
 
 	var resolveResponse ljsonrpc.ResolveResponse
-	parseRawResponse(t, rawCallReponse, &resolveResponse)
+	parseRawResponse(t, rawCallResponse, &resolveResponse)
 	assert.Equal(t, resolvedClaimID, resolveResponse[resolvedURL].ClaimID)
 }
 
@@ -115,23 +86,25 @@ func TestCallerCallWalletBalance(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	dummyUserID := rand.Intn(10^6-10^3) + 10 ^ 3
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	svc := NewService(rt)
 
-	request := newRawRequest(t, "wallet_balance", nil)
+	request := jsonrpc.NewRequest("wallet_balance")
 
-	result := svc.NewCaller("").Call(request)
-	assert.Contains(t, string(result), `"message": "account identifier required"`)
+	result := NewCaller(rt.RandomServer().Address, 0).Call(request)
+	assert.Contains(t, string(result), `"message": "authentication required"`)
 
-	walletID, err := wallet.Create(test.RandServerAddress(t), dummyUserID)
+	addr := test.RandServerAddress(t)
+	walletID, err := wallet.Create(addr, dummyUserID)
 	require.NoError(t, err)
 
 	hook := logrusTest.NewLocal(Logger.Logger())
-	result = svc.NewCaller(walletID).Call(request)
+	result = NewCaller(addr, dummyUserID).Call(request)
 
-	var accountBalanceResponse ljsonrpc.AccountBalanceResponse
+	var accountBalanceResponse struct {
+		Available string `json:"available"`
+	}
 	parseRawResponse(t, result, &accountBalanceResponse)
-	assert.EqualValues(t, "0", fmt.Sprintf("%v", accountBalanceResponse.Available))
-	assert.Equal(t, map[string]interface{}{"wallet_id": fmt.Sprintf("%v", walletID)}, hook.LastEntry().Data["params"])
+	assert.EqualValues(t, "0.0", accountBalanceResponse.Available)
+	assert.Equal(t, map[string]interface{}{"wallet_id": walletID}, hook.LastEntry().Data["params"])
 	assert.Equal(t, "wallet_balance", hook.LastEntry().Data["method"])
 }
 
@@ -139,7 +112,7 @@ func TestCallerCallRelaxedMethods(t *testing.T) {
 	reqChan := test.ReqChan()
 	srv := test.MockHTTPServer(reqChan)
 	defer srv.Close()
-	caller := NewCaller(srv.URL, "")
+	caller := NewCaller(srv.URL, 0)
 
 	for _, m := range relaxedMethods {
 		t.Run(m, func(t *testing.T) {
@@ -147,7 +120,7 @@ func TestCallerCallRelaxedMethods(t *testing.T) {
 				return
 			}
 			srv.NextResponse <- ""
-			caller.Call(newRawRequest(t, m, nil))
+			caller.Call(jsonrpc.NewRequest(m))
 			receivedRequest := <-reqChan
 			expectedRequest := test.ReqToStr(t, jsonrpc.RPCRequest{
 				Method:  m,
@@ -160,29 +133,29 @@ func TestCallerCallRelaxedMethods(t *testing.T) {
 }
 
 func TestCallerCallNonRelaxedMethods(t *testing.T) {
-	caller := NewCaller("", "")
+	caller := NewCaller("whatever", 0)
 	for _, m := range walletSpecificMethods {
-		result := caller.Call(newRawRequest(t, m, nil))
-		assert.Contains(t, string(result), `"message": "account identifier required"`)
+		result := caller.Call(jsonrpc.NewRequest(m))
+		assert.Contains(t, string(result), `"message": "authentication required"`)
 	}
 }
 
 func TestCallerCallForbiddenMethod(t *testing.T) {
-	caller := NewCaller("", "")
-	result := caller.Call(newRawRequest(t, "stop", nil))
+	caller := NewCaller(test.RandServerAddress(t), 0)
+	result := caller.Call(jsonrpc.NewRequest("stop"))
 	assert.Contains(t, string(result), `"message": "forbidden method"`)
 }
 
 func TestCallerCallAttachesWalletID(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
-	dummyWalletID := "abc123321"
+	dummyUserID := 123321
 
 	reqChan := test.ReqChan()
 	srv := test.MockHTTPServer(reqChan)
 	defer srv.Close()
 	srv.NextResponse <- ""
-	caller := NewCaller(srv.URL, dummyWalletID)
-	caller.Call(newRawRequest(t, "channel_create", map[string]string{"name": "test", "bid": "0.1"}))
+	caller := NewCaller(srv.URL, dummyUserID)
+	caller.Call(jsonrpc.NewRequest("channel_create", map[string]interface{}{"name": "test", "bid": "0.1"}))
 	receivedRequest := <-reqChan
 
 	expectedRequest := test.ReqToStr(t, jsonrpc.RPCRequest{
@@ -190,7 +163,7 @@ func TestCallerCallAttachesWalletID(t *testing.T) {
 		Params: map[string]interface{}{
 			"name":      "test",
 			"bid":       "0.1",
-			"wallet_id": dummyWalletID,
+			"wallet_id": sdkrouter.WalletID(dummyUserID),
 		},
 		JSONRPC: "2.0",
 	})
@@ -202,7 +175,7 @@ func TestCallerSetPreprocessor(t *testing.T) {
 	srv := test.MockHTTPServer(reqChan)
 	defer srv.Close()
 
-	c := NewCaller(srv.URL, "")
+	c := NewCaller(srv.URL, 0)
 
 	c.Preprocessor = func(q *Query) {
 		params := q.ParamsAsMap()
@@ -216,7 +189,7 @@ func TestCallerSetPreprocessor(t *testing.T) {
 
 	srv.NextResponse <- ""
 
-	c.Call(newRawRequest(t, relaxedMethods[0], nil))
+	c.Call(jsonrpc.NewRequest(relaxedMethods[0]))
 	req := <-reqChan
 	lastRequest := test.StrToReq(t, req.Body)
 
@@ -256,9 +229,9 @@ func TestCallerCallSDKError(t *testing.T) {
 			"id": 0
 		}`
 
-	c := NewCaller(srv.URL, "")
+	c := NewCaller(srv.URL, 0)
 	hook := logrusTest.NewLocal(Logger.Logger())
-	response := c.Call(newRawRequest(t, "resolve", map[string]string{"urls": "what"}))
+	response := c.Call(jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": "what"}))
 	var rpcResponse jsonrpc.RPCResponse
 	json.Unmarshal(response, &rpcResponse)
 	assert.Equal(t, rpcResponse.Error.Code, -32500)
@@ -271,8 +244,8 @@ func TestCallerCallClientJSONError(t *testing.T) {
 		responses.AddJSONContentType(w)
 		w.Write([]byte(`{"method":"version}`))
 	}))
-	c := NewCaller(ts.URL, "")
-	response := c.Call([]byte(`{"method":"version}`))
+	c := NewCaller(ts.URL, 0)
+	response := c.CallRaw([]byte(`{"method":"version}`))
 	var rpcResponse jsonrpc.RPCResponse
 	json.Unmarshal(response, &rpcResponse)
 	assert.Equal(t, "2.0", rpcResponse.JSONRPC)
@@ -281,8 +254,8 @@ func TestCallerCallClientJSONError(t *testing.T) {
 }
 
 func TestSDKMethodStatus(t *testing.T) {
-	c := NewService(sdkrouter.New(config.GetLbrynetServers())).NewCaller("")
-	callResult := c.Call(newRawRequest(t, "status", nil))
+	c := NewCaller(test.RandServerAddress(t), 0)
+	callResult := c.Call(jsonrpc.NewRequest("status"))
 	var rpcResponse jsonrpc.RPCResponse
 	json.Unmarshal(callResult, &rpcResponse)
 	assert.Equal(t,

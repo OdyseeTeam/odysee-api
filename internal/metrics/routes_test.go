@@ -5,10 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/lbryio/lbrytv/api"
-	"github.com/lbryio/lbrytv/app/proxy"
-
 	"github.com/gorilla/mux"
+	"github.com/lbryio/lbrytv/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -57,7 +55,7 @@ func testMetricUIEvent(t *testing.T, method, name, value string) *httptest.Respo
 	req.URL.RawQuery = q.Encode()
 
 	r := mux.NewRouter()
-	api.InstallRoutes(proxy.NewService(nil), r)
+	api.InstallRoutes(r, nil)
 	rr := httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 	return rr

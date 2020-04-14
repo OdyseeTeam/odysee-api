@@ -6,39 +6,26 @@ import (
 	"fmt"
 	"strings"
 
-	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/lbryio/lbrytv/internal/responses"
 
 	"github.com/ybbus/jsonrpc"
 )
 
 // Query is a wrapper around client JSON-RPC query for easier (un)marshaling and processing.
 type Query struct {
-	Request    *jsonrpc.RPCRequest
-	rawRequest []byte
-	walletID   string
+	Request  *jsonrpc.RPCRequest
+	WalletID string
 }
 
 // NewQuery initializes Query object with JSON-RPC request supplied as bytes.
 // The object is immediately usable and returns an error in case request parsing fails.
-func NewQuery(r []byte) (*Query, error) {
-	q := &Query{rawRequest: r, Request: &jsonrpc.RPCRequest{}}
-	err := q.unmarshal()
-	if err != nil {
-		return nil, NewJSONParseError(err)
+func NewQuery(req *jsonrpc.RPCRequest) (*Query, error) {
+	if strings.TrimSpace(req.Method) == "" {
+		return nil, errors.New("no method in request")
 	}
-	return q, nil
-}
 
-func (q *Query) unmarshal() error {
-	err := json.Unmarshal(q.rawRequest, q.Request)
-	if err != nil {
-		return err
-	}
-	if strings.TrimSpace(q.Request.Method) == "" {
-		return errors.New("invalid JSON-RPC request")
-	}
-	return nil
+	return &Query{Request: req}, nil
 }
 
 func (q *Query) validate() error {
@@ -52,15 +39,15 @@ func (q *Query) validate() error {
 		}
 	}
 
-	if !methodInList(q.Method(), relaxedMethods) {
-		if q.walletID == "" {
-			return NewInvalidParamsError(errors.New("account identifier required"))
+	if MethodNeedsAuth(q.Method()) {
+		if q.WalletID == "" {
+			return NewAuthRequiredError(errors.New(responses.AuthRequiredErrorMessage))
 		}
 		if p := q.ParamsAsMap(); p != nil {
-			p[paramWalletID] = q.walletID
+			p[paramWalletID] = q.WalletID
 			q.Request.Params = p
 		} else {
-			q.Request.Params = map[string]interface{}{paramWalletID: q.walletID}
+			q.Request.Params = map[string]interface{}{paramWalletID: q.WalletID}
 		}
 	}
 
@@ -85,11 +72,6 @@ func (q *Query) ParamsAsMap() map[string]interface{} {
 	return nil
 }
 
-// ParamsToStruct returns query params parsed into a supplied structure.
-func (q *Query) ParamsToStruct(targetStruct interface{}) error {
-	return ljsonrpc.Decode(q.Params(), targetStruct)
-}
-
 // cacheHit returns true if we got a resolve query with more than `cacheResolveLongerThan` urls in it.
 func (q *Query) isCacheable() bool {
 	if q.Method() == MethodResolve && q.Params() != nil {
@@ -110,10 +92,6 @@ func (q *Query) newResponse() *jsonrpc.RPCResponse {
 		JSONRPC: q.Request.JSONRPC,
 		ID:      q.Request.ID,
 	}
-}
-
-func (q *Query) SetWalletID(id string) {
-	q.walletID = id
 }
 
 // cacheHit returns cached response or nil in case it's a miss or query shouldn't be cacheable.
@@ -152,6 +130,10 @@ func (q *Query) predefinedResponse() *jsonrpc.RPCResponse {
 	default:
 		return nil
 	}
+}
+
+func MethodNeedsAuth(method string) bool {
+	return !methodInList(method, relaxedMethods)
 }
 
 func methodInList(method string, checkMethods []string) bool {

@@ -15,8 +15,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
+	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
@@ -41,51 +44,60 @@ type Caller struct {
 	Preprocessor func(q *Query)
 
 	client   jsonrpc.RPCClient
-	walletID string
+	userID   int
 	endpoint string
 }
 
-func NewCaller(endpoint, walletID string) *Caller {
+func NewCaller(endpoint string, userID int) *Caller {
 	return &Caller{
-		client:   jsonrpc.NewClient(endpoint),
+		client: jsonrpc.NewClientWithOpts(endpoint, &jsonrpc.RPCClientOpts{
+			HTTPClient: &http.Client{Timeout: 30 * time.Second},
+		}),
 		endpoint: endpoint,
-		walletID: walletID,
+		userID:   userID,
 	}
+}
+
+func (c *Caller) CallRaw(rawQuery []byte) []byte {
+	var req jsonrpc.RPCRequest
+	err := json.Unmarshal(rawQuery, &req)
+	if err != nil {
+		return marshalError(NewJSONParseError(err))
+	}
+	return c.Call(&req)
 }
 
 // Call method processes a raw query received from JSON-RPC client and forwards it to LbrynetServer.
 // It returns a response that is ready to be sent back to the JSON-RPC client as is.
-func (c *Caller) Call(rawQuery []byte) []byte {
-	r, err := c.call(rawQuery)
+func (c *Caller) Call(req *jsonrpc.RPCRequest) []byte {
+	r, err := c.call(req)
 	if err != nil {
-		if !isJSONParseError(err) {
-			monitor.CaptureException(err, map[string]string{"query": string(rawQuery), "response": fmt.Sprintf("%v", r)})
-			Logger.Errorf("error calling lbrynet: %v, query: %s", err, rawQuery)
-		}
+		monitor.CaptureException(err, map[string]string{"req": spew.Sdump(req), "response": fmt.Sprintf("%v", r)})
+		Logger.Errorf("error calling lbrynet: %v, request: %s", err, spew.Sdump(req))
 		return marshalError(err)
 	}
 
-	serialized, err := marshalResponse(r)
+	serialized, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		monitor.CaptureException(err)
 		Logger.Errorf("error marshaling response: %v", err)
-		return marshalError(err)
+		return marshalError(NewInternalError(err))
 	}
 
 	return serialized
 }
 
-func (c *Caller) call(rawQuery []byte) (*jsonrpc.RPCResponse, error) {
-	q, err := NewQuery(rawQuery)
+func (c *Caller) call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
+	q, err := NewQuery(req)
 	if err != nil {
 		return nil, err
 	}
 
-	if c.walletID != "" {
-		q.SetWalletID(c.walletID)
+	if c.userID != 0 {
+		q.WalletID = sdkrouter.WalletID(c.userID)
 	}
 
-	// Check for account identifier (wallet ID) for account-specific methods happens here
+	// Check for auth for account-specific methods happens here
 	if err := q.validate(); err != nil {
 		return nil, err
 	}
@@ -147,19 +159,19 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 			time.Sleep(walletLoadRetryWait)
 			// Using LBRY JSON-RPC client here for easier request/response processing
 			client := ljsonrpc.NewClient(c.endpoint)
-			_, err := client.WalletAdd(c.walletID)
+			_, err := client.WalletAdd(sdkrouter.WalletID(c.userID))
 			// Alert sentry on the last failed wallet load attempt
 			if err != nil && i >= walletLoadRetries-1 {
 				errMsg := "gave up on manually adding a wallet: %v"
 				Logger.Logger().WithFields(logrus.Fields{
-					"wallet_id": c.walletID,
-					"endpoint":  c.endpoint,
+					"user_id":  c.userID,
+					"endpoint": c.endpoint,
 				}).Errorf(errMsg, err)
 				monitor.CaptureException(
 					fmt.Errorf(errMsg, err), map[string]string{
-						"wallet_id": c.walletID,
-						"endpoint":  c.endpoint,
-						"retries":   fmt.Sprintf("%v", i),
+						"user_id":  fmt.Sprintf("%d", c.userID),
+						"endpoint": c.endpoint,
+						"retries":  fmt.Sprintf("%d", i),
 					})
 			}
 		} else if isErrWalletAlreadyLoaded(r) {
@@ -170,21 +182,13 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 	}
 
 	if (r != nil && r.Error != nil) || err != nil {
-		Logger.LogFailedQuery(q.Method(), c.endpoint, c.walletID, duration, q.Params(), r.Error)
+		Logger.LogFailedQuery(q.Method(), c.endpoint, c.userID, duration, q.Params(), r.Error)
 		failureMetrics.Observe(duration)
 	} else {
-		Logger.LogSuccessfulQuery(q.Method(), c.endpoint, c.walletID, duration, q.Params(), r)
+		Logger.LogSuccessfulQuery(q.Method(), c.endpoint, c.userID, duration, q.Params(), r)
 	}
 
 	return r, err
-}
-
-func marshalResponse(r *jsonrpc.RPCResponse) ([]byte, error) {
-	serialized, err := json.MarshalIndent(r, "", "  ")
-	if err != nil {
-		return nil, NewInternalError(err)
-	}
-	return serialized, nil
 }
 
 func marshalError(err error) []byte {

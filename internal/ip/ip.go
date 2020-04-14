@@ -1,4 +1,4 @@
-package users
+package ip
 
 import (
 	"bytes"
@@ -67,28 +67,28 @@ func IsPrivateSubnet(ipAddress net.IP) bool {
 }
 
 // GetIPAddressForRequest returns the real IP address of the request
-func GetIPAddressForRequest(r *http.Request) string {
+func AddressForRequest(r *http.Request) string {
 	for _, h := range []string{"X-Forwarded-For", "X-Real-Ip"} {
 		addresses := strings.Split(r.Header.Get(h), ",")
 		// march from right to left until we get a public address
 		// that will be the address right before our proxy.
 		for i := len(addresses) - 1; i >= 0; i-- {
-			ip := strings.TrimSpace(addresses[i])
+			addr := strings.TrimSpace(addresses[i])
 			// header can contain spaces too, strip those out.
-			realIP := net.ParseIP(ip)
+			realIP := net.ParseIP(addr)
 			if !realIP.IsGlobalUnicast() || IsPrivateSubnet(realIP) {
 				// bad address, go to next
 				continue
 			}
-			return ip
+			return addr
 		}
 	}
 
 	ipParts := strings.Split(r.RemoteAddr, ":")
-	ip := strings.Join(ipParts[:len(ipParts)-1], ":")
+	addr := strings.Join(ipParts[:len(ipParts)-1], ":")
 
-	if ip == "[::1]" {
+	if addr == "[::1]" {
 		return "127.0.0.1"
 	}
-	return ip
+	return addr
 }
