@@ -119,7 +119,7 @@ func TestCallerCallRelaxedMethods(t *testing.T) {
 			if m == MethodStatus {
 				return
 			}
-			srv.NextResponse <- ""
+			srv.RespondWithNothing()
 			caller.Call(jsonrpc.NewRequest(m))
 			receivedRequest := <-reqChan
 			expectedRequest := test.ReqToStr(t, jsonrpc.RPCRequest{
@@ -153,7 +153,7 @@ func TestCallerCallAttachesWalletID(t *testing.T) {
 	reqChan := test.ReqChan()
 	srv := test.MockHTTPServer(reqChan)
 	defer srv.Close()
-	srv.NextResponse <- ""
+	srv.RespondWithNothing()
 	caller := NewCaller(srv.URL, dummyUserID)
 	caller.Call(jsonrpc.NewRequest("channel_create", map[string]interface{}{"name": "test", "bid": "0.1"}))
 	receivedRequest := <-reqChan
@@ -187,7 +187,7 @@ func TestCallerSetPreprocessor(t *testing.T) {
 		}
 	}
 
-	srv.NextResponse <- ""
+	srv.RespondWithNothing()
 
 	c.Call(jsonrpc.NewRequest(relaxedMethods[0]))
 	req := <-reqChan

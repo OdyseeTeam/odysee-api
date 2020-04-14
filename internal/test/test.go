@@ -17,6 +17,8 @@ type MockServer struct {
 	NextResponse chan<- string
 }
 
+func (m *MockServer) RespondWithNothing() { m.NextResponse <- "" }
+
 type Request struct {
 	R    *http.Request
 	W    http.ResponseWriter

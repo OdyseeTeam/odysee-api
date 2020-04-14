@@ -55,7 +55,7 @@ func TestClientCallDoesNotReloadWalletAfterOtherErrors(t *testing.T) {
 				Message: "Couldn't find wallet: //",
 			},
 		})
-		srv.NextResponse <- "" // for the wallet_add call
+		srv.RespondWithNothing() // for the wallet_add call
 		srv.NextResponse <- test.ResToStr(t, jsonrpc.RPCResponse{
 			JSONRPC: "2.0",
 			Error: &jsonrpc.RPCError{
@@ -88,7 +88,7 @@ func TestClientCallDoesNotReloadWalletIfAlreadyLoaded(t *testing.T) {
 				Message: "Couldn't find wallet: //",
 			},
 		})
-		srv.NextResponse <- "" // for the wallet_add call
+		srv.RespondWithNothing() // for the wallet_add call
 		srv.NextResponse <- test.ResToStr(t, jsonrpc.RPCResponse{
 			JSONRPC: "2.0",
 			Error: &jsonrpc.RPCError{
