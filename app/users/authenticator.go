@@ -36,9 +36,10 @@ func (a *Authenticator) GetWalletID(r *http.Request) (string, error) {
 		u, err := a.retriever.Retrieve(Query{Token: token[0], MetaRemoteIP: ip})
 		log := logger.LogF(monitor.F{"ip": ip})
 		if err != nil {
-			log.Debugf("failed to authenticate user")
+			logger.LogF(monitor.F{"ip": ip}).Errorf("failed to authenticate user: %v", err)
 			return "", err
 		} else if u != nil {
+			logger.LogF(monitor.F{"ip": ip, "user_id": u.ID}).Infof("user authenticated")
 			return u.WalletID, nil
 		}
 	}
