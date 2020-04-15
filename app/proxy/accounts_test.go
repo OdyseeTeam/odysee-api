@@ -9,10 +9,8 @@ import (
 
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/test"
-	"github.com/lbryio/lbrytv/models"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
@@ -40,13 +38,8 @@ func TestWithWrongAuthToken(t *testing.T) {
 	r.Header.Add("X-Lbry-Auth-Token", "xXxXxXx")
 
 	rr := httptest.NewRecorder()
-
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	retriever := func(token, ip string) (*models.User, error) {
-		return wallet.GetUserWithWallet(rt, ts.URL, token, "")
-	}
-
-	handler := sdkrouter.Middleware(rt)(auth.Middleware(retriever)(http.HandlerFunc(Handle)))
+	handler := sdkrouter.Middleware(rt)(auth.Middleware(auth.WalletAndInternalAPIProvider(rt, ts.URL))(http.HandlerFunc(Handle)))
 	handler.ServeHTTP(rr, r)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -65,7 +58,6 @@ func TestWithoutToken(t *testing.T) {
 	require.NoError(t, err)
 
 	rr := httptest.NewRecorder()
-
 	rt := sdkrouter.New(config.GetLbrynetServers())
 	handler := sdkrouter.Middleware(rt)(http.HandlerFunc(Handle))
 	handler.ServeHTTP(rr, r)
@@ -92,12 +84,11 @@ func TestAccountSpecificWithoutToken(t *testing.T) {
 	require.NoError(t, err)
 
 	rr := httptest.NewRecorder()
-
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	retriever := func(token, ip string) (*models.User, error) {
-		return nil, nil
+	provider := func(token, ip string) auth.Result {
+		return auth.NewResult(nil, nil)
 	}
-	handler := sdkrouter.Middleware(rt)(auth.Middleware(retriever)(http.HandlerFunc(Handle)))
+	handler := sdkrouter.Middleware(rt)(auth.Middleware(provider)(http.HandlerFunc(Handle)))
 	handler.ServeHTTP(rr, r)
 
 	require.Equal(t, http.StatusOK, rr.Code)

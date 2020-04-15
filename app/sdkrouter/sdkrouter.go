@@ -1,13 +1,9 @@
 package sdkrouter
 
 import (
-	"database/sql"
-	"errors"
 	"fmt"
 	"math/rand"
-	"regexp"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
 
@@ -16,9 +12,6 @@ import (
 	"github.com/lbryio/lbrytv/models"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
-
-	"github.com/volatiletech/sqlboiler/boil"
-	"github.com/volatiletech/sqlboiler/queries/qm"
 )
 
 var logger = monitor.NewModuleLogger("sdkrouter")
@@ -34,7 +27,6 @@ type Router struct {
 
 	useDB      bool
 	lastLoaded time.Time
-	rpcClient  *ljsonrpc.Client
 }
 
 func New(servers map[string]string) *Router {
@@ -61,55 +53,6 @@ func (r *Router) GetAll() []*models.LbrynetServer {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.servers
-}
-
-func (r *Router) GetServer(userID int) *models.LbrynetServer {
-	r.reloadServersFromDB()
-
-	var sdk *models.LbrynetServer
-	if userID == 0 {
-		sdk = r.RandomServer()
-	} else {
-		sdk = r.serverForUser(userID)
-		if sdk.Address == "" {
-			logger.Log().Errorf("user %d has server but server has no address.", userID)
-			sdk = r.RandomServer()
-		}
-	}
-
-	logger.Log().Tracef("Using server %s for user %d", sdk.Address, userID)
-	return sdk
-}
-
-func (r *Router) serverForUser(userID int) *models.LbrynetServer {
-	var user *models.User
-	var err error
-	if boil.GetDB() != nil {
-		user, err = models.Users(qm.Load(models.UserRels.LbrynetServer), models.UserWhere.ID.EQ(userID)).OneG()
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			logger.Log().Errorf("Error getting user %d from db: %v", userID, err.Error())
-		}
-	}
-
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	if user == nil || user.R == nil || user.R.LbrynetServer == nil {
-		srv := r.servers[getServerForUserID(userID, len(r.servers))]
-		logger.Log().Debugf("User %d has no server assigned in db. Giving them server %s", userID, srv.Address)
-		return srv
-	}
-
-	for _, s := range r.servers {
-		if s.ID == user.R.LbrynetServer.ID {
-			logger.Log().Debugf("User %d has server %s assigned in db", userID, s.Address)
-			return s
-		}
-	}
-
-	srv := r.servers[getServerForUserID(userID, len(r.servers))]
-	logger.Log().Errorf("User %d has server assigned in db but is not in current servers list. Giving them server %s", userID, srv.Address)
-	return srv
 }
 
 func (r *Router) RandomServer() *models.LbrynetServer {
@@ -174,7 +117,7 @@ func (r *Router) updateLoadAndMetrics() {
 			delete(r.load, server)
 			r.loadMu.Unlock()
 			metric.Set(-1.0)
-			// TODO: maybe mark this instance as unresponsive so new traffic is routed to other instances
+			// TODO: maybe mark this instance as unresponsive so new users are assigned to other instances
 		} else {
 			r.loadMu.Lock()
 			r.load[server] = walletList.TotalPages
@@ -196,7 +139,7 @@ func (r *Router) LeastLoaded() *models.LbrynetServer {
 
 	if len(r.load) == 0 {
 		// updateLoadAndMetrics() was never run, so return a random server
-		logger.Log().Debugf("LeastLoaded() called before updating load metrics. Returning random server.")
+		logger.Log().Warnf("LeastLoaded() called before updating load metrics. Returning random server.")
 		return r.RandomServer()
 	}
 
@@ -210,25 +153,9 @@ func (r *Router) LeastLoaded() *models.LbrynetServer {
 	return best
 }
 
-func (r *Router) Client(userID int) *ljsonrpc.Client {
-	c := ljsonrpc.NewClient(r.GetServer(userID).Address)
-	//c.SetRPCTimeout(5 * time.Second)
-	return c
-}
-
 // WalletID formats user ID to use as an LbrynetServer wallet ID.
 func WalletID(userID int) string {
-	return fmt.Sprintf("lbrytv-id.%d.wallet", userID)
-}
-
-func UserID(walletID string) int {
-	userID, err := strconv.ParseInt(regexp.MustCompile(`\d+`).FindString(walletID), 10, 64)
-	if err != nil {
-		return 0
-	}
-	return int(userID)
-}
-
-func getServerForUserID(userID, numServers int) int {
-	return userID % numServers
+	// warning: changing this template will require renaming the stored wallet files in lbrytv
+	const template = "lbrytv-id.%d.wallet"
+	return fmt.Sprintf(template, userID)
 }

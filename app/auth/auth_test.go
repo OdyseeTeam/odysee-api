@@ -24,16 +24,16 @@ func TestMiddleware(t *testing.T) {
 	r.Header.Set("X-Forwarded-For", "8.8.8.8")
 
 	var receivedRemoteIP string
-	retriever := func(token, ip string) (*models.User, error) {
+	provider := func(token, ip string) Result {
 		receivedRemoteIP = ip
 		if token == "secret-token" {
-			return &models.User{ID: 16595}, nil
+			return NewResult(&models.User{ID: 16595}, nil)
 		}
-		return nil, errors.New("error")
+		return NewResult(nil, errors.New("error"))
 	}
 
 	rr := httptest.NewRecorder()
-	Middleware(retriever)(http.HandlerFunc(authChecker)).ServeHTTP(rr, r)
+	Middleware(provider)(http.HandlerFunc(authChecker)).ServeHTTP(rr, r)
 
 	response := rr.Result()
 	body, err := ioutil.ReadAll(response.Body)
@@ -48,13 +48,13 @@ func TestMiddlewareAuthFailure(t *testing.T) {
 	r.Header.Set(wallet.TokenHeader, "wrong-token")
 	rr := httptest.NewRecorder()
 
-	retriever := func(token, ip string) (*models.User, error) {
+	provider := func(token, ip string) Result {
 		if token == "good-token" {
-			return &models.User{ID: 1}, nil
+			return NewResult(&models.User{ID: 1}, nil)
 		}
-		return nil, errors.New("incorrect token")
+		return NewResult(nil, errors.New("incorrect token"))
 	}
-	Middleware(retriever)(http.HandlerFunc(authChecker)).ServeHTTP(rr, r)
+	Middleware(provider)(http.HandlerFunc(authChecker)).ServeHTTP(rr, r)
 
 	response := rr.Result()
 	body, err := ioutil.ReadAll(response.Body)
@@ -68,13 +68,13 @@ func TestMiddlewareNoAuth(t *testing.T) {
 	require.NoError(t, err)
 	rr := httptest.NewRecorder()
 
-	retriever := func(token, ip string) (*models.User, error) {
+	provider := func(token, ip string) Result {
 		if token == "good-token" {
-			return &models.User{ID: 1}, nil
+			return NewResult(&models.User{ID: 1}, nil)
 		}
-		return nil, errors.New("incorrect token")
+		return NewResult(nil, errors.New("incorrect token"))
 	}
-	Middleware(retriever)(http.HandlerFunc(authChecker)).ServeHTTP(rr, r)
+	Middleware(provider)(http.HandlerFunc(authChecker)).ServeHTTP(rr, r)
 
 	response := rr.Result()
 	body, err := ioutil.ReadAll(response.Body)
@@ -84,7 +84,7 @@ func TestMiddlewareNoAuth(t *testing.T) {
 }
 
 func TestFromRequestSuccess(t *testing.T) {
-	expected := &Result{Err: errors.New("a test")}
+	expected := NewResult(nil, errors.New("a test"))
 	ctx := context.WithValue(context.Background(), ContextKey, expected)
 
 	r, err := http.NewRequestWithContext(ctx, http.MethodPost, "", &bytes.Buffer{})
@@ -92,8 +92,9 @@ func TestFromRequestSuccess(t *testing.T) {
 
 	results := FromRequest(r)
 	assert.NotNil(t, results)
-	assert.Equal(t, expected.User, results.User)
-	assert.Equal(t, expected.Err.Error(), results.Err.Error())
+	assert.Equal(t, expected.user, results.user)
+	assert.Equal(t, expected.err.Error(), results.err.Error())
+	assert.False(t, results.AuthAttempted())
 }
 
 func TestFromRequestFail(t *testing.T) {
@@ -104,14 +105,23 @@ func TestFromRequestFail(t *testing.T) {
 
 func authChecker(w http.ResponseWriter, r *http.Request) {
 	result := FromRequest(r)
-	if result.Authenticated() {
-		w.WriteHeader(http.StatusAccepted)
-		w.Write([]byte(fmt.Sprintf("%d", result.User.ID)))
-	} else if result.AuthFailed() {
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(result.Err.Error()))
-	} else {
+	if result.user != nil && result.err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("this should never happen"))
+		return
+	}
+
+	if !result.AuthAttempted() {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("no auth info"))
+	} else if result.Authenticated() {
+		w.WriteHeader(http.StatusAccepted)
+		w.Write([]byte(fmt.Sprintf("%d", result.user.ID)))
+	} else if result.Err() != nil {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(result.Err().Error()))
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("no user and no error. what happened?"))
 	}
 }

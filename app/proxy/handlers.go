@@ -43,6 +43,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var userID int
+	var sdkAddress string
 	if MethodNeedsAuth(req.Method) {
 		authResult := auth.FromRequest(r)
 		if !authResult.AuthAttempted() {
@@ -50,14 +51,20 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !authResult.Authenticated() {
-			w.Write(NewForbiddenError(authResult.Err).JSON())
+			w.Write(NewForbiddenError(authResult.Err()).JSON())
 			return
 		}
-		userID = authResult.User.ID
+		userID = authResult.User().ID
+		sdkAddress = authResult.SDKAddress
 	}
 
 	rt := sdkrouter.FromRequest(r)
-	c := NewCaller(rt.GetServer(userID).Address, userID)
+
+	if sdkAddress == "" {
+		sdkAddress = rt.RandomServer().Address
+	}
+
+	c := NewCaller(sdkAddress, userID)
 	w.Write(c.Call(&req))
 }
 

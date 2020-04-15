@@ -10,6 +10,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
+	"github.com/volatiletech/sqlboiler/queries/qm"
 
 	"github.com/lib/pq"
 	pkgerrors "github.com/pkg/errors"
@@ -48,8 +49,7 @@ func GetUserWithWallet(rt *sdkrouter.Router, internalAPIHost, token, metaRemoteI
 		return nil, err
 	}
 
-	if localUser.WalletID == "" {
-		log := logger.LogF(monitor.F{monitor.TokenF: token})
+	if localUser.LbrynetServerID.IsZero() {
 		err := assignSDKServerToUser(localUser, rt, log)
 		if err != nil {
 			return nil, err
@@ -69,9 +69,9 @@ func getOrCreateLocalUser(remoteUserID int, log *logrus.Entry) (*models.User, er
 		if err != nil {
 			return nil, err
 		}
-	} else if localUser.WalletID == "" {
-		// This scenario may happen for legacy users who are present in the database but don't have a wallet yet
-		log.Warnf("user %d doesn't have wallet ID set", localUser.ID)
+	} else if localUser.LbrynetServerID.IsZero() {
+		// This scenario may happen for legacy users who are present in the database but don't have a server assigned
+		log.Warnf("user %d found in db but doesn't have sdk assigned", localUser.ID)
 	}
 
 	return localUser, nil
@@ -82,18 +82,17 @@ func assignSDKServerToUser(user *models.User, router *sdkrouter.Router, log *log
 	if server.ID > 0 { // Ensure server is from DB
 		user.LbrynetServerID.SetValid(server.ID)
 	} else {
-		// THIS SERVER CAME FROM A CONFIG FILE (prolly for testing)
+		// THIS SERVER CAME FROM A CONFIG FILE (prolly during testing)
 		// TODO: handle this case better
-		//return fmt.Errorf("user %d is getting a wallet server with no ID", user.ID)
+		log.Warnf("user %d is getting an sdk with no ID. could happen if servers came from config file", user.ID)
 	}
 
-	walletID, err := Create(server.Address, user.ID)
+	err := Create(server.Address, user.ID)
 	if err != nil {
 		return err
 	}
 
 	log.Infof("assigning sdk %s to user %d", server.Address, user.ID)
-	user.WalletID = walletID
 	_, err = user.UpdateG(boil.Infer())
 	return err
 }
@@ -122,41 +121,43 @@ func createDBUser(id int) (*models.User, error) {
 }
 
 func getDBUser(id int) (*models.User, error) {
-	return models.Users(models.UserWhere.ID.EQ(id)).OneG()
+	return models.Users(
+		models.UserWhere.ID.EQ(id),
+		qm.Load(models.UserRels.LbrynetServer),
+	).OneG()
 }
 
 // Create creates a wallet on an sdk that can be immediately used in subsequent commands.
 // It can recover from errors like existing wallets, but if a wallet is known to exist
 // (eg. a wallet ID stored in the database already), loadWallet() should be called instead.
-func Create(serverAddress string, userID int) (string, error) {
-	wallet, err := createWallet(serverAddress, userID)
+func Create(serverAddress string, userID int) error {
+	err := createWallet(serverAddress, userID)
 	if err == nil {
-		return wallet.ID, nil
+		return nil
 	}
 
-	walletID := sdkrouter.WalletID(userID)
 	log := logger.LogF(monitor.F{"user_id": userID, "sdk": serverAddress})
 
 	if errors.Is(err, lbrynet.ErrWalletExists) {
 		log.Warn(err.Error())
-		return walletID, nil
+		return nil
 	}
 
 	if errors.Is(err, lbrynet.ErrWalletNeedsLoading) {
 		log.Info(err.Error())
-		wallet, err = loadWallet(serverAddress, userID)
+		err = loadWallet(serverAddress, userID)
 		if err != nil {
 			if errors.Is(err, lbrynet.ErrWalletAlreadyLoaded) {
 				log.Info(err.Error())
-				return walletID, nil
+				return nil
 			}
-			return "", err
+			return err
 		}
-		return wallet.ID, nil
+		return nil
 	}
 
 	log.Errorf("don't know how to recover from error: %v", err)
-	return "", err
+	return err
 }
 
 // createWallet creates a new wallet on the LbrynetServer.
@@ -169,27 +170,27 @@ func Create(serverAddress string, userID int) (string, error) {
 // 	if errors.Is(err, lbrynet.WalletNeedsLoading) {
 // 	 // loadWallet() needs to be called before the wallet can be used
 //  }
-func createWallet(addr string, userID int) (*ljsonrpc.Wallet, error) {
-	wallet, err := ljsonrpc.NewClient(addr).WalletCreate(sdkrouter.WalletID(userID), &ljsonrpc.WalletCreateOpts{
+func createWallet(addr string, userID int) error {
+	_, err := ljsonrpc.NewClient(addr).WalletCreate(sdkrouter.WalletID(userID), &ljsonrpc.WalletCreateOpts{
 		SkipOnStartup: true, CreateAccount: true, SingleKey: true})
 	if err != nil {
-		return nil, lbrynet.NewWalletError(userID, err)
+		return lbrynet.NewWalletError(userID, err)
 	}
 	logger.LogF(monitor.F{"user_id": userID, "sdk": addr}).Info("wallet created")
-	return wallet, nil
+	return nil
 }
 
 // loadWallet loads an existing wallet in the LbrynetServer.
 // May return errors:
 //  WalletAlreadyLoaded - wallet is already loaded and operational
 //  WalletNotFound - wallet file does not exist and won't be loaded.
-func loadWallet(addr string, userID int) (*ljsonrpc.Wallet, error) {
-	wallet, err := ljsonrpc.NewClient(addr).WalletAdd(sdkrouter.WalletID(userID))
+func loadWallet(addr string, userID int) error {
+	_, err := ljsonrpc.NewClient(addr).WalletAdd(sdkrouter.WalletID(userID))
 	if err != nil {
-		return nil, lbrynet.NewWalletError(userID, err)
+		return lbrynet.NewWalletError(userID, err)
 	}
 	logger.LogF(monitor.F{"user_id": userID, "sdk": addr}).Info("wallet loaded")
-	return wallet, nil
+	return nil
 }
 
 // UnloadWallet unloads an existing wallet from the LbrynetServer.

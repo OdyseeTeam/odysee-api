@@ -8,13 +8,10 @@ import (
 	"path"
 	"testing"
 
-	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/test"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,9 +24,6 @@ func copyToDocker(t *testing.T, fileName string) {
 }
 
 func TestLbrynetPublisher(t *testing.T) {
-	// dummyUserID := 751365
-	authToken := "zzz"
-
 	dbConfig := config.GetDatabase()
 	params := storage.ConnParams{
 		Connection: dbConfig.Connection,
@@ -39,27 +33,6 @@ func TestLbrynetPublisher(t *testing.T) {
 	c, connCleanup := storage.CreateTestConn(params)
 	c.SetDefaultConnection()
 	defer connCleanup()
-
-	reqChan := test.ReqChan()
-	ts := test.MockHTTPServer(reqChan)
-	defer ts.Close()
-	go func() {
-		req := <-reqChan
-		responses.AddJSONContentType(req.W)
-		ts.NextResponse <- fmt.Sprintf(`{
-			"success": true,
-			"error": null,
-			"data": {
-			  "user_id": %v,
-			  "has_verified_email": true
-			}
-		}`, 751365)
-	}()
-
-	rt := sdkrouter.New(config.GetLbrynetServers())
-	p := &LbrynetPublisher{rt}
-	u, err := wallet.GetUserWithWallet(rt, ts.URL, authToken, "")
-	require.NoError(t, err)
 
 	data := []byte("test file")
 	f, err := ioutil.TempFile(os.TempDir(), "*")
@@ -92,7 +65,12 @@ func TestLbrynetPublisher(t *testing.T) {
 		"id": 1567580184168
 	}`)
 
-	rawResp := p.Publish(path.Join("/storage", path.Base(f.Name())), u.ID, query)
+	userID := 751365
+	server := test.RandServerAddress(t)
+	err = wallet.Create(server, userID)
+	require.NoError(t, err)
+
+	rawResp := publish(server, path.Join("/storage", path.Base(f.Name())), userID, query)
 
 	// This is all we can check for now without running on testnet or crediting some funds to the test account
 	assert.Regexp(t, "Not enough funds to cover this transaction", string(rawResp))

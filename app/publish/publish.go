@@ -11,7 +11,6 @@ import (
 
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/proxy"
-	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
 
@@ -29,35 +28,9 @@ const (
 	fileNameParam = "file_path"
 )
 
-// Publisher is responsible for sending data to lbrynet
-// and should take file path, account ID and client query as a slice of bytes.
-type Publisher interface {
-	Publish(filePath string, userID int, query []byte) []byte
-}
-
-// LbrynetPublisher is an implementation of SDK publisher.
-type LbrynetPublisher struct {
-	Router *sdkrouter.Router
-}
-
-// Publish takes a file path, account ID and client JSON-RPC query,
-// patches the query and sends it to the SDK for processing.
-// Resulting response is then returned back as a slice of bytes.
-func (p *LbrynetPublisher) Publish(filePath string, userID int, rawQuery []byte) []byte {
-	c := proxy.NewCaller(p.Router.GetServer(userID).Address, userID)
-	c.Preprocessor = func(q *proxy.Query) {
-		params := q.ParamsAsMap()
-		params[fileNameParam] = filePath
-		q.Request.Params = params
-	}
-	return c.CallRaw(rawQuery)
-}
-
-// Handler glues HTTP uploads to the Publisher.
+// Handler has path to save uploads to
 type Handler struct {
-	Publisher       Publisher
-	UploadPath      string
-	InternalAPIHost string
+	UploadPath string
 }
 
 // Handle is where HTTP upload is handled and passed on to Publisher.
@@ -73,25 +46,39 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !authResult.Authenticated() {
-		w.Write(proxy.NewForbiddenError(authResult.Err).JSON())
+		w.Write(proxy.NewForbiddenError(authResult.Err()).JSON())
+		return
+	}
+	if authResult.SDKAddress == "" {
+		w.Write(proxy.NewInternalError(errors.New("user does not have sdk address assigned")).JSON())
+		logger.Log().Errorf("user %d does not have sdk address assigned", authResult.User().ID)
 		return
 	}
 
-	f, err := h.saveFile(r, authResult.User.ID)
+	f, err := h.saveFile(r, authResult.User().ID)
 	if err != nil {
 		logger.Log().Error(err)
 		monitor.CaptureException(err)
 		w.Write(proxy.NewInternalError(err).JSON())
 		return
 	}
+	defer func() {
+		if err := os.Remove(f.Name()); err != nil {
+			monitor.CaptureException(err, map[string]string{"file_path": f.Name()})
+		}
+	}()
 
-	response := h.Publisher.Publish(f.Name(), authResult.User.ID, []byte(r.FormValue(jsonRPCFieldName)))
+	w.Write(publish(authResult.SDKAddress, f.Name(), authResult.User().ID, []byte(r.FormValue(jsonRPCFieldName))))
+}
 
-	if err := os.Remove(f.Name()); err != nil {
-		monitor.CaptureException(err, map[string]string{"file_path": f.Name()})
+func publish(sdkAddress, filename string, userID int, rawQuery []byte) []byte {
+	c := proxy.NewCaller(sdkAddress, userID)
+	c.Preprocessor = func(q *proxy.Query) {
+		params := q.ParamsAsMap()
+		params[fileNameParam] = filename
+		q.Request.Params = params
 	}
-
-	w.Write(response)
+	return c.CallRaw(rawQuery)
 }
 
 // CanHandle checks if http.Request contains POSTed data in an accepted format.

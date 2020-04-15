@@ -18,14 +18,14 @@ func TestClientCallDoesReloadWallet(t *testing.T) {
 	dummyUserID := rand.Intn(100)
 	addr := test.RandServerAddress(t)
 
-	walletID, err := wallet.Create(addr, dummyUserID)
+	err := wallet.Create(addr, dummyUserID)
 	require.NoError(t, err)
 	err = wallet.UnloadWallet(addr, dummyUserID)
 	require.NoError(t, err)
 
 	q, err := NewQuery(jsonrpc.NewRequest("wallet_balance"))
 	require.NoError(t, err)
-	q.WalletID = walletID
+	q.WalletID = sdkrouter.WalletID(dummyUserID)
 
 	c := NewCaller(addr, dummyUserID)
 	r, err := c.callQueryWithRetry(q)

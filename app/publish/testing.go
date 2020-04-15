@@ -35,8 +35,31 @@ func CreatePublishRequest(t *testing.T, data []byte) *http.Request {
 	return req
 }
 
+var expectedStreamCreateRequest = `
+{
+    "id": 1567580184168,
+    "jsonrpc": "2.0",
+    "method": "stream_create",
+    "params": {
+        "name": "test",
+        "title": "test",
+        "description": "test description",
+        "bid": "0.10000000",
+        "languages": [
+            "en"
+        ],
+        "tags": [],
+        "thumbnail_url": "http://smallmedia.com/thumbnail.jpg",
+        "license": "None",
+        "release_time": 1567580184,
+		"wallet_id": "%s",
+        "file_path": "%s"
+    }
+}`
+
 var expectedStreamCreateResponse = `
 {
+	"id": 0,
 	"jsonrpc": "2.0",
 	"result": {
 	  "height": -2,
@@ -158,25 +181,3 @@ var expectedStreamCreateResponse = `
 	}
   }
 `
-
-var expectedStreamCreateRequest = `
-{
-    "jsonrpc": "2.0",
-    "method": "stream_create",
-    "params": {
-        "name": "test",
-        "title": "test",
-        "description": "test description",
-        "bid": "0.10000000",
-        "languages": [
-            "en"
-        ],
-        "tags": [],
-        "thumbnail_url": "http://smallmedia.com/thumbnail.jpg",
-        "license": "None",
-        "release_time": 1567580184,
-        "file_path": "/Users/silence/Desktop/tenor.gif"
-    },
-    "id": 1567580184168
-}
-  `

@@ -16,7 +16,6 @@ import (
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/test"
 	"github.com/lbryio/lbrytv/models"
-
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,7 +43,7 @@ func setupDBTables() {
 	storage.Conn.Truncate([]string{"users"})
 }
 
-func dummyAPI(rt *sdkrouter.Router) (string, func()) {
+func dummyAPI(sdkAddress string) (string, func()) {
 	reqChan := test.ReqChan()
 	ts := test.MockHTTPServer(reqChan)
 	go func() {
@@ -55,7 +54,7 @@ func dummyAPI(rt *sdkrouter.Router) (string, func()) {
 				"success": true,
 				"error": null,
 				"data": {
-				  "user_id": %v,
+				  "user_id": %d,
 				  "has_verified_email": true
 				}
 			}`, dummyUserID)
@@ -64,29 +63,48 @@ func dummyAPI(rt *sdkrouter.Router) (string, func()) {
 
 	return ts.URL, func() {
 		ts.Close()
-		UnloadWallet(rt.GetServer(dummyUserID).Address, dummyUserID)
+		UnloadWallet(sdkAddress, dummyUserID)
 	}
 }
 
 func TestWalletServiceRetrieveNewUser(t *testing.T) {
-	rt := sdkrouter.New(config.GetLbrynetServers())
+	srv := test.RandServerAddress(t)
+	rt := sdkrouter.New(map[string]string{"a": srv})
 	setupDBTables()
-	url, cleanup := dummyAPI(rt)
+	url, cleanup := dummyAPI(srv)
 	defer cleanup()
 
-	wid := sdkrouter.WalletID(dummyUserID)
 	u, err := GetUserWithWallet(rt, url, "abc", "")
 	require.NoError(t, err, errors.Unwrap(err))
 	require.NotNil(t, u)
-	require.Equal(t, wid, u.WalletID)
 
 	count, err := models.Users(models.UserWhere.ID.EQ(u.ID)).CountG()
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, count)
+	assert.True(t, u.LbrynetServerID.IsZero()) // because the server came from a config, it should not have an id set
 
-	u, err = GetUserWithWallet(rt, url, "abc", "")
+	// now assign the user a new server thats set in the db
+	//      rand.Intn(99999),
+	sdk := &models.LbrynetServer{
+		Name:    "testing",
+		Address: "test.test.test.test",
+	}
+	err = u.SetLbrynetServerG(true, sdk)
+	require.NoError(t, err)
+	require.NotEqual(t, 0, sdk.ID)
+	require.Equal(t, u.LbrynetServerID.Int, sdk.ID)
+
+	// now fetch it all back from the db
+
+	u2, err := GetUserWithWallet(rt, url, "abc", "")
 	require.NoError(t, err, errors.Unwrap(err))
-	require.Equal(t, wid, u.WalletID)
+	require.NotNil(t, u2)
+
+	sdk2, err := u.LbrynetServer().OneG()
+	require.NoError(t, err)
+	require.Equal(t, sdk.ID, sdk2.ID)
+	require.Equal(t, sdk.Address, sdk2.Address)
+	require.Equal(t, u.LbrynetServerID.Int, sdk2.ID)
 }
 
 func TestWalletServiceRetrieveNonexistentUser(t *testing.T) {
@@ -108,9 +126,10 @@ func TestWalletServiceRetrieveNonexistentUser(t *testing.T) {
 }
 
 func TestWalletServiceRetrieveExistingUser(t *testing.T) {
-	rt := sdkrouter.New(config.GetLbrynetServers())
+	srv := test.RandServerAddress(t)
+	rt := sdkrouter.New(map[string]string{"a": srv})
 	setupDBTables()
-	url, cleanup := dummyAPI(rt)
+	url, cleanup := dummyAPI(srv)
 	defer cleanup()
 
 	u, err := GetUserWithWallet(rt, url, "abc", "")
@@ -126,7 +145,7 @@ func TestWalletServiceRetrieveExistingUser(t *testing.T) {
 	assert.EqualValues(t, 1, count)
 }
 
-func TestWalletServiceRetrieveExistingUserMissingWalletID(t *testing.T) {
+func TestGetUserWithWallet_ExistingUserWithSDKGetsAssignedOneOnRetrieve(t *testing.T) {
 	setupDBTables()
 
 	userID := int(rand.Int31())
@@ -141,7 +160,7 @@ func TestWalletServiceRetrieveExistingUserMissingWalletID(t *testing.T) {
 			"success": true,
 			"error": null,
 			"data": {
-			  "user_id": %v,
+			  "user_id": %d,
 			  "has_verified_email": true
 			}
 		}`, userID)
@@ -154,7 +173,7 @@ func TestWalletServiceRetrieveExistingUserMissingWalletID(t *testing.T) {
 
 	u, err = GetUserWithWallet(rt, ts.URL, "abc", "")
 	require.NoError(t, err)
-	assert.NotEqual(t, "", u.WalletID)
+	assert.NotEqual(t, "", u.LbrynetServerID)
 }
 
 func TestWalletServiceRetrieveNoVerifiedEmail(t *testing.T) {
@@ -230,21 +249,23 @@ func BenchmarkWalletCommands(b *testing.B) {
 	b.StopTimer()
 }
 
+func TestCreate_CorrectWalletID(t *testing.T) {
+	// test that calling Create() sends the correct wallet id to the server
+}
+
 func TestInitializeWallet(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	userID := rand.Int()
 	addr := test.RandServerAddress(t)
 
-	walletID, err := Create(addr, userID)
+	err := Create(addr, userID)
 	require.NoError(t, err)
-	assert.Equal(t, walletID, sdkrouter.WalletID(userID))
 
 	err = UnloadWallet(addr, userID)
 	require.NoError(t, err)
 
-	walletID, err = Create(addr, userID)
+	err = Create(addr, userID)
 	require.NoError(t, err)
-	assert.Equal(t, walletID, sdkrouter.WalletID(userID))
 }
 
 func TestCreateWalletLoadWallet(t *testing.T) {
@@ -252,18 +273,16 @@ func TestCreateWalletLoadWallet(t *testing.T) {
 	userID := rand.Int()
 	addr := test.RandServerAddress(t)
 
-	wallet, err := createWallet(addr, userID)
+	err := createWallet(addr, userID)
 	require.NoError(t, err)
-	assert.Equal(t, wallet.ID, sdkrouter.WalletID(userID))
 
-	wallet, err = createWallet(addr, userID)
+	err = createWallet(addr, userID)
 	require.NotNil(t, err)
 	assert.True(t, errors.Is(err, lbrynet.ErrWalletExists))
 
 	err = UnloadWallet(addr, userID)
 	require.NoError(t, err)
 
-	wallet, err = loadWallet(addr, userID)
+	err = loadWallet(addr, userID)
 	require.NoError(t, err)
-	assert.Equal(t, wallet.ID, sdkrouter.WalletID(userID))
 }

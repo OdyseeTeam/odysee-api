@@ -47,13 +47,13 @@ func TestRouterConcurrency(t *testing.T) {
 			case 0:
 				r.RandomServer()
 				r.GetAll()
-				r.GetServer(123)
+				r.LeastLoaded()
 			case 1:
 				r.GetAll()
-				r.GetServer(123)
+				r.LeastLoaded()
 				r.RandomServer()
 			case 2:
-				r.GetServer(123)
+				r.LeastLoaded()
 				r.RandomServer()
 				r.GetAll()
 			}

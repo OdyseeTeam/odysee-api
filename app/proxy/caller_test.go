@@ -10,7 +10,6 @@ import (
 
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
-	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/internal/test"
 
@@ -31,22 +30,6 @@ func parseRawResponse(t *testing.T, rawCallResponse []byte, v interface{}) {
 	require.NoError(t, err)
 }
 
-func TestNewCaller(t *testing.T) {
-	servers := map[string]string{
-		"first":  "http://lbrynet1",
-		"second": "http://lbrynet2",
-	}
-	rt := sdkrouter.New(servers)
-	sList := rt.GetAll()
-	rand.Seed(time.Now().UnixNano())
-	for i := 1; i <= 100; i++ {
-		id := rand.Intn(10^6-10^3) + 10 ^ 3
-		wc := NewCaller(rt.GetServer(id).Address, id)
-		lastDigit := id % 10
-		assert.Equal(t, sList[lastDigit%len(sList)].Address, wc.endpoint)
-	}
-}
-
 func TestCallerCallRaw(t *testing.T) {
 	c := NewCaller(test.RandServerAddress(t), 0)
 	for _, rawQ := range []string{``, ` `, `[]`, `[{}]`, `[""]`, `""`, `" "`} {
@@ -64,13 +47,11 @@ func TestCallerCallRaw(t *testing.T) {
 }
 
 func TestCallerCallResolve(t *testing.T) {
-	rt := sdkrouter.New(config.GetLbrynetServers())
-
 	resolvedURL := "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
 	resolvedClaimID := "6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
 
 	request := jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": resolvedURL})
-	rawCallResponse := NewCaller(rt.RandomServer().Address, 0).Call(request)
+	rawCallResponse := NewCaller(test.RandServerAddress(t), 0).Call(request)
 
 	var errorResponse jsonrpc.RPCResponse
 	err := json.Unmarshal(rawCallResponse, &errorResponse)
@@ -85,15 +66,14 @@ func TestCallerCallResolve(t *testing.T) {
 func TestCallerCallWalletBalance(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	dummyUserID := rand.Intn(10^6-10^3) + 10 ^ 3
-	rt := sdkrouter.New(config.GetLbrynetServers())
 
 	request := jsonrpc.NewRequest("wallet_balance")
 
-	result := NewCaller(rt.RandomServer().Address, 0).Call(request)
+	result := NewCaller(test.RandServerAddress(t), 0).Call(request)
 	assert.Contains(t, string(result), `"message": "authentication required"`)
 
 	addr := test.RandServerAddress(t)
-	walletID, err := wallet.Create(addr, dummyUserID)
+	err := wallet.Create(addr, dummyUserID)
 	require.NoError(t, err)
 
 	hook := logrusTest.NewLocal(Logger.Logger())
@@ -104,7 +84,7 @@ func TestCallerCallWalletBalance(t *testing.T) {
 	}
 	parseRawResponse(t, result, &accountBalanceResponse)
 	assert.EqualValues(t, "0.0", accountBalanceResponse.Available)
-	assert.Equal(t, map[string]interface{}{"wallet_id": walletID}, hook.LastEntry().Data["params"])
+	assert.Equal(t, map[string]interface{}{"wallet_id": sdkrouter.WalletID(dummyUserID)}, hook.LastEntry().Data["params"])
 	assert.Equal(t, "wallet_balance", hook.LastEntry().Data["method"])
 }
 

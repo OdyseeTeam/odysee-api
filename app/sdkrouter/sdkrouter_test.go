@@ -31,26 +31,14 @@ func TestInitializeWithYML(t *testing.T) {
 }
 
 func TestServerOrder(t *testing.T) {
-	servers := map[string]string{
-		// internally, servers will be sorted in lexical order by name
-		"b": "1",
-		"a": "0",
-		"d": "3",
-		"c": "2",
-	}
-	r := New(servers)
-
-	for i := 1; i < 100; i++ {
-		server := r.GetServer(i).Address
-		assert.Equal(t, fmt.Sprintf("%d", i%len(servers)), server)
-	}
+	t.Skip("might bring this back when servers have an order")
 }
 
 func TestOverrideLbrynetDefaultConf(t *testing.T) {
 	address := "http://space.com:1234"
 	config.Override("LbrynetServers", map[string]string{"x": address})
 	defer config.RestoreOverridden()
-	server := New(config.GetLbrynetServers()).GetServer(343465345)
+	server := New(config.GetLbrynetServers()).RandomServer()
 	assert.Equal(t, address, server.Address)
 }
 
@@ -59,12 +47,8 @@ func TestOverrideLbrynetConf(t *testing.T) {
 	config.Override("Lbrynet", address)
 	config.Override("LbrynetServers", map[string]string{})
 	defer config.RestoreOverridden()
-	server := New(config.GetLbrynetServers()).GetServer(1343465345)
+	server := New(config.GetLbrynetServers()).RandomServer()
 	assert.Equal(t, address, server.Address)
-}
-
-func TestGetUserID(t *testing.T) {
-	assert.Equal(t, 1234235, UserID("sjdfkjhsdkjs.1234235.sdfsgf"))
 }
 
 func TestLeastLoaded(t *testing.T) {
