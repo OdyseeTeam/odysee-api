@@ -36,10 +36,14 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 		http.Redirect(w, req, config.GetProjectURL(), http.StatusSeeOther)
 	})
 
+	authProvider := auth.NewWalletAndInternalAPIProvider(sdkRouter, config.GetInternalAPIHost())
+	middlewareStack := middlewares(
+		sdkrouter.Middleware(sdkRouter),
+		auth.Middleware(authProvider),
+	)
+
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
-	v1Router.Use(sdkrouter.Middleware(sdkRouter))
-	authProvider := auth.WalletAndInternalAPIProvider(sdkRouter, config.GetInternalAPIHost())
-	v1Router.Use(auth.Middleware(authProvider))
+	v1Router.Use(middlewareStack)
 	v1Router.HandleFunc("/proxy", proxy.HandleCORS).Methods(http.MethodOptions)
 	v1Router.HandleFunc("/proxy", upHandler.Handle).MatcherFunc(upHandler.CanHandle)
 	v1Router.HandleFunc("/proxy", proxy.Handle)
@@ -47,8 +51,20 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 
 	internalRouter := r.PathPrefix("/internal").Subrouter()
 	internalRouter.Handle("/metrics", promhttp.Handler())
-	internalRouter.HandleFunc("/status", sdkrouter.AddToRequest(sdkRouter, status.GetStatus))
+	internalRouter.Handle("/status", middlewareStack(http.HandlerFunc(status.GetStatus)))
 	internalRouter.HandleFunc("/whoami", status.WhoAMI)
+}
+
+// applies several middleware in order
+func middlewares(mws ...mux.MiddlewareFunc) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		for _, mw := range mws {
+			next = mw(next)
+		}
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 func methodTimer(next http.Handler) http.Handler {

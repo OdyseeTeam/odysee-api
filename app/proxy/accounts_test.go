@@ -39,7 +39,7 @@ func TestWithWrongAuthToken(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	handler := sdkrouter.Middleware(rt)(auth.Middleware(auth.WalletAndInternalAPIProvider(rt, ts.URL))(http.HandlerFunc(Handle)))
+	handler := sdkrouter.Middleware(rt)(auth.Middleware(auth.NewWalletAndInternalAPIProvider(rt, ts.URL))(http.HandlerFunc(Handle)))
 	handler.ServeHTTP(rr, r)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
