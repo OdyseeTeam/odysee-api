@@ -5,6 +5,8 @@ import (
 	"net"
 	"net/http"
 	"strings"
+
+	"github.com/lbryio/lbry.go/extras/util"
 )
 
 // most of this is from https://husobee.github.io/golang/ip-address/2015/12/17/remote-ip-go.html
@@ -68,6 +70,25 @@ func IsPrivateSubnet(ipAddress net.IP) bool {
 
 // GetIPAddressForRequest returns the real IP address of the request
 func GetIPAddressForRequest(r *http.Request) string {
+	orgAddresses := []string{
+		"34.231.101.5",
+		"18.222.104.49",
+		"18.191.94.135",
+		"3.136.112.165",
+		"18.223.116.236",
+		"13.59.124.208",
+		"3.19.54.244",
+		"3.21.166.205",
+		"3.16.131.26",
+		"3.14.128.5",
+		"3.133.116.6",
+		"3.133.83.252",
+		"3.19.143.233",
+		"3.22.63.204",
+		"3.12.147.187",
+		"18.217.80.240",
+		"13.59.197.247",
+	}
 	for _, h := range []string{"X-Forwarded-For", "X-Real-Ip"} {
 		addresses := strings.Split(r.Header.Get(h), ",")
 		// march from right to left until we get a public address
@@ -76,7 +97,7 @@ func GetIPAddressForRequest(r *http.Request) string {
 			ip := strings.TrimSpace(addresses[i])
 			// header can contain spaces too, strip those out.
 			realIP := net.ParseIP(ip)
-			if !realIP.IsGlobalUnicast() || IsPrivateSubnet(realIP) {
+			if !realIP.IsGlobalUnicast() || IsPrivateSubnet(realIP) || util.InSlice(ip, orgAddresses) {
 				// bad address, go to next
 				continue
 			}
