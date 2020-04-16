@@ -91,7 +91,7 @@ func recoveryHandler(next http.Handler) http.Handler {
 				Error: &jsonrpc.RPCError{
 					Code:    -1,
 					Message: recovered.Error(),
-					Data:    stack,
+					Data:    string(stack),
 				},
 			})
 			w.Write(rsp)
