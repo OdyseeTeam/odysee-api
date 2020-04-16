@@ -25,11 +25,12 @@ func FromRequest(r *http.Request) Result {
 	return v.(Result)
 }
 
-// Provider gets a user by hitting internal-api with the provided auth token
-// and matching the response to a local user.
-// NOTE: The retrieved user must come with a wallet that's created and ready to use.
+// Provider tries to authenticate using the provided auth token
 type Provider func(token, metaRemoteIP string) Result
 
+// WalletAndInternalAPIProvider auths a user by hitting internal-api with the auth token
+// and matching the response to a local user. If auth is successful, the user will have a
+// lbrynet server assigned and a wallet that's created and ready to use.
 func WalletAndInternalAPIProvider(rt *sdkrouter.Router, internalAPIHost string) Provider {
 	return func(token, metaRemoteIP string) Result {
 		user, err := wallet.GetUserWithWallet(rt, internalAPIHost, token, metaRemoteIP)

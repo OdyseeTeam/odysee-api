@@ -80,21 +80,18 @@ func getOrCreateLocalUser(remoteUserID int, log *logrus.Entry) (*models.User, er
 func assignSDKServerToUser(user *models.User, router *sdkrouter.Router, log *logrus.Entry) error {
 	server := router.LeastLoaded()
 	if server.ID > 0 { // Ensure server is from DB
-		user.LbrynetServerID.SetValid(server.ID)
+		log.Infof("assigning sdk %s to user %d", server.Address, user.ID)
+		err := user.SetLbrynetServerG(false, server)
+		if err != nil {
+			return err
+		}
 	} else {
 		// THIS SERVER CAME FROM A CONFIG FILE (prolly during testing)
 		// TODO: handle this case better
 		log.Warnf("user %d is getting an sdk with no ID. could happen if servers came from config file", user.ID)
 	}
 
-	err := Create(server.Address, user.ID)
-	if err != nil {
-		return err
-	}
-
-	log.Infof("assigning sdk %s to user %d", server.Address, user.ID)
-	_, err = user.UpdateG(boil.Infer())
-	return err
+	return Create(server.Address, user.ID)
 }
 
 func createDBUser(id int) (*models.User, error) {
