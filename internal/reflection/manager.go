@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"sync"
 	"time"
 
 	"github.com/lbryio/lbrytv/internal/monitor"
@@ -33,6 +34,7 @@ type ReflError struct {
 
 // RunStats contains stats of blob reflection run, typically a result of ReflectAll call
 type RunStats struct {
+	sync.RWMutex
 	TotalBlobs     int
 	ReflectedBlobs int
 	Errors         []ReflError
@@ -120,11 +122,14 @@ func (r *Manager) Abort() {
 
 // ReflectAll uploads and then deletes all blobs in the blob directory.
 func (r *Manager) ReflectAll() (*RunStats, error) {
+	start := time.Now()
+
+	logger.Log().Infof("starting reflection")
+
 	pendingFilenames := []string{}
 	stats := &RunStats{}
-	log := logger.Log()
 
-	log.Debugf("checking %v for blobs...", r.blobsPath)
+	logger.Log().Debugf("checking %v for blobs...", r.blobsPath)
 	f, err := os.Open(r.blobsPath)
 	if err != nil {
 		return nil, err
@@ -145,37 +150,55 @@ func (r *Manager) ReflectAll() (*RunStats, error) {
 		}
 	}
 	stats.TotalBlobs = len(pendingFilenames)
-	log.Debugf("%v blobs found", stats.TotalBlobs)
+	logger.Log().Debugf("%v blobs found", stats.TotalBlobs)
 
-	err = r.uploader.Connect(r.reflector)
-	if err != nil {
-		return nil, err
-	}
+	var wg sync.WaitGroup
+	wgSize := 10
 
-	for _, f := range pendingFilenames {
+	for i, f := range pendingFilenames {
 		select {
 		case <-r.abortUploadChan:
 			break
 		default:
 		}
 
-		b, err := ioutil.ReadFile(f)
-		if err != nil {
-			stats.Errors = append(stats.Errors, ReflError{f, err})
-			continue
-		}
-
-		err = r.uploader.SendBlob(stream.Blob(b))
-		if errors.Is(err, reflector.ErrBlobExists) || err == nil {
-			stats.ReflectedBlobs++
-			if err := os.Remove(f); err != nil {
-				stats.Errors = append(stats.Errors, ReflError{f, err})
+		wg.Add(1)
+		go func(wf string) {
+			rc := reflector.Client{}
+			err := rc.Connect(r.reflector)
+			if err != nil {
+				return
 			}
-		} else {
-			stats.Errors = append(stats.Errors, ReflError{f, err})
+			b, err := ioutil.ReadFile(wf)
+			if err != nil {
+				stats.Lock()
+				stats.Errors = append(stats.Errors, ReflError{wf, err})
+				stats.Unlock()
+			}
+
+			err = rc.SendBlob(stream.Blob(b))
+			if errors.Is(err, reflector.ErrBlobExists) || err == nil {
+				stats.Lock()
+				stats.ReflectedBlobs++
+				stats.Unlock()
+				if err := os.Remove(wf); err != nil {
+					stats.Lock()
+					stats.Errors = append(stats.Errors, ReflError{wf, err})
+					stats.Unlock()
+				}
+			} else {
+				stats.Lock()
+				stats.Errors = append(stats.Errors, ReflError{wf, err})
+				stats.Unlock()
+			}
+			wg.Done()
+		}(f)
+		if (i%wgSize) == 0 || len(pendingFilenames)-1-i == 0 {
+			wg.Wait()
 		}
 	}
-	log.Debug("reflection run complete")
+
+	logger.Log().Infof("reflection run complete in %.2f minutes", time.Since(start).Minutes())
 
 	return stats, nil
 }
