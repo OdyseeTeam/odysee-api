@@ -43,3 +43,28 @@ func TestMockHTTPServer(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, string(body), "ok")
 }
+
+func TestAssertJsonEqual(t *testing.T) {
+
+	testCases := []struct {
+		a, b string
+		same bool
+	}{
+		{"{}", "12", false},
+		{"{}", "{}", true},
+		{"{}", "", false},
+		{`{"a":1,"b":2}`, `{"b":2,"a":1}`, true},
+	}
+
+	for i, tc := range testCases {
+		testT := &testing.T{}
+		same := AssertJsonEqual(testT, tc.a, tc.b)
+		if tc.same {
+			assert.True(t, same, "Case %d same", i)
+			assert.False(t, testT.Failed(), "Case %d failure", i)
+		} else {
+			assert.False(t, same, "Case %d same", i)
+			assert.True(t, testT.Failed(), "Case %d failure", i)
+		}
+	}
+}
