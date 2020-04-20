@@ -10,6 +10,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
+	"github.com/sirupsen/logrus"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 )
@@ -50,18 +51,18 @@ func New(servers map[string]string) *Router {
 
 func (r *Router) GetAll() []*models.LbrynetServer {
 	r.reloadServersFromDB()
-	logger.WithField("lock", "mu").Trace("waiting for read lock in GetAll")
+	logger.WithFields(logrus.Fields{"lock": "mu"}).Trace("waiting for read lock in GetAll")
 	r.mu.RLock()
-	logger.WithField("lock", "mu").Trace("got read lock in GetAll")
+	logger.WithFields(logrus.Fields{"lock": "mu"}).Trace("got read lock in GetAll")
 	defer r.mu.RUnlock()
 	return r.servers
 }
 
 func (r *Router) RandomServer() *models.LbrynetServer {
 	r.reloadServersFromDB()
-	logger.WithField("lock", "mu").Trace("waiting for read lock in RandomServer")
+	logger.WithFields(logrus.Fields{"lock": "mu"}).Trace("waiting for read lock in RandomServer")
 	r.mu.RLock()
-	logger.WithField("lock", "mu").Trace("got read lock in RandomServer")
+	logger.WithFields(logrus.Fields{"lock": "mu"}).Trace("got read lock in RandomServer")
 	defer r.mu.RUnlock()
 	return r.servers[rand.Intn(len(r.servers))]
 }
@@ -90,9 +91,9 @@ func (r *Router) setServers(servers []*models.LbrynetServer) {
 	// we do this partially to make sure that ids are assigned to servers more consistently,
 	// and partially to make tests consistent (since Go maps are not ordered)
 	sort.Slice(servers, func(i, j int) bool { return servers[i].Name < servers[j].Name })
-	logger.WithField("lock", "mu").Trace("waiting for write lock in setServers")
+	logger.WithFields(logrus.Fields{"lock": "mu"}).Trace("waiting for write lock in setServers")
 	r.mu.Lock()
-	logger.WithField("lock", "mu").Trace("got write lock in setServers")
+	logger.WithFields(logrus.Fields{"lock": "mu"}).Trace("got write lock in setServers")
 	defer r.mu.Unlock()
 	r.servers = servers
 	logger.Log().Debugf("updated server list to %d servers", len(r.servers))
@@ -119,17 +120,17 @@ func (r *Router) updateLoadAndMetrics() {
 		walletList, err := ljsonrpc.NewClient(server.Address).WalletList("", 1, 1)
 		if err != nil {
 			logger.Log().Errorf("lbrynet instance %s is not responding: %v", server.Address, err)
-			logger.WithField("lock", "loadMu").Trace("waiting for write lock in updateLoadAndMetrics 1")
+			logger.WithFields(logrus.Fields{"lock": "loadMu"}).Trace("waiting for write lock in updateLoadAndMetrics 1")
 			r.loadMu.Lock()
-			logger.WithField("lock", "loadMu").Trace("got write lock in updateLoadAndMetrics 1")
+			logger.WithFields(logrus.Fields{"lock": "loadMu"}).Trace("got write lock in updateLoadAndMetrics 1")
 			delete(r.load, server)
 			r.loadMu.Unlock()
 			metric.Set(-1.0)
 			// TODO: maybe mark this instance as unresponsive so new users are assigned to other instances
 		} else {
-			logger.WithField("lock", "loadMu").Trace("waiting for write lock in updateLoadAndMetrics 2")
+			logger.WithFields(logrus.Fields{"lock": "loadMu"}).Trace("waiting for write lock in updateLoadAndMetrics 2")
 			r.loadMu.Lock()
-			logger.WithField("lock", "loadMu").Trace("got write lock in updateLoadAndMetrics 2")
+			logger.WithFields(logrus.Fields{"lock": "loadMu"}).Trace("got write lock in updateLoadAndMetrics 2")
 			r.load[server] = walletList.TotalPages
 			r.loadMu.Unlock()
 			metric.Set(float64(walletList.TotalPages))
@@ -144,9 +145,9 @@ func (r *Router) LeastLoaded() *models.LbrynetServer {
 	var best *models.LbrynetServer
 	var min uint64
 
-	logger.WithField("lock", "loadMu").Trace("waiting for read lock in LeastLoaded")
+	logger.WithFields(logrus.Fields{"lock": "loadMu"}).Trace("waiting for read lock in LeastLoaded")
 	r.loadMu.RLock()
-	logger.WithField("lock", "loadMu").Trace("got read lock in LeastLoaded")
+	logger.WithFields(logrus.Fields{"lock": "loadMu"}).Trace("got read lock in LeastLoaded")
 	defer r.loadMu.RUnlock()
 
 	if len(r.load) == 0 {

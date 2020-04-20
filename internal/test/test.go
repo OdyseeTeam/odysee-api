@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/lbryio/lbrytv/config"
+
 	"github.com/nsf/jsondiff"
 	"github.com/ybbus/jsonrpc"
 )

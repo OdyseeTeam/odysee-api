@@ -129,7 +129,6 @@ const MethodAccountBalance = "account_balance"
 const MethodStatus = "status"
 const MethodResolve = "resolve"
 const MethodClaimSearch = "claim_search"
-const MethodCommentList = "comment_list"
 
 const paramAccountID = "account_id"
 const paramWalletID = "wallet_id"

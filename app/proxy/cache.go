@@ -10,16 +10,24 @@ import (
 	"github.com/lbryio/lbrytv/internal/monitor"
 
 	"github.com/patrickmn/go-cache"
+	"github.com/sirupsen/logrus"
 )
 
-// CacheLogger is for logging query cache-related messages
-var CacheLogger = monitor.NewModuleLogger("proxy_cache")
+var (
+	globalCache responseCache
+	cacheLogger = monitor.NewModuleLogger("proxy_cache")
+)
 
-// ResponseCache interface describes methods for SDK response cache saving and retrieval
-type ResponseCache interface {
+func init() {
+	globalCache = cacheStorage{c: cache.New(2*time.Minute, 10*time.Minute)}
+}
+
+// responseCache interface describes methods for SDK response cache saving and retrieval
+type responseCache interface {
 	Save(method string, params interface{}, r interface{})
 	Retrieve(method string, params interface{}) interface{}
 	Count() int
+
 	getKey(method string, params interface{}) (string, error)
 	flush()
 }
@@ -28,16 +36,9 @@ type cacheStorage struct {
 	c *cache.Cache
 }
 
-var responseCache ResponseCache
-
-// InitResponseCache initializes module-level responseCache variable
-func InitResponseCache(c ResponseCache) {
-	responseCache = c
-}
-
 // Save puts a response object into cache, making it available for a later retrieval by method and query params
 func (s cacheStorage) Save(method string, params interface{}, r interface{}) {
-	l := CacheLogger.LogF(monitor.F{"method": method})
+	l := cacheLogger.WithFields(logrus.Fields{"method": method})
 	cacheKey, err := s.getKey(method, params)
 	if err != nil {
 		l.Errorf("unable to produce key for params: %v", params)
@@ -49,7 +50,7 @@ func (s cacheStorage) Save(method string, params interface{}, r interface{}) {
 
 // Retrieve earlier saved server response by method and query params
 func (s cacheStorage) Retrieve(method string, params interface{}) interface{} {
-	l := CacheLogger.LogF(monitor.F{"method": method})
+	l := cacheLogger.WithFields(logrus.Fields{"method": method})
 	cacheKey, err := s.getKey(method, params)
 	if err != nil {
 		l.Errorf("unable to produce key for params: %v", params)
@@ -87,8 +88,4 @@ func (s cacheStorage) flush() {
 // Count returns the total number of non-expired items stored in cache
 func (s cacheStorage) Count() int {
 	return s.c.ItemCount()
-}
-
-func init() {
-	InitResponseCache(cacheStorage{c: cache.New(2*time.Minute, 10*time.Minute)})
 }

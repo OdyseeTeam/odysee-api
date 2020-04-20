@@ -35,7 +35,7 @@ func (e RPCError) JSON() []byte {
 		JSONRPC: "2.0",
 	}, "", "  ")
 	if err != nil {
-		Logger.Errorf("rpc error to json: %v", err)
+		logger.Log().Errorf("rpc error to json: %v", err)
 	}
 	return b
 }

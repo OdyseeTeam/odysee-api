@@ -13,6 +13,7 @@ import (
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
+	"github.com/sirupsen/logrus"
 
 	"github.com/gorilla/mux"
 )
@@ -89,7 +90,7 @@ func (h Handler) CanHandle(r *http.Request, _ *mux.RouteMatch) bool {
 }
 
 func (h Handler) saveFile(r *http.Request, userID int) (*os.File, error) {
-	log := logger.LogF(monitor.F{"user_id": userID})
+	log := logger.WithFields(logrus.Fields{"user_id": userID})
 
 	file, header, err := r.FormFile(fileFieldName)
 	if err != nil {

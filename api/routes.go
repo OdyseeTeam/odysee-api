@@ -36,7 +36,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 		http.Redirect(w, req, config.GetProjectURL(), http.StatusSeeOther)
 	})
 
-	authProvider := auth.NewWalletAndInternalAPIProvider(sdkRouter, config.GetInternalAPIHost())
+	authProvider := auth.NewIAPIProvider(sdkRouter, config.GetInternalAPIHost())
 	middlewareStack := middlewares(
 		sdkrouter.Middleware(sdkRouter),
 		auth.Middleware(authProvider),

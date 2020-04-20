@@ -76,7 +76,7 @@ func TestCallerCallWalletBalance(t *testing.T) {
 	err := wallet.Create(addr, dummyUserID)
 	require.NoError(t, err)
 
-	hook := logrusTest.NewLocal(Logger.Logger())
+	hook := logrusTest.NewLocal(logger.Logger)
 	result = NewCaller(addr, dummyUserID).Call(request)
 
 	var accountBalanceResponse struct {
@@ -210,7 +210,7 @@ func TestCallerCallSDKError(t *testing.T) {
 		}`
 
 	c := NewCaller(srv.URL, 0)
-	hook := logrusTest.NewLocal(Logger.Logger())
+	hook := logrusTest.NewLocal(logger.Logger)
 	response := c.Call(jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": "what"}))
 	var rpcResponse jsonrpc.RPCResponse
 	json.Unmarshal(response, &rpcResponse)

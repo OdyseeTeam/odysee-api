@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lbryio/lbrytv/internal/monitor"
-
 	"github.com/gobuffalo/packr/v2"
 	"github.com/lib/pq"
 	migrate "github.com/rubenv/sql-migrate"
+	"github.com/sirupsen/logrus"
 	"github.com/volatiletech/sqlboiler/queries"
 )
 
@@ -24,7 +23,7 @@ func (c *Connection) MigrateUp() {
 	if err != nil {
 		c.logger.Log().Panicf("failed to migrate the database up: %v", err)
 	}
-	c.logger.LogF(monitor.F{"migrations_number": n}).Info("migrated the database up")
+	c.logger.WithFields(logrus.Fields{"migrations_number": n}).Info("migrated the database up")
 }
 
 // MigrateDown undoes the previous migration.
@@ -37,7 +36,7 @@ func (c *Connection) MigrateDown() {
 	if err != nil {
 		c.logger.Log().Panicf("failed to migrate the database down: %v", err)
 	}
-	c.logger.LogF(monitor.F{"migrations_number": n}).Info("migrated the database down")
+	c.logger.WithFields(logrus.Fields{"migrations_number": n}).Info("migrated the database down")
 }
 
 // Truncate purges records from the requested tables.
@@ -56,7 +55,7 @@ func (c *Connection) CreateDB(dbName string) error {
 	// fmt.Sprintf is used instead of query placeholders because postgres does not
 	// handle them in schema-modifying queries.
 	_, err = utilConn.DB.Exec(fmt.Sprintf("create database %s;", pq.QuoteIdentifier(dbName)))
-	c.logger.LogF(monitor.F{"db_name": dbName}).Info("created the database")
+	c.logger.WithFields(logrus.Fields{"db_name": dbName}).Info("created the database")
 	return err
 }
 
@@ -70,6 +69,6 @@ func (c *Connection) DropDB(dbName string) error {
 	// fmt.Sprintf is used instead of query placeholders because postgres does not
 	// handle them in schema-modifying queries.
 	_, err = utilConn.DB.Exec(fmt.Sprintf("drop database %s;", pq.QuoteIdentifier(dbName)))
-	c.logger.LogF(monitor.F{"db_name": dbName}).Info("dropped the database")
+	c.logger.WithFields(logrus.Fields{"db_name": dbName}).Info("dropped the database")
 	return err
 }

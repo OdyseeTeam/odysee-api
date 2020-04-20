@@ -9,6 +9,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/ip"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
+	"github.com/sirupsen/logrus"
 
 	"github.com/gorilla/mux"
 )
@@ -20,7 +21,7 @@ const ContextKey = "user"
 func FromRequest(r *http.Request) Result {
 	v := r.Context().Value(ContextKey)
 	if v == nil {
-		panic("Auth middleware was not applied")
+		panic("auth.Middleware is required")
 	}
 	return v.(Result)
 }
@@ -28,10 +29,10 @@ func FromRequest(r *http.Request) Result {
 // Provider tries to authenticate using the provided auth token
 type Provider func(token, metaRemoteIP string) Result
 
-// WalletAndInternalAPIProvider auths a user by hitting internal-api with the auth token
+// NewIAPIProvider authenticates a user by hitting internal-api with the auth token
 // and matching the response to a local user. If auth is successful, the user will have a
 // lbrynet server assigned and a wallet that's created and ready to use.
-func NewWalletAndInternalAPIProvider(rt *sdkrouter.Router, internalAPIHost string) Provider {
+func NewIAPIProvider(rt *sdkrouter.Router, internalAPIHost string) Provider {
 	return func(token, metaRemoteIP string) Result {
 		user, err := wallet.GetUserWithWallet(rt, internalAPIHost, token, metaRemoteIP)
 		res := NewResult(user, err)
@@ -50,7 +51,7 @@ func Middleware(provider Provider) mux.MiddlewareFunc {
 				addr := ip.AddressForRequest(r)
 				res = provider(token[0], addr)
 				if res.err != nil {
-					logger.LogF(monitor.F{"ip": addr}).Debugf("error authenticating user")
+					logger.WithFields(logrus.Fields{"ip": addr}).Debugf("error authenticating user")
 				}
 				res.authAttempted = true
 			}

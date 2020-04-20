@@ -20,21 +20,23 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
+	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/sirupsen/logrus"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
-	"github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
 )
 
-var Logger = monitor.NewProxyLogger()
+var logger = monitor.NewModuleLogger("proxy")
 
 const (
 	walletLoadRetries   = 3
 	walletLoadRetryWait = 100 * time.Millisecond
+	rpcTimeout          = 30 * time.Second
 )
 
 // Caller patches through JSON-RPC requests from clients, doing pre/post-processing,
@@ -51,7 +53,7 @@ type Caller struct {
 func NewCaller(endpoint string, userID int) *Caller {
 	return &Caller{
 		client: jsonrpc.NewClientWithOpts(endpoint, &jsonrpc.RPCClientOpts{
-			HTTPClient: &http.Client{Timeout: 30 * time.Second},
+			HTTPClient: &http.Client{Timeout: rpcTimeout},
 		}),
 		endpoint: endpoint,
 		userID:   userID,
@@ -73,14 +75,14 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) []byte {
 	r, err := c.call(req)
 	if err != nil {
 		monitor.CaptureException(err, map[string]string{"req": spew.Sdump(req), "response": fmt.Sprintf("%v", r)})
-		Logger.Errorf("error calling lbrynet: %v, request: %s", err, spew.Sdump(req))
+		logger.Log().Errorf("error calling lbrynet: %v, request: %s", err, spew.Sdump(req))
 		return marshalError(err)
 	}
 
 	serialized, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		monitor.CaptureException(err)
-		Logger.Errorf("error marshaling response: %v", err)
+		logger.Log().Errorf("error marshaling response: %v", err)
 		return marshalError(NewInternalError(err))
 	}
 
@@ -124,7 +126,7 @@ func (c *Caller) call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 	}
 
 	if q.isCacheable() {
-		responseCache.Save(q.Method(), q.Params(), r)
+		globalCache.Save(q.Method(), q.Params(), r)
 	}
 	return r, nil
 }
@@ -149,7 +151,7 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 
 		// Generally a HTTP transport failure (connect error etc)
 		if err != nil {
-			Logger.Errorf("error sending query to %v: %v", c.endpoint, err)
+			logger.Log().Errorf("error sending query to %v: %v", c.endpoint, err)
 			return nil, err
 		}
 
@@ -163,7 +165,7 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 			// Alert sentry on the last failed wallet load attempt
 			if err != nil && i >= walletLoadRetries-1 {
 				errMsg := "gave up on manually adding a wallet: %v"
-				Logger.Logger().WithFields(logrus.Fields{
+				logger.WithFields(logrus.Fields{
 					"user_id":  c.userID,
 					"endpoint": c.endpoint,
 				}).Errorf(errMsg, err)
@@ -182,10 +184,27 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 	}
 
 	if (r != nil && r.Error != nil) || err != nil {
-		Logger.LogFailedQuery(q.Method(), c.endpoint, c.userID, duration, q.Params(), r.Error)
+		logger.WithFields(logrus.Fields{
+			"method":   q.Method(),
+			"params":   q.Params(),
+			"endpoint": c.endpoint,
+			"user_id":  c.userID,
+			"duration": duration,
+			"response": r.Error,
+		}).Error("error from the target endpoint")
 		failureMetrics.Observe(duration)
 	} else {
-		Logger.LogSuccessfulQuery(q.Method(), c.endpoint, c.userID, duration, q.Params(), r)
+		fields := logrus.Fields{
+			"method":   q.Method(),
+			"params":   q.Params(),
+			"endpoint": c.endpoint,
+			"user_id":  c.userID,
+			"duration": duration,
+		}
+		if config.ShouldLogResponses() {
+			fields["response"] = r
+		}
+		logger.WithFields(fields).Info("call processed")
 	}
 
 	return r, err

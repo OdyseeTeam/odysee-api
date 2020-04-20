@@ -40,10 +40,9 @@ func NewServer(address string, sdkRouter *sdkrouter.Router) *Server {
 		stopWait: 15 * time.Second,
 		stopChan: make(chan os.Signal),
 		listener: &http.Server{
-			Addr:    address,
-			Handler: r,
-			// Can't have WriteTimeout set for streaming endpoints
-			WriteTimeout:      0,
+			Addr:              address,
+			Handler:           r,
+			WriteTimeout:      30 * time.Second,
 			IdleTimeout:       0,
 			ReadHeaderTimeout: 10 * time.Second,
 		},

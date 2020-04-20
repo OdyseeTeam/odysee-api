@@ -11,6 +11,7 @@ import (
 	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
+
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -41,6 +42,8 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		w.Write(NewJSONParseError(err).JSON())
 		return
 	}
+
+	logger.Log().Tracef("call to method %s", req.Method)
 
 	var userID int
 	var sdkAddress string

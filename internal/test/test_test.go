@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMockRPCServer(t *testing.T) {
+func TestMockHTTPServer(t *testing.T) {
 	reqChan := ReqChan()
 	rpcServer := MockHTTPServer(reqChan)
 	defer rpcServer.Close()

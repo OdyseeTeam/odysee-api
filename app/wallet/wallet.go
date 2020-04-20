@@ -29,7 +29,7 @@ const pgUniqueConstraintViolation = "23505"
 // Retrieve gets user by internal-apis auth token. If the user does not have a wallet yet, they
 // are assigned an SDK and a wallet is created for them on that SDK.
 func GetUserWithWallet(rt *sdkrouter.Router, internalAPIHost, token, metaRemoteIP string) (*models.User, error) {
-	log := logger.LogF(monitor.F{monitor.TokenF: token})
+	log := logger.WithFields(logrus.Fields{monitor.TokenF: token})
 
 	remoteUser, err := getRemoteUser(internalAPIHost, token, metaRemoteIP)
 	if err != nil {
@@ -95,7 +95,7 @@ func assignSDKServerToUser(user *models.User, router *sdkrouter.Router, log *log
 }
 
 func createDBUser(id int) (*models.User, error) {
-	log := logger.LogF(monitor.F{"id": id})
+	log := logger.WithFields(logrus.Fields{"id": id})
 
 	u := &models.User{ID: id}
 	err := u.InsertG(boil.Infer())
@@ -133,7 +133,7 @@ func Create(serverAddress string, userID int) error {
 		return nil
 	}
 
-	log := logger.LogF(monitor.F{"user_id": userID, "sdk": serverAddress})
+	log := logger.WithFields(logrus.Fields{"user_id": userID, "sdk": serverAddress})
 
 	if errors.Is(err, lbrynet.ErrWalletExists) {
 		log.Warn(err.Error())
@@ -173,7 +173,7 @@ func createWallet(addr string, userID int) error {
 	if err != nil {
 		return lbrynet.NewWalletError(userID, err)
 	}
-	logger.LogF(monitor.F{"user_id": userID, "sdk": addr}).Info("wallet created")
+	logger.WithFields(logrus.Fields{"user_id": userID, "sdk": addr}).Info("wallet created")
 	return nil
 }
 
@@ -186,7 +186,7 @@ func loadWallet(addr string, userID int) error {
 	if err != nil {
 		return lbrynet.NewWalletError(userID, err)
 	}
-	logger.LogF(monitor.F{"user_id": userID, "sdk": addr}).Info("wallet loaded")
+	logger.WithFields(logrus.Fields{"user_id": userID, "sdk": addr}).Info("wallet loaded")
 	return nil
 }
 
@@ -199,6 +199,6 @@ func UnloadWallet(addr string, userID int) error {
 	if err != nil {
 		return lbrynet.NewWalletError(userID, err)
 	}
-	logger.LogF(monitor.F{"user_id": userID, "sdk": addr}).Info("wallet unloaded")
+	logger.WithFields(logrus.Fields{"user_id": userID, "sdk": addr}).Info("wallet unloaded")
 	return nil
 }

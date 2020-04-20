@@ -21,31 +21,27 @@ var textFormatter = logrus.TextFormatter{FullTimestamp: true, TimestampFormat: "
 
 // init magic is needed so logging is set up without calling it in every package explicitly
 func init() {
-	SetupLogging()
+	configureLogger(logrus.StandardLogger())
 }
 
-// SetupLogging initializes and sets a few parameters for the logging subsystem.
-func SetupLogging() {
+// configureLogger sets a few parameters for the logging subsystem.
+func configureLogger(l *logrus.Logger) {
 	var mode string
 
 	if config.IsProduction() {
 		mode = "production"
 
-		logrus.SetLevel(logrus.InfoLevel)
-		Logger.SetLevel(logrus.InfoLevel)
-		logrus.SetFormatter(&jsonFormatter)
-		Logger.SetFormatter(&jsonFormatter)
+		l.SetLevel(logrus.InfoLevel)
+		l.SetFormatter(&jsonFormatter)
 	} else {
 		mode = "develop"
 
-		logrus.SetLevel(logrus.TraceLevel)
-		Logger.SetLevel(logrus.TraceLevel)
-		logrus.SetFormatter(&textFormatter)
-		Logger.SetFormatter(&textFormatter)
+		l.SetLevel(logrus.TraceLevel)
+		l.SetFormatter(&textFormatter)
 	}
 
-	Logger.Infof("%v, running in %v mode", version.GetFullBuildName(), mode)
-	Logger.Infof("logging initialized (loglevel=%v)", Logger.Level.String())
+	l.Infof("%s, running in %s mode", version.GetFullBuildName(), mode)
+	l.Infof("logging initialized (loglevel=%s)", l.Level)
 
 	configureSentry(version.GetDevVersion(), mode)
 }
@@ -61,86 +57,4 @@ func LogSuccessfulQuery(method string, time float64, params interface{}, respons
 		fields["response"] = response
 	}
 	Logger.WithFields(fields).Info("call processed")
-}
-
-// LogCachedQuery logs a cache hit for a given method
-func LogCachedQuery(method string) {
-	Logger.WithFields(logrus.Fields{
-		"method": method,
-	}).Debug("cached query")
-}
-
-type QueryMonitor interface {
-	LogSuccessfulQuery(method string, time float64, params interface{}, response interface{})
-	LogFailedQuery(method string, params interface{}, errorResponse interface{})
-	Error(message string)
-	Errorf(message string, args ...interface{})
-	Logger() *logrus.Logger
-}
-
-func getBaseLogger() *logrus.Logger {
-	logger := logrus.New()
-	if config.IsProduction() {
-		logger.SetLevel(logrus.InfoLevel)
-		logger.SetFormatter(&jsonFormatter)
-	} else {
-		logger.SetLevel(logrus.DebugLevel)
-		logger.SetFormatter(&textFormatter)
-	}
-	return logger
-}
-
-type ProxyLogger struct {
-	logger *logrus.Logger
-	entry  *logrus.Entry
-	Level  logrus.Level
-}
-
-func NewProxyLogger() *ProxyLogger {
-	logger := getBaseLogger()
-
-	l := ProxyLogger{
-		logger: logger,
-		entry:  logger.WithFields(logrus.Fields{"module": "proxy"}),
-		Level:  logger.GetLevel(),
-	}
-	return &l
-}
-
-func (l *ProxyLogger) LogSuccessfulQuery(method, endpoint string, userID int, time float64, params interface{}, response interface{}) {
-	fields := logrus.Fields{
-		"method":   method,
-		"duration": time,
-		"params":   params,
-		"endpoint": endpoint,
-		"user_id":  userID,
-	}
-	if config.ShouldLogResponses() {
-		fields["response"] = response
-	}
-	l.entry.WithFields(fields).Info("call processed")
-
-}
-
-func (l *ProxyLogger) LogFailedQuery(method, endpoint string, userID int, time float64, params interface{}, errorResponse interface{}) {
-	l.entry.WithFields(logrus.Fields{
-		"method":   method,
-		"duration": time,
-		"params":   params,
-		"endpoint": endpoint,
-		"user_id":  userID,
-		"response": errorResponse,
-	}).Error("error from the target endpoint")
-}
-
-func (l *ProxyLogger) Error(message string) {
-	l.entry.Error(message)
-}
-
-func (l *ProxyLogger) Errorf(message string, args ...interface{}) {
-	l.entry.Errorf(message, args...)
-}
-
-func (l *ProxyLogger) Logger() *logrus.Logger {
-	return l.logger
 }

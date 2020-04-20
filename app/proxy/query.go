@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
+	"github.com/sirupsen/logrus"
 
 	"github.com/ybbus/jsonrpc"
 )
@@ -100,14 +100,14 @@ func (q *Query) cacheHit() *jsonrpc.RPCResponse {
 		return nil
 	}
 
-	cached := responseCache.Retrieve(q.Method(), q.Params())
+	cached := globalCache.Retrieve(q.Method(), q.Params())
 	if cached == nil {
 		return nil
 	}
 
 	s, err := json.Marshal(cached)
 	if err != nil {
-		Logger.Errorf("error marshalling cached response")
+		logger.Log().Errorf("error marshalling cached response")
 		return nil
 	}
 
@@ -117,7 +117,7 @@ func (q *Query) cacheHit() *jsonrpc.RPCResponse {
 		return nil
 	}
 
-	monitor.LogCachedQuery(q.Method())
+	logger.WithFields(logrus.Fields{"method": q.Method()}).Debug("cached query")
 	return response
 }
 
