@@ -22,7 +22,7 @@ test_circleci:
 	go get github.com/mattn/goveralls
 	go run . db_migrate_up
 	go test -covermode=count -coverprofile=coverage.out ./...
-	goveralls -coverprofile=coverage.out -service=circle-ci -repotoken $(COVERALLS_TOKEN)
+	goveralls -coverprofile=coverage.out -service=circle-ci -ignore=models/ -repotoken $(COVERALLS_TOKEN)
 
 release:
 	GO111MODULE=on goreleaser --rm-dist
