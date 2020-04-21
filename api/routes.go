@@ -48,10 +48,11 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	v1Router.HandleFunc("/proxy", upHandler.Handle).MatcherFunc(upHandler.CanHandle)
 	v1Router.HandleFunc("/proxy", proxy.Handle)
 	v1Router.HandleFunc("/metric/ui", metrics.TrackUIMetric).Methods(http.MethodPost)
+	v1Router.HandleFunc("/status", status.GetStatus)
 
 	internalRouter := r.PathPrefix("/internal").Subrouter()
 	internalRouter.Handle("/metrics", promhttp.Handler())
-	internalRouter.Handle("/status", middlewareStack(http.HandlerFunc(status.GetStatus)))
+	internalRouter.Handle("/status", middlewareStack(http.HandlerFunc(status.GetStatus))) // deprecated. moved to /api/v1/status
 	internalRouter.HandleFunc("/whoami", status.WhoAMI)
 }
 

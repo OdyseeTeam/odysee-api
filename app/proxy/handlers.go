@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"net/http"
 
@@ -49,12 +48,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	var sdkAddress string
 	if MethodNeedsAuth(req.Method) {
 		authResult := auth.FromRequest(r)
-		if !authResult.AuthAttempted() {
-			w.Write(NewAuthRequiredError(errors.New(responses.AuthRequiredErrorMessage)).JSON())
-			return
-		}
-		if !authResult.Authenticated() {
-			w.Write(NewForbiddenError(authResult.Err()).JSON())
+		if !EnsureAuthenticated(authResult, w) {
 			return
 		}
 		userID = authResult.User().ID

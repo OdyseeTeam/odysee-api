@@ -13,7 +13,7 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func TestClientCallDoesReloadWallet(t *testing.T) {
+func TestClient_CallQueryWithRetry(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	dummyUserID := rand.Intn(100)
 	addr := test.RandServerAddress(t)
@@ -27,13 +27,12 @@ func TestClientCallDoesReloadWallet(t *testing.T) {
 	require.NoError(t, err)
 	q.WalletID = sdkrouter.WalletID(dummyUserID)
 
+	// check that sdk loads the wallet and retries the query if the wallet was not initially loaded
+
 	c := NewCaller(addr, dummyUserID)
 	r, err := c.callQueryWithRetry(q)
-	// err = json.Unmarshal(result, response)
 	require.NoError(t, err)
 	require.Nil(t, r.Error)
-
-	// TODO: check that wallet is actually reloaded? what is this test even testing?
 }
 
 func TestClientCallDoesNotReloadWalletAfterOtherErrors(t *testing.T) {

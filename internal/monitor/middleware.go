@@ -86,21 +86,17 @@ func ErrorLoggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func CaptureRequestError(err error, r *http.Request, w http.ResponseWriter, params ...map[string]interface{}) {
-	extra := logrus.Fields{}
-	if len(params) > 0 {
-		extra = params[0]
+func CaptureRequestError(err error, r *http.Request, w http.ResponseWriter) {
+	fields := logrus.Fields{
+		"method": r.Method,
+		"url":    r.URL.Path,
 	}
-
-	extra["method"] = r.Method
-	extra["url"] = r.URL.Path
-
 	if lw, ok := w.(*loggingWriter); ok {
-		extra["status"] = fmt.Sprintf("%v", lw.Status)
-		extra["response"] = lw.ResponseSnippet
+		fields["status"] = fmt.Sprintf("%v", lw.Status)
+		fields["response"] = lw.ResponseSnippet
 	}
 
-	httpLogger.WithFields(extra).Error(err)
+	httpLogger.WithFields(fields).Error(err)
 	CaptureException(err)
 	// if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
 	// 	hub.WithScope(func(scope *sentry.Scope) {

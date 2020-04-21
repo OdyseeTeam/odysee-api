@@ -9,9 +9,9 @@ import (
 	"github.com/lbryio/lbrytv/internal/ip"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
-	"github.com/sirupsen/logrus"
 
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
 
 var logger = monitor.NewModuleLogger("auth")

@@ -3,6 +3,10 @@ package proxy
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
+
+	"github.com/lbryio/lbrytv/app/auth"
+	"github.com/lbryio/lbrytv/internal/responses"
 
 	"github.com/ybbus/jsonrpc"
 )
@@ -51,4 +55,16 @@ func NewAuthRequiredError(e error) RPCError     { return RPCError{e, rpcErrorCod
 func isJSONParseError(err error) bool {
 	var e RPCError
 	return err != nil && errors.As(err, &e) && e.code == rpcErrorCodeJSONParse
+}
+
+func EnsureAuthenticated(ar auth.Result, w http.ResponseWriter) bool {
+	if !ar.AuthAttempted() {
+		w.Write(NewAuthRequiredError(errors.New(responses.AuthRequiredErrorMessage)).JSON())
+		return false
+	}
+	if !ar.Authenticated() {
+		w.Write(NewForbiddenError(ar.Err()).JSON())
+		return false
+	}
+	return true
 }

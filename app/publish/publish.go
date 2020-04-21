@@ -12,10 +12,9 @@ import (
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/internal/monitor"
-	"github.com/lbryio/lbrytv/internal/responses"
-	"github.com/sirupsen/logrus"
 
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
 
 var logger = monitor.NewModuleLogger("publish")
@@ -41,13 +40,7 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	authResult := auth.FromRequest(r)
-
-	if !authResult.AuthAttempted() {
-		w.Write(proxy.NewAuthRequiredError(errors.New(responses.AuthRequiredErrorMessage)).JSON())
-		return
-	}
-	if !authResult.Authenticated() {
-		w.Write(proxy.NewForbiddenError(authResult.Err()).JSON())
+	if !proxy.EnsureAuthenticated(authResult, w) {
 		return
 	}
 	if authResult.SDKAddress == "" {
@@ -69,7 +62,14 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	w.Write(publish(authResult.SDKAddress, f.Name(), authResult.User().ID, []byte(r.FormValue(jsonRPCFieldName))))
+	res := publish(
+		authResult.SDKAddress,
+		f.Name(),
+		authResult.User().ID,
+		[]byte(r.FormValue(jsonRPCFieldName)),
+	)
+
+	w.Write(res)
 }
 
 func publish(sdkAddress, filename string, userID int, rawQuery []byte) []byte {
