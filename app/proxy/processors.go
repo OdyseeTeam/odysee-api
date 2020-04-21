@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/monitor"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
@@ -72,7 +71,7 @@ func responseProcessorFileList(response *jsonrpc.RPCResponse) error {
 }
 
 func responseProcessorAccountList(response *jsonrpc.RPCResponse, query *jsonrpc.RPCRequest) error {
-	monitor.Logger.WithFields(log.Fields{"params": query.Params}).Info("got account_list query")
+	logger.WithFields(log.Fields{"params": query.Params}).Info("got account_list query")
 
 	if query.Params == nil {
 		accounts := new(ljsonrpc.AccountListResponse)

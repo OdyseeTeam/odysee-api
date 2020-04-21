@@ -33,7 +33,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	r.Use(methodTimer)
 
 	r.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		http.Redirect(w, req, config.GetProjectURL(), http.StatusSeeOther)
+		w.Write([]byte("lbrytv api"))
 	})
 
 	authProvider := auth.NewIAPIProvider(sdkRouter, config.GetInternalAPIHost())

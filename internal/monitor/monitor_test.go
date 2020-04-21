@@ -12,7 +12,7 @@ import (
 )
 
 func TestLogSuccessfulQuery(t *testing.T) {
-	hook := test.NewLocal(Logger)
+	hook := test.NewLocal(logger.Logger)
 
 	config.Override("ShouldLogResponses", false)
 	defer config.RestoreOverridden()
@@ -149,7 +149,7 @@ func TestModuleLoggerMasksTokens(t *testing.T) {
 
 	l.WithFields(logrus.Fields{"token": "SecRetT0Ken", "email": "abc@abc.com"}).Info("something happened")
 	require.Equal(t, "abc@abc.com", hook.LastEntry().Data["email"])
-	require.Equal(t, ValueMask, hook.LastEntry().Data["token"])
+	require.Equal(t, valueMask, hook.LastEntry().Data["token"])
 
 	hook.Reset()
 }

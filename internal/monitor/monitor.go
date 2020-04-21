@@ -7,43 +7,49 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Logger is a global instance of logrus object.
-var Logger = logrus.New()
+var logger = NewModuleLogger("monitor")
 
-// TokenF is a token field name that will be stripped from logs in production mode.
-const TokenF = "token"
-
-// ValueMask is what replaces sensitive fields contents in logs.
-const ValueMask = "****"
+const (
+	// TokenF is a token field name that will be stripped from logs in production mode.
+	TokenF = "token"
+	// valueMask is what replaces sensitive fields contents in logs.
+	valueMask = "****"
+)
 
 var jsonFormatter = logrus.JSONFormatter{DisableTimestamp: true}
 var textFormatter = logrus.TextFormatter{FullTimestamp: true, TimestampFormat: "15:04:05"}
 
 // init magic is needed so logging is set up without calling it in every package explicitly
 func init() {
-	configureLogger(logrus.StandardLogger())
+	l := logrus.StandardLogger()
+	configureLogLevelAndFormat(l)
+
+	l.WithFields(
+		version.BuildInfo(),
+	).WithFields(logrus.Fields{
+		"mode":     mode(),
+		"logLevel": l.Level,
+	}).Infof("standard logger configured")
+
+	configureSentry(version.GetDevVersion(), mode())
 }
 
-// configureLogger sets a few parameters for the logging subsystem.
-func configureLogger(l *logrus.Logger) {
-	var mode string
-
+func mode() string {
 	if config.IsProduction() {
-		mode = "production"
+		return "production"
+	} else {
+		return "develop"
+	}
+}
 
+func configureLogLevelAndFormat(l *logrus.Logger) {
+	if config.IsProduction() {
 		l.SetLevel(logrus.InfoLevel)
 		l.SetFormatter(&jsonFormatter)
 	} else {
-		mode = "develop"
-
 		l.SetLevel(logrus.TraceLevel)
 		l.SetFormatter(&textFormatter)
 	}
-
-	l.Infof("%s, running in %s mode", version.GetFullBuildName(), mode)
-	l.Infof("logging initialized (loglevel=%s)", l.Level)
-
-	configureSentry(version.GetDevVersion(), mode)
 }
 
 // LogSuccessfulQuery takes a remote method name, execution time and params and logs it
@@ -56,5 +62,5 @@ func LogSuccessfulQuery(method string, time float64, params interface{}, respons
 	if config.ShouldLogResponses() {
 		fields["response"] = response
 	}
-	Logger.WithFields(fields).Info("call processed")
+	logger.WithFields(fields).Info("call processed")
 }

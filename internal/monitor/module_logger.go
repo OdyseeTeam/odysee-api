@@ -18,7 +18,7 @@ type ModuleLogger struct {
 // for later `Log()` calls.
 func NewModuleLogger(moduleName string) ModuleLogger {
 	logger := logrus.New()
-	configureLogger(logger)
+	configureLogLevelAndFormat(logger)
 	return ModuleLogger{
 		moduleName: moduleName,
 		Logger:     logger,
@@ -33,7 +33,7 @@ func (l ModuleLogger) WithFields(fields logrus.Fields) *logrus.Entry {
 	fields["module"] = l.moduleName
 
 	if v, ok := fields[TokenF]; ok && v != "" && config.IsProduction() {
-		fields[TokenF] = ValueMask
+		fields[TokenF] = valueMask
 	}
 	return l.Logger.WithFields(fields)
 }

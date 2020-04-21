@@ -14,6 +14,7 @@ var IgnoredExceptions = []string{
 func configureSentry(release, env string) {
 	dsn := config.GetSentryDSN()
 	if dsn == "" {
+		logger.Log().Info("sentry disabled (no DNS configured)")
 		return
 	}
 
@@ -34,9 +35,9 @@ func configureSentry(release, env string) {
 		},
 	})
 	if err != nil {
-		Logger.Errorf("sentry initialization failed: %v", err)
+		logger.Log().Errorf("sentry initialization failed: %v", err)
 	} else {
-		Logger.Info("Sentry initialized")
+		logger.Log().Info("sentry initialized")
 	}
 }
 
