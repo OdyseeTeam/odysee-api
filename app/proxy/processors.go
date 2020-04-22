@@ -6,67 +6,56 @@ import (
 	"fmt"
 
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/monitor"
-	log "github.com/sirupsen/logrus"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
+
+	log "github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
 )
 
-func processQuery(query *jsonrpc.RPCRequest) (processedQuery *jsonrpc.RPCRequest, err error) {
-	processedQuery = query
+func postProcessResponse(response *jsonrpc.RPCResponse, query *jsonrpc.RPCRequest) error {
 	switch query.Method {
 	case MethodGet:
-		processedQuery, err = queryProcessorGet(query)
-	}
-	return processedQuery, err
-}
-
-func processResponse(query *jsonrpc.RPCRequest, response *jsonrpc.RPCResponse) (processedResponse *jsonrpc.RPCResponse, err error) {
-	processedResponse = response
-	switch query.Method {
-	case MethodGet:
-		processedResponse, err = responseProcessorGet(query, response)
+		return responseProcessorGet(response, query)
 	case MethodFileList:
-		processedResponse, err = responseProcessorFileList(query, response)
+		return responseProcessorFileList(response)
 	case MethodAccountList:
-		processedResponse, err = responseProcessorAccountList(query, response)
+		return responseProcessorAccountList(response, query)
+	default:
+		return nil
 	}
-	return processedResponse, err
 }
 
-func queryProcessorGet(query *jsonrpc.RPCRequest) (*jsonrpc.RPCRequest, error) {
-	return query, nil
-}
-
-func responseProcessorGet(query *jsonrpc.RPCRequest, response *jsonrpc.RPCResponse) (*jsonrpc.RPCResponse, error) {
-	var err error
-	result := map[string]interface{}{}
-	response.GetObject(&result)
+func responseProcessorGet(response *jsonrpc.RPCResponse, query *jsonrpc.RPCRequest) error {
+	var result map[string]interface{}
+	err := response.GetObject(&result)
+	if err != nil {
+		return err
+	}
 
 	stringifiedParams, err := json.Marshal(query.Params)
 	if err != nil {
-		return response, err
+		return err
 	}
 
-	queryParams := map[string]interface{}{}
+	var queryParams map[string]interface{}
 	err = json.Unmarshal(stringifiedParams, &queryParams)
 	if err != nil {
-		return response, err
+		return err
 	}
+
 	result["download_path"] = fmt.Sprintf(
 		"%s%s/%s", config.GetConfig().Viper.GetString("BaseContentURL"), queryParams["uri"], result["outpoint"])
+
 	response.Result = result
-	return response, nil
+	return nil
 }
 
-func responseProcessorFileList(query *jsonrpc.RPCRequest, response *jsonrpc.RPCResponse) (*jsonrpc.RPCResponse, error) {
-	var err error
+func responseProcessorFileList(response *jsonrpc.RPCResponse) error {
 	var resultArray []map[string]interface{}
-	response.GetObject(&resultArray)
-
+	err := response.GetObject(&resultArray)
 	if err != nil {
-		return response, err
+		return err
 	}
 
 	if len(resultArray) != 0 {
@@ -76,8 +65,26 @@ func responseProcessorFileList(query *jsonrpc.RPCRequest, response *jsonrpc.RPCR
 			resultArray[0]["claim_name"], resultArray[0]["claim_id"],
 			resultArray[0]["file_name"])
 	}
+
 	response.Result = resultArray
-	return response, nil
+	return nil
+}
+
+func responseProcessorAccountList(response *jsonrpc.RPCResponse, query *jsonrpc.RPCRequest) error {
+	logger.WithFields(log.Fields{"params": query.Params}).Info("got account_list query")
+
+	if query.Params == nil {
+		accounts := new(ljsonrpc.AccountListResponse)
+		// No account_id is supplied, get the default account and return it
+		ljsonrpc.Decode(response.Result, accounts)
+		account := getDefaultAccount(accounts)
+		if account == nil {
+			return errors.New("fatal error: no default account found")
+		}
+		response.Result = account
+	}
+
+	return nil
 }
 
 func getDefaultAccount(accounts *ljsonrpc.AccountListResponse) *ljsonrpc.Account {
@@ -87,25 +94,4 @@ func getDefaultAccount(accounts *ljsonrpc.AccountListResponse) *ljsonrpc.Account
 		}
 	}
 	return nil
-}
-
-func responseProcessorAccountList(query *jsonrpc.RPCRequest, response *jsonrpc.RPCResponse) (*jsonrpc.RPCResponse, error) {
-	accounts := new(ljsonrpc.AccountListResponse)
-	// result := map[string]interface{}{}
-	// response.GetObject(&result)
-
-	monitor.Logger.WithFields(log.Fields{
-		"params": query.Params,
-	}).Info("got account_list query")
-	if query.Params == nil {
-		// No account_id is supplied, get the default account and return it
-		ljsonrpc.Decode(response.Result, accounts)
-		account := getDefaultAccount(accounts)
-		if account == nil {
-			return nil, errors.New("fatal error: no default account found")
-		}
-		response.Result = account
-	}
-	// response.Result = result
-	return response, nil
 }

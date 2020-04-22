@@ -3,17 +3,10 @@ package version
 import "fmt"
 
 var (
-	version = "unknown"
-	commit  = "unknown"
-	date    = "unknown"
+	version   = "unknown"
+	commit    = "unknown"
+	buildDate = "unknown"
 )
-
-var appName = "lbrytv"
-
-// GetAppName returns main application name
-func GetAppName() string {
-	return appName
-}
 
 // GetVersion returns current application version
 func GetVersion() string {
@@ -28,7 +21,10 @@ func GetDevVersion() string {
 	return "unknown"
 }
 
-// GetFullBuildName returns current app version, commit and build time
-func GetFullBuildName() string {
-	return fmt.Sprintf("%v %v, commit %v, built at %v", GetAppName(), GetVersion(), commit, date)
+func BuildInfo() map[string]interface{} {
+	return map[string]interface{}{
+		"buildVersion": GetVersion(),
+		"buildCommit":  commit,
+		"buildDate":    buildDate,
+	}
 }

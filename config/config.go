@@ -11,10 +11,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-type ConfigWrapper struct {
+type configWrapper struct {
 	Viper      *viper.Viper
 	overridden map[string]interface{}
-	ReadDone   bool
 }
 
 type DBConfig struct {
@@ -27,7 +26,7 @@ const lbrynetServers = "LbrynetServers"
 const deprecatedLbrynet = "Lbrynet"
 
 var once sync.Once
-var Config *ConfigWrapper
+var Config *configWrapper
 
 // overriddenValues stores overridden v values
 // and is initialized as an empty map in the read method
@@ -37,21 +36,21 @@ func init() {
 	Config = GetConfig()
 }
 
-func GetConfig() *ConfigWrapper {
+func GetConfig() *configWrapper {
 	once.Do(func() {
 		Config = NewConfig()
 	})
 	return Config
 }
 
-func NewConfig() *ConfigWrapper {
-	c := &ConfigWrapper{}
+func NewConfig() *configWrapper {
+	c := &configWrapper{}
 	c.Init()
 	c.Read()
 	return c
 }
 
-func (c *ConfigWrapper) Init() {
+func (c *configWrapper) Init() {
 	c.overridden = make(map[string]interface{})
 	c.Viper = viper.New()
 
@@ -80,12 +79,11 @@ func (c *ConfigWrapper) Init() {
 	c.Viper.AddConfigPath("$HOME/.lbrytv")
 }
 
-func (c *ConfigWrapper) Read() {
+func (c *configWrapper) Read() {
 	err := c.Viper.ReadInConfig()
 	if err != nil {
 		panic(err)
 	}
-	c.ReadDone = true
 }
 
 // IsProduction is true if we are running in a production environment
@@ -138,11 +136,10 @@ func GetLbrynetServers() map[string]string {
 		logrus.Panicf("Both %s and %s are set. This is a highlander situation...there can be only 1.", deprecatedLbrynet, lbrynetServers)
 	}
 
-	var serverMap = make(map[string]string)
 	if len(Config.Viper.GetStringMapString(lbrynetServers)) > 0 {
-		serverMap = Config.Viper.GetStringMapString(lbrynetServers)
+		return Config.Viper.GetStringMapString(lbrynetServers)
 	} else if Config.Viper.GetString(deprecatedLbrynet) != "" {
-		serverMap = map[string]string{"default": Config.Viper.GetString(deprecatedLbrynet)}
+		return map[string]string{"sdk": Config.Viper.GetString(deprecatedLbrynet)}
 	} else {
 		servers, err := models.LbrynetServers().AllG()
 		if err != nil {
@@ -151,8 +148,8 @@ func GetLbrynetServers() map[string]string {
 		if len(servers) == 0 {
 			panic("There are no servers listed in the db and config is not set.")
 		}
+		return nil
 	}
-	return serverMap
 }
 
 // GetInternalAPIHost returns the address of internal-api server
@@ -173,11 +170,6 @@ func GetSentryDSN() string {
 	return Config.Viper.GetString("SentryDSN")
 }
 
-// GetProjectURL returns publicly accessible URL for the project
-func GetProjectURL() string {
-	return Config.Viper.GetString("ProjectURL")
-}
-
 // GetPublishSourceDir returns directory for storing published files before they're uploaded to lbrynet.
 // The directory needs to be accessed by the running SDK instance.
 func GetPublishSourceDir() string {
@@ -192,21 +184,6 @@ func GetBlobFilesDir() string {
 // GetReflectorAddress returns reflector address in the format of host:port.
 func GetReflectorAddress() string {
 	return Config.Viper.GetString("ReflectorAddress")
-}
-
-// GetReflectorTimeout returns reflector TCP timeout in seconds.
-func GetReflectorTimeout() int64 {
-	return Config.Viper.GetInt64("ReflectorTimeout")
-}
-
-// GetRefractorAddress returns refractor address in the format of host:port.
-func GetRefractorAddress() string {
-	return Config.Viper.GetString("RefractorAddress")
-}
-
-// GetRefractorTimeout returns refractor TCP timeout in seconds.
-func GetRefractorTimeout() int64 {
-	return Config.Viper.GetInt64("RefractorTimeout")
 }
 
 // ShouldLogResponses enables or disables full SDK responses logging

@@ -33,20 +33,20 @@ func TestCache(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	responseCache.flush()
-	assert.Nil(t, responseCache.Retrieve("resolve", query.Params))
-	responseCache.Save("resolve", query.Params, response.Result)
-	assert.Equal(t, 1, responseCache.Count())
-	assert.Equal(t, response.Result, responseCache.Retrieve("resolve", query.Params))
+	globalCache.flush()
+	assert.Nil(t, globalCache.Retrieve("resolve", query.Params))
+	globalCache.Save("resolve", query.Params, response.Result)
+	assert.Equal(t, 1, globalCache.Count())
+	assert.Equal(t, response.Result, globalCache.Retrieve("resolve", query.Params))
 }
 
 func TestCacheGetKey(t *testing.T) {
-	responseCache.flush()
-	key, err := responseCache.getKey("resolve", map[string]interface{}{"urls": "one"})
+	globalCache.flush()
+	key, err := globalCache.getKey("resolve", map[string]interface{}{"urls": "one"})
 	assert.Equal(t, "resolve|3600a4eed065d3ae3dd503cca56ce56ae6bd4778047fa1b17c999301681d3a1d", key)
 	assert.NoError(t, err)
 
-	key, err = responseCache.getKey("wallet_balance", nil)
+	key, err = globalCache.getKey("wallet_balance", nil)
 	assert.Equal(t, "wallet_balance|nil", key)
 	assert.NoError(t, err)
 }

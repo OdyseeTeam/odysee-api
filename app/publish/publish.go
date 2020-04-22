@@ -9,153 +9,96 @@ import (
 	"os"
 	"path"
 
+	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/proxy"
-	"github.com/lbryio/lbrytv/app/users"
-	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
-
-// FileFieldName refers to the POST field containing file upload
-const FileFieldName = "file"
-
-// JSONRPCFieldName is a name of the POST field containing JSONRPC request accompanying the uploaded file
-const JSONRPCFieldName = "json_payload"
-
-const fileNameParam = "file_path"
 
 var logger = monitor.NewModuleLogger("publish")
 
-// Publisher is responsible for sending data to lbrynet
-// and should take file path, account ID and client query as a slice of bytes.
-type Publisher interface {
-	Publish(string, string, []byte) []byte
-}
+const (
+	// fileFieldName refers to the POST field containing file upload
+	fileFieldName = "file"
+	// jsonRPCFieldName is a name of the POST field containing JSONRPC request accompanying the uploaded file
+	jsonRPCFieldName = "json_payload"
 
-// LbrynetPublisher is an implementation of SDK publisher.
-type LbrynetPublisher struct {
-	*proxy.ProxyService
-}
+	fileNameParam = "file_path"
+)
 
-// UploadHandler glues HTTP uploads to the Publisher.
-type UploadHandler struct {
-	Publisher  Publisher
+// Handler has path to save uploads to
+type Handler struct {
 	UploadPath string
-}
-
-type UploadOpts struct {
-	Path         string
-	Publisher    Publisher
-	ProxyService *proxy.ProxyService
-}
-
-// NewUploadHandler returns a HTTP upload handler object.
-func NewUploadHandler(opts UploadOpts) (*UploadHandler, error) {
-	var (
-		publisher  Publisher
-		uploadPath string
-	)
-	if opts.ProxyService != nil {
-		publisher = &LbrynetPublisher{ProxyService: opts.ProxyService}
-	} else if opts.Publisher != nil {
-		publisher = opts.Publisher
-	} else {
-		return nil, errors.New("need either a ProxyService or a Publisher instance")
-	}
-
-	if opts.Path == "" {
-		uploadPath = config.GetPublishSourceDir()
-	} else {
-		uploadPath = opts.Path
-	}
-	return &UploadHandler{
-		Publisher:  publisher,
-		UploadPath: uploadPath,
-	}, nil
-}
-
-// Publish takes a file path, account ID and client JSON-RPC query,
-// patches the query and sends it to the SDK for processing.
-// Resulting response is then returned back as a slice of bytes.
-func (p *LbrynetPublisher) Publish(filePath, walletID string, rawQuery []byte) []byte {
-	c := p.ProxyService.NewCaller(walletID)
-	c.SetPreprocessor(func(q *proxy.Query) {
-		params := q.ParamsAsMap()
-		params[fileNameParam] = filePath
-		q.Request.Params = params
-	})
-	r := c.Call(rawQuery)
-	return r
 }
 
 // Handle is where HTTP upload is handled and passed on to Publisher.
 // It should be wrapped with users.Authenticator.Wrap before it can be used
 // in a mux.Router.
-func (h UploadHandler) Handle(w http.ResponseWriter, r *users.AuthenticatedRequest) {
+func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	if !r.IsAuthenticated() {
-		var authErr Error
-		if r.AuthFailed() {
-			authErr = NewAuthError(r.AuthError)
-		} else {
-			authErr = ErrUnauthorized
-		}
-		w.Write(authErr.AsBytes())
+
+	authResult := auth.FromRequest(r)
+	if !proxy.EnsureAuthenticated(authResult, w) {
+		return
+	}
+	if authResult.SDKAddress == "" {
+		w.Write(proxy.NewInternalError(errors.New("user does not have sdk address assigned")).JSON())
+		logger.Log().Errorf("user %d does not have sdk address assigned", authResult.User().ID)
 		return
 	}
 
-	f, err := h.saveFile(r)
+	f, err := h.saveFile(r, authResult.User().ID)
 	if err != nil {
 		logger.Log().Error(err)
 		monitor.CaptureException(err)
-		w.Write(NewInternalError(err).AsBytes())
+		w.Write(proxy.NewInternalError(err).JSON())
 		return
 	}
+	defer func() {
+		if err := os.Remove(f.Name()); err != nil {
+			monitor.CaptureException(err, map[string]string{"file_path": f.Name()})
+		}
+	}()
 
-	response := h.Publisher.Publish(f.Name(), r.WalletID, []byte(r.FormValue(JSONRPCFieldName)))
+	res := publish(
+		authResult.SDKAddress,
+		f.Name(),
+		authResult.User().ID,
+		[]byte(r.FormValue(jsonRPCFieldName)),
+	)
 
-	if err := os.Remove(f.Name()); err != nil {
-		monitor.CaptureException(err, map[string]string{"file_path": f.Name()})
+	w.Write(res)
+}
+
+func publish(sdkAddress, filename string, userID int, rawQuery []byte) []byte {
+	c := proxy.NewCaller(sdkAddress, userID)
+	c.Preprocessor = func(q *proxy.Query) {
+		params := q.ParamsAsMap()
+		params[fileNameParam] = filename
+		q.Request.Params = params
 	}
-
-	w.Write(response)
+	return c.CallRaw(rawQuery)
 }
 
 // CanHandle checks if http.Request contains POSTed data in an accepted format.
 // Supposed to be used in gorilla mux router MatcherFunc.
-func (h UploadHandler) CanHandle(r *http.Request, _ *mux.RouteMatch) bool {
-	_, _, err := r.FormFile(FileFieldName)
-	payload := r.FormValue(JSONRPCFieldName)
-	return err != http.ErrMissingFile && payload != ""
+func (h Handler) CanHandle(r *http.Request, _ *mux.RouteMatch) bool {
+	_, _, err := r.FormFile(fileFieldName)
+	return err != http.ErrMissingFile && r.FormValue(jsonRPCFieldName) != ""
 }
 
-// createFile opens an empty file for writing inside the account's designated folder.
-// The final file path looks like `/upload_path/{wallet_id}/{random}_filename.ext`,
-// where `wallet_id` is local SDK wallet ID and `random` is a random string generated by ioutil.
-func (h UploadHandler) createFile(walletID string, origFilename string) (*os.File, error) {
-	path, err := h.preparePath(walletID)
-	if err != nil {
-		return nil, err
-	}
-	return ioutil.TempFile(path, fmt.Sprintf("*_%v", origFilename))
-}
+func (h Handler) saveFile(r *http.Request, userID int) (*os.File, error) {
+	log := logger.WithFields(logrus.Fields{"user_id": userID})
 
-func (h UploadHandler) preparePath(walletID string) (string, error) {
-	path := path.Join(h.UploadPath, walletID)
-	err := os.MkdirAll(path, os.ModePerm)
-	return path, err
-}
-
-func (h UploadHandler) saveFile(r *users.AuthenticatedRequest) (*os.File, error) {
-	log := logger.LogF(monitor.F{"account_id": r.WalletID})
-	file, header, err := r.FormFile(FileFieldName)
+	file, header, err := r.FormFile(fileFieldName)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
-	f, err := h.createFile(r.WalletID, header.Filename)
+	f, err := h.createFile(userID, header.Filename)
 	if err != nil {
 		return nil, err
 	}
@@ -171,4 +114,16 @@ func (h UploadHandler) saveFile(r *users.AuthenticatedRequest) (*os.File, error)
 		return nil, err
 	}
 	return f, nil
+}
+
+// createFile opens an empty file for writing inside the account's designated folder.
+// The final file path looks like `/upload_path/{user_id}/{random}_filename.ext`,
+// where `user_id` is user's ID and `random` is a random string generated by ioutil.
+func (h Handler) createFile(userID int, origFilename string) (*os.File, error) {
+	path := path.Join(h.UploadPath, fmt.Sprintf("%d", userID))
+	err := os.MkdirAll(path, os.ModePerm)
+	if err != nil {
+		return nil, err
+	}
+	return ioutil.TempFile(path, fmt.Sprintf("*_%s", origFilename))
 }

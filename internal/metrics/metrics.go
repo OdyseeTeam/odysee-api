@@ -11,6 +11,7 @@ const (
 	nsProxy   = "proxy"
 	nsLbrynet = "lbrynet"
 	nsUI      = "ui"
+	nsLbrytv  = "lbrytv"
 
 	LabelSource   = "source"
 	LabelInstance = "instance"
@@ -135,4 +136,15 @@ var (
 		Help:      "How long it takes the video to start",
 		Buckets:   []float64{0.1, 0.25, 0.5, 1, 2, 4, 8, 16, 32},
 	})
+
+	LbrytvCallDurations = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: nsLbrytv,
+			Subsystem: "calls",
+			Name:      "total_seconds",
+			Help:      "How long do calls to lbrytv take (end-to-end)",
+			Buckets:   callsSecondsBuckets,
+		},
+		[]string{"path"},
+	)
 )

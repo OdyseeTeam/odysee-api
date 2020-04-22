@@ -106,7 +106,7 @@ func TestErrorLoggingMiddlewareTableTest(t *testing.T) {
 			mw.ServeHTTP(rr, r)
 			res := rr.Result()
 			body, err := ioutil.ReadAll(res.Body)
-			require.Nil(t, err)
+			require.NoError(t, err)
 
 			assert.Equal(t, row.status, res.StatusCode)
 			assert.Equal(t, row.resBody, string(body))

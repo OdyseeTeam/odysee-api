@@ -1,20 +1,20 @@
 package monitor
 
 import (
-	"fmt"
-
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/responses"
 
 	"github.com/getsentry/sentry-go"
 )
 
 var IgnoredExceptions = []string{
-	"account identificator required",
+	responses.AuthRequiredErrorMessage,
 }
 
 func configureSentry(release, env string) {
 	dsn := config.GetSentryDSN()
 	if dsn == "" {
+		logger.Log().Info("sentry disabled (no DNS configured)")
 		return
 	}
 
@@ -35,9 +35,9 @@ func configureSentry(release, env string) {
 		},
 	})
 	if err != nil {
-		Logger.Errorf("sentry initialization failed: %v", err)
+		logger.Log().Errorf("sentry initialization failed: %v", err)
 	} else {
-		Logger.Info("Sentry initialized")
+		logger.Log().Info("sentry initialized")
 	}
 }
 
@@ -56,16 +56,4 @@ func CaptureException(err error, params ...map[string]string) {
 		}
 		sentry.CaptureException(err)
 	})
-}
-
-// CaptureFailedQuery sends to Sentry details of a failed daemon call.
-func CaptureFailedQuery(method string, query interface{}, errorResponse interface{}) {
-	CaptureException(
-		fmt.Errorf("daemon responded with an error when calling method %v", method),
-		map[string]string{
-			"method":   method,
-			"query":    fmt.Sprintf("%v", query),
-			"response": fmt.Sprintf("%v", errorResponse),
-		},
-	)
 }

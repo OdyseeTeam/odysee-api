@@ -1,113 +1,79 @@
 package proxy
 
 import (
-	"fmt"
+	"encoding/json"
+	"errors"
+	"net/http"
+
+	"github.com/lbryio/lbrytv/app/auth"
+	"github.com/lbryio/lbrytv/internal/responses"
 
 	"github.com/ybbus/jsonrpc"
 )
 
-// ErrProxy is for general errors that originate inside the proxy module
-const ErrProxy int = -32080
+const (
+	rpcErrorCodeInternal         int = -32080 // general errors that originate inside the proxy module
+	rpcErrorCodeSDK              int = -32603 // otherwise-unspecified errors from the SDK
+	rpcErrorCodeAuthRequired     int = -32084 // auth info is required but is not provided
+	rpcErrorCodeForbidden        int = -32085 // auth info is provided but is not found in the database
+	rpcErrorCodeJSONParse        int = -32700 // invalid JSON was received by the server
+	rpcErrorCodeInvalidParams    int = -32602 // error in params that the client provided
+	rpcErrorCodeMethodNotAllowed int = -32601 // the requested method is not allowed to be called
+)
 
-// ErrInternal is a general server error code
-const ErrInternal int = -32603
-
-// ErrAuthFailed is when supplied auth_token / account_id is not present in the database.
-const ErrAuthFailed int = -32085
-
-// ErrJSONParse means invalid JSON was received by the server.
-const ErrJSONParse int = -32700
-
-// ErrInvalidParams signifies a client-supplied params error
-const ErrInvalidParams int = -32602
-
-// ErrInvalidRequest signifies a general client error
-const ErrInvalidRequest int = -32600
-
-// ErrMethodUnavailable means the client-requested method cannot be found
-const ErrMethodUnavailable int = -32601
-
-// CallError is for whatever errors might occur when processing or forwarding client JSON-RPC request
-type CallError interface {
-	AsRPCResponse() *jsonrpc.RPCResponse
-	Code() int
-	Error() string
-}
-
-type GenericError struct {
+type RPCError struct {
 	err  error
 	code int
 }
 
-// InputError is a client JSON parsing error
-type InputError struct {
-	GenericError
+func (e RPCError) Code() int     { return e.code }
+func (e RPCError) Unwrap() error { return e.err }
+func (e RPCError) Error() string {
+	if e.err == nil {
+		return "no wrapped error"
+	}
+	return e.err.Error()
 }
 
-// AuthFailed is for authentication failures when jsonrpc client has provided a token
-type AuthFailed struct {
-	err error
-}
-
-// AsRPCResponse returns error as jsonrpc.RPCResponse
-func (e GenericError) AsRPCResponse() *jsonrpc.RPCResponse {
-	return &jsonrpc.RPCResponse{
+func (e RPCError) JSON() []byte {
+	b, err := json.MarshalIndent(jsonrpc.RPCResponse{
 		Error: &jsonrpc.RPCError{
 			Code:    e.Code(),
 			Message: e.Error(),
 		},
 		JSONRPC: "2.0",
+	}, "", "  ")
+	if err != nil {
+		logger.Log().Errorf("rpc error to json: %v", err)
 	}
+	return b
 }
 
-// NewError is for general internal errors
-func NewError(e error) GenericError {
-	return GenericError{e, ErrInternal}
+func NewInternalError(e error) RPCError         { return RPCError{e, rpcErrorCodeInternal} }
+func NewJSONParseError(e error) RPCError        { return RPCError{e, rpcErrorCodeJSONParse} }
+func NewMethodNotAllowedError(e error) RPCError { return RPCError{e, rpcErrorCodeMethodNotAllowed} }
+func NewInvalidParamsError(e error) RPCError    { return RPCError{e, rpcErrorCodeInvalidParams} }
+func NewSDKError(e error) RPCError              { return RPCError{e, rpcErrorCodeSDK} }
+func NewForbiddenError(e error) RPCError        { return RPCError{e, rpcErrorCodeForbidden} }
+func NewAuthRequiredError(e error) RPCError     { return RPCError{e, rpcErrorCodeAuthRequired} }
+
+func isJSONParseError(err error) bool {
+	var e RPCError
+	return err != nil && errors.As(err, &e) && e.code == rpcErrorCodeJSONParse
 }
 
-// NewInputError is for client JSON parsing errors
-func NewInputError(e error) InputError {
-	return InputError{GenericError{e, ErrJSONParse}}
-}
-
-// NewMethodError creates a call method error
-func NewMethodError(e error) GenericError {
-	return GenericError{e, ErrMethodUnavailable}
-}
-
-// NewParamsError signifies an error in method parameters
-func NewParamsError(e error) GenericError {
-	return GenericError{e, ErrInvalidParams}
-}
-
-// NewInternalError is for SDK-related errors (connection problems etc)
-func NewInternalError(e error) GenericError {
-	return GenericError{e, ErrInternal}
-}
-
-func (e GenericError) Error() string {
-	return e.err.Error()
-}
-
-// Code returns JSRON-RPC error code
-func (e GenericError) Code() int {
-	return e.code
-}
-
-func (e GenericError) Unwrap() error {
-	return e.err
-}
-
-func (e AuthFailed) Error() string {
-	return fmt.Sprintf("couldn't find account for in lbrynet")
-}
-
-// Code returns JSRON-RPC error code
-func (e AuthFailed) Code() int {
-	return ErrAuthFailed
-}
-
-// Code returns JSRON-RPC error code
-func (e InputError) Code() int {
-	return ErrJSONParse
+func EnsureAuthenticated(ar auth.Result, w http.ResponseWriter) bool {
+	if !ar.AuthAttempted() {
+		w.Write(NewAuthRequiredError(errors.New(responses.AuthRequiredErrorMessage)).JSON())
+		return false
+	}
+	if !ar.Authenticated() {
+		if ar.Err() == nil {
+			w.Write(NewForbiddenError(errors.New("must authenticate")).JSON())
+		} else {
+			w.Write(NewForbiddenError(ar.Err()).JSON())
+		}
+		return false
+	}
+	return true
 }

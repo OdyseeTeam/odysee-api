@@ -11,6 +11,10 @@ prepare_test:
 test:
 	go test -cover ./...
 
+.PHONY: test_race
+test_race:
+	go test -race -gcflags=all=-d=checkptr=0 ./...
+
 .PHONY: test_circleci
 test_circleci:
 	scripts/wait_for_wallet.sh
@@ -18,13 +22,13 @@ test_circleci:
 	go get github.com/mattn/goveralls
 	go run . db_migrate_up
 	go test -covermode=count -coverprofile=coverage.out ./...
-	goveralls -coverprofile=coverage.out -service=circle-ci -repotoken $(COVERALLS_TOKEN)
+	goveralls -coverprofile=coverage.out -service=circle-ci -ignore=models/ -repotoken $(COVERALLS_TOKEN)
 
 release:
-	goreleaser --rm-dist
+	GO111MODULE=on goreleaser --rm-dist
 
 snapshot:
-	goreleaser --snapshot --rm-dist
+	GO111MODULE=on goreleaser --snapshot --rm-dist
 
 .PHONY: image
 image:
@@ -44,7 +48,7 @@ clean:
 
 .PHONY: server
 server:
-	LW_DEBUG=1 go run . serve
+	LW_DEBUG=1 go run .
 
 tag := $(shell git describe --abbrev=0 --tags)
 .PHONY: retag

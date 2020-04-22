@@ -49,7 +49,7 @@ func TestInit(t *testing.T) {
 	defer conn.Close()
 
 	err = conn.DB.Ping()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestMigrate(t *testing.T) {

@@ -3,6 +3,8 @@ package publish
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
@@ -12,121 +14,176 @@ import (
 	"path"
 	"testing"
 
-	"github.com/lbryio/lbrytv/app/users"
-	"github.com/lbryio/lbrytv/internal/lbrynet"
-	"github.com/ybbus/jsonrpc"
+	"github.com/lbryio/lbrytv/app/auth"
+	"github.com/lbryio/lbrytv/app/sdkrouter"
+	"github.com/lbryio/lbrytv/app/wallet"
+	"github.com/lbryio/lbrytv/internal/test"
+	"github.com/lbryio/lbrytv/models"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/ybbus/jsonrpc"
 )
 
 type DummyPublisher struct {
-	called    bool
-	filePath  string
-	accountID string
-	rawQuery  []byte
-}
-
-func (p *DummyPublisher) Publish(filePath, accountID string, rawQuery []byte) []byte {
-	p.called = true
-	p.filePath = filePath
-	p.accountID = accountID
-	p.rawQuery = rawQuery
-	return []byte(lbrynet.ExampleStreamCreateResponse)
+	called   bool
+	filePath string
+	walletID string
+	rawQuery string
 }
 
 func TestUploadHandler(t *testing.T) {
-	req := CreatePublishRequest(t, []byte("test file"))
-	req.Header.Set(users.TokenHeader, "uPldrToken")
+	r := CreatePublishRequest(t, []byte("test file"))
+	r.Header.Set(wallet.TokenHeader, "uPldrToken")
+
+	publisher := &DummyPublisher{}
+
+	reqChan := test.ReqChan()
+	ts := test.MockHTTPServer(reqChan)
+	go func() {
+		req := <-reqChan
+		publisher.called = true
+		rpcReq := test.StrToReq(t, req.Body)
+		params, ok := rpcReq.Params.(map[string]interface{})
+		require.True(t, ok)
+		publisher.filePath = params["file_path"].(string)
+		publisher.walletID = params["wallet_id"].(string)
+		publisher.rawQuery = req.Body
+		ts.NextResponse <- expectedStreamCreateResponse
+	}()
+
+	handler := &Handler{UploadPath: os.TempDir()}
+
+	provider := func(token, ip string) auth.Result {
+		if token == "uPldrToken" {
+			res := auth.NewResult(&models.User{ID: 20404}, nil)
+			res.SDKAddress = ts.URL
+			return res
+		}
+		return auth.NewResult(nil, errors.New("error"))
+	}
 
 	rr := httptest.NewRecorder()
-	authenticator := users.NewAuthenticator(&users.TestUserRetriever{WalletID: "UPldrAcc", Token: "uPldrToken"})
-	publisher := &DummyPublisher{}
-	pubHandler, err := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
-	assert.Nil(t, err)
-
-	http.HandlerFunc(authenticator.Wrap(pubHandler.Handle)).ServeHTTP(rr, req)
+	auth.Middleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
 	response := rr.Result()
-	respBody, _ := ioutil.ReadAll(response.Body)
+	respBody, err := ioutil.ReadAll(response.Body)
+	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
-	assert.Equal(t, lbrynet.ExampleStreamCreateResponse, string(respBody))
+	test.AssertJsonEqual(t, expectedStreamCreateResponse, respBody)
 
 	require.True(t, publisher.called)
-	expectedPath := path.Join(os.TempDir(), "UPldrAcc", ".*_lbry_auto_test_file")
+	expectedPath := path.Join(os.TempDir(), "20404", ".*_lbry_auto_test_file")
 	assert.Regexp(t, expectedPath, publisher.filePath)
-	assert.Equal(t, "UPldrAcc", publisher.accountID)
-	assert.Equal(t, lbrynet.ExampleStreamCreateRequest, string(publisher.rawQuery))
+	assert.Equal(t, sdkrouter.WalletID(20404), publisher.walletID)
+	expectedReq := fmt.Sprintf(expectedStreamCreateRequest, sdkrouter.WalletID(20404), publisher.filePath)
+	test.AssertJsonEqual(t, expectedReq, publisher.rawQuery)
 
 	_, err = os.Stat(publisher.filePath)
 	assert.True(t, os.IsNotExist(err))
 }
 
-func TestUploadHandlerAuthRequired(t *testing.T) {
-	var rpcResponse jsonrpc.RPCResponse
-	req := CreatePublishRequest(t, []byte("test file"))
+func TestHandler_NoAuthMiddleware(t *testing.T) {
+	r, err := http.NewRequest("POST", "/api/v1/proxy", &bytes.Buffer{})
+	require.NoError(t, err)
+	r.Header.Set(wallet.TokenHeader, "uPldrToken")
+
+	handler := &Handler{UploadPath: os.TempDir()}
 
 	rr := httptest.NewRecorder()
-	authenticator := users.NewAuthenticator(&users.TestUserRetriever{})
-	publisher := &DummyPublisher{}
-	pubHandler, err := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
-	assert.Nil(t, err)
+	assert.Panics(t, func() {
+		handler.Handle(rr, r)
+	})
+}
 
-	http.HandlerFunc(authenticator.Wrap(pubHandler.Handle)).ServeHTTP(rr, req)
+func TestHandler_NoSDKAddress(t *testing.T) {
+	r := CreatePublishRequest(t, []byte("test file"))
+	r.Header.Set(wallet.TokenHeader, "x")
+	rr := httptest.NewRecorder()
+
+	handler := &Handler{UploadPath: os.TempDir()}
+	provider := func(token, ip string) auth.Result {
+		return auth.NewResult(&models.User{ID: 20404}, nil)
+	}
+
+	auth.Middleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
+	response := rr.Result()
+	respBody, err := ioutil.ReadAll(response.Body)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusOK, response.StatusCode)
+	assert.Contains(t, string(respBody), "user does not have sdk address assigned")
+}
+
+func TestHandler_AuthRequired(t *testing.T) {
+	r := CreatePublishRequest(t, []byte("test file"))
+
+	publisher := &DummyPublisher{}
+	handler := &Handler{UploadPath: os.TempDir()}
+
+	provider := func(token, ip string) auth.Result {
+		if token == "uPldrToken" {
+			return auth.NewResult(&models.User{ID: 20404}, nil)
+		}
+		return auth.NewResult(nil, errors.New("error"))
+	}
+
+	rr := httptest.NewRecorder()
+	auth.Middleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
 	response := rr.Result()
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
-	err = json.Unmarshal(rr.Body.Bytes(), &rpcResponse)
-	require.Nil(t, err)
+	var rpcResponse jsonrpc.RPCResponse
+	err := json.Unmarshal(rr.Body.Bytes(), &rpcResponse)
+	require.NoError(t, err)
 	assert.Equal(t, "authentication required", rpcResponse.Error.Message)
 	require.False(t, publisher.called)
 }
 
 func TestUploadHandlerSystemError(t *testing.T) {
-	var rpcResponse jsonrpc.RPCResponse
-
 	// Creating POST data manually here because we need to avoid writer.Close()
-	data := []byte("test file")
-	readSeeker := bytes.NewReader(data)
+	reader := bytes.NewReader([]byte("test file"))
 	body := &bytes.Buffer{}
-
 	writer := multipart.NewWriter(body)
 
-	fileBody, err := writer.CreateFormFile(FileFieldName, "lbry_auto_test_file")
-	require.Nil(t, err)
-	io.Copy(fileBody, readSeeker)
+	fileBody, err := writer.CreateFormFile(fileFieldName, "lbry_auto_test_file")
+	require.NoError(t, err)
+	_, err = io.Copy(fileBody, reader)
+	require.NoError(t, err)
 
-	jsonPayload, err := writer.CreateFormField(JSONRPCFieldName)
-	require.Nil(t, err)
-	jsonPayload.Write([]byte(lbrynet.ExampleStreamCreateRequest))
+	jsonPayload, err := writer.CreateFormField(jsonRPCFieldName)
+	require.NoError(t, err)
+	jsonPayload.Write([]byte(fmt.Sprintf(expectedStreamCreateRequest, sdkrouter.WalletID(20404), "arst")))
 
 	// <--- Not calling writer.Close() here to create an unexpected EOF
 
 	req, err := http.NewRequest("POST", "/", bytes.NewReader(body.Bytes()))
-	require.Nil(t, err)
+	require.NoError(t, err)
 
-	req.Header.Set(users.TokenHeader, "uPldrToken")
+	req.Header.Set(wallet.TokenHeader, "uPldrToken")
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	rr := httptest.NewRecorder()
-	authenticator := users.NewAuthenticator(&users.TestUserRetriever{WalletID: "UPldrAcc", Token: "uPldrToken"})
 	publisher := &DummyPublisher{}
-	pubHandler, err := NewUploadHandler(UploadOpts{Path: os.TempDir(), Publisher: publisher})
-	assert.Nil(t, err)
+	handler := &Handler{UploadPath: os.TempDir()}
 
-	http.HandlerFunc(authenticator.Wrap(pubHandler.Handle)).ServeHTTP(rr, req)
+	provider := func(token, ip string) auth.Result {
+		if token == "uPldrToken" {
+			res := auth.NewResult(&models.User{ID: 20404}, nil)
+			res.SDKAddress = "whatever"
+			return res
+		}
+		return auth.NewResult(nil, errors.New("error"))
+	}
+
+	rr := httptest.NewRecorder()
+	auth.Middleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, req)
 	response := rr.Result()
 
 	require.False(t, publisher.called)
 	assert.Equal(t, http.StatusOK, response.StatusCode)
+	var rpcResponse jsonrpc.RPCResponse
 	err = json.Unmarshal(rr.Body.Bytes(), &rpcResponse)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "unexpected EOF", rpcResponse.Error.Message)
 	require.False(t, publisher.called)
-}
-
-func TestNewUploadHandler(t *testing.T) {
-	h, err := NewUploadHandler(UploadOpts{})
-	assert.Error(t, err, "need either a ProxyService or a Publisher instance")
-	assert.Nil(t, h)
 }

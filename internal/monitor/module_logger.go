@@ -10,50 +10,32 @@ import (
 
 // ModuleLogger contains module-specific logger details.
 type ModuleLogger struct {
-	ModuleName string
 	Logger     *logrus.Logger
-	Level      logrus.Level
+	moduleName string
 }
-
-// F can be supplied to ModuleLogger's Log function for providing additional log context.
-type F map[string]interface{}
 
 // NewModuleLogger creates a new ModuleLogger instance carrying module name
 // for later `Log()` calls.
 func NewModuleLogger(moduleName string) ModuleLogger {
-	logger := getBaseLogger()
-	l := ModuleLogger{
-		ModuleName: moduleName,
+	logger := logrus.New()
+	configureLogLevelAndFormat(logger)
+	return ModuleLogger{
+		moduleName: moduleName,
 		Logger:     logger,
-		Level:      logger.GetLevel(),
 	}
-	l.Logger.SetLevel(l.Level)
-	return l
 }
-
-// LogF is a deprecated method, an equivalent WithFields/WithField should be used.
-func (l ModuleLogger) LogF(fields F) *logrus.Entry { return l.WithFields(fields) }
 
 // WithFields returns a new log entry containing additional info provided by fields,
 // which can be called upon with a corresponding logLevel.
 // Example:
 //  logger.WithFields(F{"query": "..."}).Info("query error")
-func (l ModuleLogger) WithFields(fields F) *logrus.Entry {
-	logFields := logrus.Fields{}
-	logFields["module"] = l.ModuleName
-	for k, v := range fields {
-		if k == TokenF && v != "" && config.IsProduction() {
-			logFields[k] = ValueMask
-		} else {
-			logFields[k] = v
-		}
-	}
-	return l.Logger.WithFields(logFields)
-}
+func (l ModuleLogger) WithFields(fields logrus.Fields) *logrus.Entry {
+	fields["module"] = l.moduleName
 
-// WithField is a shortcut for when a single log entry field is needed.
-func (l ModuleLogger) WithField(key string, value interface{}) *logrus.Entry {
-	return l.WithFields(F{key: value})
+	if v, ok := fields[TokenF]; ok && v != "" && config.IsProduction() {
+		fields[TokenF] = valueMask
+	}
+	return l.Logger.WithFields(fields)
 }
 
 // Log returns a new log entry for the module
@@ -61,7 +43,7 @@ func (l ModuleLogger) WithField(key string, value interface{}) *logrus.Entry {
 // Example:
 //  Log().Info("query error")
 func (l ModuleLogger) Log() *logrus.Entry {
-	return l.Logger.WithFields(logrus.Fields{"module": l.ModuleName})
+	return l.Logger.WithFields(logrus.Fields{"module": l.moduleName})
 }
 
 // Disable turns off logging output for this module logger
