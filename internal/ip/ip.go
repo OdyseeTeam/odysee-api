@@ -68,25 +68,6 @@ func IsPrivateSubnet(ipAddress net.IP) bool {
 
 // AddressForRequest returns the real IP address of the request
 func AddressForRequest(r *http.Request) string {
-	orgAddresses := []string{
-		"34.231.101.5",
-		"18.222.104.49",
-		"18.191.94.135",
-		"3.136.112.165",
-		"18.223.116.236",
-		"13.59.124.208",
-		"3.19.54.244",
-		"3.21.166.205",
-		"3.16.131.26",
-		"3.14.128.5",
-		"3.133.116.6",
-		"3.133.83.252",
-		"3.19.143.233",
-		"3.22.63.204",
-		"3.12.147.187",
-		"18.217.80.240",
-		"13.59.197.247",
-	}
 	for _, h := range []string{"X-Forwarded-For", "X-Real-Ip"} {
 		addresses := strings.Split(r.Header.Get(h), ",")
 		// march from right to left until we get a public address

@@ -8,6 +8,7 @@ import (
 
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
+	"github.com/lbryio/lbrytv/internal/ip"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
 
@@ -111,10 +112,10 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 
 func WhoAMI(w http.ResponseWriter, req *http.Request) {
 	details := map[string]string{
-		"ip":                     fmt.Sprintf("%v", req.RemoteAddr),
-		"X-Forwarded-For":        req.Header.Get("X-Forwarded-For"),
-		"X-Real-Ip":              req.Header.Get("X-Real-Ip"),
-		"GetIPAddressForRequest": users.GetIPAddressForRequest(req),
+		"ip":                fmt.Sprintf("%v", req.RemoteAddr),
+		"X-Forwarded-For":   req.Header.Get("X-Forwarded-For"),
+		"X-Real-Ip":         req.Header.Get("X-Real-Ip"),
+		"AddressForRequest": ip.AddressForRequest(req),
 	}
 
 	responses.AddJSONContentType(w)
