@@ -1,4 +1,4 @@
-package users
+package ip
 
 import (
 	"net/http"
@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetIPAddressForRequest(t *testing.T) {
+func TestAddressForRequest(t *testing.T) {
 	tests := map[string]string{
 		"127.0.0.1, 203.0.113.195":                         "203.0.113.195",
 		"127.0.0.1":                                        "",
@@ -22,7 +22,7 @@ func TestGetIPAddressForRequest(t *testing.T) {
 		t.Run(val, func(t *testing.T) {
 			r, _ := http.NewRequest(http.MethodGet, "", nil)
 			r.Header.Add("X-Forwarded-For", val)
-			assert.Equal(t, exp, GetIPAddressForRequest(r))
+			assert.Equal(t, exp, AddressForRequest(r))
 		})
 	}
 }

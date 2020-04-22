@@ -29,7 +29,7 @@ const pgUniqueConstraintViolation = "23505"
 // Retrieve gets user by internal-apis auth token. If the user does not have a wallet yet, they
 // are assigned an SDK and a wallet is created for them on that SDK.
 func GetUserWithWallet(rt *sdkrouter.Router, internalAPIHost, token, metaRemoteIP string) (*models.User, error) {
-	log := logger.WithFields(logrus.Fields{monitor.TokenF: token})
+	log := logger.WithFields(logrus.Fields{monitor.TokenF: token, "ip": metaRemoteIP})
 
 	remoteUser, err := getRemoteUser(internalAPIHost, token, metaRemoteIP)
 	if err != nil {
@@ -43,6 +43,7 @@ func GetUserWithWallet(rt *sdkrouter.Router, internalAPIHost, token, metaRemoteI
 
 	log.Data["remote_user_id"] = remoteUser.ID
 	log.Data["has_email"] = remoteUser.HasVerifiedEmail
+	log.Infof("user authenticated")
 
 	localUser, err := getOrCreateLocalUser(remoteUser.ID, log)
 	if err != nil {
