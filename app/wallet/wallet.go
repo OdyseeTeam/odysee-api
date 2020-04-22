@@ -85,6 +85,14 @@ func assignSDKServerToUser(user *models.User, router *sdkrouter.Router, log *log
 		if err != nil {
 			return err
 		}
+		if user.ID > 0 {
+			// retain BC for now. can remove this after sdk selection refactor has shown itself solid
+			user.WalletID = sdkrouter.WalletID(user.ID)
+			_, err := user.UpdateG(boil.Infer())
+			if err != nil {
+				return err
+			}
+		}
 	} else {
 		// THIS SERVER CAME FROM A CONFIG FILE (prolly during testing)
 		// TODO: handle this case better
