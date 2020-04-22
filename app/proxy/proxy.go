@@ -73,14 +73,14 @@ func (c *Caller) CallRaw(rawQuery []byte) []byte {
 func (c *Caller) Call(req *jsonrpc.RPCRequest) []byte {
 	r, err := c.call(req)
 	if err != nil {
-		monitor.CaptureException(err, map[string]string{"request": spew.Sdump(req), "response": fmt.Sprintf("%v", r)})
+		monitor.ErrorToSentry(err, map[string]string{"request": spew.Sdump(req), "response": fmt.Sprintf("%v", r)})
 		logger.Log().Errorf("error calling lbrynet: %v, request: %s", err, spew.Sdump(req))
 		return marshalError(err)
 	}
 
 	serialized, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
-		monitor.CaptureException(err)
+		monitor.ErrorToSentry(err)
 		logger.Log().Errorf("error marshaling response: %v", err)
 		return marshalError(NewInternalError(err))
 	}
@@ -163,17 +163,16 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 			_, err := client.WalletAdd(sdkrouter.WalletID(c.userID))
 			// Alert sentry on the last failed wallet load attempt
 			if err != nil && i >= walletLoadRetries-1 {
-				errMsg := "gave up on manually adding a wallet: %v"
+				e := errors.Prefix("gave up manually adding wallet", err)
 				logger.WithFields(logrus.Fields{
 					"user_id":  c.userID,
 					"endpoint": c.endpoint,
-				}).Errorf(errMsg, err)
-				monitor.CaptureException(
-					fmt.Errorf(errMsg, err), map[string]string{
-						"user_id":  fmt.Sprintf("%d", c.userID),
-						"endpoint": c.endpoint,
-						"retries":  fmt.Sprintf("%d", i),
-					})
+				}).Error(e)
+				monitor.ErrorToSentry(e, map[string]string{
+					"user_id":  fmt.Sprintf("%d", c.userID),
+					"endpoint": c.endpoint,
+					"retries":  fmt.Sprintf("%d", i),
+				})
 			}
 		} else if isErrWalletAlreadyLoaded(r) {
 			continue

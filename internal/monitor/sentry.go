@@ -41,8 +41,8 @@ func configureSentry(release, env string) {
 	}
 }
 
-// CaptureException sends to Sentry general exception info with some extra provided detail (like user email, claim url etc)
-func CaptureException(err error, params ...map[string]string) {
+// ErrorToSentry sends to Sentry general exception info with some extra provided detail (like user email, claim url etc)
+func ErrorToSentry(err error, params ...map[string]string) {
 	var extra map[string]string
 	if len(params) > 0 {
 		extra = params[0]

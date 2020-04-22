@@ -52,13 +52,13 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 	f, err := h.saveFile(r, authResult.User().ID)
 	if err != nil {
 		logger.Log().Error(err)
-		monitor.CaptureException(err)
+		monitor.ErrorToSentry(err)
 		w.Write(proxy.NewInternalError(err).JSON())
 		return
 	}
 	defer func() {
 		if err := os.Remove(f.Name()); err != nil {
-			monitor.CaptureException(err, map[string]string{"file_path": f.Name()})
+			monitor.ErrorToSentry(err, map[string]string{"file_path": f.Name()})
 		}
 	}()
 
