@@ -26,9 +26,14 @@ type RPCError struct {
 	code int
 }
 
-func (e RPCError) Error() string { return e.err.Error() }
 func (e RPCError) Code() int     { return e.code }
 func (e RPCError) Unwrap() error { return e.err }
+func (e RPCError) Error() string {
+	if e.err == nil {
+		return "no wrapped error"
+	}
+	return e.err.Error()
+}
 
 func (e RPCError) JSON() []byte {
 	b, err := json.MarshalIndent(jsonrpc.RPCResponse{
@@ -63,7 +68,11 @@ func EnsureAuthenticated(ar auth.Result, w http.ResponseWriter) bool {
 		return false
 	}
 	if !ar.Authenticated() {
-		w.Write(NewForbiddenError(ar.Err()).JSON())
+		if ar.Err() == nil {
+			w.Write(NewForbiddenError(errors.New("must authenticate")).JSON())
+		} else {
+			w.Write(NewForbiddenError(ar.Err()).JSON())
+		}
 		return false
 	}
 	return true
