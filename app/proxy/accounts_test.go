@@ -7,7 +7,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/lbryio/lbrytv/app/auth"
+	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/test"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
@@ -18,62 +21,54 @@ import (
 
 func TestWithWrongAuthToken(t *testing.T) {
 	testFuncSetup()
-	defer testFuncTeardown()
 
-	var (
-		q        *jsonrpc.RPCRequest
-		qBody    []byte
-		response jsonrpc.RPCResponse
-	)
-
-	ts := launchDummyAPIServer([]byte(`{
+	ts := test.MockHTTPServer(nil)
+	defer ts.Close()
+	ts.NextResponse <- `{
 		"success": false,
 		"error": "could not authenticate user",
 		"data": null
-	}`))
-	defer ts.Close()
-	config.Override("InternalAPIHost", ts.URL)
-	defer config.RestoreOverridden()
+	}`
 
-	q = jsonrpc.NewRequest("account_list")
-	qBody, _ = json.Marshal(q)
-	r, _ := http.NewRequest("POST", proxySuffix, bytes.NewBuffer(qBody))
+	q := jsonrpc.NewRequest("account_list")
+	qBody, err := json.Marshal(q)
+	require.NoError(t, err)
+	r, err := http.NewRequest("POST", "/api/v1/proxy", bytes.NewBuffer(qBody))
+	require.NoError(t, err)
 	r.Header.Add("X-Lbry-Auth-Token", "xXxXxXx")
 
 	rr := httptest.NewRecorder()
-	handler := NewRequestHandler(svc)
-	handler.Handle(rr, r)
+	rt := sdkrouter.New(config.GetLbrynetServers())
+	handler := sdkrouter.Middleware(rt)(auth.Middleware(auth.NewIAPIProvider(rt, ts.URL))(http.HandlerFunc(Handle)))
+	handler.ServeHTTP(rr, r)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	err := json.Unmarshal(rr.Body.Bytes(), &response)
+	var response jsonrpc.RPCResponse
+	err = json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 	assert.Equal(t, "cannot authenticate user with internal-apis: could not authenticate user", response.Error.Message)
 }
 
 func TestWithoutToken(t *testing.T) {
 	testFuncSetup()
-	defer testFuncTeardown()
 
-	var (
-		q              *jsonrpc.RPCRequest
-		qBody          []byte
-		response       jsonrpc.RPCResponse
-		statusResponse ljsonrpc.StatusResponse
-	)
-
-	q = jsonrpc.NewRequest("status")
-	qBody, _ = json.Marshal(q)
-	r, _ := http.NewRequest("POST", proxySuffix, bytes.NewBuffer(qBody))
+	q, err := json.Marshal(jsonrpc.NewRequest("status"))
+	require.NoError(t, err)
+	r, err := http.NewRequest("POST", "/api/v1/proxy", bytes.NewBuffer(q))
+	require.NoError(t, err)
 
 	rr := httptest.NewRecorder()
-	handler := NewRequestHandler(svc)
-	handler.Handle(rr, r)
-	require.Equal(t, http.StatusOK, rr.Code)
+	rt := sdkrouter.New(config.GetLbrynetServers())
+	handler := sdkrouter.Middleware(rt)(http.HandlerFunc(Handle))
+	handler.ServeHTTP(rr, r)
 
-	err := json.Unmarshal(rr.Body.Bytes(), &response)
+	require.Equal(t, http.StatusOK, rr.Code)
+	var response jsonrpc.RPCResponse
+	err = json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 	require.Nil(t, response.Error)
 
+	var statusResponse ljsonrpc.StatusResponse
 	err = ljsonrpc.Decode(response.Result, &statusResponse)
 	require.NoError(t, err)
 	assert.True(t, statusResponse.IsRunning)
@@ -81,25 +76,25 @@ func TestWithoutToken(t *testing.T) {
 
 func TestAccountSpecificWithoutToken(t *testing.T) {
 	testFuncSetup()
-	defer testFuncTeardown()
 
-	var (
-		q        *jsonrpc.RPCRequest
-		qBody    []byte
-		response jsonrpc.RPCResponse
-	)
-
-	q = jsonrpc.NewRequest("account_list")
-	qBody, _ = json.Marshal(q)
-	r, _ := http.NewRequest("POST", proxySuffix, bytes.NewBuffer(qBody))
+	q := jsonrpc.NewRequest("account_list")
+	qBody, err := json.Marshal(q)
+	require.NoError(t, err)
+	r, err := http.NewRequest("POST", "/api/v1/proxy", bytes.NewBuffer(qBody))
+	require.NoError(t, err)
 
 	rr := httptest.NewRecorder()
-	handler := NewRequestHandler(svc)
-	handler.Handle(rr, r)
-	require.Equal(t, http.StatusOK, rr.Code)
+	rt := sdkrouter.New(config.GetLbrynetServers())
+	provider := func(token, ip string) auth.Result {
+		return auth.NewResult(nil, nil)
+	}
+	handler := sdkrouter.Middleware(rt)(auth.Middleware(provider)(http.HandlerFunc(Handle)))
+	handler.ServeHTTP(rr, r)
 
-	err := json.Unmarshal(rr.Body.Bytes(), &response)
+	require.Equal(t, http.StatusOK, rr.Code)
+	var response jsonrpc.RPCResponse
+	err = json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 	require.NotNil(t, response.Error)
-	require.Equal(t, "account identificator required", response.Error.Message)
+	require.Equal(t, "authentication required", response.Error.Message)
 }

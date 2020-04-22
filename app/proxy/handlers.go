@@ -1,69 +1,75 @@
 package proxy
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 
-	"github.com/lbryio/lbrytv/app/users"
+	"github.com/lbryio/lbrytv/app/auth"
+	"github.com/lbryio/lbrytv/app/sdkrouter"
+	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
+
+	"github.com/ybbus/jsonrpc"
 )
 
-var logger = monitor.NewModuleLogger("proxy_handlers")
-
-// RequestHandler is a wrapper for passing proxy.ProxyService instance to proxy HTTP handler.
-type RequestHandler struct {
-	*ProxyService
-}
-
-// NewRequestHandler initializes request handler with a provided Proxy ProxyService instance
-func NewRequestHandler(svc *ProxyService) *RequestHandler {
-	return &RequestHandler{ProxyService: svc}
-}
-
 // Handle forwards client JSON-RPC request to proxy.
-func (rh *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
+func Handle(w http.ResponseWriter, r *http.Request) {
+	var proxyHandlerLogger = monitor.NewModuleLogger("proxy_handlers")
 	if r.Body == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("empty request body"))
-		logger.Log().Errorf("empty request body")
+		proxyHandlerLogger.Log().Errorf("empty request body")
 		return
 	}
+
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("error reading request body"))
-		logger.Log().Errorf("error reading request body: %v", err.Error())
+		proxyHandlerLogger.Log().Errorf("error reading request body: %v", err.Error())
 		return
 	}
 
-	var walletID string
+	// We're in RPC-response-land from here on down
+	responses.AddJSONContentType(w)
 
-	q, err := NewQuery(body)
-	if err != nil || !methodInList(q.Method(), relaxedMethods) {
-		retriever := users.NewWalletService(rh.SDKRouter)
-		auth := users.NewAuthenticator(retriever)
-		walletID, err = auth.GetWalletID(r)
-
-		if err != nil {
-			responses.JSONRPCError(w, err.Error(), ErrAuthFailed)
-			monitor.CaptureRequestError(err, r, w)
-			return
-		}
+	var req jsonrpc.RPCRequest
+	err = json.Unmarshal(body, &req)
+	if err != nil {
+		w.Write(NewJSONParseError(err).JSON())
+		return
 	}
 
-	c := rh.NewCaller(walletID)
+	logger.Log().Tracef("call to method %s", req.Method)
 
-	rawCallReponse := c.Call(body)
-	responses.PrepareJSONWriter(w)
-	w.Write(rawCallReponse)
+	var userID int
+	var sdkAddress string
+	if MethodNeedsAuth(req.Method) {
+		authResult := auth.FromRequest(r)
+		if !EnsureAuthenticated(authResult, w) {
+			return
+		}
+		userID = authResult.User().ID
+		sdkAddress = authResult.SDKAddress
+	}
+
+	rt := sdkrouter.FromRequest(r)
+
+	if sdkAddress == "" {
+		sdkAddress = rt.RandomServer().Address
+	}
+
+	c := NewCaller(sdkAddress, userID)
+	w.Write(c.Call(&req))
 }
 
-// HandleOptions returns necessary CORS headers for pre-flight requests to proxy API
-func (rh *RequestHandler) HandleOptions(w http.ResponseWriter, r *http.Request) {
+// HandleCORS returns necessary CORS headers for pre-flight requests to proxy API
+func HandleCORS(w http.ResponseWriter, r *http.Request) {
 	hs := w.Header()
 	hs.Set("Access-Control-Max-Age", "7200")
 	hs.Set("Access-Control-Allow-Origin", "*")
-	hs.Set("Access-Control-Allow-Headers", "X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept")
+	hs.Set("Access-Control-Allow-Headers", wallet.TokenHeader+", Origin, X-Requested-With, Content-Type, Accept")
 	w.WriteHeader(http.StatusOK)
 }

@@ -1,12 +1,9 @@
 package sdkrouter
 
 import (
-	"database/sql"
-	"errors"
+	"fmt"
 	"math/rand"
-	"regexp"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
 
@@ -15,12 +12,11 @@ import (
 	"github.com/lbryio/lbrytv/models"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
-
-	"github.com/volatiletech/sqlboiler/boil"
-	"github.com/volatiletech/sqlboiler/queries/qm"
 )
 
 var logger = monitor.NewModuleLogger("sdkrouter")
+
+func DisableLogger() { logger.Disable() } // for testing
 
 type Router struct {
 	mu      sync.RWMutex
@@ -31,7 +27,6 @@ type Router struct {
 
 	useDB      bool
 	lastLoaded time.Time
-	rpcClient  *ljsonrpc.Client
 }
 
 func New(servers map[string]string) *Router {
@@ -55,64 +50,18 @@ func New(servers map[string]string) *Router {
 
 func (r *Router) GetAll() []*models.LbrynetServer {
 	r.reloadServersFromDB()
+	logger.Log().Trace("waiting for read lock in GetAll")
 	r.mu.RLock()
+	logger.Log().Trace("got read lock in GetAll")
 	defer r.mu.RUnlock()
 	return r.servers
 }
 
-func (r *Router) GetServer(walletID string) *models.LbrynetServer {
-	r.reloadServersFromDB()
-
-	var sdk *models.LbrynetServer
-	if walletID == "" {
-		sdk = r.LeastLoaded()
-	} else {
-		sdk = r.serverForWallet(walletID)
-		if sdk.Address == "" {
-			logger.Log().Errorf("wallet [%s] is set but there is no server associated with it.", walletID)
-			sdk = r.RandomServer()
-		}
-	}
-
-	logger.Log().Tracef("Using [%s] server for wallet [%s]", sdk.Address, walletID)
-	return sdk
-}
-
-func (r *Router) serverForWallet(walletID string) *models.LbrynetServer {
-	userID := getUserID(walletID)
-	var user *models.User
-	var err error
-	if boil.GetDB() != nil {
-		user, err = models.Users(qm.Load(models.UserRels.LbrynetServer), models.UserWhere.ID.EQ(userID)).OneG()
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			logger.Log().Errorf("Error getting user %d from db: %v", userID, err.Error())
-		}
-	}
-
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	if user == nil || user.R == nil || user.R.LbrynetServer == nil {
-		srv := r.servers[getServerForUserID(userID, len(r.servers))]
-		logger.Log().Debugf("User %d has no wallet in db. Giving them %s", userID, srv.Address)
-		return srv
-	}
-
-	for _, s := range r.servers {
-		if s.ID == user.R.LbrynetServer.ID {
-			logger.Log().Debugf("User %d has wallet %s set in db", userID, s.Address)
-			return s
-		}
-	}
-
-	srv := r.servers[getServerForUserID(userID, len(r.servers))]
-	logger.Log().Errorf("Server for user %d is set in db but is not in current servers list. Giving them %s", userID, srv.Address)
-	return srv
-}
-
 func (r *Router) RandomServer() *models.LbrynetServer {
 	r.reloadServersFromDB()
+	logger.Log().Trace("waiting for read lock in RandomServer")
 	r.mu.RLock()
+	logger.Log().Trace("got read lock in RandomServer")
 	defer r.mu.RUnlock()
 	return r.servers[rand.Intn(len(r.servers))]
 }
@@ -134,14 +83,16 @@ func (r *Router) reloadServersFromDB() {
 
 func (r *Router) setServers(servers []*models.LbrynetServer) {
 	if len(servers) == 0 {
-		logger.Log().Fatal("Setting servers to empty list")
-		// TODO: fatal? really? maybe just don't update the servers in this case?
+		logger.Log().Error("Setting servers to empty list")
+		return
 	}
 
 	// we do this partially to make sure that ids are assigned to servers more consistently,
 	// and partially to make tests consistent (since Go maps are not ordered)
 	sort.Slice(servers, func(i, j int) bool { return servers[i].Name < servers[j].Name })
+	logger.Log().Trace("waiting for write lock in setServers")
 	r.mu.Lock()
+	logger.Log().Trace("got write lock in setServers")
 	defer r.mu.Unlock()
 	r.servers = servers
 	logger.Log().Debugf("updated server list to %d servers", len(r.servers))
@@ -168,13 +119,17 @@ func (r *Router) updateLoadAndMetrics() {
 		walletList, err := ljsonrpc.NewClient(server.Address).WalletList("", 1, 1)
 		if err != nil {
 			logger.Log().Errorf("lbrynet instance %s is not responding: %v", server.Address, err)
+			logger.Log().Trace("waiting for write lock in updateLoadAndMetrics 1")
 			r.loadMu.Lock()
+			logger.Log().Trace("got write lock in updateLoadAndMetrics 1")
 			delete(r.load, server)
 			r.loadMu.Unlock()
 			metric.Set(-1.0)
-			// TODO: maybe mark this instance as unresponsive so new traffic is routed to other instances
+			// TODO: maybe mark this instance as unresponsive so new users are assigned to other instances
 		} else {
+			logger.Log().Trace("waiting for write lock in updateLoadAndMetrics 2")
 			r.loadMu.Lock()
+			logger.Log().Trace("got write lock in updateLoadAndMetrics 2")
 			r.load[server] = walletList.TotalPages
 			r.loadMu.Unlock()
 			metric.Set(float64(walletList.TotalPages))
@@ -189,12 +144,14 @@ func (r *Router) LeastLoaded() *models.LbrynetServer {
 	var best *models.LbrynetServer
 	var min uint64
 
+	logger.Log().Trace("waiting for read lock in LeastLoaded")
 	r.loadMu.RLock()
+	logger.Log().Trace("got read lock in LeastLoaded")
 	defer r.loadMu.RUnlock()
 
 	if len(r.load) == 0 {
 		// updateLoadAndMetrics() was never run, so return a random server
-		logger.Log().Debugf("LeastLoaded() called before updating load metrics. Returning random server.")
+		logger.Log().Warnf("LeastLoaded() called before updating load metrics. Returning random server.")
 		return r.RandomServer()
 	}
 
@@ -208,14 +165,9 @@ func (r *Router) LeastLoaded() *models.LbrynetServer {
 	return best
 }
 
-func getUserID(walletID string) int {
-	userID, err := strconv.ParseInt(regexp.MustCompile(`\d+`).FindString(walletID), 10, 64)
-	if err != nil {
-		return 0
-	}
-	return int(userID)
-}
-
-func getServerForUserID(userID, numServers int) int {
-	return userID % numServers
+// WalletID formats user ID to use as an LbrynetServer wallet ID.
+func WalletID(userID int) string {
+	// warning: changing this template will require renaming the stored wallet files in lbrytv
+	const template = "lbrytv-id.%d.wallet"
+	return fmt.Sprintf(template, userID)
 }

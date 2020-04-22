@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/getsentry/sentry-go"
+	"github.com/sirupsen/logrus"
 )
 
 const responseSnippetLength = 500
@@ -85,27 +86,17 @@ func ErrorLoggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func CaptureRequestError(err error, r *http.Request, w http.ResponseWriter, params ...map[string]interface{}) {
-	extra := map[string]interface{}{}
-
-	if len(params) > 0 {
-		extra = params[0]
+func CaptureRequestError(err error, r *http.Request, w http.ResponseWriter) {
+	fields := logrus.Fields{
+		"method": r.Method,
+		"url":    r.URL.Path,
 	}
-
-	extra["method"] = r.Method
-	extra["url"] = r.URL.Path
-
 	if lw, ok := w.(*loggingWriter); ok {
-		extra["status"] = fmt.Sprintf("%v", lw.Status)
-		extra["response"] = lw.ResponseSnippet
+		fields["status"] = fmt.Sprintf("%v", lw.Status)
+		fields["response"] = lw.ResponseSnippet
 	}
 
-	logFields := F{}
-
-	for k, v := range extra {
-		logFields[k] = v
-	}
-	httpLogger.LogF(logFields).Error(err)
+	httpLogger.WithFields(fields).Error(err)
 	CaptureException(err)
 	// if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
 	// 	hub.WithScope(func(scope *sentry.Scope) {

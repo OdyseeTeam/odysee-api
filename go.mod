@@ -2,17 +2,20 @@ module github.com/lbryio/lbrytv
 
 require (
 	github.com/aws/aws-sdk-go v1.23.19 // indirect
+	github.com/davecgh/go-spew v1.1.1
 	github.com/getsentry/sentry-go v0.4.0
 	github.com/gobuffalo/packr v1.30.1 // indirect
 	github.com/gobuffalo/packr/v2 v2.7.1
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/gorilla/mux v1.7.3
+	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a
 	github.com/jinzhu/gorm v1.9.9
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
 	github.com/lbryio/lbry.go/v2 v2.4.4
 	github.com/lbryio/reflector.go v1.1.1
 	github.com/lib/pq v1.2.0
+	github.com/nsf/jsondiff v0.0.0-20190712045011-8443391ee9b6
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pelletier/go-toml v1.6.0 // indirect
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2 // indirect

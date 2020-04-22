@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/sirupsen/logrus"
 
 	_ "github.com/jinzhu/gorm/dialects/postgres" // Dialect import
 	"github.com/jmoiron/sqlx"
@@ -61,7 +62,7 @@ func InitConn(params ConnParams) *Connection {
 // Connect initiates a connection to the database server defined in c.params.
 func (c *Connection) Connect() error {
 	dsn := MakeDSN(c.params)
-	c.logger.LogF(monitor.F{"dsn": dsn}).Info("connecting to the DB")
+	c.logger.WithFields(logrus.Fields{"dsn": dsn}).Info("connecting to the DB")
 	var err error
 	var db *sqlx.DB
 	for i := 0; i < maxDBConnectAttempts; i++ {
@@ -75,7 +76,7 @@ func (c *Connection) Connect() error {
 	}
 
 	if err != nil {
-		c.logger.LogF(monitor.F{"dsn": dsn}).Info("DB connection failed")
+		c.logger.WithFields(logrus.Fields{"dsn": dsn}).Info("DB connection failed")
 		return err
 	}
 	c.DB = db

@@ -14,9 +14,13 @@ import (
 )
 
 func TestRouterConcurrency(t *testing.T) {
-	rpcServer, nextResp := test.MockJSONRPCServer(nil)
+	rpcServer := test.MockHTTPServer(nil)
 	defer rpcServer.Close()
-	nextResp(`{"result": {"items": [], "page": 1, "page_size": 1, "total_pages": 10}}`) // mock WalletList response
+	go func() {
+		for {
+			rpcServer.NextResponse <- `{"result": {"items": [], "page": 1, "page_size": 1, "total_pages": 10}}` // mock WalletList response
+		}
+	}()
 
 	r := New(map[string]string{"srv": rpcServer.URL})
 	servers := r.servers
@@ -43,13 +47,13 @@ func TestRouterConcurrency(t *testing.T) {
 			case 0:
 				r.RandomServer()
 				r.GetAll()
-				r.GetServer("yutwns.123.wallet")
+				r.LeastLoaded()
 			case 1:
 				r.GetAll()
-				r.GetServer("yutwns.123.wallet")
+				r.LeastLoaded()
 				r.RandomServer()
 			case 2:
-				r.GetServer("yutwns.123.wallet")
+				r.LeastLoaded()
 				r.RandomServer()
 				r.GetAll()
 			}

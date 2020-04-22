@@ -8,7 +8,6 @@ import (
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/test"
-	"github.com/lbryio/lbrytv/util/wallet"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -27,31 +26,19 @@ func TestMain(m *testing.M) {
 }
 
 func TestInitializeWithYML(t *testing.T) {
-	sdkRouter := New(config.GetLbrynetServers())
-	assert.True(t, len(sdkRouter.GetAll()) > 0, "No servers")
+	r := New(config.GetLbrynetServers())
+	assert.True(t, len(r.GetAll()) > 0, "No servers")
 }
 
 func TestServerOrder(t *testing.T) {
-	servers := map[string]string{
-		// internally, servers will be sorted in lexical order by name
-		"b": "1",
-		"a": "0",
-		"d": "3",
-		"c": "2",
-	}
-	sdkRouter := New(servers)
-
-	for i := 0; i < 100; i++ {
-		server := sdkRouter.GetServer(wallet.MakeID(i)).Address
-		assert.Equal(t, fmt.Sprintf("%d", i%len(servers)), server)
-	}
+	t.Skip("might bring this back when servers have an order")
 }
 
 func TestOverrideLbrynetDefaultConf(t *testing.T) {
 	address := "http://space.com:1234"
 	config.Override("LbrynetServers", map[string]string{"x": address})
 	defer config.RestoreOverridden()
-	server := New(config.GetLbrynetServers()).GetServer(wallet.MakeID(343465345))
+	server := New(config.GetLbrynetServers()).RandomServer()
 	assert.Equal(t, address, server.Address)
 }
 
@@ -60,18 +47,12 @@ func TestOverrideLbrynetConf(t *testing.T) {
 	config.Override("Lbrynet", address)
 	config.Override("LbrynetServers", map[string]string{})
 	defer config.RestoreOverridden()
-	server := New(config.GetLbrynetServers()).GetServer(wallet.MakeID(1343465345))
+	server := New(config.GetLbrynetServers()).RandomServer()
 	assert.Equal(t, address, server.Address)
 }
 
-func TestGetUserID(t *testing.T) {
-	userID := getUserID("sjdfkjhsdkjs.1234235.sdfsgf")
-	assert.Equal(t, 1234235, userID)
-}
-
 func TestLeastLoaded(t *testing.T) {
-	reqChan := make(chan *test.RequestData, 1)
-	rpcServer, nextResp := test.MockJSONRPCServer(reqChan)
+	rpcServer := test.MockHTTPServer(nil)
 	defer rpcServer.Close()
 
 	servers := map[string]string{
@@ -84,8 +65,7 @@ func TestLeastLoaded(t *testing.T) {
 	// try doing the load in increasing order
 	go func() {
 		for i := 0; i < len(servers); i++ {
-			nextResp(fmt.Sprintf(`{"result":{"total_pages":%d}}`, i))
-			<-reqChan
+			rpcServer.NextResponse <- fmt.Sprintf(`{"result":{"total_pages":%d}}`, i)
 		}
 	}()
 	r.updateLoadAndMetrics()
@@ -94,8 +74,7 @@ func TestLeastLoaded(t *testing.T) {
 	// now do the load in decreasing order
 	go func() {
 		for i := 0; i < len(servers); i++ {
-			nextResp(fmt.Sprintf(`{"result":{"total_pages":%d}}`, len(servers)-i))
-			<-reqChan
+			rpcServer.NextResponse <- fmt.Sprintf(`{"result":{"total_pages":%d}}`, len(servers)-i)
 		}
 	}()
 	r.updateLoadAndMetrics()
