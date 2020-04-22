@@ -34,7 +34,7 @@ func main() {
 
 	rMgr := reflection.NewManager(config.GetBlobFilesDir(), config.GetReflectorAddress())
 	rMgr.Initialize()
-	rMgr.Start(time.Minute)
+	rMgr.Start(time.Minute * 1)
 
 	cmd.Execute()
 }
