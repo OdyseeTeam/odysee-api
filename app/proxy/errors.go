@@ -2,10 +2,10 @@ package proxy
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/lbryio/lbrytv/app/auth"
+	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/responses"
 
 	"github.com/ybbus/jsonrpc"
@@ -49,13 +49,15 @@ func (e RPCError) JSON() []byte {
 	return b
 }
 
-func NewInternalError(e error) RPCError         { return RPCError{e, rpcErrorCodeInternal} }
-func NewJSONParseError(e error) RPCError        { return RPCError{e, rpcErrorCodeJSONParse} }
-func NewMethodNotAllowedError(e error) RPCError { return RPCError{e, rpcErrorCodeMethodNotAllowed} }
-func NewInvalidParamsError(e error) RPCError    { return RPCError{e, rpcErrorCodeInvalidParams} }
-func NewSDKError(e error) RPCError              { return RPCError{e, rpcErrorCodeSDK} }
-func NewForbiddenError(e error) RPCError        { return RPCError{e, rpcErrorCodeForbidden} }
-func NewAuthRequiredError(e error) RPCError     { return RPCError{e, rpcErrorCodeAuthRequired} }
+func newRPCErr(e error, code int) RPCError { return RPCError{errors.Err(e), code} }
+
+func NewInternalError(e error) RPCError         { return newRPCErr(e, rpcErrorCodeInternal) }
+func NewJSONParseError(e error) RPCError        { return newRPCErr(e, rpcErrorCodeJSONParse) }
+func NewMethodNotAllowedError(e error) RPCError { return newRPCErr(e, rpcErrorCodeMethodNotAllowed) }
+func NewInvalidParamsError(e error) RPCError    { return newRPCErr(e, rpcErrorCodeInvalidParams) }
+func NewSDKError(e error) RPCError              { return newRPCErr(e, rpcErrorCodeSDK) }
+func NewForbiddenError(e error) RPCError        { return newRPCErr(e, rpcErrorCodeForbidden) }
+func NewAuthRequiredError(e error) RPCError     { return newRPCErr(e, rpcErrorCodeAuthRequired) }
 
 func isJSONParseError(err error) bool {
 	var e RPCError
@@ -64,12 +66,12 @@ func isJSONParseError(err error) bool {
 
 func EnsureAuthenticated(ar auth.Result, w http.ResponseWriter) bool {
 	if !ar.AuthAttempted() {
-		w.Write(NewAuthRequiredError(errors.New(responses.AuthRequiredErrorMessage)).JSON())
+		w.Write(NewAuthRequiredError(errors.Err(responses.AuthRequiredErrorMessage)).JSON())
 		return false
 	}
 	if !ar.Authenticated() {
 		if ar.Err() == nil {
-			w.Write(NewForbiddenError(errors.New("must authenticate")).JSON())
+			w.Write(NewForbiddenError(errors.Err("must authenticate")).JSON())
 		} else {
 			w.Write(NewForbiddenError(ar.Err()).JSON())
 		}

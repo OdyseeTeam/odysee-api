@@ -1,10 +1,11 @@
 package monitor
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/lbryio/lbrytv/internal/errors"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/sirupsen/logrus"
@@ -12,7 +13,7 @@ import (
 
 const responseSnippetLength = 500
 
-var errGeneric = errors.New("handler responded with an error")
+var errGeneric = errors.Base("handler responded with an error")
 
 var httpLogger = NewModuleLogger("http_monitor")
 
@@ -66,11 +67,11 @@ func ErrorLoggingMiddleware(next http.Handler) http.Handler {
 			if err := recover(); err != nil {
 				switch t := err.(type) {
 				case string:
-					finalErr = errors.New(t)
+					finalErr = errors.Err(t)
 				case error:
 					finalErr = t
 				default:
-					finalErr = fmt.Errorf("unknown error: %v", err)
+					finalErr = errors.Err("unknown error: %v", err)
 				}
 				http.Error(w, finalErr.Error(), http.StatusInternalServerError)
 			} else if !w.IsSuccess() {

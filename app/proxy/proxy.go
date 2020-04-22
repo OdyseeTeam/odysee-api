@@ -13,7 +13,6 @@ package proxy
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -21,6 +20,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
@@ -151,7 +151,7 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 		// Generally a HTTP transport failure (connect error etc)
 		if err != nil {
 			logger.Log().Errorf("error sending query to %v: %v", c.endpoint, err)
-			return nil, err
+			return nil, errors.Err(err)
 		}
 
 		// This checks if LbrynetServer responded with missing wallet error and tries to reload it,
@@ -218,9 +218,9 @@ func marshalError(err error) []byte {
 }
 
 func isErrWalletNotLoaded(r *jsonrpc.RPCResponse) bool {
-	return r.Error != nil && errors.Is(lbrynet.NewWalletError(0, errors.New(r.Error.Message)), lbrynet.ErrWalletNotLoaded)
+	return r.Error != nil && errors.Is(lbrynet.NewWalletError(0, errors.Err(r.Error.Message)), lbrynet.ErrWalletNotLoaded)
 }
 
 func isErrWalletAlreadyLoaded(r *jsonrpc.RPCResponse) bool {
-	return r.Error != nil && errors.Is(lbrynet.NewWalletError(0, errors.New(r.Error.Message)), lbrynet.ErrWalletAlreadyLoaded)
+	return r.Error != nil && errors.Is(lbrynet.NewWalletError(0, errors.Err(r.Error.Message)), lbrynet.ErrWalletAlreadyLoaded)
 }

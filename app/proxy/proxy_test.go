@@ -3,14 +3,12 @@ package proxy
 import (
 	"encoding/json"
 	"math/rand"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
-	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/internal/test"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
@@ -220,12 +218,13 @@ func TestCallerCallSDKError(t *testing.T) {
 }
 
 func TestCallerCallClientJSONError(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		responses.AddJSONContentType(w)
-		w.Write([]byte(`{"method":"version}`))
-	}))
+	ts := test.MockHTTPServer(nil)
+	defer ts.Close()
+	ts.NextResponse <- `{"method":"version}` // note the missing close quote after "version
+
 	c := NewCaller(ts.URL, 0)
-	response := c.CallRaw([]byte(`{"method":"version}`))
+	response := c.CallRaw([]byte(""))
+	spew.Dump(response)
 	var rpcResponse jsonrpc.RPCResponse
 	json.Unmarshal(response, &rpcResponse)
 	assert.Equal(t, "2.0", rpcResponse.JSONRPC)

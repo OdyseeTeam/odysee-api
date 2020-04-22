@@ -1,9 +1,10 @@
 package lbrynet
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
+
+	"github.com/lbryio/lbrytv/internal/errors"
 )
 
 type WalletError struct {
@@ -15,11 +16,11 @@ func (e WalletError) Error() string { return fmt.Sprintf("user %d: %s", e.UserID
 func (e WalletError) Unwrap() error { return e.Err }
 
 var (
-	ErrWalletNotFound      = errors.New("wallet not found")
-	ErrWalletExists        = errors.New("wallet exists and is loaded")
-	ErrWalletNeedsLoading  = errors.New("wallet exists and needs to be loaded")
-	ErrWalletNotLoaded     = errors.New("wallet is not loaded")
-	ErrWalletAlreadyLoaded = errors.New("wallet is already loaded")
+	ErrWalletNotFound      = errors.Base("wallet not found")
+	ErrWalletExists        = errors.Base("wallet exists and is loaded")
+	ErrWalletNeedsLoading  = errors.Base("wallet exists and needs to be loaded")
+	ErrWalletNotLoaded     = errors.Base("wallet is not loaded")
+	ErrWalletAlreadyLoaded = errors.Base("wallet is already loaded")
 
 	// Workaround for non-existent SDK error codes
 	reWalletNotFound      = regexp.MustCompile(`Wallet at path .+ was not found`)

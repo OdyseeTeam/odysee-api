@@ -1,7 +1,6 @@
 package publish
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/proxy"
+	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
 	"github.com/gorilla/mux"
@@ -44,7 +44,7 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if authResult.SDKAddress == "" {
-		w.Write(proxy.NewInternalError(errors.New("user does not have sdk address assigned")).JSON())
+		w.Write(proxy.NewInternalError(errors.Err("user does not have sdk address assigned")).JSON())
 		logger.Log().Errorf("user %d does not have sdk address assigned", authResult.User().ID)
 		return
 	}
