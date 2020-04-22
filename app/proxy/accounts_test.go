@@ -49,6 +49,39 @@ func TestWithWrongAuthToken(t *testing.T) {
 	assert.Equal(t, "cannot authenticate user with internal-apis: could not authenticate user", response.Error.Message)
 }
 
+func TestAuthEmailNotVerified(t *testing.T) {
+	testFuncSetup()
+
+	ts := test.MockHTTPServer(nil)
+	defer ts.Close()
+	ts.NextResponse <- `{
+	"success": true,
+	"error": null,
+	"data": {
+		"user_id": 123,
+		"has_verified_email": false
+  	}
+}`
+
+	q := jsonrpc.NewRequest("account_list")
+	qBody, err := json.Marshal(q)
+	require.NoError(t, err)
+	r, err := http.NewRequest("POST", "/api/v1/proxy", bytes.NewBuffer(qBody))
+	require.NoError(t, err)
+	r.Header.Add("X-Lbry-Auth-Token", "x")
+
+	rr := httptest.NewRecorder()
+	rt := sdkrouter.New(config.GetLbrynetServers())
+	handler := sdkrouter.Middleware(rt)(auth.Middleware(auth.NewIAPIProvider(rt, ts.URL))(http.HandlerFunc(Handle)))
+	handler.ServeHTTP(rr, r)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var response jsonrpc.RPCResponse
+	err = json.Unmarshal(rr.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Equal(t, "must authenticate", response.Error.Message)
+}
+
 func TestWithoutToken(t *testing.T) {
 	testFuncSetup()
 
