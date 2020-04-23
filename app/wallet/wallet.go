@@ -51,7 +51,7 @@ func GetUserWithWallet(rt *sdkrouter.Router, internalAPIHost, token, metaRemoteI
 	}
 
 	if localUser.LbrynetServerID.IsZero() {
-		err := assignSDKServerToUser(localUser, rt, log)
+		err := assignSDKServerToUser(localUser, rt.LeastLoaded(), log)
 		if err != nil {
 			return nil, err
 		}
@@ -78,29 +78,79 @@ func getOrCreateLocalUser(remoteUserID int, log *logrus.Entry) (*models.User, er
 	return localUser, nil
 }
 
-func assignSDKServerToUser(user *models.User, router *sdkrouter.Router, log *logrus.Entry) error {
-	server := router.LeastLoaded()
-	if server.ID > 0 { // Ensure server is from DB
-		log.Infof("assigning sdk %s to user %d", server.Address, user.ID)
-		err := user.SetLbrynetServerG(false, server)
+// assignSDKServerToUser permanently assigns an sdk to a user, and creates a wallet on that sdk for that user.
+// it ensures that the assigned sdk is set on user.R.LbrynetServer, so it can be accessed externally
+func assignSDKServerToUser(user *models.User, server *models.LbrynetServer, log *logrus.Entry) error {
+	if user.ID == 0 {
+		return errors.New("user must already exist in db")
+	}
+	if !user.LbrynetServerID.IsZero() {
+		return errors.New("user already has an sdk assigned")
+	}
+
+	if server.ID == 0 {
+		// THIS SERVER CAME FROM A CONFIG FILE, NOT THE DB (prolly during testing)
+		// TODO: handle this case better
+		log.Warnf("user %d is getting an sdk with no ID. could happen if servers came from config file", user.ID)
+		return Create(server.Address, user.ID)
+	}
+
+	log.Debugf("trying to assign sdk %s (%s) to user %d", server.Name, server.Address, user.ID)
+	needsWalletCreation := true
+
+	// atomic update. it checks that lbrynet_server_id is null before updating
+	q := fmt.Sprintf(`UPDATE "%s" SET "%s" = $1 WHERE "%s" = $2 and "%s" IS NULL`,
+		models.TableNames.Users,
+		models.UserColumns.LbrynetServerID,
+		models.UserColumns.ID,
+		models.UserColumns.LbrynetServerID,
+	)
+	result, err := boil.GetDB().Exec(q, server.ID, user.ID)
+	if err != nil {
+		return err
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		// update from another request got there first. reload user to get the assigned server
+		err = user.ReloadG()
 		if err != nil {
 			return err
 		}
-		if user.ID > 0 {
-			// retain BC for now. can remove this after sdk selection refactor has shown itself solid
-			user.WalletID = sdkrouter.WalletID(user.ID)
-			_, err := user.UpdateG(boil.Infer())
-			if err != nil {
-				return err
-			}
-		}
+		needsWalletCreation = false // it will have been created by the request that did the successful assignment
+		log.Debugf("user %d already assigned to another server", user.ID)
+		// TODO: sleep some time to give the other request time to actually create a wallet?
+		// TODO: or keep a global "wallet creation in progress" locking/waiting setup?
 	} else {
-		// THIS SERVER CAME FROM A CONFIG FILE (prolly during testing)
-		// TODO: handle this case better
-		log.Warnf("user %d is getting an sdk with no ID. could happen if servers came from config file", user.ID)
+		user.LbrynetServerID.SetValid(server.ID)
 	}
 
-	return Create(server.Address, user.ID)
+	// reload LbrynetServer relation
+	if user.R == nil {
+		user.R = user.R.NewStruct()
+	}
+	srv, err := user.LbrynetServer().OneG()
+	if err != nil {
+		return err
+	}
+	user.R.LbrynetServer = srv
+	log.Infof("user %d assigned to sdk %s (%s)", user.ID, server.Name, server.Address)
+
+	// retain BC for now. can remove this after sdk selection refactor has shown itself solid
+	user.WalletID = sdkrouter.WalletID(user.ID)
+	_, err = user.UpdateG(boil.Infer())
+	if err != nil {
+		return err
+	}
+
+	if needsWalletCreation {
+		return Create(server.Address, user.ID)
+	}
+
+	return nil
 }
 
 func createDBUser(id int) (*models.User, error) {

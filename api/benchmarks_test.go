@@ -101,7 +101,7 @@ func BenchmarkWalletCommands(b *testing.B) {
 	wallets := make([]*models.User, walletsNum)
 
 	for i := 0; i < walletsNum; i++ {
-		uid := int(rand.Int31())
+		uid := rand.Intn(999999)
 		u, err := wallet.GetUserWithWallet(rt, ts.URL, fmt.Sprintf("%d", uid), "")
 		require.NoError(b, err, errors.Unwrap(err))
 		require.NotNil(b, u)

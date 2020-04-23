@@ -19,6 +19,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/volatiletech/null"
+	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -67,10 +69,10 @@ func dummyAPI(sdkAddress string) (string, func()) {
 	}
 }
 
-func TestWalletServiceRetrieveNewUser(t *testing.T) {
+func TestGetUserWithWallet_NewUser(t *testing.T) {
+	setupDBTables()
 	srv := test.RandServerAddress(t)
 	rt := sdkrouter.New(map[string]string{"a": srv})
-	setupDBTables()
 	url, cleanup := dummyAPI(srv)
 	defer cleanup()
 
@@ -107,7 +109,7 @@ func TestWalletServiceRetrieveNewUser(t *testing.T) {
 	require.Equal(t, u.LbrynetServerID.Int, sdk2.ID)
 }
 
-func TestWalletServiceRetrieveNonexistentUser(t *testing.T) {
+func TestGetUserWithWallet_NonexistentUser(t *testing.T) {
 	setupDBTables()
 
 	ts := test.MockHTTPServer(nil)
@@ -125,7 +127,7 @@ func TestWalletServiceRetrieveNonexistentUser(t *testing.T) {
 	assert.Equal(t, "cannot authenticate user with internal-apis: could not authenticate user", err.Error())
 }
 
-func TestWalletServiceRetrieveExistingUser(t *testing.T) {
+func TestGetUserWithWallet_ExistingUser(t *testing.T) {
 	srv := test.RandServerAddress(t)
 	rt := sdkrouter.New(map[string]string{"a": srv})
 	setupDBTables()
@@ -135,9 +137,6 @@ func TestWalletServiceRetrieveExistingUser(t *testing.T) {
 	u, err := GetUserWithWallet(rt, url, "abc", "")
 	require.NoError(t, err)
 	require.NotNil(t, u)
-
-	u, err = GetUserWithWallet(rt, url, "abc", "")
-	require.NoError(t, err)
 	assert.EqualValues(t, dummyUserID, u.ID)
 
 	count, err := models.Users().CountG()
@@ -145,10 +144,9 @@ func TestWalletServiceRetrieveExistingUser(t *testing.T) {
 	assert.EqualValues(t, 1, count)
 }
 
-func TestGetUserWithWallet_ExistingUserWithSDKGetsAssignedOneOnRetrieve(t *testing.T) {
+func TestGetUserWithWallet_ExistingUserWithoutSDKGetsAssignedOneOnRetrieve(t *testing.T) {
 	setupDBTables()
-
-	userID := int(rand.Int31())
+	userID := rand.Intn(999999)
 
 	reqChan := test.ReqChan()
 	ts := test.MockHTTPServer(reqChan)
@@ -166,17 +164,22 @@ func TestGetUserWithWallet_ExistingUserWithSDKGetsAssignedOneOnRetrieve(t *testi
 		}`, userID)
 	}()
 
-	rt := sdkrouter.New(config.GetLbrynetServers())
+	srv := &models.LbrynetServer{Name: "a", Address: test.RandServerAddress(t)}
+	srv.InsertG(boil.Infer())
+	defer func() { srv.DeleteG() }()
+
+	rt := sdkrouter.NewWithServers(srv)
 	u, err := createDBUser(userID)
 	require.NoError(t, err)
 	require.NotNil(t, u)
 
 	u, err = GetUserWithWallet(rt, ts.URL, "abc", "")
 	require.NoError(t, err)
-	assert.NotEqual(t, "", u.LbrynetServerID)
+	assert.True(t, u.LbrynetServerID.Valid)
+	assert.NotNil(t, u.R.LbrynetServer)
 }
 
-func TestWalletServiceRetrieveNoVerifiedEmail(t *testing.T) {
+func TestGetUserWithWallet_NotVerifiedEmail(t *testing.T) {
 	setupDBTables()
 
 	ts := test.MockHTTPServer(nil)
@@ -194,6 +197,56 @@ func TestWalletServiceRetrieveNoVerifiedEmail(t *testing.T) {
 	u, err := GetUserWithWallet(rt, ts.URL, "abc", "")
 	assert.NoError(t, err)
 	assert.Nil(t, u)
+}
+
+func TestAssignSDKServerToUser_SDKAlreadyAssigned(t *testing.T) {
+	setupDBTables()
+	u := &models.User{ID: 4}
+	u.LbrynetServerID.SetValid(55)
+	rt := sdkrouter.New(config.GetLbrynetServers())
+	l := logrus.NewEntry(logrus.New())
+	err := assignSDKServerToUser(u, rt.RandomServer(), l)
+	assert.EqualError(t, err, "user already has an sdk assigned")
+}
+
+func TestAssignSDKServerToUser_ConcurrentUpdates(t *testing.T) {
+	setupDBTables()
+	ts := test.MockHTTPServer(nil)
+	ts.NextResponse <- `{"id":1,"result":{"id":99,"name":"x.99.wallet"}}`
+
+	s1 := &models.LbrynetServer{Name: "a", Address: ts.URL}
+	err := s1.InsertG(boil.Infer())
+	require.NoError(t, err)
+	s2 := &models.LbrynetServer{Name: "b", Address: ts.URL}
+	err = s2.InsertG(boil.Infer())
+	require.NoError(t, err)
+
+	u := &models.User{ID: rand.Intn(999999)}
+	err = u.InsertG(boil.Infer())
+	require.NoError(t, err)
+	err = u.ReloadG()
+	require.NoError(t, err)
+
+	defer func() {
+		u.DeleteG()
+		s1.DeleteG()
+		s2.DeleteG()
+	}()
+
+	// assign one sdk
+	err = assignSDKServerToUser(u, s1, logger.Log())
+	require.NoError(t, err)
+	assert.True(t, u.LbrynetServerID.Valid)
+	assert.Equal(t, s1.ID, u.LbrynetServerID.Int)
+
+	// zero out assignment temporarily, and assign a different one
+	u.LbrynetServerID = null.Int{}
+	err = assignSDKServerToUser(u, s2, logger.Log())
+
+	// check that it actually got reassigned the first one instead of the new one
+	require.NoError(t, err)
+	assert.True(t, u.LbrynetServerID.Valid)
+	assert.Equal(t, s1.ID, u.LbrynetServerID.Int)
 }
 
 func BenchmarkWalletCommands(b *testing.B) {
@@ -227,7 +280,7 @@ func BenchmarkWalletCommands(b *testing.B) {
 	rand.Seed(time.Now().UnixNano())
 
 	for i := 0; i < walletsNum; i++ {
-		uid := int(rand.Int31())
+		uid := rand.Intn(9999999)
 		u, err := GetUserWithWallet(rt, ts.URL, fmt.Sprintf("%d", uid), "")
 		require.NoError(b, err, errors.Unwrap(err))
 		require.NotNil(b, u)
@@ -250,7 +303,7 @@ func BenchmarkWalletCommands(b *testing.B) {
 }
 
 func TestCreate_CorrectWalletID(t *testing.T) {
-	// test that calling Create() sends the correct wallet id to the server
+	// TODO: test that calling Create() sends the correct wallet id to the server
 }
 
 func TestInitializeWallet(t *testing.T) {
