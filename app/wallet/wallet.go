@@ -95,7 +95,7 @@ func assignSDKServerToUser(user *models.User, server *models.LbrynetServer, log 
 		return Create(server.Address, user.ID)
 	}
 
-	log.Debugf("trying to assign sdk %s (%s) to user %d", server.Name, server.Address, user.ID)
+	log.Debugf("user %d: trying to assign sdk %s (%s)", user.ID, server.Name, server.Address)
 	needsWalletCreation := true
 
 	// atomic update. it checks that lbrynet_server_id is null before updating
@@ -121,7 +121,7 @@ func assignSDKServerToUser(user *models.User, server *models.LbrynetServer, log 
 			return err
 		}
 		needsWalletCreation = false // it will have been created by the request that did the successful assignment
-		log.Debugf("user %d already assigned to another server", user.ID)
+		log.Debugf("user %d: already assigned to a server", user.ID)
 		// TODO: sleep some time to give the other request time to actually create a wallet?
 		// TODO: or keep a global "wallet creation in progress" locking/waiting setup?
 	} else {
@@ -137,7 +137,7 @@ func assignSDKServerToUser(user *models.User, server *models.LbrynetServer, log 
 		return err
 	}
 	user.R.LbrynetServer = srv
-	log.Infof("user %d assigned to sdk %s (%s)", user.ID, server.Name, server.Address)
+	log.Infof("user %d: assigned to sdk %s (%s)", user.ID, server.Name, server.Address)
 
 	// retain BC for now. can remove this after sdk selection refactor has shown itself solid
 	user.WalletID = sdkrouter.WalletID(user.ID)

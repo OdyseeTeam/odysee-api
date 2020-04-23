@@ -73,7 +73,7 @@ func (r *Router) RandomServer() *models.LbrynetServer {
 }
 
 func (r *Router) reloadServersFromDB() {
-	if !r.useDB || time.Since(r.lastLoaded) < 5*time.Second {
+	if !r.useDB || time.Since(r.lastLoaded) < 30*time.Second {
 		// don't hammer the DB
 		return
 	}
@@ -109,6 +109,8 @@ func (r *Router) WatchLoad() {
 	logger.Log().Infof("SDK router watching load on %d instances", len(r.servers))
 	r.reloadServersFromDB()
 	r.updateLoadAndMetrics()
+
+	time.Sleep(time.Duration(rand.Intn(60)) * time.Second) // stagger these so they don't all happen at the same time for every api server
 
 	for {
 		<-ticker.C
