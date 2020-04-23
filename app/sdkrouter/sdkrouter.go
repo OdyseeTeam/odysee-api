@@ -3,7 +3,6 @@ package sdkrouter
 import (
 	"fmt"
 	"math/rand"
-	"sort"
 	"sync"
 	"time"
 
@@ -93,9 +92,6 @@ func (r *Router) setServers(servers []*models.LbrynetServer) {
 		return
 	}
 
-	// we do this partially to make sure that ids are assigned to servers more consistently,
-	// and partially to make tests consistent (since Go maps are not ordered)
-	sort.Slice(servers, func(i, j int) bool { return servers[i].Name < servers[j].Name }) // TODO: can we drop this?
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.servers = servers
