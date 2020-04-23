@@ -42,7 +42,6 @@ func NewServer(address string, sdkRouter *sdkrouter.Router) *Server {
 		listener: &http.Server{
 			Addr:              address,
 			Handler:           r,
-			WriteTimeout:      sdkrouter.RPCTimeout + 60*time.Second,
 			IdleTimeout:       0,
 			ReadHeaderTimeout: 10 * time.Second,
 		},
