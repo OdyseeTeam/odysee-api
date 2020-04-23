@@ -148,13 +148,14 @@ func (r *Router) LeastLoaded() *models.LbrynetServer {
 	defer r.loadMu.RUnlock()
 
 	if len(r.load) == 0 {
-		// updateLoadAndMetrics() was never run, so return a random server
-		logger.Log().Warnf("LeastLoaded() called before updating load metrics. Returning random server.")
+		logger.Log().Warnf("LeastLoaded() called before load metrics were updated. Returning random server.")
 		return r.RandomServer()
 	}
 
 	for server, numWallets := range r.load {
+		logger.Log().Debugf("load update: considering %s with load %d", server.Address, numWallets)
 		if best == nil || numWallets < min {
+			logger.Log().Debugf("load update: %s has least with %d", server.Address, numWallets)
 			best = server
 			min = numWallets
 		}
