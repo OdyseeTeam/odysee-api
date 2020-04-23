@@ -36,7 +36,6 @@ var logger = monitor.NewModuleLogger("proxy")
 const (
 	walletLoadRetries   = 3
 	walletLoadRetryWait = 100 * time.Millisecond
-	rpcTimeout          = 30 * time.Second
 )
 
 // Caller patches through JSON-RPC requests from clients, doing pre/post-processing,
@@ -53,7 +52,7 @@ type Caller struct {
 func NewCaller(endpoint string, userID int) *Caller {
 	return &Caller{
 		client: jsonrpc.NewClientWithOpts(endpoint, &jsonrpc.RPCClientOpts{
-			HTTPClient: &http.Client{Timeout: rpcTimeout},
+			HTTPClient: &http.Client{Timeout: sdkrouter.RPCTimeout},
 		}),
 		endpoint: endpoint,
 		userID:   userID,
@@ -74,7 +73,7 @@ func (c *Caller) CallRaw(rawQuery []byte) []byte {
 func (c *Caller) Call(req *jsonrpc.RPCRequest) []byte {
 	r, err := c.call(req)
 	if err != nil {
-		monitor.CaptureException(err, map[string]string{"req": spew.Sdump(req), "response": fmt.Sprintf("%v", r)})
+		monitor.CaptureException(err, map[string]string{"request": spew.Sdump(req), "response": fmt.Sprintf("%v", r)})
 		logger.Log().Errorf("error calling lbrynet: %v, request: %s", err, spew.Sdump(req))
 		return marshalError(err)
 	}
