@@ -47,21 +47,21 @@ func TestClientCallDoesNotReloadWalletAfterOtherErrors(t *testing.T) {
 	require.NoError(t, err)
 	q.WalletID = walletID
 
-	go func() {
-		srv.NextResponse <- test.ResToStr(t, jsonrpc.RPCResponse{
+	srv.QueueResponses(
+		test.ResToStr(t, jsonrpc.RPCResponse{
 			JSONRPC: "2.0",
 			Error: &jsonrpc.RPCError{
 				Message: "Couldn't find wallet: //",
 			},
-		})
-		srv.RespondWithNothing() // for the wallet_add call
-		srv.NextResponse <- test.ResToStr(t, jsonrpc.RPCResponse{
+		}),
+		test.EmptyResponse(), // for the wallet_add call
+		test.ResToStr(t, jsonrpc.RPCResponse{
 			JSONRPC: "2.0",
 			Error: &jsonrpc.RPCError{
 				Message: "Wallet at path // was not found",
 			},
-		})
-	}()
+		}),
+	)
 
 	r, err := c.callQueryWithRetry(q)
 	require.NoError(t, err)
@@ -80,25 +80,25 @@ func TestClientCallDoesNotReloadWalletIfAlreadyLoaded(t *testing.T) {
 	require.NoError(t, err)
 	q.WalletID = walletID
 
-	go func() {
-		srv.NextResponse <- test.ResToStr(t, jsonrpc.RPCResponse{
+	srv.QueueResponses(
+		test.ResToStr(t, jsonrpc.RPCResponse{
 			JSONRPC: "2.0",
 			Error: &jsonrpc.RPCError{
 				Message: "Couldn't find wallet: //",
 			},
-		})
-		srv.RespondWithNothing() // for the wallet_add call
-		srv.NextResponse <- test.ResToStr(t, jsonrpc.RPCResponse{
+		}),
+		test.EmptyResponse(), // for the wallet_add call
+		test.ResToStr(t, jsonrpc.RPCResponse{
 			JSONRPC: "2.0",
 			Error: &jsonrpc.RPCError{
 				Message: "Wallet at path // is already loaded",
 			},
-		})
-		srv.NextResponse <- test.ResToStr(t, jsonrpc.RPCResponse{
+		}),
+		test.ResToStr(t, jsonrpc.RPCResponse{
 			JSONRPC: "2.0",
 			Result:  `"99999.00"`,
-		})
-	}()
+		}),
+	)
 
 	r, err := c.callQueryWithRetry(q)
 

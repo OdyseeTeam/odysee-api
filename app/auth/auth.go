@@ -34,7 +34,7 @@ type Provider func(token, metaRemoteIP string) Result
 // lbrynet server assigned and a wallet that's created and ready to use.
 func NewIAPIProvider(rt *sdkrouter.Router, internalAPIHost string) Provider {
 	return func(token, metaRemoteIP string) Result {
-		user, err := wallet.GetUserWithWallet(rt, internalAPIHost, token, metaRemoteIP)
+		user, err := wallet.GetUserWithSDKServer(rt, internalAPIHost, token, metaRemoteIP)
 		res := NewResult(user, err)
 		if err == nil && user != nil && !user.LbrynetServerID.IsZero() && user.R != nil && user.R.LbrynetServer != nil {
 			res.SDKAddress = user.R.LbrynetServer.Address

@@ -102,7 +102,7 @@ func BenchmarkWalletCommands(b *testing.B) {
 
 	for i := 0; i < walletsNum; i++ {
 		uid := rand.Intn(999999)
-		u, err := wallet.GetUserWithWallet(rt, ts.URL, fmt.Sprintf("%d", uid), "")
+		u, err := wallet.GetUserWithSDKServer(rt, ts.URL, fmt.Sprintf("%d", uid), "")
 		require.NoError(b, err, errors.Unwrap(err))
 		require.NotNil(b, u)
 		wallets[i] = u

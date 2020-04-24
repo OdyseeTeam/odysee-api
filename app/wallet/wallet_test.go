@@ -76,7 +76,7 @@ func TestGetUserWithWallet_NewUser(t *testing.T) {
 	url, cleanup := dummyAPI(srv)
 	defer cleanup()
 
-	u, err := GetUserWithWallet(rt, url, "abc", "")
+	u, err := GetUserWithSDKServer(rt, url, "abc", "")
 	require.NoError(t, err, errors.Unwrap(err))
 	require.NotNil(t, u)
 
@@ -98,7 +98,7 @@ func TestGetUserWithWallet_NewUser(t *testing.T) {
 
 	// now fetch it all back from the db
 
-	u2, err := GetUserWithWallet(rt, url, "abc", "")
+	u2, err := GetUserWithSDKServer(rt, url, "abc", "")
 	require.NoError(t, err, errors.Unwrap(err))
 	require.NotNil(t, u2)
 
@@ -121,7 +121,7 @@ func TestGetUserWithWallet_NonexistentUser(t *testing.T) {
 	}`
 
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	u, err := GetUserWithWallet(rt, ts.URL, "non-existent-token", "")
+	u, err := GetUserWithSDKServer(rt, ts.URL, "non-existent-token", "")
 	require.Error(t, err)
 	require.Nil(t, u)
 	assert.Equal(t, "cannot authenticate user with internal-apis: could not authenticate user", err.Error())
@@ -134,7 +134,7 @@ func TestGetUserWithWallet_ExistingUser(t *testing.T) {
 	url, cleanup := dummyAPI(srv)
 	defer cleanup()
 
-	u, err := GetUserWithWallet(rt, url, "abc", "")
+	u, err := GetUserWithSDKServer(rt, url, "abc", "")
 	require.NoError(t, err)
 	require.NotNil(t, u)
 	assert.EqualValues(t, dummyUserID, u.ID)
@@ -173,7 +173,7 @@ func TestGetUserWithWallet_ExistingUserWithoutSDKGetsAssignedOneOnRetrieve(t *te
 	require.NoError(t, err)
 	require.NotNil(t, u)
 
-	u, err = GetUserWithWallet(rt, ts.URL, "abc", "")
+	u, err = GetUserWithSDKServer(rt, ts.URL, "abc", "")
 	require.NoError(t, err)
 	assert.True(t, u.LbrynetServerID.Valid)
 	assert.NotNil(t, u.R.LbrynetServer)
@@ -194,7 +194,7 @@ func TestGetUserWithWallet_NotVerifiedEmail(t *testing.T) {
 	}`
 
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	u, err := GetUserWithWallet(rt, ts.URL, "abc", "")
+	u, err := GetUserWithSDKServer(rt, ts.URL, "abc", "")
 	assert.NoError(t, err)
 	assert.Nil(t, u)
 }
@@ -281,7 +281,7 @@ func BenchmarkWalletCommands(b *testing.B) {
 
 	for i := 0; i < walletsNum; i++ {
 		uid := rand.Intn(9999999)
-		u, err := GetUserWithWallet(rt, ts.URL, fmt.Sprintf("%d", uid), "")
+		u, err := GetUserWithSDKServer(rt, ts.URL, fmt.Sprintf("%d", uid), "")
 		require.NoError(b, err, errors.Unwrap(err))
 		require.NotNil(b, u)
 		users[i] = u

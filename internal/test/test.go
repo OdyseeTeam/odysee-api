@@ -21,7 +21,15 @@ type MockServer struct {
 	NextResponse chan<- string
 }
 
-func (m *MockServer) RespondWithNothing() { m.NextResponse <- "" }
+func EmptyResponse() string { return "" } // helper method to make it clearer what's happening
+
+func (m *MockServer) QueueResponses(responses ...string) {
+	go func() {
+		for _, r := range responses {
+			m.NextResponse <- r
+		}
+	}()
+}
 
 type Request struct {
 	R    *http.Request
