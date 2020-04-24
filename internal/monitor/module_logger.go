@@ -2,26 +2,33 @@ package monitor
 
 import (
 	"io/ioutil"
+	"os"
 
 	"github.com/lbryio/lbrytv/config"
 
 	"github.com/sirupsen/logrus"
 )
 
+// TODO: we could drop the custom struct completely. it doesnt add anything anymore
 // ModuleLogger contains module-specific logger details.
 type ModuleLogger struct {
-	Logger     *logrus.Logger
-	moduleName string
+	Entry *logrus.Entry
 }
 
 // NewModuleLogger creates a new ModuleLogger instance carrying module name
 // for later `Log()` calls.
 func NewModuleLogger(moduleName string) ModuleLogger {
-	logger := logrus.New()
-	configureLogLevelAndFormat(logger)
+	l := logrus.New()
+	configureLogLevelAndFormat(l)
+	fields := logrus.Fields{
+		"module": moduleName,
+	}
+	hostname := os.Getenv("HOSTNAME")
+	if hostname != "" {
+		fields["host"] = hostname
+	}
 	return ModuleLogger{
-		moduleName: moduleName,
-		Logger:     logger,
+		Entry: l.WithFields(fields),
 	}
 }
 
@@ -29,25 +36,23 @@ func NewModuleLogger(moduleName string) ModuleLogger {
 // which can be called upon with a corresponding logLevel.
 // Example:
 //  logger.WithFields(F{"query": "..."}).Info("query error")
-func (l ModuleLogger) WithFields(fields logrus.Fields) *logrus.Entry {
-	fields["module"] = l.moduleName
-
+func (m ModuleLogger) WithFields(fields logrus.Fields) *logrus.Entry {
 	if v, ok := fields[TokenF]; ok && v != "" && config.IsProduction() {
 		fields[TokenF] = valueMask
 	}
-	return l.Logger.WithFields(fields)
+	return m.Entry.WithFields(fields)
 }
 
 // Log returns a new log entry for the module
 // which can be called upon with a corresponding logLevel.
 // Example:
 //  Log().Info("query error")
-func (l ModuleLogger) Log() *logrus.Entry {
-	return l.Logger.WithFields(logrus.Fields{"module": l.moduleName})
+func (m ModuleLogger) Log() *logrus.Entry {
+	return m.Entry.WithFields(nil)
 }
 
 // Disable turns off logging output for this module logger
-func (l ModuleLogger) Disable() {
-	l.Logger.SetLevel(logrus.PanicLevel)
-	l.Logger.SetOutput(ioutil.Discard)
+func (m ModuleLogger) Disable() {
+	m.Entry.Logger.SetLevel(logrus.PanicLevel)
+	m.Entry.Logger.SetOutput(ioutil.Discard)
 }

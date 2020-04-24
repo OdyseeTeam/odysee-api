@@ -28,7 +28,7 @@ type middlewareTestRow struct {
 }
 
 var testTableErrorLoggingMiddleware = []middlewareTestRow{
-	middlewareTestRow{
+	{
 		NAME:   "Panicking Handler",
 		method: "POST",
 		url:    "/api/",
@@ -47,7 +47,7 @@ var testTableErrorLoggingMiddleware = []middlewareTestRow{
 		lastEntryMessage: "panic ensued",
 	},
 
-	middlewareTestRow{
+	{
 		NAME:   "Erroring Handler",
 		method: "POST",
 		url:    "/api/",
@@ -67,7 +67,7 @@ var testTableErrorLoggingMiddleware = []middlewareTestRow{
 		lastEntryMessage: "handler responded with an error",
 	},
 
-	middlewareTestRow{
+	{
 		NAME:   "Redirecting Handler",
 		method: "POST",
 		url:    "/api/",
@@ -77,7 +77,7 @@ var testTableErrorLoggingMiddleware = []middlewareTestRow{
 		status: http.StatusPermanentRedirect,
 	},
 
-	middlewareTestRow{
+	{
 		NAME:   "Okay Handler",
 		method: "POST",
 		url:    "/api/",
@@ -93,7 +93,7 @@ var testTableErrorLoggingMiddleware = []middlewareTestRow{
 func TestErrorLoggingMiddlewareTableTest(t *testing.T) {
 	for _, row := range testTableErrorLoggingMiddleware {
 		t.Run(row.NAME, func(t *testing.T) {
-			hook := logrus_test.NewLocal(httpLogger.Logger)
+			hook := logrus_test.NewLocal(httpLogger.Entry.Logger)
 
 			var reqBody io.Reader
 			if row.reqBody != nil {

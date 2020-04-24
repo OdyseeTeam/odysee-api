@@ -12,7 +12,7 @@ import (
 )
 
 func TestLogSuccessfulQuery(t *testing.T) {
-	hook := test.NewLocal(logger.Logger)
+	hook := test.NewLocal(logger.Entry.Logger)
 
 	config.Override("ShouldLogResponses", false)
 	defer config.RestoreOverridden()
@@ -115,7 +115,7 @@ func TestLogSuccessfulQuery(t *testing.T) {
 
 func TestModuleLoggerLogF(t *testing.T) {
 	l := NewModuleLogger("storage")
-	hook := test.NewLocal(l.Logger)
+	hook := test.NewLocal(l.Entry.Logger)
 	l.WithFields(logrus.Fields{"number": 1}).Info("error!")
 
 	require.Equal(t, 1, len(hook.Entries))
@@ -129,7 +129,7 @@ func TestModuleLoggerLogF(t *testing.T) {
 
 func TestModuleLoggerLog(t *testing.T) {
 	l := NewModuleLogger("storage")
-	hook := test.NewLocal(l.Logger)
+	hook := test.NewLocal(l.Entry.Logger)
 	l.Log().Info("error!")
 
 	require.Equal(t, 1, len(hook.Entries))
@@ -142,7 +142,7 @@ func TestModuleLoggerLog(t *testing.T) {
 
 func TestModuleLoggerMasksTokens(t *testing.T) {
 	l := NewModuleLogger("auth")
-	hook := test.NewLocal(l.Logger)
+	hook := test.NewLocal(l.Entry.Logger)
 
 	config.Override("Debug", false)
 	defer config.RestoreOverridden()
