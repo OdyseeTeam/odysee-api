@@ -23,8 +23,8 @@ type Router struct {
 	mu      sync.RWMutex
 	servers []*models.LbrynetServer
 
-	loadMu sync.RWMutex
-	load   map[*models.LbrynetServer]uint64
+	loadMu      sync.RWMutex
+	leastLoaded *models.LbrynetServer
 
 	useDB      bool
 	lastLoaded time.Time
@@ -41,18 +41,13 @@ func New(servers map[string]string) *Router {
 		return NewWithServers(s...)
 	}
 
-	r := &Router{
-		load:  make(map[*models.LbrynetServer]uint64),
-		useDB: true,
-	}
+	r := &Router{useDB: true}
 	r.reloadServersFromDB()
 	return r
 }
 
 func NewWithServers(servers ...*models.LbrynetServer) *Router {
-	r := &Router{
-		load: make(map[*models.LbrynetServer]uint64),
-	}
+	r := &Router{}
 	r.setServers(servers)
 	return r
 }
@@ -116,50 +111,50 @@ func (r *Router) WatchLoad() {
 }
 
 func (r *Router) updateLoadAndMetrics() {
-	for _, server := range r.GetAll() {
+	var best *models.LbrynetServer
+	var min uint64
+
+	servers := r.GetAll()
+	logger.Log().Infof("updating load for %d servers", len(servers))
+	for _, server := range servers {
 		metric := metrics.LbrynetWalletsLoaded.WithLabelValues(server.Address)
 		walletList, err := ljsonrpc.NewClient(server.Address).WalletList("", 1, 1)
 		if err != nil {
 			logger.Log().Errorf("lbrynet instance %s is not responding: %v", server.Address, err)
-			r.loadMu.Lock()
-			delete(r.load, server)
-			r.loadMu.Unlock()
 			metric.Set(-1.0)
 			// TODO: maybe mark this instance as unresponsive so new users are assigned to other instances
-		} else {
-			r.loadMu.Lock()
-			r.load[server] = walletList.TotalPages
-			r.loadMu.Unlock()
-			metric.Set(float64(walletList.TotalPages))
+			continue
 		}
-	}
-	leastLoaded := r.LeastLoaded()
-	logger.Log().Infof("After updating load, least loaded server is %s", leastLoaded.Address)
-}
 
-// LeastLoaded returns the least-loaded wallet
-func (r *Router) LeastLoaded() *models.LbrynetServer {
-	var best *models.LbrynetServer
-	var min uint64
-
-	r.loadMu.RLock()
-	defer r.loadMu.RUnlock()
-
-	if len(r.load) == 0 {
-		logger.Log().Warnf("LeastLoaded() called before load metrics were updated. Returning random server.")
-		return r.RandomServer()
-	}
-
-	for server, numWallets := range r.load {
+		numWallets := walletList.TotalPages
 		logger.Log().Debugf("load update: considering %s with load %d", server.Address, numWallets)
 		if best == nil || numWallets < min {
 			logger.Log().Debugf("load update: %s has least with %d", server.Address, numWallets)
 			best = server
 			min = numWallets
 		}
+		metric.Set(float64(walletList.TotalPages))
 	}
 
-	return best
+	if best != nil {
+		r.loadMu.Lock()
+		defer r.loadMu.Unlock()
+		r.leastLoaded = best
+		logger.Log().Infof("After updating load, least loaded server is %s", best.Address)
+	}
+}
+
+// LeastLoaded returns the least-loaded wallet
+func (r *Router) LeastLoaded() *models.LbrynetServer {
+	r.loadMu.RLock()
+	defer r.loadMu.RUnlock()
+
+	if r.leastLoaded == nil {
+		logger.Log().Warnf("LeastLoaded() called before load metrics were updated. Returning random server.")
+		return r.RandomServer()
+	}
+
+	return r.leastLoaded
 }
 
 // WalletID formats user ID to use as an LbrynetServer wallet ID.
