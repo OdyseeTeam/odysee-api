@@ -1,6 +1,6 @@
-# LBRY on the Web
+# API Server for LBRY on the Web
 
-The LBRY experience, in the comfort of your own browser.
+This project is the API server used by lbry.tv. If you are looking for the UI code, that lives here: https://github.com/lbryio/lbry-desktop.
 
 Active development is in progress, expect failing tests and breaking changes.
 
