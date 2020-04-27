@@ -3,7 +3,6 @@ package auth
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/lbryio/lbrytv/app/wallet"
+	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/models"
 
 	"github.com/stretchr/testify/assert"
@@ -29,7 +29,7 @@ func TestMiddleware(t *testing.T) {
 		if token == "secret-token" {
 			return NewResult(&models.User{ID: 16595}, nil)
 		}
-		return NewResult(nil, errors.New("error"))
+		return NewResult(nil, errors.Base("error"))
 	}
 
 	rr := httptest.NewRecorder()
@@ -52,7 +52,7 @@ func TestMiddlewareAuthFailure(t *testing.T) {
 		if token == "good-token" {
 			return NewResult(&models.User{ID: 1}, nil)
 		}
-		return NewResult(nil, errors.New("incorrect token"))
+		return NewResult(nil, errors.Base("incorrect token"))
 	}
 	Middleware(provider)(http.HandlerFunc(authChecker)).ServeHTTP(rr, r)
 
@@ -72,7 +72,7 @@ func TestMiddlewareNoAuth(t *testing.T) {
 		if token == "good-token" {
 			return NewResult(&models.User{ID: 1}, nil)
 		}
-		return NewResult(nil, errors.New("incorrect token"))
+		return NewResult(nil, errors.Base("incorrect token"))
 	}
 	Middleware(provider)(http.HandlerFunc(authChecker)).ServeHTTP(rr, r)
 
@@ -84,7 +84,7 @@ func TestMiddlewareNoAuth(t *testing.T) {
 }
 
 func TestFromRequestSuccess(t *testing.T) {
-	expected := NewResult(nil, errors.New("a test"))
+	expected := NewResult(nil, errors.Base("a test"))
 	ctx := context.WithValue(context.Background(), ContextKey, expected)
 
 	r, err := http.NewRequestWithContext(ctx, http.MethodPost, "", &bytes.Buffer{})

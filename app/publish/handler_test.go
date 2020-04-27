@@ -3,7 +3,6 @@ package publish
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,6 +16,7 @@ import (
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
+	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/test"
 	"github.com/lbryio/lbrytv/models"
 
@@ -60,7 +60,7 @@ func TestUploadHandler(t *testing.T) {
 			res.SDKAddress = ts.URL
 			return res
 		}
-		return auth.NewResult(nil, errors.New("error"))
+		return auth.NewResult(nil, errors.Base("error"))
 	}
 
 	rr := httptest.NewRecorder()
@@ -125,7 +125,7 @@ func TestHandler_AuthRequired(t *testing.T) {
 		if token == "uPldrToken" {
 			return auth.NewResult(&models.User{ID: 20404}, nil)
 		}
-		return auth.NewResult(nil, errors.New("error"))
+		return auth.NewResult(nil, errors.Base("error"))
 	}
 
 	rr := httptest.NewRecorder()
@@ -172,7 +172,7 @@ func TestUploadHandlerSystemError(t *testing.T) {
 			res.SDKAddress = "whatever"
 			return res
 		}
-		return auth.NewResult(nil, errors.New("error"))
+		return auth.NewResult(nil, errors.Base("error"))
 	}
 
 	rr := httptest.NewRecorder()

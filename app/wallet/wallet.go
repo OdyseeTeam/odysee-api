@@ -2,20 +2,20 @@ package wallet
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 
-	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
+	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
-	"github.com/volatiletech/sqlboiler/queries/qm"
+
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
 	"github.com/lib/pq"
-	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/volatiletech/sqlboiler/boil"
+	"github.com/volatiletech/sqlboiler/queries/qm"
 )
 
 var logger = monitor.NewModuleLogger("wallet")
@@ -82,10 +82,10 @@ func getOrCreateLocalUser(remoteUserID int, log *logrus.Entry) (*models.User, er
 // it ensures that the assigned sdk is set on user.R.LbrynetServer, so it can be accessed externally
 func assignSDKServerToUser(user *models.User, server *models.LbrynetServer, log *logrus.Entry) error {
 	if user.ID == 0 {
-		return errors.New("user must already exist in db")
+		return errors.Err("user must already exist in db")
 	}
 	if !user.LbrynetServerID.IsZero() {
-		return errors.New("user already has an sdk assigned")
+		return errors.Err("user already has an sdk assigned")
 	}
 
 	if server.ID == 0 {
@@ -107,18 +107,18 @@ func assignSDKServerToUser(user *models.User, server *models.LbrynetServer, log 
 	)
 	result, err := boil.GetDB().Exec(q, server.ID, user.ID)
 	if err != nil {
-		return err
+		return errors.Err(err)
 	}
 
 	count, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return errors.Err(err)
 	}
 	if count == 0 {
 		// update from another request got there first. reload user to get the assigned server
 		err = user.ReloadG()
 		if err != nil {
-			return err
+			return errors.Err(err)
 		}
 		needsWalletCreation = false // it will have been created by the request that did the successful assignment
 		log.Debugf("user %d: already assigned to a server", user.ID)
@@ -134,7 +134,7 @@ func assignSDKServerToUser(user *models.User, server *models.LbrynetServer, log 
 	}
 	srv, err := user.LbrynetServer().OneG()
 	if err != nil {
-		return err
+		return errors.Err(err)
 	}
 	user.R.LbrynetServer = srv
 	log.Infof("user %d: assigned to sdk %s (%s)", user.ID, server.Name, server.Address)
@@ -143,7 +143,7 @@ func assignSDKServerToUser(user *models.User, server *models.LbrynetServer, log 
 	user.WalletID = sdkrouter.WalletID(user.ID)
 	_, err = user.UpdateG(boil.Infer())
 	if err != nil {
-		return err
+		return errors.Err(err)
 	}
 
 	if needsWalletCreation {
@@ -164,12 +164,10 @@ func createDBUser(id int) (*models.User, error) {
 
 	// Check if we encountered a primary key violation, it would mean another routine
 	// fired from another request has managed to create a user before us so we should try retrieving it again.
-	switch baseErr := pkgerrors.Cause(err).(type) {
-	case *pq.Error:
-		if baseErr.Code == pgUniqueConstraintViolation && baseErr.Column == "users_pkey" {
-			log.Debug("user creation conflict, trying to retrieve the local user again")
-			return getDBUser(id)
-		}
+	var pgErr *pq.Error
+	if errors.As(err, pgErr) && pgErr.Code == pgUniqueConstraintViolation && pgErr.Column == "users_pkey" {
+		log.Debug("user creation conflict, trying to retrieve the local user again")
+		return getDBUser(id)
 	}
 
 	log.Error("unknown error encountered while creating user: ", err)

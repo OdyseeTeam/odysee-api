@@ -2,10 +2,10 @@ package proxy
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/errors"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
@@ -79,7 +79,7 @@ func responseProcessorAccountList(response *jsonrpc.RPCResponse, query *jsonrpc.
 		ljsonrpc.Decode(response.Result, accounts)
 		account := getDefaultAccount(accounts)
 		if account == nil {
-			return errors.New("fatal error: no default account found")
+			return errors.Err("fatal error: no default account found")
 		}
 		response.Result = account
 	}

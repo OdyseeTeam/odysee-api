@@ -2,13 +2,13 @@ package proxy
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/responses"
-	"github.com/sirupsen/logrus"
 
+	"github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -22,7 +22,7 @@ type Query struct {
 // The object is immediately usable and returns an error in case request parsing fails.
 func NewQuery(req *jsonrpc.RPCRequest) (*Query, error) {
 	if strings.TrimSpace(req.Method) == "" {
-		return nil, errors.New("no method in request")
+		return nil, errors.Err("no method in request")
 	}
 
 	return &Query{Request: req}, nil
@@ -30,7 +30,7 @@ func NewQuery(req *jsonrpc.RPCRequest) (*Query, error) {
 
 func (q *Query) validate() error {
 	if !methodInList(q.Method(), relaxedMethods) && !methodInList(q.Method(), walletSpecificMethods) {
-		return NewMethodNotAllowedError(errors.New("forbidden method"))
+		return NewMethodNotAllowedError(errors.Err("forbidden method"))
 	}
 
 	if q.ParamsAsMap() != nil {
@@ -41,7 +41,7 @@ func (q *Query) validate() error {
 
 	if MethodNeedsAuth(q.Method()) {
 		if q.WalletID == "" {
-			return NewAuthRequiredError(errors.New(responses.AuthRequiredErrorMessage))
+			return NewAuthRequiredError(errors.Err(responses.AuthRequiredErrorMessage))
 		}
 		if p := q.ParamsAsMap(); p != nil {
 			p[paramWalletID] = q.WalletID

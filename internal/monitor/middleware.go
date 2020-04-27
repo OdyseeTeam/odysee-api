@@ -1,103 +1,170 @@
 package monitor
 
 import (
-	"errors"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
+	"runtime/debug"
+
+	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/errors"
+	"github.com/lbryio/lbrytv/internal/responses"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/sirupsen/logrus"
+	"github.com/ybbus/jsonrpc"
 )
 
-const responseSnippetLength = 500
-
-var errGeneric = errors.New("handler responded with an error")
+var errGeneric = errors.Base("handler responded with an error")
 
 var httpLogger = NewModuleLogger("http_monitor")
 
-// loggingWriter mimics http.ResponseWriter but stores a snippet of response, status code
-// and response size for easier logging
-type loggingWriter struct {
-	http.ResponseWriter
-	Status          int
-	ResponseSnippet string
-	ResponseSize    int
+type responseRecorder struct {
+	StatusCode int
+	Body       *bytes.Buffer
+
+	headerMap   http.Header
+	wroteHeader bool
 }
 
-func (w *loggingWriter) Write(p []byte) (int, error) {
-	if w.ResponseSnippet == "" {
-		var snippet []byte
-		if len(p) > responseSnippetLength {
-			snippet = p[:responseSnippetLength]
-		} else {
-			snippet = p
-		}
-		w.ResponseSnippet = strings.Trim(string(snippet), "\n")
+func (rr *responseRecorder) Header() http.Header {
+	if rr.headerMap == nil {
+		rr.headerMap = make(http.Header)
 	}
-	w.ResponseSize += len(p)
-	return w.ResponseWriter.Write(p)
+	return rr.headerMap
 }
 
-func (w *loggingWriter) WriteHeader(status int) {
-	w.Status = status
-	w.ResponseWriter.WriteHeader(status)
+func (rr *responseRecorder) Write(buf []byte) (int, error) {
+	rr.WriteHeader(200)
+	if rr.Body == nil {
+		rr.Body = new(bytes.Buffer)
+	}
+	rr.Body.Write(buf)
+	return len(buf), nil
 }
 
-func (w *loggingWriter) IsSuccess() bool {
-	return w.Status < http.StatusBadRequest
+func (rr *responseRecorder) WriteHeader(code int) {
+	if rr.wroteHeader {
+		return
+	}
+	rr.StatusCode = code
+	rr.wroteHeader = true
+}
+
+func (rr *responseRecorder) send(w http.ResponseWriter) {
+	// Set headers
+	h := w.Header()
+	for k, vals := range rr.Header() {
+		for _, v := range vals {
+			h.Add(k, v)
+		}
+	}
+
+	// Write status code and other headers
+	if rr.StatusCode > 0 {
+		w.WriteHeader(rr.StatusCode)
+	}
+
+	// Write body (and headers, if they were not written above)
+	if rr.Body != nil {
+		w.Write(rr.Body.Bytes())
+	}
 }
 
 // ErrorLoggingMiddleware intercepts panics and regular error responses from http handlers,
 // handles them in a graceful way, logs and sends them to Sentry
 func ErrorLoggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(writer http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hub := sentry.CurrentHub().Clone()
 		hub.Scope().SetRequest(sentry.Request{}.FromHTTPRequest(r))
-		ctx := sentry.SetHubOnContext(
-			r.Context(),
-			hub,
-		)
+		ctx := sentry.SetHubOnContext(r.Context(), hub)
 
-		w := &loggingWriter{ResponseWriter: writer}
-
-		defer func() {
-			var finalErr error
-			if err := recover(); err != nil {
-				switch t := err.(type) {
-				case string:
-					finalErr = errors.New(t)
-				case error:
-					finalErr = t
-				default:
-					finalErr = fmt.Errorf("unknown error: %v", err)
+		// Record response from next handler, recovering any panics therein
+		recorder := &responseRecorder{}
+		recoveredErr, stack := func() (err error, stack []byte) {
+			defer func() {
+				if p := recover(); p != nil {
+					var ok bool
+					err, ok = p.(error)
+					if !ok {
+						err = fmt.Errorf("%v", p)
+					}
+					stack = debug.Stack()
 				}
-				http.Error(w, finalErr.Error(), http.StatusInternalServerError)
-			} else if !w.IsSuccess() {
-				finalErr = errGeneric
-			}
-
-			if finalErr != nil {
-				CaptureRequestError(finalErr, r, w)
-			}
+			}()
+			next.ServeHTTP(recorder, r.WithContext(ctx))
+			return err, stack
 		}()
 
-		next.ServeHTTP(w, r.WithContext(ctx))
+		// No panics. Send recorded response to the real writer
+		if recoveredErr == nil {
+			if recorder.StatusCode >= http.StatusBadRequest {
+				recordRequestError(r, recorder)
+			}
+			recorder.send(w)
+			return
+		}
+
+		// There was a panic. Handle it and send error response
+
+		recordPanic(recoveredErr, r, recorder, stack)
+
+		if config.IsProduction() {
+			stack = nil
+		}
+		responses.AddJSONContentType(w)
+		rsp, _ := json.Marshal(jsonrpc.RPCResponse{
+			JSONRPC: "2.0",
+			Error: &jsonrpc.RPCError{
+				Code:    -1,
+				Message: recoveredErr.Error(),
+				Data:    string(stack),
+			},
+		})
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(rsp)
 	})
 }
 
-func CaptureRequestError(err error, r *http.Request, w http.ResponseWriter) {
-	fields := logrus.Fields{
-		"method": r.Method,
-		"url":    r.URL.Path,
-	}
-	if lw, ok := w.(*loggingWriter); ok {
-		fields["status"] = fmt.Sprintf("%v", lw.Status)
-		fields["response"] = lw.ResponseSnippet
+func recordRequestError(r *http.Request, rec *responseRecorder) {
+	snippetLen := len(rec.Body.String())
+	if snippetLen > 500 {
+		snippetLen = 500
 	}
 
-	httpLogger.WithFields(fields).Error(err)
-	CaptureException(err)
+	err := errors.Err("handler responded with an error")
+	httpLogger.WithFields(logrus.Fields{
+		"method":   r.Method,
+		"url":      r.URL.Path,
+		"status":   rec.StatusCode,
+		"response": rec.Body.String()[:snippetLen],
+	}).Error(err)
+
+	ErrorToSentry(err, map[string]string{
+		"method":   r.Method,
+		"url":      r.URL.Path,
+		"status":   fmt.Sprintf("%d", rec.StatusCode),
+		"response": rec.Body.String()[:snippetLen],
+	})
+}
+
+func recordPanic(err error, r *http.Request, rec *responseRecorder, stack []byte) {
+	snippetLen := len(rec.Body.String())
+	if snippetLen > 500 {
+		snippetLen = 500
+	}
+
+	httpLogger.WithFields(logrus.Fields{
+		"method":   r.Method,
+		"url":      r.URL.Path,
+		"status":   rec.StatusCode,
+		"response": rec.Body.String()[:snippetLen],
+	}).Error(fmt.Errorf("RECOVERED PANIC: %v, trace: %s", err, string(stack)))
+
+	// TODO: how to send real stack trace to Sentry?
+
+	ErrorToSentry(err)
 	// if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
 	// 	hub.WithScope(func(scope *sentry.Scope) {
 	// 		scope.SetExtras(extra)
