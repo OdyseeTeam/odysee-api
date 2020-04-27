@@ -71,8 +71,8 @@ func getOrCreateLocalUser(remoteUserID int, log *logrus.Entry) (*models.User, er
 			return nil, err
 		}
 	} else if localUser.LbrynetServerID.IsZero() {
-		// This scenario may happen for legacy users who are present in the database but don't have a server assigned
-		log.Warnf("user %d found in db but doesn't have sdk assigned", localUser.ID)
+		// Should not happen, but not enforced in DB structure yet
+		log.Errorf("user %d found in db but doesn't have sdk assigned", localUser.ID)
 	}
 
 	return localUser, nil
@@ -139,13 +139,6 @@ func assignSDKServerToUser(user *models.User, server *models.LbrynetServer, log 
 	user.R.LbrynetServer = srv
 	log.Infof("user %d: assigned to sdk %s (%s)", user.ID, server.Name, server.Address)
 
-	// retain BC for now. can remove this after sdk selection refactor has shown itself solid
-	user.WalletID = sdkrouter.WalletID(user.ID)
-	_, err = user.UpdateG(boil.Infer())
-	if err != nil {
-		return errors.Err(err)
-	}
-
 	if needsWalletCreation {
 		return Create(server.Address, user.ID)
 	}
@@ -199,7 +192,7 @@ func Create(serverAddress string, userID int) error {
 
 	if errors.Is(err, lbrynet.ErrWalletNeedsLoading) {
 		log.Info(err.Error())
-		err = loadWallet(serverAddress, userID)
+		err = LoadWallet(serverAddress, userID)
 		if err != nil {
 			if errors.Is(err, lbrynet.ErrWalletAlreadyLoaded) {
 				log.Info(err.Error())
@@ -238,7 +231,7 @@ func createWallet(addr string, userID int) error {
 // May return errors:
 //  WalletAlreadyLoaded - wallet is already loaded and operational
 //  WalletNotFound - wallet file does not exist and won't be loaded.
-func loadWallet(addr string, userID int) error {
+func LoadWallet(addr string, userID int) error {
 	_, err := ljsonrpc.NewClient(addr).WalletAdd(sdkrouter.WalletID(userID))
 	if err != nil {
 		return lbrynet.NewWalletError(userID, err)

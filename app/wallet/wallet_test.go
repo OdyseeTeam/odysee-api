@@ -337,6 +337,6 @@ func TestCreateWalletLoadWallet(t *testing.T) {
 	err = UnloadWallet(addr, userID)
 	require.NoError(t, err)
 
-	err = loadWallet(addr, userID)
+	err = LoadWallet(addr, userID)
 	require.NoError(t, err)
 }

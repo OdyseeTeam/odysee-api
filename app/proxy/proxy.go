@@ -18,13 +18,12 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/app/sdkrouter"
+	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
-
-	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/sirupsen/logrus"
@@ -156,8 +155,7 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 		if isErrWalletNotLoaded(r) {
 			time.Sleep(walletLoadRetryWait)
 			// Using LBRY JSON-RPC client here for easier request/response processing
-			client := ljsonrpc.NewClient(c.endpoint)
-			_, err := client.WalletAdd(sdkrouter.WalletID(c.userID))
+			err := wallet.LoadWallet(c.endpoint, c.userID)
 			// Alert sentry on the last failed wallet load attempt
 			if err != nil && i >= walletLoadRetries-1 {
 				e := errors.Prefix("gave up manually adding wallet", err)
