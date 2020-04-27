@@ -23,11 +23,11 @@ var (
 	ErrWalletAlreadyLoaded = errors.Base("wallet is already loaded")
 
 	// Workaround for non-existent SDK error codes
-	reWalletNotFound      = regexp.MustCompile(`Wallet at path .+ was not found`)
-	reWalletExists        = regexp.MustCompile(`Wallet at path .+ already exists and is loaded`)
-	reWalletNeedsLoading  = regexp.MustCompile(`Wallet at path .+ already exists, use 'wallet_add' to load wallet`)
-	reWalletNotLoaded     = regexp.MustCompile(`Couldn't find wallet:`)
-	reWalletAlreadyLoaded = regexp.MustCompile(`Wallet at path .+ is already loaded`)
+	reWalletNotFound      = regexp.MustCompile(`(?i)wallet at path .+ was not found`)
+	reWalletExists        = regexp.MustCompile(`(?i)wallet at path .+ already exists and is loaded`)
+	reWalletNeedsLoading  = regexp.MustCompile(`(?i)wallet at path .+ already exists, use 'wallet_add' to load wallet`)
+	reWalletNotLoaded     = regexp.MustCompile(`(?i)couldn't find wallet:`)
+	reWalletAlreadyLoaded = regexp.MustCompile(`(?i)wallet at path .+ is already loaded`)
 )
 
 // NewWalletError converts plain SDK error to the typed one
