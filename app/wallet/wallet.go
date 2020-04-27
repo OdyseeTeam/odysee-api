@@ -13,7 +13,6 @@ import (
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
 	"github.com/lib/pq"
-	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/volatiletech/sqlboiler/queries/qm"
@@ -165,12 +164,10 @@ func createDBUser(id int) (*models.User, error) {
 
 	// Check if we encountered a primary key violation, it would mean another routine
 	// fired from another request has managed to create a user before us so we should try retrieving it again.
-	switch baseErr := pkgerrors.Cause(err).(type) {
-	case *pq.Error:
-		if baseErr.Code == pgUniqueConstraintViolation && baseErr.Column == "users_pkey" {
-			log.Debug("user creation conflict, trying to retrieve the local user again")
-			return getDBUser(id)
-		}
+	var pgErr *pq.Error
+	if errors.As(err, pgErr) && pgErr.Code == pgUniqueConstraintViolation && pgErr.Column == "users_pkey" {
+		log.Debug("user creation conflict, trying to retrieve the local user again")
+		return getDBUser(id)
 	}
 
 	log.Error("unknown error encountered while creating user: ", err)

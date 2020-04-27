@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
+
+	pkgerr "github.com/pkg/errors"
 )
 
 // The maximum number of stack frames on any error.
 const maxStackDepth = 50
-
-// interop with pkg/errors
-type causer interface{ Cause() error }
 
 // traced is an error with an attached stack trace
 type traced struct {
@@ -70,11 +69,6 @@ func (e *traced) TypeName() string {
 	return reflect.TypeOf(e.err).String()
 }
 
-//// New replaces builtin errors.New()
-//func New(text string) error {
-//	return Err(text)
-//}
-
 // Err returns an error with stack trace
 func Err(e interface{}, fmtParams ...interface{}) error {
 	return wrap(1, e, fmtParams...)
@@ -85,7 +79,6 @@ func Err(e interface{}, fmtParams ...interface{}) error {
 // The skip parameter indicates how far up the stack to start the stacktrace. 0 starts from
 // the function that calls wrap(), 1 from that function's caller, etc.
 func wrap(skip int, e interface{}, fmtParams ...interface{}) *traced {
-	// TODO: should i call this something other than new(), since it doesnt always make a new one?
 	if e == nil {
 		return nil
 	}
@@ -95,8 +88,6 @@ func wrap(skip int, e interface{}, fmtParams ...interface{}) *traced {
 	switch typed := e.(type) {
 	case *traced:
 		return typed
-	case causer:
-		e = fmt.Errorf("%+v", e) // should this be e.Cause() ??
 	case error:
 		err = typed
 	case string:
@@ -105,11 +96,24 @@ func wrap(skip int, e interface{}, fmtParams ...interface{}) *traced {
 		err = fmt.Errorf("%+v", typed)
 	}
 
-	stack := make([]uintptr, maxStackDepth)
-	length := runtime.Callers(2+skip, stack[:])
+	var stack []uintptr
+	type stackTracer interface{ StackTrace() pkgerr.StackTrace } // interop with pkg/errors stack
+	if withStack, ok := e.(stackTracer); ok {
+		// get their stacktrace
+		pkgStack := withStack.StackTrace()
+		stack = make([]uintptr, len(pkgStack))
+		for i, f := range pkgStack {
+			stack[i] = uintptr(f)
+		}
+	} else {
+		stack = make([]uintptr, maxStackDepth)
+		length := runtime.Callers(2+skip, stack[:])
+		stack = stack[:length]
+	}
+
 	return &traced{
 		err:   err,
-		stack: stack[:length],
+		stack: stack,
 	}
 }
 
