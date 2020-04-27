@@ -1,7 +1,6 @@
 package sdkrouter
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -52,31 +51,31 @@ func TestOverrideLbrynetConf(t *testing.T) {
 }
 
 func TestLeastLoaded(t *testing.T) {
-	rpcServer := test.MockHTTPServer(nil)
-	defer rpcServer.Close()
+	rpcServer1 := test.MockHTTPServer(nil)
+	defer rpcServer1.Close()
+	rpcServer2 := test.MockHTTPServer(nil)
+	defer rpcServer2.Close()
+	rpcServer3 := test.MockHTTPServer(nil)
+	defer rpcServer3.Close()
 
 	servers := map[string]string{
-		"srv1": rpcServer.URL,
-		"srv2": rpcServer.URL,
-		"srv3": rpcServer.URL,
+		"srv1": rpcServer1.URL,
+		"srv2": rpcServer2.URL,
+		"srv3": rpcServer3.URL,
 	}
 	r := New(servers)
 
 	// try doing the load in increasing order
-	go func() {
-		for i := 0; i < len(servers); i++ {
-			rpcServer.NextResponse <- fmt.Sprintf(`{"result":{"total_pages":%d}}`, i)
-		}
-	}()
+	rpcServer1.NextResponse <- `{"result":{"total_pages":1}}`
+	rpcServer2.NextResponse <- `{"result":{"total_pages":2}}`
+	rpcServer3.NextResponse <- `{"result":{"total_pages":3}}`
 	r.updateLoadAndMetrics()
 	assert.Equal(t, "srv1", r.LeastLoaded().Name)
 
 	// now do the load in decreasing order
-	go func() {
-		for i := 0; i < len(servers); i++ {
-			rpcServer.NextResponse <- fmt.Sprintf(`{"result":{"total_pages":%d}}`, len(servers)-i)
-		}
-	}()
+	rpcServer1.NextResponse <- `{"result":{"total_pages":3}}`
+	rpcServer2.NextResponse <- `{"result":{"total_pages":2}}`
+	rpcServer3.NextResponse <- `{"result":{"total_pages":1}}`
 	r.updateLoadAndMetrics()
 	assert.Equal(t, "srv3", r.LeastLoaded().Name)
 

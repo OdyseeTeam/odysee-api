@@ -101,7 +101,7 @@ func TestErrorLoggingMiddlewareTableTest(t *testing.T) {
 			}
 			r, _ := http.NewRequest(row.method, row.url, reqBody)
 
-			mw := ErrorLoggingMiddleware(http.HandlerFunc(row.handler))
+			mw := ErrorLoggingMiddleware(row.handler)
 			rr := httptest.NewRecorder()
 			mw.ServeHTTP(rr, r)
 			res := rr.Result()
