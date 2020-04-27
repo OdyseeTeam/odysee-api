@@ -46,7 +46,6 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 
 	internalRouter := r.PathPrefix("/internal").Subrouter()
 	internalRouter.Handle("/metrics", promhttp.Handler())
-	internalRouter.Handle("/status", middlewareStack(http.HandlerFunc(status.GetStatus))) // deprecated. moved to /api/v1/status
 	internalRouter.HandleFunc("/whoami", status.WhoAMI)
 }
 
