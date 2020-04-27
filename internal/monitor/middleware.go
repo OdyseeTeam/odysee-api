@@ -162,9 +162,10 @@ func recordPanic(err error, r *http.Request, rec *responseRecorder, stack []byte
 		"response": rec.Body.String()[:snippetLen],
 	}).Error(fmt.Errorf("RECOVERED PANIC: %v, trace: %s", err, string(stack)))
 
-	// TODO: how to send real stack trace to Sentry?
-
-	ErrorToSentry(err)
+	sentry.WithScope(func(scope *sentry.Scope) {
+		scope.SetLevel(sentry.LevelFatal)
+		sentry.CaptureException(err)
+	})
 	// if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
 	// 	hub.WithScope(func(scope *sentry.Scope) {
 	// 		scope.SetExtras(extra)
