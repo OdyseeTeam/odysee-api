@@ -40,8 +40,10 @@ func NewServer(address string, sdkRouter *sdkrouter.Router) *Server {
 		stopWait: 15 * time.Second,
 		stopChan: make(chan os.Signal),
 		listener: &http.Server{
-			Addr:              address,
-			Handler:           r,
+			Addr:    address,
+			Handler: r,
+			// We need this for long uploads
+			WriteTimeout:      0,
 			IdleTimeout:       0,
 			ReadHeaderTimeout: 10 * time.Second,
 		},

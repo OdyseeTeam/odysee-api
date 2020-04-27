@@ -76,12 +76,10 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 			if err != nil {
 				srv.Error = fmt.Sprintf("%v", err)
 				srv.Status = statusOffline
-				respStatus = http.StatusServiceUnavailable
 				failureDetected = true
 			} else if r.StatusCode != http.StatusNotFound {
 				srv.Status = statusNotReady
 				srv.Error = fmt.Sprintf("http status %v", r.StatusCode)
-				respStatus = http.StatusServiceUnavailable
 				failureDetected = true
 			}
 			services["player"] = append(services["player"], srv)
