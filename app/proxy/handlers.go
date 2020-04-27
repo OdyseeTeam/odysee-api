@@ -8,7 +8,6 @@ import (
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
-	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
 
 	"github.com/ybbus/jsonrpc"
@@ -16,11 +15,10 @@ import (
 
 // Handle forwards client JSON-RPC request to proxy.
 func Handle(w http.ResponseWriter, r *http.Request) {
-	var proxyHandlerLogger = monitor.NewModuleLogger("proxy_handlers")
 	if r.Body == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("empty request body"))
-		proxyHandlerLogger.Log().Errorf("empty request body")
+		logger.Log().Errorf("empty request body")
 		return
 	}
 
@@ -28,7 +26,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("error reading request body"))
-		proxyHandlerLogger.Log().Errorf("error reading request body: %v", err.Error())
+		logger.Log().Errorf("error reading request body: %v", err.Error())
 		return
 	}
 

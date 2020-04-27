@@ -162,16 +162,9 @@ func recordPanic(err error, r *http.Request, rec *responseRecorder, stack []byte
 		"response": rec.Body.String()[:snippetLen],
 	}).Error(fmt.Errorf("RECOVERED PANIC: %v, trace: %s", err, string(stack)))
 
-	sentry.CurrentHub().Recover(err)
-
-	// if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
-	// 	hub.WithScope(func(scope *sentry.Scope) {
-	// 		scope.SetExtras(extra)
-
-	// 	})
-	// 	hub.RecoverWithContext(
-	// 		context.WithValue(r.Context(), sentry.RequestContextKey, r),
-	// 		err,
-	// 	)
-	// }
+	hub := sentry.GetHubFromContext(r.Context())
+	if hub == nil {
+		hub = sentry.CurrentHub()
+	}
+	hub.Recover(err)
 }

@@ -86,7 +86,7 @@ func publish(sdkAddress, filename string, userID int, rawQuery []byte) []byte {
 // Supposed to be used in gorilla mux router MatcherFunc.
 func (h Handler) CanHandle(r *http.Request, _ *mux.RouteMatch) bool {
 	_, _, err := r.FormFile(fileFieldName)
-	return err != http.ErrMissingFile && r.FormValue(jsonRPCFieldName) != ""
+	return !errors.Is(err, http.ErrMissingFile) && r.FormValue(jsonRPCFieldName) != ""
 }
 
 func (h Handler) saveFile(r *http.Request, userID int) (*os.File, error) {

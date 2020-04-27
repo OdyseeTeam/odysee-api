@@ -17,17 +17,17 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
-	"github.com/sirupsen/logrus"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
+	"github.com/davecgh/go-spew/spew"
+	"github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -63,7 +63,7 @@ func (c *Caller) CallRaw(rawQuery []byte) []byte {
 	var req jsonrpc.RPCRequest
 	err := json.Unmarshal(rawQuery, &req)
 	if err != nil {
-		return marshalError(NewJSONParseError(err))
+		return errorToJSON(NewJSONParseError(err))
 	}
 	return c.Call(&req)
 }
@@ -75,14 +75,14 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) []byte {
 	if err != nil {
 		monitor.ErrorToSentry(err, map[string]string{"request": spew.Sdump(req), "response": fmt.Sprintf("%v", r)})
 		logger.Log().Errorf("error calling lbrynet: %v, request: %s", err, spew.Sdump(req))
-		return marshalError(err)
+		return errorToJSON(err)
 	}
 
 	serialized, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		monitor.ErrorToSentry(err)
 		logger.Log().Errorf("error marshaling response: %v", err)
-		return marshalError(NewInternalError(err))
+		return errorToJSON(NewInternalError(err))
 	}
 
 	return serialized
@@ -137,16 +137,13 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 		duration float64
 	)
 
-	callMetrics := metrics.ProxyCallDurations.WithLabelValues(q.Method(), c.endpoint)
-	failureMetrics := metrics.ProxyCallFailedDurations.WithLabelValues(q.Method(), c.endpoint)
-
 	for i := 0; i < walletLoadRetries; i++ {
 		start := time.Now()
 
 		r, err = c.client.CallRaw(q.Request)
 
 		duration = time.Since(start).Seconds()
-		callMetrics.Observe(duration)
+		metrics.ProxyCallDurations.WithLabelValues(q.Method(), c.endpoint).Observe(duration)
 
 		// Generally a HTTP transport failure (connect error etc)
 		if err != nil {
@@ -181,34 +178,28 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 		}
 	}
 
-	if (r != nil && r.Error != nil) || err != nil {
-		logger.WithFields(logrus.Fields{
-			"method":   q.Method(),
-			"params":   q.Params(),
-			"endpoint": c.endpoint,
-			"user_id":  c.userID,
-			"duration": duration,
-			"response": r.Error,
-		}).Error("error from the target endpoint")
-		failureMetrics.Observe(duration)
+	logFields := logrus.Fields{
+		"method":   q.Method(),
+		"params":   q.Params(),
+		"endpoint": c.endpoint,
+		"user_id":  c.userID,
+		"duration": duration,
+	}
+	if err != nil || (r != nil && r.Error != nil) {
+		logFields["response"] = r.Error
+		logger.WithFields(logFields).Error("rpc call error")
+		metrics.ProxyCallFailedDurations.WithLabelValues(q.Method(), c.endpoint).Observe(duration)
 	} else {
-		fields := logrus.Fields{
-			"method":   q.Method(),
-			"params":   q.Params(),
-			"endpoint": c.endpoint,
-			"user_id":  c.userID,
-			"duration": duration,
-		}
 		if config.ShouldLogResponses() {
-			fields["response"] = r
+			logFields["response"] = r
 		}
-		logger.WithFields(fields).Info("call processed")
+		logger.WithFields(logFields).Debug("rpc call processed")
 	}
 
 	return r, err
 }
 
-func marshalError(err error) []byte {
+func errorToJSON(err error) []byte {
 	var rpcErr RPCError
 	if errors.As(err, &rpcErr) {
 		return rpcErr.JSON()
