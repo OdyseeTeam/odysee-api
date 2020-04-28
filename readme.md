@@ -14,7 +14,7 @@ Make sure you have recent enough Docker and `docker-compose` installed.
 
 **1. Initialize and launch the containers**
 
-This will pull and launch SDK and postgres images, which lbrytv requires to operate.
+This will pull and launch lbrynet and postgres images, which lbrytv requires to operate.
 
 `docker-compose up app`
 
