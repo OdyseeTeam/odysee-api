@@ -294,7 +294,7 @@ func BenchmarkWalletCommands(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			u := users[rand.Intn(len(users))]
-			res, err := cl.Call("account_balance", map[string]string{"wallet_id": u.WalletID})
+			res, err := cl.Call("account_balance", map[string]string{"wallet_id": sdkrouter.WalletID(u.ID)})
 			require.NoError(b, err)
 			assert.Nil(b, res.Error)
 		}

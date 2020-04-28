@@ -117,7 +117,7 @@ func BenchmarkWalletCommands(b *testing.B) {
 		for pb.Next() {
 			u := wallets[rand.Intn(len(wallets))]
 
-			q := jsonrpc.NewRequest("wallet_balance", map[string]string{"wallet_id": u.WalletID})
+			q := jsonrpc.NewRequest("wallet_balance", map[string]string{"wallet_id": sdkrouter.WalletID(u.ID)})
 
 			qBody, err := json.Marshal(q)
 			require.NoError(b, err)
