@@ -710,7 +710,7 @@ func testUsersSelect(t *testing.T) {
 }
 
 var (
-	userDBTypes = map[string]string{`ID`: `integer`, `CreatedAt`: `timestamp without time zone`, `UpdatedAt`: `timestamp without time zone`, `SDKAccountID`: `character varying`, `WalletID`: `character varying`, `LbrynetServerID`: `integer`}
+	userDBTypes = map[string]string{`ID`: `integer`, `CreatedAt`: `timestamp without time zone`, `UpdatedAt`: `timestamp without time zone`, `SDKAccountID`: `character varying`, `LbrynetServerID`: `integer`}
 	_           = bytes.MinRead
 )
 
