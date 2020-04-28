@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/lbryio/lbrytv/internal/responses"
 
 	"github.com/spf13/cast"
 )
@@ -12,7 +13,7 @@ import (
 var Logger = monitor.NewModuleLogger("metrics")
 
 func TrackUIMetric(w http.ResponseWriter, req *http.Request) {
-	w.Header().Add("content-type", "application/json; charset=utf-8")
+	responses.AddJSONContentType(w)
 	resp := make(map[string]string)
 	code := http.StatusOK
 
