@@ -39,15 +39,16 @@ func (q *Query) validate() error {
 		}
 	}
 
-	if MethodNeedsAuth(q.Method()) {
-		if q.WalletID == "" {
+	if MethodAcceptsWallet(q.Method()) {
+		if q.WalletID != "" {
+			if p := q.ParamsAsMap(); p != nil {
+				p[paramWalletID] = q.WalletID
+				q.Request.Params = p
+			} else {
+				q.Request.Params = map[string]interface{}{paramWalletID: q.WalletID}
+			}
+		} else if MethodRequiresWallet(q.Method()) {
 			return NewAuthRequiredError(errors.Err(responses.AuthRequiredErrorMessage))
-		}
-		if p := q.ParamsAsMap(); p != nil {
-			p[paramWalletID] = q.WalletID
-			q.Request.Params = p
-		} else {
-			q.Request.Params = map[string]interface{}{paramWalletID: q.WalletID}
 		}
 	}
 
@@ -132,8 +133,14 @@ func (q *Query) predefinedResponse() *jsonrpc.RPCResponse {
 	}
 }
 
-func MethodNeedsAuth(method string) bool {
+// MethodRequiresWallet returns true for methods that require wallet_id
+func MethodRequiresWallet(method string) bool {
 	return !methodInList(method, relaxedMethods)
+}
+
+// MethodAcceptsWallet returns true for methods that can accept wallet_id
+func MethodAcceptsWallet(method string) bool {
+	return methodInList(method, walletSpecificMethods)
 }
 
 func methodInList(method string, checkMethods []string) bool {

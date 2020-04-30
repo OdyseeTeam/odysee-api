@@ -62,7 +62,7 @@ func ReqChan() chan *Request {
 	return make(chan *Request, 1)
 }
 
-// ReqToStr is a convenience method
+// ReqToStr stringifies a supplied RPCRequest
 func ReqToStr(t *testing.T, req jsonrpc.RPCRequest) string {
 	r, err := json.Marshal(req)
 	if err != nil {
@@ -71,7 +71,7 @@ func ReqToStr(t *testing.T, req jsonrpc.RPCRequest) string {
 	return string(r)
 }
 
-// StrToReq is a convenience method
+// StrToReq creates an RPCRequest from a supplied string
 func StrToReq(t *testing.T, req string) jsonrpc.RPCRequest {
 	var r jsonrpc.RPCRequest
 	err := json.Unmarshal([]byte(req), &r)
@@ -81,13 +81,23 @@ func StrToReq(t *testing.T, req string) jsonrpc.RPCRequest {
 	return r
 }
 
-// ResToStr is a convenience method
+// ResToStr stringifies a supplied RPCResponse
 func ResToStr(t *testing.T, res jsonrpc.RPCResponse) string {
 	r, err := json.Marshal(res)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return string(r)
+}
+
+// StrToRes creates an RPCResponse from a supplied string
+func StrToRes(t *testing.T, res string) jsonrpc.RPCResponse {
+	var r jsonrpc.RPCResponse
+	err := json.Unmarshal([]byte(res), &r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return r
 }
 
 func RandServerAddress(t *testing.T) string {

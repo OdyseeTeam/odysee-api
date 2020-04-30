@@ -20,6 +20,9 @@ var relaxedMethods = []string{
 // are added to the SDK so relaxedMethods should be used for strict validation
 // whether wallet_id is required.
 var walletSpecificMethods = []string{
+	"resolve",
+	"claim_search",
+
 	"publish",
 
 	"address_unused",

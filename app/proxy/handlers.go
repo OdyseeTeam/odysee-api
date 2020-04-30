@@ -44,7 +44,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 
 	var userID int
 	var sdkAddress string
-	if MethodNeedsAuth(req.Method) {
+	if MethodRequiresWallet(req.Method) {
 		authResult := auth.FromRequest(r)
 		if !EnsureAuthenticated(authResult, w) {
 			return

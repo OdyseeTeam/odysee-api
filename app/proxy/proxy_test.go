@@ -93,12 +93,14 @@ func TestCallerCallRelaxedMethods(t *testing.T) {
 	caller := NewCaller(srv.URL, 0)
 
 	for _, m := range relaxedMethods {
+		if m == MethodStatus {
+			continue
+		}
 		t.Run(m, func(t *testing.T) {
-			if m == MethodStatus {
-				return
-			}
 			srv.NextResponse <- test.EmptyResponse()
-			caller.Call(jsonrpc.NewRequest(m))
+			resp := caller.Call(jsonrpc.NewRequest(m))
+			require.NotEqual(t, "authentication required", test.StrToRes(t, string(resp)).Error.Message)
+
 			receivedRequest := <-reqChan
 			expectedRequest := test.ReqToStr(t, jsonrpc.RPCRequest{
 				Method:  m,
@@ -110,11 +112,86 @@ func TestCallerCallRelaxedMethods(t *testing.T) {
 	}
 }
 
+func TestCallerCallAmbivalentMethodsWithoutWallet(t *testing.T) {
+	reqChan := test.ReqChan()
+	srv := test.MockHTTPServer(reqChan)
+	defer srv.Close()
+	caller := NewCaller(srv.URL, 0)
+
+	for _, m := range relaxedMethods {
+		if !methodInList(m, walletSpecificMethods) {
+			continue
+		}
+		t.Run(m, func(t *testing.T) {
+			srv.NextResponse <- test.EmptyResponse()
+			resp := caller.Call(jsonrpc.NewRequest(m))
+			require.NotEqual(t, "authentication required", test.StrToRes(t, string(resp)).Error.Message)
+
+			receivedRequest := <-reqChan
+			expectedRequest := test.ReqToStr(t, jsonrpc.RPCRequest{
+				Method:  m,
+				Params:  nil,
+				JSONRPC: "2.0",
+			})
+			assert.EqualValues(t, expectedRequest, receivedRequest.Body)
+		})
+	}
+}
+
+func TestCallerCallAmbivalentMethodsWithWallet(t *testing.T) {
+	reqChan := test.ReqChan()
+	srv := test.MockHTTPServer(reqChan)
+	defer srv.Close()
+	dummyUserID := 123321
+	authedCaller := NewCaller(srv.URL, dummyUserID)
+	var methodsTested int
+
+	for _, m := range relaxedMethods {
+		if !methodInList(m, walletSpecificMethods) {
+			continue
+		}
+		methodsTested++
+		t.Run(m, func(t *testing.T) {
+			srv.NextResponse <- test.EmptyResponse()
+			resp := authedCaller.Call(jsonrpc.NewRequest(m))
+			require.NotEqual(t, "authentication required", test.StrToRes(t, string(resp)).Error.Message)
+
+			receivedRequest := <-reqChan
+			expectedRequest := test.ReqToStr(t, jsonrpc.RPCRequest{
+				Method: m,
+				Params: map[string]interface{}{
+					"wallet_id": sdkrouter.WalletID(dummyUserID),
+				},
+				JSONRPC: "2.0",
+			})
+			assert.EqualValues(t, expectedRequest, receivedRequest.Body)
+		})
+	}
+
+	if methodsTested == 0 {
+		t.Fatal("no ambivalent methods found, that doesn't look right")
+	}
+}
+
 func TestCallerCallNonRelaxedMethods(t *testing.T) {
-	caller := NewCaller("whatever", 0)
+	reqChan := test.ReqChan()
+	srv := test.MockHTTPServer(reqChan)
+	defer srv.Close()
+
+	caller := NewCaller(srv.URL, 0)
 	for _, m := range walletSpecificMethods {
-		result := caller.Call(jsonrpc.NewRequest(m))
-		assert.Contains(t, string(result), `"message": "authentication required"`)
+		if methodInList(m, relaxedMethods) {
+			continue
+		}
+		t.Run(m, func(t *testing.T) {
+			resp := caller.Call(jsonrpc.NewRequest(m))
+			select {
+			case <-reqChan:
+				t.Fatal("a request went throught")
+			default:
+			}
+			assert.Equal(t, "authentication required", test.StrToRes(t, string(resp)).Error.Message)
+		})
 	}
 }
 
