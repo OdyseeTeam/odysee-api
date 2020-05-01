@@ -92,7 +92,10 @@ func TestWithoutToken(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	handler := sdkrouter.Middleware(rt)(http.HandlerFunc(Handle))
+	provider := func(token, ip string) auth.Result {
+		return auth.NewResult(nil, nil)
+	}
+	handler := sdkrouter.Middleware(rt)(auth.Middleware(provider)(http.HandlerFunc(Handle)))
 	handler.ServeHTTP(rr, r)
 
 	require.Equal(t, http.StatusOK, rr.Code)
