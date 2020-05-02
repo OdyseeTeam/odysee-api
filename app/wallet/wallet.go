@@ -43,7 +43,7 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 
 	log.Data["remote_user_id"] = remoteUser.ID
 	log.Data["has_email"] = remoteUser.HasVerifiedEmail
-	log.Infof("user authenticated")
+	log.Debugf("user authenticated")
 
 	localUser, err := getOrCreateLocalUser(remoteUser.ID, log)
 	if err != nil {
