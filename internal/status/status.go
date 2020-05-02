@@ -91,11 +91,11 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 		lastUpdate = time.Now()
 	}
 
-	authResult := auth.FromRequest(req)
-	if authResult.Authenticated() {
+	user, err := auth.FromRequest(req)
+	if user != nil {
 		response["user"] = map[string]interface{}{
-			"user_id":      authResult.User().ID,
-			"assigned_sdk": authResult.SDKAddress,
+			"user_id":      user.ID,
+			"assigned_sdk": auth.SDKAddress(user),
 		}
 	}
 

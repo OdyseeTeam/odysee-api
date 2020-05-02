@@ -11,6 +11,7 @@ import (
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/test"
+	"github.com/lbryio/lbrytv/models"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
@@ -82,6 +83,8 @@ func TestAuthEmailNotVerified(t *testing.T) {
 	assert.Equal(t, "must authenticate", response.Error.Message)
 }
 
+var nilProvider = func(token, ip string) (*models.User, error) { return nil, nil }
+
 func TestWithoutToken(t *testing.T) {
 	testFuncSetup()
 
@@ -92,10 +95,7 @@ func TestWithoutToken(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	provider := func(token, ip string) auth.Result {
-		return auth.NewResult(nil, nil)
-	}
-	handler := sdkrouter.Middleware(rt)(auth.Middleware(provider)(http.HandlerFunc(Handle)))
+	handler := sdkrouter.Middleware(rt)(auth.Middleware(nilProvider)(http.HandlerFunc(Handle)))
 	handler.ServeHTTP(rr, r)
 
 	require.Equal(t, http.StatusOK, rr.Code)
@@ -121,10 +121,7 @@ func TestAccountSpecificWithoutToken(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	provider := func(token, ip string) auth.Result {
-		return auth.NewResult(nil, nil)
-	}
-	handler := sdkrouter.Middleware(rt)(auth.Middleware(provider)(http.HandlerFunc(Handle)))
+	handler := sdkrouter.Middleware(rt)(auth.Middleware(nilProvider)(http.HandlerFunc(Handle)))
 	handler.ServeHTTP(rr, r)
 
 	require.Equal(t, http.StatusOK, rr.Code)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
+	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/ip"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
@@ -18,82 +19,56 @@ var logger = monitor.NewModuleLogger("auth")
 
 const ContextKey = "user"
 
-func FromRequest(r *http.Request) Result {
+var ErrNoAuthInfo = errors.Base("unauthorized")
+
+type result struct {
+	user *models.User
+	err  error
+}
+
+func FromRequest(r *http.Request) (*models.User, error) {
 	v := r.Context().Value(ContextKey)
 	if v == nil {
 		panic("auth.Middleware is required")
 	}
-	return v.(Result)
+	res := v.(result)
+	return res.user, res.err
 }
 
 // Provider tries to authenticate using the provided auth token
-type Provider func(token, metaRemoteIP string) Result
+type Provider func(token, metaRemoteIP string) (*models.User, error)
 
 // NewIAPIProvider authenticates a user by hitting internal-api with the auth token
 // and matching the response to a local user. If auth is successful, the user will have a
 // lbrynet server assigned and a wallet that's created and ready to use.
 func NewIAPIProvider(rt *sdkrouter.Router, internalAPIHost string) Provider {
-	return func(token, metaRemoteIP string) Result {
-		user, err := wallet.GetUserWithSDKServer(rt, internalAPIHost, token, metaRemoteIP)
-		res := NewResult(user, err)
-		if err == nil && user != nil && !user.LbrynetServerID.IsZero() && user.R != nil && user.R.LbrynetServer != nil {
-			res.SDKAddress = user.R.LbrynetServer.Address
-		}
-		return res
+	return func(token, metaRemoteIP string) (*models.User, error) {
+		return wallet.GetUserWithSDKServer(rt, internalAPIHost, token, metaRemoteIP)
 	}
 }
 
 func Middleware(provider Provider) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var res Result
+			var user *models.User
+			var err error
 			if token, ok := r.Header[wallet.TokenHeader]; ok {
 				addr := ip.AddressForRequest(r)
-				res = provider(token[0], addr)
-				if res.err != nil {
+				user, err = provider(token[0], addr)
+				if err != nil {
 					logger.WithFields(logrus.Fields{"ip": addr}).Debugf("error authenticating user")
 				}
-				res.authAttempted = true
+			} else {
+				err = errors.Err(ErrNoAuthInfo)
 			}
-			next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), ContextKey, res)))
+			next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), ContextKey, result{user, err})))
 		})
 	}
 }
 
-// wish i could make this non-exported, but then you can't create new providers outside the package
-// don't make this struct directly. instead use NewResult
-type Result struct {
-	SDKAddress string
-
-	user          *models.User
-	err           error
-	authAttempted bool
-}
-
-func NewResult(user *models.User, err error) Result {
-	if err != nil {
-		user = nil // err and user cannot be non-nil at the same time
+func SDKAddress(u *models.User) string {
+	if u != nil && u.R != nil && u.R.LbrynetServer != nil {
+		return u.R.LbrynetServer.Address
 	}
-	return Result{user: user, err: err}
-}
-
-func (r Result) AuthAttempted() bool {
-	return r.authAttempted
-}
-
-func (r Result) Authenticated() bool {
-	return r.user != nil
-}
-
-func (r Result) User() *models.User {
-	if !r.authAttempted {
-		return nil
-	}
-	return r.user
-}
-func (r Result) Err() error {
-	if !r.authAttempted {
-		return nil
-	}
-	return r.err
+	return ""
 }

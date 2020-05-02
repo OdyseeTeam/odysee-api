@@ -17,19 +17,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMiddleware(t *testing.T) {
+func TestMiddleware_AuthSuccess(t *testing.T) {
 	r, err := http.NewRequest("GET", "/api/proxy", nil)
 	require.NoError(t, err)
 	r.Header.Set(wallet.TokenHeader, "secret-token")
 	r.Header.Set("X-Forwarded-For", "8.8.8.8")
 
 	var receivedRemoteIP string
-	provider := func(token, ip string) Result {
+	provider := func(token, ip string) (*models.User, error) {
 		receivedRemoteIP = ip
 		if token == "secret-token" {
-			return NewResult(&models.User{ID: 16595}, nil)
+			return &models.User{ID: 16595}, nil
 		}
-		return NewResult(nil, errors.Base("error"))
+		return nil, nil
 	}
 
 	rr := httptest.NewRecorder()
@@ -42,37 +42,37 @@ func TestMiddleware(t *testing.T) {
 	assert.Equal(t, "8.8.8.8", receivedRemoteIP)
 }
 
-func TestMiddlewareAuthFailure(t *testing.T) {
+func TestMiddleware_AuthFailure(t *testing.T) {
 	r, err := http.NewRequest("GET", "/api/proxy", nil)
 	require.NoError(t, err)
 	r.Header.Set(wallet.TokenHeader, "wrong-token")
 	rr := httptest.NewRecorder()
 
-	provider := func(token, ip string) Result {
+	provider := func(token, ip string) (*models.User, error) {
 		if token == "good-token" {
-			return NewResult(&models.User{ID: 1}, nil)
+			return &models.User{ID: 1}, nil
 		}
-		return NewResult(nil, errors.Base("incorrect token"))
+		return nil, nil
 	}
 	Middleware(provider)(http.HandlerFunc(authChecker)).ServeHTTP(rr, r)
 
 	response := rr.Result()
 	body, err := ioutil.ReadAll(response.Body)
 	require.NoError(t, err)
-	assert.Equal(t, "incorrect token", string(body))
+	assert.Equal(t, "user not found", string(body))
 	assert.Equal(t, http.StatusForbidden, response.StatusCode)
 }
 
-func TestMiddlewareNoAuth(t *testing.T) {
+func TestMiddleware_NoAuthInfo(t *testing.T) {
 	r, err := http.NewRequest("GET", "/api/proxy", nil)
 	require.NoError(t, err)
 	rr := httptest.NewRecorder()
 
-	provider := func(token, ip string) Result {
+	provider := func(token, ip string) (*models.User, error) {
 		if token == "good-token" {
-			return NewResult(&models.User{ID: 1}, nil)
+			return &models.User{ID: 1}, nil
 		}
-		return NewResult(nil, errors.Base("incorrect token"))
+		return nil, nil
 	}
 	Middleware(provider)(http.HandlerFunc(authChecker)).ServeHTTP(rr, r)
 
@@ -83,18 +83,37 @@ func TestMiddlewareNoAuth(t *testing.T) {
 	assert.Equal(t, "no auth info", string(body))
 }
 
+func TestMiddleware_Error(t *testing.T) {
+	r, err := http.NewRequest("GET", "/api/proxy", nil)
+	r.Header.Set(wallet.TokenHeader, "any-token")
+	require.NoError(t, err)
+	rr := httptest.NewRecorder()
+
+	provider := func(token, ip string) (*models.User, error) {
+		return nil, errors.Base("something broke")
+	}
+	Middleware(provider)(http.HandlerFunc(authChecker)).ServeHTTP(rr, r)
+
+	response := rr.Result()
+	body, err := ioutil.ReadAll(response.Body)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+	assert.Equal(t, "something broke", string(body))
+}
+
 func TestFromRequestSuccess(t *testing.T) {
-	expected := NewResult(nil, errors.Base("a test"))
+	expected := result{nil, errors.Base("a test")}
 	ctx := context.WithValue(context.Background(), ContextKey, expected)
 
 	r, err := http.NewRequestWithContext(ctx, http.MethodPost, "", &bytes.Buffer{})
 	require.NoError(t, err)
 
-	results := FromRequest(r)
-	assert.NotNil(t, results)
-	assert.Equal(t, expected.user, results.user)
-	assert.Equal(t, expected.err.Error(), results.err.Error())
-	assert.False(t, results.AuthAttempted())
+	var user *models.User
+	assert.NotPanics(t, func() {
+		user, err = FromRequest(r)
+	})
+	assert.Nil(t, user)
+	assert.Equal(t, expected.err.Error(), err.Error())
 }
 
 func TestFromRequestFail(t *testing.T) {
@@ -104,24 +123,24 @@ func TestFromRequestFail(t *testing.T) {
 }
 
 func authChecker(w http.ResponseWriter, r *http.Request) {
-	result := FromRequest(r)
-	if result.user != nil && result.err != nil {
+	user, err := FromRequest(r)
+	if user != nil && err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("this should never happen"))
 		return
 	}
 
-	if !result.AuthAttempted() {
+	if errors.Is(err, ErrNoAuthInfo) {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("no auth info"))
-	} else if result.Authenticated() {
+	} else if user != nil {
 		w.WriteHeader(http.StatusAccepted)
-		w.Write([]byte(fmt.Sprintf("%d", result.user.ID)))
-	} else if result.Err() != nil {
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(result.Err().Error()))
+		w.Write([]byte(fmt.Sprintf("%d", user.ID)))
+	} else if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 	} else {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("no user and no error. what happened?"))
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("user not found"))
 	}
 }

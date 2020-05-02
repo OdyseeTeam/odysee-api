@@ -8,6 +8,7 @@ import (
 
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/sirupsen/logrus"
 
 	"github.com/ybbus/jsonrpc"
 )
@@ -58,6 +59,8 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: if content-type is not application/json, respond with 415
+	// https://lbryians.slack.com/archives/C81FGKR51/p1586875109286200?thread_ts=1586874640.285600&cid=C81FGKR51
 	var req jsonrpc.RPCRequest
 	err = json.Unmarshal(body, &req)
 	if err != nil {
@@ -66,7 +69,9 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Log().Tracef("call to method %s", req.Method)
+	logger.WithFields(logrus.Fields{
+		"method": req.Method,
+	}).Tracef("received request")
 
 	rsp := h(req)
 

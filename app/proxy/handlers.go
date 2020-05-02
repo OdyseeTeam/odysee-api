@@ -42,17 +42,17 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 
 	logger.Log().Tracef("call to method %s", req.Method)
 
-	authResult := auth.FromRequest(r)
-	if MethodRequiresWallet(req.Method) && !EnsureAuthenticated(authResult, w) {
+	user, err := auth.FromRequest(r)
+	if MethodRequiresWallet(req.Method) && !EnsureAuthenticated(w, user, err) {
 		return
 	}
 
 	var userID int
-	if MethodAcceptsWallet(req.Method) && authResult.User() != nil {
-		userID = authResult.User().ID
+	if MethodAcceptsWallet(req.Method) && user != nil {
+		userID = user.ID
 	}
 
-	sdkAddress := authResult.SDKAddress
+	sdkAddress := auth.SDKAddress(user)
 	if sdkAddress == "" {
 		rt := sdkrouter.FromRequest(r)
 		sdkAddress = rt.RandomServer().Address

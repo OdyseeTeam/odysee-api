@@ -11,6 +11,7 @@ import (
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/models"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -75,9 +76,7 @@ func TestProxyDontAuthRelaxedMethods(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	provider := func(token, ip string) auth.Result {
-		return auth.NewResult(nil, nil)
-	}
+	provider := func(token, ip string) (*models.User, error) { return nil, nil }
 	handler := sdkrouter.Middleware(rt)(auth.Middleware(provider)(http.HandlerFunc(Handle)))
 	handler.ServeHTTP(rr, r)
 

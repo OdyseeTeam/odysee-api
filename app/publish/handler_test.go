@@ -16,7 +16,6 @@ import (
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
-	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/test"
 	"github.com/lbryio/lbrytv/models"
 
@@ -54,13 +53,14 @@ func TestUploadHandler(t *testing.T) {
 
 	handler := &Handler{UploadPath: os.TempDir()}
 
-	provider := func(token, ip string) auth.Result {
+	provider := func(token, ip string) (*models.User, error) {
+		var u *models.User
 		if token == "uPldrToken" {
-			res := auth.NewResult(&models.User{ID: 20404}, nil)
-			res.SDKAddress = ts.URL
-			return res
+			u = &models.User{ID: 20404}
+			u.R = u.R.NewStruct()
+			u.R.LbrynetServer = &models.LbrynetServer{Address: ts.URL}
 		}
-		return auth.NewResult(nil, errors.Base("error"))
+		return u, nil
 	}
 
 	rr := httptest.NewRecorder()
@@ -102,8 +102,8 @@ func TestHandler_NoSDKAddress(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	handler := &Handler{UploadPath: os.TempDir()}
-	provider := func(token, ip string) auth.Result {
-		return auth.NewResult(&models.User{ID: 20404}, nil)
+	provider := func(token, ip string) (*models.User, error) {
+		return &models.User{ID: 20404}, nil
 	}
 
 	auth.Middleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
@@ -121,11 +121,11 @@ func TestHandler_AuthRequired(t *testing.T) {
 	publisher := &DummyPublisher{}
 	handler := &Handler{UploadPath: os.TempDir()}
 
-	provider := func(token, ip string) auth.Result {
+	provider := func(token, ip string) (*models.User, error) {
 		if token == "uPldrToken" {
-			return auth.NewResult(&models.User{ID: 20404}, nil)
+			return &models.User{ID: 20404}, nil
 		}
-		return auth.NewResult(nil, errors.Base("error"))
+		return nil, nil
 	}
 
 	rr := httptest.NewRecorder()
@@ -166,13 +166,14 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	publisher := &DummyPublisher{}
 	handler := &Handler{UploadPath: os.TempDir()}
 
-	provider := func(token, ip string) auth.Result {
+	provider := func(token, ip string) (*models.User, error) {
+		var u *models.User
 		if token == "uPldrToken" {
-			res := auth.NewResult(&models.User{ID: 20404}, nil)
-			res.SDKAddress = "whatever"
-			return res
+			u = &models.User{ID: 20404}
+			u.R = u.R.NewStruct()
+			u.R.LbrynetServer = &models.LbrynetServer{Address: "whatever"}
 		}
-		return auth.NewResult(nil, errors.Base("error"))
+		return u, nil
 	}
 
 	rr := httptest.NewRecorder()

@@ -39,17 +39,17 @@ type Handler struct {
 func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
-	authResult := auth.FromRequest(r)
-	if !proxy.EnsureAuthenticated(authResult, w) {
+	user, err := auth.FromRequest(r)
+	if !proxy.EnsureAuthenticated(w, user, err) {
 		return
 	}
-	if authResult.SDKAddress == "" {
+	if auth.SDKAddress(user) == "" {
 		w.Write(proxy.NewInternalError(errors.Err("user does not have sdk address assigned")).JSON())
-		logger.Log().Errorf("user %d does not have sdk address assigned", authResult.User().ID)
+		logger.Log().Errorf("user %d does not have sdk address assigned", user.ID)
 		return
 	}
 
-	f, err := h.saveFile(r, authResult.User().ID)
+	f, err := h.saveFile(r, user.ID)
 	if err != nil {
 		logger.Log().Error(err)
 		monitor.ErrorToSentry(err)
@@ -63,9 +63,9 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	res := publish(
-		authResult.SDKAddress,
+		auth.SDKAddress(user),
 		f.Name(),
-		authResult.User().ID,
+		user.ID,
 		[]byte(r.FormValue(jsonRPCFieldName)),
 	)
 
