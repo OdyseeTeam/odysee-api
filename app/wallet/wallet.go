@@ -33,7 +33,7 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 
 	remoteUser, err := getRemoteUser(internalAPIHost, token, metaRemoteIP)
 	if err != nil {
-		msg := "cannot authenticate user with internal-apis: %v"
+		msg := "authentication error: %v"
 		log.Errorf(msg, err)
 		return nil, fmt.Errorf(msg, err)
 	}
