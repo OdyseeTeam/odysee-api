@@ -7,6 +7,7 @@ import (
 
 	"github.com/lbryio/lbrytv/cmd"
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/reflection"
 	"github.com/lbryio/lbrytv/internal/storage"
 )
 
@@ -30,6 +31,10 @@ func main() {
 	}
 	defer conn.Close()
 	conn.SetDefaultConnection()
+
+	rMgr := reflection.NewManager("/nonexistent", config.GetReflectorAddress())
+	rMgr.Initialize()
+	rMgr.Start(time.Minute * 1)
 
 	cmd.Execute()
 }
