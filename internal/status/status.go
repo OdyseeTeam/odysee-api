@@ -18,11 +18,12 @@ import (
 var logger = monitor.NewModuleLogger("status")
 
 var PlayerServers = []string{
-	"https://player1.lbry.tv",
-	"https://player2.lbry.tv",
-	"https://player3.lbry.tv",
-	"https://player4.lbry.tv",
-	"https://player5.lbry.tv",
+	"https://player1.lbryplayer.xyz",
+	"https://player2.lbryplayer.xyz",
+	"https://player3.lbryplayer.xyz",
+	"https://player4.lbryplayer.xyz",
+	"https://player5.lbryplayer.xyz",
+	"https://player6.lbryplayer.xyz",
 }
 
 var (
