@@ -14,6 +14,7 @@ package proxy
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -51,7 +52,18 @@ type Caller struct {
 func NewCaller(endpoint string, userID int) *Caller {
 	return &Caller{
 		client: jsonrpc.NewClientWithOpts(endpoint, &jsonrpc.RPCClientOpts{
-			HTTPClient: &http.Client{Timeout: sdkrouter.RPCTimeout},
+			HTTPClient: &http.Client{
+				Timeout: sdkrouter.RPCTimeout,
+				Transport: &http.Transport{
+					Dial: (&net.Dialer{
+						Timeout:   120 * time.Second,
+						KeepAlive: 120 * time.Second,
+					}).Dial,
+					TLSHandshakeTimeout:   30 * time.Second,
+					ResponseHeaderTimeout: 180 * time.Second,
+					ExpectContinueTimeout: 1 * time.Second,
+				},
+			},
 		}),
 		endpoint: endpoint,
 		userID:   userID,
