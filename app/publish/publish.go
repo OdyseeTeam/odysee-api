@@ -17,6 +17,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/volatiletech/sqlboiler/boil"
 )
 
 var logger = monitor.NewModuleLogger("publish")
@@ -81,7 +82,9 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func publish(sdkAddress, filename string, userID int, qCache cache.QueryCache, rawQuery []byte) []byte {
-	c := query.NewCallerWithCache(sdkAddress, userID, qCache)
+	c := query.NewCaller(sdkAddress, userID)
+	c.Cache = qCache
+	c.DB = boil.GetDB()
 	c.Preprocessor = func(q *query.Query) {
 		params := q.ParamsAsMap()
 		params[fileNameParam] = filename

@@ -11,6 +11,7 @@ import (
 	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
+	"github.com/lbryio/lbrytv/app/wallet/accesstracker"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/sirupsen/logrus"
+	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -32,12 +34,14 @@ const (
 type Caller struct {
 	// Preprocessor is applied to query before it's sent to the SDK.
 	Preprocessor func(q *Query)
+	// Cache stores cachable queries to improve performance
+	Cache cache.QueryCache
+	// DB is used to track when a wallet is used so that unused wallets can be unloaded
+	DB boil.Executor
 
 	client   jsonrpc.RPCClient
 	userID   int
 	endpoint string
-
-	cache cache.QueryCache
 }
 
 func NewCaller(endpoint string, userID int) *Caller {
@@ -59,12 +63,6 @@ func NewCaller(endpoint string, userID int) *Caller {
 		endpoint: endpoint,
 		userID:   userID,
 	}
-}
-
-func NewCallerWithCache(endpoint string, userID int, cache cache.QueryCache) *Caller {
-	c := NewCaller(endpoint, userID)
-	c.cache = cache
-	return c
 }
 
 func (c *Caller) CallRaw(rawQuery []byte) []byte {
@@ -93,6 +91,15 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) []byte {
 		return errorToJSON(rpcerrors.NewInternalError(err))
 	}
 
+	if c.DB != nil {
+		// TODO: run this in a goroutine so it doesn't block the response?
+		err = accesstracker.Touch(c.DB, c.userID)
+		if err != nil {
+			monitor.ErrorToSentry(err)
+			logger.Log().Errorf("error touching wallet access time: %v", err)
+		}
+	}
+
 	return serialized
 }
 
@@ -113,11 +120,11 @@ func isCacheable(q *Query) bool {
 
 // fromCache returns cached response or nil in case it's a miss or query shouldn't be cacheable.
 func (c *Caller) fromCache(q *Query) *jsonrpc.RPCResponse {
-	if c.cache == nil || !isCacheable(q) {
+	if c.Cache == nil || !isCacheable(q) {
 		return nil
 	}
 
-	cached := c.cache.Retrieve(q.Method(), q.Params())
+	cached := c.Cache.Retrieve(q.Method(), q.Params())
 	if cached == nil {
 		return nil
 	}
@@ -183,7 +190,7 @@ func (c *Caller) call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 	}
 
 	if isCacheable(q) {
-		c.cache.Save(q.Method(), q.Params(), r)
+		c.Cache.Save(q.Method(), q.Params(), r)
 	}
 
 	return r, nil

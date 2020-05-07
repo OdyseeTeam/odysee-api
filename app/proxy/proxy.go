@@ -21,6 +21,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
 
+	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -74,7 +75,9 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	if cache.IsOnRequest(r) {
 		qCache = cache.FromRequest(r)
 	}
-	c := query.NewCallerWithCache(sdkAddress, userID, qCache)
+	c := query.NewCaller(sdkAddress, userID)
+	c.Cache = qCache
+	c.DB = boil.GetDB()
 	w.Write(c.Call(&req))
 }
 
