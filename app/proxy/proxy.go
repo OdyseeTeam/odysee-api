@@ -20,6 +20,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
+
 	"github.com/ybbus/jsonrpc"
 )
 
