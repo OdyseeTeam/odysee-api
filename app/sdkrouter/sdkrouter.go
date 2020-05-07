@@ -159,6 +159,9 @@ func (r *Router) LeastLoaded() *models.LbrynetServer {
 
 // WalletID formats user ID to use as an LbrynetServer wallet ID.
 func WalletID(userID int) string {
+	if userID <= 0 {
+		return ""
+	}
 	// warning: changing this template will require renaming the stored wallet files in lbrytv
 	const template = "lbrytv-id.%d.wallet"
 	return fmt.Sprintf(template, userID)

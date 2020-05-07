@@ -1,16 +1,17 @@
-package proxy
+package query
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/internal/errors"
+	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
-
-	"github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
 )
+
+var logger = monitor.NewModuleLogger("query")
 
 // Query is a wrapper around client JSON-RPC query for easier (un)marshaling and processing.
 type Query struct {
@@ -20,22 +21,21 @@ type Query struct {
 
 // NewQuery initializes Query object with JSON-RPC request supplied as bytes.
 // The object is immediately usable and returns an error in case request parsing fails.
-func NewQuery(req *jsonrpc.RPCRequest) (*Query, error) {
+// If wallet_id is not empty, it will be added as a param to the query when the Caller calls it.
+func NewQuery(req *jsonrpc.RPCRequest, walletID string) (*Query, error) {
 	if strings.TrimSpace(req.Method) == "" {
 		return nil, errors.Err("no method in request")
 	}
 
-	return &Query{Request: req}, nil
-}
+	q := &Query{Request: req, WalletID: walletID}
 
-func (q *Query) validate() error {
 	if !methodInList(q.Method(), relaxedMethods) && !methodInList(q.Method(), walletSpecificMethods) {
-		return NewMethodNotAllowedError(errors.Err("forbidden method"))
+		return nil, rpcerrors.NewMethodNotAllowedError(errors.Err("forbidden method"))
 	}
 
 	if q.ParamsAsMap() != nil {
 		if _, ok := q.ParamsAsMap()[forbiddenParam]; ok {
-			return NewInvalidParamsError(fmt.Errorf("forbidden parameter supplied: %v", forbiddenParam))
+			return nil, rpcerrors.NewInvalidParamsError(fmt.Errorf("forbidden parameter supplied: %v", forbiddenParam))
 		}
 	}
 
@@ -48,11 +48,11 @@ func (q *Query) validate() error {
 				q.Request.Params = map[string]interface{}{paramWalletID: q.WalletID}
 			}
 		} else if MethodRequiresWallet(q.Method()) {
-			return NewAuthRequiredError(errors.Err(responses.AuthRequiredErrorMessage))
+			return nil, rpcerrors.NewAuthRequiredError(errors.Err(responses.AuthRequiredErrorMessage))
 		}
 	}
 
-	return nil
+	return q, nil
 }
 
 // Method is a shortcut for query method.
@@ -73,63 +73,10 @@ func (q *Query) ParamsAsMap() map[string]interface{} {
 	return nil
 }
 
-// cacheHit returns true if we got a resolve query with more than `cacheResolveLongerThan` urls in it.
-func (q *Query) isCacheable() bool {
-	if q.Method() == MethodResolve && q.Params() != nil {
-		paramsMap := q.Params().(map[string]interface{})
-		if urls, ok := paramsMap[paramUrls].([]interface{}); ok {
-			if len(urls) > cacheResolveLongerThan {
-				return true
-			}
-		}
-	} else if q.Method() == MethodClaimSearch {
-		return true
-	}
-	return false
-}
-
 func (q *Query) newResponse() *jsonrpc.RPCResponse {
 	return &jsonrpc.RPCResponse{
 		JSONRPC: q.Request.JSONRPC,
 		ID:      q.Request.ID,
-	}
-}
-
-// cacheHit returns cached response or nil in case it's a miss or query shouldn't be cacheable.
-func (q *Query) cacheHit() *jsonrpc.RPCResponse {
-	if !q.isCacheable() {
-		return nil
-	}
-
-	cached := globalCache.Retrieve(q.Method(), q.Params())
-	if cached == nil {
-		return nil
-	}
-
-	s, err := json.Marshal(cached)
-	if err != nil {
-		logger.Log().Errorf("error marshalling cached response")
-		return nil
-	}
-
-	response := q.newResponse()
-	err = json.Unmarshal(s, &response)
-	if err != nil {
-		return nil
-	}
-
-	logger.WithFields(logrus.Fields{"method": q.Method()}).Debug("cached query")
-	return response
-}
-
-func (q *Query) predefinedResponse() *jsonrpc.RPCResponse {
-	switch q.Method() {
-	case MethodStatus:
-		response := q.newResponse()
-		response.Result = getStatusResponse()
-		return response
-	default:
-		return nil
 	}
 }
 

@@ -1,4 +1,4 @@
-package proxy
+package cache
 
 import (
 	"encoding/json"
@@ -33,20 +33,22 @@ func TestCache(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	globalCache.flush()
-	assert.Nil(t, globalCache.Retrieve("resolve", query.Params))
-	globalCache.Save("resolve", query.Params, response.Result)
-	assert.Equal(t, 1, globalCache.Count())
-	assert.Equal(t, response.Result, globalCache.Retrieve("resolve", query.Params))
+	c := NewMemoryCache()
+	c.flush()
+	assert.Nil(t, c.Retrieve("resolve", query.Params))
+	c.Save("resolve", query.Params, response.Result)
+	assert.Equal(t, 1, c.Count())
+	assert.Equal(t, response.Result, c.Retrieve("resolve", query.Params))
 }
 
 func TestCacheGetKey(t *testing.T) {
-	globalCache.flush()
-	key, err := globalCache.getKey("resolve", map[string]interface{}{"urls": "one"})
+	c := NewMemoryCache()
+	c.flush()
+	key, err := c.getKey("resolve", map[string]interface{}{"urls": "one"})
 	assert.Equal(t, "resolve|3600a4eed065d3ae3dd503cca56ce56ae6bd4778047fa1b17c999301681d3a1d", key)
 	assert.NoError(t, err)
 
-	key, err = globalCache.getKey("wallet_balance", nil)
+	key, err = c.getKey("wallet_balance", nil)
 	assert.Equal(t, "wallet_balance|nil", key)
 	assert.NoError(t, err)
 }

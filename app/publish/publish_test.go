@@ -70,7 +70,7 @@ func TestLbrynetPublisher(t *testing.T) {
 	err = wallet.Create(server, userID)
 	require.NoError(t, err)
 
-	rawResp := publish(server, path.Join("/storage", path.Base(f.Name())), userID, query)
+	rawResp := publish(server, path.Join("/storage", path.Base(f.Name())), userID, nil, query)
 
 	// This is all we can check for now without running on testnet or crediting some funds to the test account
 	assert.Regexp(t, "Not enough funds to cover this transaction", string(rawResp))

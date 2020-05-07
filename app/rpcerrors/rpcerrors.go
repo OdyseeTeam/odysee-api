@@ -1,4 +1,4 @@
-package proxy
+package rpcerrors
 
 import (
 	"encoding/json"
@@ -6,11 +6,14 @@ import (
 
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/internal/errors"
+	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/models"
 
 	"github.com/ybbus/jsonrpc"
 )
+
+var logger = monitor.NewModuleLogger("rpc_errors")
 
 const (
 	rpcErrorCodeInternal         int = -32080 // general errors that originate inside the proxy module

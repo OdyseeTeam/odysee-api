@@ -1,4 +1,4 @@
-package proxy
+package cache
 
 import (
 	"crypto/sha256"
@@ -13,17 +13,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var (
-	globalCache responseCache
-	cacheLogger = monitor.NewModuleLogger("proxy_cache")
-)
+var cacheLogger = monitor.NewModuleLogger("cache")
 
-func init() {
-	globalCache = cacheStorage{c: cache.New(2*time.Minute, 10*time.Minute)}
-}
-
-// responseCache interface describes methods for SDK response cache saving and retrieval
-type responseCache interface {
+// QueryCache caches Query responses
+type QueryCache interface {
 	Save(method string, params interface{}, r interface{})
 	Retrieve(method string, params interface{}) interface{}
 	Count() int
@@ -32,12 +25,17 @@ type responseCache interface {
 	flush()
 }
 
-type cacheStorage struct {
+// memoryCache stores the cache in memory
+type memoryCache struct {
 	c *cache.Cache
 }
 
+func NewMemoryCache() memoryCache {
+	return memoryCache{c: cache.New(2*time.Minute, 10*time.Minute)}
+}
+
 // Save puts a response object into cache, making it available for a later retrieval by method and query params
-func (s cacheStorage) Save(method string, params interface{}, r interface{}) {
+func (s memoryCache) Save(method string, params interface{}, r interface{}) {
 	l := cacheLogger.WithFields(logrus.Fields{"method": method})
 	cacheKey, err := s.getKey(method, params)
 	if err != nil {
@@ -49,7 +47,7 @@ func (s cacheStorage) Save(method string, params interface{}, r interface{}) {
 }
 
 // Retrieve earlier saved server response by method and query params
-func (s cacheStorage) Retrieve(method string, params interface{}) interface{} {
+func (s memoryCache) Retrieve(method string, params interface{}) interface{} {
 	l := cacheLogger.WithFields(logrus.Fields{"method": method})
 	cacheKey, err := s.getKey(method, params)
 	if err != nil {
@@ -63,7 +61,7 @@ func (s cacheStorage) Retrieve(method string, params interface{}) interface{} {
 	return cachedResponse
 }
 
-func (s cacheStorage) getKey(method string, params interface{}) (key string, err error) {
+func (s memoryCache) getKey(method string, params interface{}) (key string, err error) {
 	var paramsSuffix string
 
 	if params != nil {
@@ -81,11 +79,11 @@ func (s cacheStorage) getKey(method string, params interface{}) (key string, err
 	return fmt.Sprintf("%v|%v", method, paramsSuffix), err
 }
 
-func (s cacheStorage) flush() {
+func (s memoryCache) flush() {
 	s.c.Flush()
 }
 
 // Count returns the total number of non-expired items stored in cache
-func (s cacheStorage) Count() int {
+func (s memoryCache) Count() int {
 	return s.c.ItemCount()
 }
