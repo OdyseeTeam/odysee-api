@@ -2,28 +2,33 @@ package tracker
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
+	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
 
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"github.com/volatiletech/null"
 	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/volatiletech/sqlboiler/queries/qm"
 )
 
-var logger = monitor.NewModuleLogger("access_tracker")
+var logger = monitor.NewModuleLogger("wallet_tracker")
 
-var loc, _ = time.LoadLocation("UTC")
+func GetLogger() monitor.ModuleLogger { return logger } // for testing
+
+var utcLocation, _ = time.LoadLocation("UTC")
 
 // TimeNow returns the current time in UTC. The only way to set the local timezone in Go is to
 // set the TZ env var. Otherwise all times are created using the local timezone of your OS. This
 // can screw up your time comparisons if you're not careful. Best practice: always use UTC
 func TimeNow() time.Time {
-	return time.Now().In(loc)
+	return time.Now().In(utcLocation)
 }
 
 // Touch sets the wallet access time for a user to now
@@ -88,4 +93,27 @@ func Unload(db boil.Executor, olderThan time.Duration) (int, error) {
 
 	logger.Log().Infof("unloaded %d wallets in %s", len(users), time.Since(start))
 	return len(users), nil
+}
+
+func Middleware(db boil.Executor) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r)
+
+			user, err := auth.FromRequest(r)
+			if err != nil {
+				logger.Log().Error(err)
+				return
+			}
+			if user == nil {
+				return
+			}
+
+			err = Touch(db, user.ID)
+			if err != nil {
+				monitor.ErrorToSentry(err)
+				logger.Log().Errorf("error touching wallet access time: %v", err)
+			}
+		})
+	}
 }

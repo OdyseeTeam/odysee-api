@@ -43,7 +43,6 @@ func TestProxyNilQuery(t *testing.T) {
 }
 
 func TestProxyInvalidQuery(t *testing.T) {
-
 	r, err := http.NewRequest("POST", "", bytes.NewBuffer([]byte("yo")))
 	require.NoError(t, err)
 

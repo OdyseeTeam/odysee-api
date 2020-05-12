@@ -1,20 +1,27 @@
 package tracker
 
 import (
+	"io/ioutil"
 	"math/rand"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
 
-	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
+	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/test"
 	"github.com/lbryio/lbrytv/models"
+
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
+
+	"github.com/sirupsen/logrus"
+	logrusTest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"github.com/volatiletech/null"
 	"github.com/volatiletech/sqlboiler/boil"
 )
@@ -154,4 +161,35 @@ func TestUnload_E2E(t *testing.T) {
 	require.NoError(t, err)
 	reloadedWalletCount := wallets.TotalPages
 	assert.EqualValues(t, initialWalletCount+1, reloadedWalletCount, wallets)
+}
+
+func TestMiddleware(t *testing.T) {
+	r, err := http.NewRequest("GET", "/api/v1/proxy", nil)
+	require.NoError(t, err)
+	r.Header.Add("X-Lbry-Auth-Token", "auth me")
+
+	authProvider := func(token, ip string) (*models.User, error) {
+		return &models.User{ID: 994}, nil
+	}
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("hello"))
+	}
+
+	rr := httptest.NewRecorder()
+	hook := logrusTest.NewLocal(GetLogger().Entry.Logger)
+
+	auth.Middleware(authProvider)(
+		Middleware(boil.GetDB())(
+			http.HandlerFunc(handler),
+		),
+	).ServeHTTP(rr, r)
+	body, err := ioutil.ReadAll(rr.Result().Body)
+	require.NoError(t, err)
+	assert.Equal(t, string(body), "hello")
+
+	assert.Equal(t, 1, len(hook.Entries), "unexpected log entry")
+	assert.Equal(t, logrus.TraceLevel, hook.LastEntry().Level)
+	assert.Equal(t, "touched user", hook.LastEntry().Message)
+	assert.Equal(t, 994, hook.LastEntry().Data["user_id"])
 }
