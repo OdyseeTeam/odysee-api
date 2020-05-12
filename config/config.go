@@ -76,6 +76,7 @@ func (c *configWrapper) Init() {
 	c.Viper.AddConfigPath(".")
 	c.Viper.AddConfigPath("..")
 	c.Viper.AddConfigPath("../..")
+	c.Viper.AddConfigPath("../../..") // TODO: walk all the way up the tree, as long as dir is readable
 	c.Viper.AddConfigPath("$HOME/.lbrytv")
 }
 

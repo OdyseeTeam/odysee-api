@@ -12,7 +12,7 @@ const ContextKey = "sdkrouter"
 func FromRequest(r *http.Request) *Router {
 	v := r.Context().Value(ContextKey)
 	if v == nil {
-		panic("sdkrouter middleware was not applied")
+		panic("sdkrouter.Middleware is required")
 	}
 	return v.(*Router)
 }

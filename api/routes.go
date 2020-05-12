@@ -8,6 +8,7 @@ import (
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
+	"github.com/lbryio/lbrytv/app/query/cache"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
@@ -30,10 +31,12 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 		w.Write([]byte("lbrytv api"))
 	})
 
+	memCache := cache.NewMemoryCache()
 	authProvider := auth.NewIAPIProvider(sdkRouter, config.GetInternalAPIHost())
 	middlewareStack := middlewares(
 		sdkrouter.Middleware(sdkRouter),
 		auth.Middleware(authProvider),
+		cache.Middleware(memCache),
 	)
 
 	v1Router := r.PathPrefix("/api/v1").Subrouter()

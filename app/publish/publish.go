@@ -9,7 +9,9 @@ import (
 	"path"
 
 	"github.com/lbryio/lbrytv/app/auth"
-	"github.com/lbryio/lbrytv/app/proxy"
+	"github.com/lbryio/lbrytv/app/query"
+	"github.com/lbryio/lbrytv/app/query/cache"
+	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
@@ -40,11 +42,11 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	user, err := auth.FromRequest(r)
-	if !proxy.EnsureAuthenticated(w, user, err) {
+	if !rpcerrors.EnsureAuthenticated(w, user, err) {
 		return
 	}
 	if auth.SDKAddress(user) == "" {
-		w.Write(proxy.NewInternalError(errors.Err("user does not have sdk address assigned")).JSON())
+		w.Write(rpcerrors.NewInternalError(errors.Err("user does not have sdk address assigned")).JSON())
 		logger.Log().Errorf("user %d does not have sdk address assigned", user.ID)
 		return
 	}
@@ -53,7 +55,7 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Log().Error(err)
 		monitor.ErrorToSentry(err)
-		w.Write(proxy.NewInternalError(err).JSON())
+		w.Write(rpcerrors.NewInternalError(err).JSON())
 		return
 	}
 	defer func() {
@@ -62,19 +64,25 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	var qCache cache.QueryCache
+	if cache.IsOnRequest(r) {
+		qCache = cache.FromRequest(r)
+	}
+
 	res := publish(
 		auth.SDKAddress(user),
 		f.Name(),
 		user.ID,
+		qCache,
 		[]byte(r.FormValue(jsonRPCFieldName)),
 	)
 
 	w.Write(res)
 }
 
-func publish(sdkAddress, filename string, userID int, rawQuery []byte) []byte {
-	c := proxy.NewCaller(sdkAddress, userID)
-	c.Preprocessor = func(q *proxy.Query) {
+func publish(sdkAddress, filename string, userID int, qCache cache.QueryCache, rawQuery []byte) []byte {
+	c := query.NewCallerWithCache(sdkAddress, userID, qCache)
+	c.Preprocessor = func(q *query.Query) {
 		params := q.ParamsAsMap()
 		params[fileNameParam] = filename
 		q.Request.Params = params

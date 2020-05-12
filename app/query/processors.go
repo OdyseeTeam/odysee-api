@@ -1,4 +1,4 @@
-package proxy
+package query
 
 import (
 	"encoding/json"
