@@ -1,4 +1,4 @@
-package accesstracker
+package tracker
 
 import (
 	"fmt"
@@ -30,14 +30,14 @@ func TimeNow() time.Time {
 func Touch(db boil.Executor, userID int) error {
 	q := fmt.Sprintf(`UPDATE "%s" SET "%s" = $1 WHERE "%s" = $2`,
 		models.TableNames.Users,
-		models.UserColumns.WalletAccessedAt,
+		models.UserColumns.LastSeenAt,
 		models.UserColumns.ID,
 	)
 	_, err := db.Exec(q, TimeNow(), userID)
 	if err != nil {
 		return errors.Err(err)
-
 	}
+	logger.WithFields(logrus.Fields{"user_id": userID}).Trace("touched user")
 	return nil
 }
 
@@ -48,7 +48,7 @@ func Unload(db boil.Executor, olderThan time.Duration) (int, error) {
 	logger.Log().Infof("unloading wallets that were not accessed since %s", cutoffTime)
 
 	users, err := models.Users(
-		models.UserWhere.WalletAccessedAt.LT(null.TimeFrom(cutoffTime)),
+		models.UserWhere.LastSeenAt.LT(null.TimeFrom(cutoffTime)),
 		qm.Load(models.UserRels.LbrynetServer),
 	).All(db)
 	if err != nil {
@@ -59,7 +59,7 @@ func Unload(db boil.Executor, olderThan time.Duration) (int, error) {
 		if user.R == nil || user.R.LbrynetServer == nil {
 			continue
 		}
-		if !user.WalletAccessedAt.Time.Before(cutoffTime) { // just in case
+		if !user.LastSeenAt.Time.Before(cutoffTime) { // just in case
 			continue
 		}
 
@@ -75,11 +75,11 @@ func Unload(db boil.Executor, olderThan time.Duration) (int, error) {
 		// otherwise it may never be unloaded
 		q := fmt.Sprintf(`UPDATE "%s" SET "%s" = NULL WHERE "%s" = $1 AND "%s" = $2`,
 			models.TableNames.Users,
-			models.UserColumns.WalletAccessedAt,
+			models.UserColumns.LastSeenAt,
 			models.UserColumns.ID,
-			models.UserColumns.WalletAccessedAt,
+			models.UserColumns.LastSeenAt,
 		)
-		_, err := db.Exec(q, user.ID, user.WalletAccessedAt.Time)
+		_, err := db.Exec(q, user.ID, user.LastSeenAt.Time)
 		if err != nil {
 			l.Error(err)
 			continue

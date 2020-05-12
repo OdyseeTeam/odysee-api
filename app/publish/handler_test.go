@@ -91,9 +91,10 @@ func TestHandler_NoAuthMiddleware(t *testing.T) {
 	handler := &Handler{UploadPath: os.TempDir()}
 
 	rr := httptest.NewRecorder()
-	assert.Panics(t, func() {
-		handler.Handle(rr, r)
-	})
+	handler.Handle(rr, r)
+	respBody, err := ioutil.ReadAll(rr.Result().Body)
+	require.NoError(t, err)
+	assert.Equal(t, "auth.Middleware is required", test.StrToRes(t, string(respBody)).Error.Message)
 }
 
 func TestHandler_NoSDKAddress(t *testing.T) {

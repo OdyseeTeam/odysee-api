@@ -2,11 +2,10 @@ package cmd
 
 import (
 	"os"
-	"os/signal"
-	"syscall"
+	"strconv"
 	"time"
 
-	"github.com/lbryio/lbrytv/app/wallet/accesstracker"
+	"github.com/lbryio/lbrytv/app/wallet/tracker"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -18,33 +17,21 @@ func init() {
 }
 
 var unloadWallets = &cobra.Command{
-	Use:   "unload_wallets",
-	Short: "Unload wallets that have not been used recently",
+	Use:   "unload_wallets MIN",
+	Short: "Unload wallets that have not been used in the last MIN minutes",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		// these could become args in the future
-		runInterval := 1 * time.Hour
-		unloadOlderThan := 4 * time.Hour
+		min, err := strconv.Atoi(args[1])
+		if err != nil {
+			log.Error(args[1] + " is not an integer")
+			os.Exit(1)
+		}
 
-		stop := make(chan os.Signal)
-		signal.Notify(stop, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGINT)
-
-		unload(unloadOlderThan)
-
-		t := time.NewTicker(runInterval)
-		for {
-			select {
-			case <-stop:
-				return
-			case <-t.C:
-				unload(unloadOlderThan)
-			}
+		unloadOlderThan := time.Duration(min) * time.Minute
+		_, err = tracker.Unload(boil.GetDB(), unloadOlderThan)
+		if err != nil {
+			log.Error(err)
+			os.Exit(1)
 		}
 	},
-}
-
-func unload(olderThan time.Duration) {
-	_, err := accesstracker.Unload(boil.GetDB(), olderThan)
-	if err != nil {
-		log.Error(err)
-	}
 }

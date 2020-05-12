@@ -11,7 +11,6 @@ import (
 	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
-	"github.com/lbryio/lbrytv/app/wallet/accesstracker"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
@@ -20,7 +19,6 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/sirupsen/logrus"
-	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -36,8 +34,6 @@ type Caller struct {
 	Preprocessor func(q *Query)
 	// Cache stores cachable queries to improve performance
 	Cache cache.QueryCache
-	// DB is used to track when a wallet is used so that unused wallets can be unloaded
-	DB boil.Executor
 
 	client   jsonrpc.RPCClient
 	userID   int
@@ -69,7 +65,7 @@ func (c *Caller) CallRaw(rawQuery []byte) []byte {
 	var req jsonrpc.RPCRequest
 	err := json.Unmarshal(rawQuery, &req)
 	if err != nil {
-		return errorToJSON(rpcerrors.NewJSONParseError(err))
+		return rpcerrors.ErrorToJSON(rpcerrors.NewJSONParseError(err))
 	}
 	return c.Call(&req)
 }
@@ -81,23 +77,14 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) []byte {
 	if err != nil {
 		monitor.ErrorToSentry(err, map[string]string{"request": spew.Sdump(req), "response": fmt.Sprintf("%v", r)})
 		logger.Log().Errorf("error calling lbrynet: %v, request: %s", err, spew.Sdump(req))
-		return errorToJSON(err)
+		return rpcerrors.ErrorToJSON(err)
 	}
 
 	serialized, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		monitor.ErrorToSentry(err)
 		logger.Log().Errorf("error marshaling response: %v", err)
-		return errorToJSON(rpcerrors.NewInternalError(err))
-	}
-
-	if c.DB != nil {
-		// TODO: run this in a goroutine so it doesn't block the response?
-		err = accesstracker.Touch(c.DB, c.userID)
-		if err != nil {
-			monitor.ErrorToSentry(err)
-			logger.Log().Errorf("error touching wallet access time: %v", err)
-		}
+		return rpcerrors.ErrorToJSON(rpcerrors.NewInternalError(err))
 	}
 
 	return serialized
@@ -262,14 +249,6 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 	}
 
 	return r, err
-}
-
-func errorToJSON(err error) []byte {
-	var rpcErr rpcerrors.RPCError
-	if errors.As(err, &rpcErr) {
-		return rpcErr.JSON()
-	}
-	return rpcerrors.NewInternalError(err).JSON()
 }
 
 func isErrWalletNotLoaded(r *jsonrpc.RPCResponse) bool {

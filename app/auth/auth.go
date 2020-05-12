@@ -17,7 +17,9 @@ import (
 
 var logger = monitor.NewModuleLogger("auth")
 
-const ContextKey = "user"
+type ctxKey int
+
+const contextKey ctxKey = iota
 
 var ErrNoAuthInfo = errors.Base("unauthorized")
 
@@ -27,9 +29,9 @@ type result struct {
 }
 
 func FromRequest(r *http.Request) (*models.User, error) {
-	v := r.Context().Value(ContextKey)
+	v := r.Context().Value(contextKey)
 	if v == nil {
-		panic("auth.Middleware is required")
+		return nil, errors.Err("auth.Middleware is required")
 	}
 	res := v.(result)
 	return res.user, res.err
@@ -61,7 +63,7 @@ func Middleware(provider Provider) mux.MiddlewareFunc {
 			} else {
 				err = errors.Err(ErrNoAuthInfo)
 			}
-			next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), ContextKey, result{user, err})))
+			next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), contextKey, result{user, err})))
 		})
 	}
 }

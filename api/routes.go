@@ -5,18 +5,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
 	"github.com/lbryio/lbrytv/app/query/cache"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
+	"github.com/lbryio/lbrytv/app/wallet/tracker"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/status"
-
-	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/volatiletech/sqlboiler/boil"
 )
 
 var logger = monitor.NewModuleLogger("api")
@@ -36,6 +37,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	middlewareStack := middlewares(
 		sdkrouter.Middleware(sdkRouter),
 		auth.Middleware(authProvider),
+		tracker.Middleware(boil.GetDB()),
 		cache.Middleware(memCache),
 	)
 
