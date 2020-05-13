@@ -3,6 +3,7 @@ module github.com/lbryio/lbrytv
 require (
 	github.com/aws/aws-sdk-go v1.23.19 // indirect
 	github.com/davecgh/go-spew v1.1.1
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/getsentry/sentry-go v0.4.0
 	github.com/gobuffalo/packr v1.30.1 // indirect
 	github.com/gobuffalo/packr/v2 v2.7.1
