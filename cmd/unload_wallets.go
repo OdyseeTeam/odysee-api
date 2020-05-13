@@ -22,9 +22,9 @@ var unloadWallets = &cobra.Command{
 	Short: "Unload wallets that have not been used in the last MIN minutes",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		min, err := strconv.Atoi(args[1])
+		min, err := strconv.Atoi(args[0])
 		if err != nil {
-			log.Error(args[1] + " is not an integer")
+			log.Error(args[0] + " is not an integer")
 			os.Exit(1)
 		}
 
