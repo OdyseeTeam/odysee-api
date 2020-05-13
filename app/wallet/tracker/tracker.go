@@ -99,7 +99,7 @@ func Middleware(db boil.Executor) mux.MiddlewareFunc {
 			next.ServeHTTP(w, r)
 
 			user, err := auth.FromRequest(r)
-			if err != nil {
+			if err != nil && !errors.Is(err, auth.ErrNoAuthInfo) {
 				logger.Log().Error(err)
 				return
 			}
