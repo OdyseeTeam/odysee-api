@@ -185,8 +185,9 @@ func TestMiddleware(t *testing.T) {
 
 func isWalletLoaded(t *testing.T, c *ljsonrpc.Client, id string) bool {
 	wallets, err := c.WalletList(id, 1, 1)
-	if err != nil && !strings.Contains(err.Error(), `Couldn't find wallet`) {
-		require.NoError(t, err)
+	if err != nil && strings.Contains(err.Error(), `Couldn't find wallet`) {
+		return false
 	}
+	require.NoError(t, err)
 	return len(wallets.Items) > 0
 }
