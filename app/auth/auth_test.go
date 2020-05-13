@@ -103,7 +103,7 @@ func TestMiddleware_Error(t *testing.T) {
 
 func TestFromRequestSuccess(t *testing.T) {
 	expected := result{nil, errors.Base("a test")}
-	ctx := context.WithValue(context.Background(), ContextKey, expected)
+	ctx := context.WithValue(context.Background(), contextKey, expected)
 
 	r, err := http.NewRequestWithContext(ctx, http.MethodPost, "", &bytes.Buffer{})
 	require.NoError(t, err)
@@ -119,7 +119,10 @@ func TestFromRequestSuccess(t *testing.T) {
 func TestFromRequestFail(t *testing.T) {
 	r, err := http.NewRequest(http.MethodPost, "", &bytes.Buffer{})
 	require.NoError(t, err)
-	assert.Panics(t, func() { FromRequest(r) })
+	user, err := FromRequest(r)
+	assert.Nil(t, user)
+	assert.Error(t, err)
+	assert.Equal(t, "auth.Middleware is required", err.Error())
 }
 
 func authChecker(w http.ResponseWriter, r *http.Request) {

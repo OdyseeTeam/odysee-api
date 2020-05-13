@@ -16,14 +16,14 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-type MockServer struct {
+type mockServer struct {
 	*httptest.Server
 	NextResponse chan<- string
 }
 
 func EmptyResponse() string { return "" } // helper method to make it clearer what's happening
 
-func (m *MockServer) QueueResponses(responses ...string) {
+func (m *mockServer) QueueResponses(responses ...string) {
 	go func() {
 		for _, r := range responses {
 			m.NextResponse <- r
@@ -41,9 +41,9 @@ type Request struct {
 // NOTE: if you want to make sure that you get requests in your requestChan one by one, limit the
 // channel to a buffer size of 1. then writes to the chan will block until you read it. see
 // ReqChan() for how to do this
-func MockHTTPServer(requestChan chan *Request) *MockServer {
+func MockHTTPServer(requestChan chan *Request) *mockServer {
 	next := make(chan string, 1)
-	return &MockServer{
+	return &mockServer{
 		NextResponse: next,
 		Server: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer r.Body.Close()

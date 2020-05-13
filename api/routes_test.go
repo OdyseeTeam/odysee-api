@@ -2,6 +2,8 @@ package api
 
 import (
 	"bytes"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -63,4 +65,36 @@ func TestRoutesOptions(t *testing.T) {
 		"X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept",
 		rr.Result().Header.Get("Access-Control-Allow-Headers"),
 	)
+}
+
+func TestMiddlewareOrder(t *testing.T) {
+	handler := func(i int) mux.MiddlewareFunc {
+		return func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Write([]byte(fmt.Sprintf("%d", i)))
+				next.ServeHTTP(w, r)
+			})
+		}
+	}
+
+	mw := middlewares(
+		handler(1),
+		handler(2),
+		handler(3),
+		handler(4),
+	)
+
+	finalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("5"))
+	})
+
+	r, err := http.NewRequest("GET", "/api/v1/proxy", nil)
+	require.NoError(t, err)
+	rr := httptest.NewRecorder()
+
+	mw(finalHandler).ServeHTTP(rr, r)
+
+	body, err := ioutil.ReadAll(rr.Result().Body)
+	require.NoError(t, err)
+	assert.Equal(t, "12345", string(body))
 }

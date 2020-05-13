@@ -9,8 +9,7 @@ import (
 )
 
 // CreateTestConn creates a temporary test database and returns a connection object for accessing it
-// plus a cleanup callback that should be deferredly called by function caller for properly getting rid
-// of this temporary database.
+// plus a cleanup callback that should be called by function caller to properly get rid of this temporary database.
 func CreateTestConn(params ConnParams) (*Connection, func()) {
 	rand.Seed(time.Now().UnixNano())
 

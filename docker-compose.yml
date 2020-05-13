@@ -73,9 +73,11 @@ services:
       source: pgdata
       target: /pgdata
     environment:
-     POSTGRES_USER: lbrytv
-     POSTGRES_PASSWORD: lbrytv
-     PGDATA: /pgdata
+      POSTGRES_USER: lbrytv
+      POSTGRES_PASSWORD: lbrytv
+      PGDATA: /pgdata
+      TZ: 'UTC'
+      PGTZ: 'UTC'
   watchtower:
     image: containrrr/watchtower
     command: --interval 30 --cleanup --label-enable --debug

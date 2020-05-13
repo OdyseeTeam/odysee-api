@@ -20,6 +20,8 @@ import (
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
+	"github.com/lbryio/lbrytv/models"
+
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -54,8 +56,12 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	logger.Log().Tracef("call to method %s", req.Method)
 
 	user, err := auth.FromRequest(r)
-	if query.MethodRequiresWallet(req.Method) && !rpcerrors.EnsureAuthenticated(w, user, err) {
-		return
+	if query.MethodRequiresWallet(req.Method) {
+		authErr := EnsureAuthenticated(user, err)
+		if authErr != nil {
+			w.Write(rpcerrors.ErrorToJSON(authErr))
+			return
+		}
 	}
 
 	var userID int
@@ -73,7 +79,8 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	if cache.IsOnRequest(r) {
 		qCache = cache.FromRequest(r)
 	}
-	c := query.NewCallerWithCache(sdkAddress, userID, qCache)
+	c := query.NewCaller(sdkAddress, userID)
+	c.Cache = qCache
 	w.Write(c.Call(&req))
 }
 
@@ -84,4 +91,20 @@ func HandleCORS(w http.ResponseWriter, r *http.Request) {
 	hs.Set("Access-Control-Allow-Origin", "*")
 	hs.Set("Access-Control-Allow-Headers", wallet.TokenHeader+", Origin, X-Requested-With, Content-Type, Accept")
 	w.WriteHeader(http.StatusOK)
+}
+
+func EnsureAuthenticated(user *models.User, err error) error {
+	if err == nil && user != nil {
+		return nil
+	}
+
+	if errors.Is(err, auth.ErrNoAuthInfo) {
+		return rpcerrors.NewAuthRequiredError(errors.Err(responses.AuthRequiredErrorMessage))
+	} else if err != nil {
+		return rpcerrors.NewForbiddenError(err)
+	} else if user == nil {
+		return rpcerrors.NewForbiddenError(errors.Err("must authenticate"))
+	}
+
+	return errors.Err("unknown auth error")
 }

@@ -9,6 +9,7 @@ import (
 	"path"
 
 	"github.com/lbryio/lbrytv/app/auth"
+	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/query"
 	"github.com/lbryio/lbrytv/app/query/cache"
 	"github.com/lbryio/lbrytv/app/rpcerrors"
@@ -39,10 +40,9 @@ type Handler struct {
 // It should be wrapped with users.Authenticator.Wrap before it can be used
 // in a mux.Router.
 func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-
 	user, err := auth.FromRequest(r)
-	if !rpcerrors.EnsureAuthenticated(w, user, err) {
+	if authErr := proxy.EnsureAuthenticated(user, err); authErr != nil {
+		w.Write(rpcerrors.ErrorToJSON(authErr))
 		return
 	}
 	if auth.SDKAddress(user) == "" {
@@ -81,7 +81,8 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func publish(sdkAddress, filename string, userID int, qCache cache.QueryCache, rawQuery []byte) []byte {
-	c := query.NewCallerWithCache(sdkAddress, userID, qCache)
+	c := query.NewCaller(sdkAddress, userID)
+	c.Cache = qCache
 	c.Preprocessor = func(q *query.Query) {
 		params := q.ParamsAsMap()
 		params[fileNameParam] = filename

@@ -2,14 +2,9 @@ package rpcerrors
 
 import (
 	"encoding/json"
-	"net/http"
 
-	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/monitor"
-	"github.com/lbryio/lbrytv/internal/responses"
-	"github.com/lbryio/lbrytv/models"
-
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -68,17 +63,10 @@ func isJSONParseError(err error) bool {
 	return err != nil && errors.As(err, &e) && e.code == rpcErrorCodeJSONParse
 }
 
-func EnsureAuthenticated(w http.ResponseWriter, user *models.User, err error) bool {
-	if err == nil && user != nil {
-		return true
+func ErrorToJSON(err error) []byte {
+	var rpcErr RPCError
+	if errors.As(err, &rpcErr) {
+		return rpcErr.JSON()
 	}
-
-	if errors.Is(err, auth.ErrNoAuthInfo) {
-		w.Write(NewAuthRequiredError(errors.Err(responses.AuthRequiredErrorMessage)).JSON())
-	} else if err != nil {
-		w.Write(NewForbiddenError(err).JSON())
-	} else if user == nil {
-		w.Write(NewForbiddenError(errors.Err("must authenticate")).JSON())
-	}
-	return false
+	return NewInternalError(err).JSON()
 }

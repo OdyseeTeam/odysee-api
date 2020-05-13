@@ -32,12 +32,12 @@ const (
 type Caller struct {
 	// Preprocessor is applied to query before it's sent to the SDK.
 	Preprocessor func(q *Query)
+	// Cache stores cachable queries to improve performance
+	Cache cache.QueryCache
 
 	client   jsonrpc.RPCClient
 	userID   int
 	endpoint string
-
-	cache cache.QueryCache
 }
 
 func NewCaller(endpoint string, userID int) *Caller {
@@ -61,17 +61,11 @@ func NewCaller(endpoint string, userID int) *Caller {
 	}
 }
 
-func NewCallerWithCache(endpoint string, userID int, cache cache.QueryCache) *Caller {
-	c := NewCaller(endpoint, userID)
-	c.cache = cache
-	return c
-}
-
 func (c *Caller) CallRaw(rawQuery []byte) []byte {
 	var req jsonrpc.RPCRequest
 	err := json.Unmarshal(rawQuery, &req)
 	if err != nil {
-		return errorToJSON(rpcerrors.NewJSONParseError(err))
+		return rpcerrors.ErrorToJSON(rpcerrors.NewJSONParseError(err))
 	}
 	return c.Call(&req)
 }
@@ -83,14 +77,14 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) []byte {
 	if err != nil {
 		monitor.ErrorToSentry(err, map[string]string{"request": spew.Sdump(req), "response": fmt.Sprintf("%v", r)})
 		logger.Log().Errorf("error calling lbrynet: %v, request: %s", err, spew.Sdump(req))
-		return errorToJSON(err)
+		return rpcerrors.ErrorToJSON(err)
 	}
 
 	serialized, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		monitor.ErrorToSentry(err)
 		logger.Log().Errorf("error marshaling response: %v", err)
-		return errorToJSON(rpcerrors.NewInternalError(err))
+		return rpcerrors.ErrorToJSON(rpcerrors.NewInternalError(err))
 	}
 
 	return serialized
@@ -113,11 +107,11 @@ func isCacheable(q *Query) bool {
 
 // fromCache returns cached response or nil in case it's a miss or query shouldn't be cacheable.
 func (c *Caller) fromCache(q *Query) *jsonrpc.RPCResponse {
-	if c.cache == nil || !isCacheable(q) {
+	if c.Cache == nil || !isCacheable(q) {
 		return nil
 	}
 
-	cached := c.cache.Retrieve(q.Method(), q.Params())
+	cached := c.Cache.Retrieve(q.Method(), q.Params())
 	if cached == nil {
 		return nil
 	}
@@ -183,7 +177,7 @@ func (c *Caller) call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 	}
 
 	if isCacheable(q) {
-		c.cache.Save(q.Method(), q.Params(), r)
+		c.Cache.Save(q.Method(), q.Params(), r)
 	}
 
 	return r, nil
@@ -255,14 +249,6 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 	}
 
 	return r, err
-}
-
-func errorToJSON(err error) []byte {
-	var rpcErr rpcerrors.RPCError
-	if errors.As(err, &rpcErr) {
-		return rpcErr.JSON()
-	}
-	return rpcerrors.NewInternalError(err).JSON()
 }
 
 func isErrWalletNotLoaded(r *jsonrpc.RPCResponse) bool {

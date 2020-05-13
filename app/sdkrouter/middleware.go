@@ -7,10 +7,12 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const ContextKey = "sdkrouter"
+type ctxKey int
+
+const contextKey ctxKey = iota
 
 func FromRequest(r *http.Request) *Router {
-	v := r.Context().Value(ContextKey)
+	v := r.Context().Value(contextKey)
 	if v == nil {
 		panic("sdkrouter.Middleware is required")
 	}
@@ -19,7 +21,7 @@ func FromRequest(r *http.Request) *Router {
 
 func AddToRequest(rt *Router, fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fn(w, r.Clone(context.WithValue(r.Context(), ContextKey, rt)))
+		fn(w, r.Clone(context.WithValue(r.Context(), contextKey, rt)))
 	}
 }
 
