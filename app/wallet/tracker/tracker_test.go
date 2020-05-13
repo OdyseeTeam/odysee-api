@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/lbryio/lbrytv/app/auth"
+	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/storage"
@@ -125,21 +127,14 @@ func TestUnload_E2E(t *testing.T) {
 	err = u.InsertG(boil.Infer())
 	require.NoError(t, err)
 
-	// get an initial count of how many wallets are currently loaded
-	c := ljsonrpc.NewClient(address)
-	wallets, err := c.WalletList("", 1, 1)
-	require.NoError(t, err)
-	initialWalletCount := wallets.TotalPages
-
 	// create a wallet for this user
 	err = wallet.Create(address, u.ID)
 	require.NoError(t, err)
 
 	// make sure it's loaded
-	wallets, err = c.WalletList("", 1, 1)
+	c := ljsonrpc.NewClient(address)
 	require.NoError(t, err)
-	loadedWalletCount := wallets.TotalPages
-	assert.EqualValues(t, initialWalletCount+1, loadedWalletCount, wallets)
+	assert.True(t, isWalletLoaded(t, c, sdkrouter.WalletID(u.ID)))
 
 	// unload the wallet
 	count, err := Unload(boil.GetDB(), 1*time.Minute)
@@ -147,20 +142,14 @@ func TestUnload_E2E(t *testing.T) {
 	assert.EqualValues(t, 1, count)
 
 	// make sure it got unloaded
-	wallets, err = c.WalletList("", 1, 1)
-	require.NoError(t, err)
-	unloadedWalletCount := wallets.TotalPages
-	assert.EqualValues(t, initialWalletCount, unloadedWalletCount, wallets)
+	assert.False(t, isWalletLoaded(t, c, sdkrouter.WalletID(u.ID)))
 
 	// reload it to make sure it can be loaded again in the future
 	err = wallet.LoadWallet(address, u.ID)
 	require.NoError(t, err)
 
 	// make sure it got reloaded
-	wallets, err = c.WalletList("", 1, 1)
-	require.NoError(t, err)
-	reloadedWalletCount := wallets.TotalPages
-	assert.EqualValues(t, initialWalletCount+1, reloadedWalletCount, wallets)
+	assert.True(t, isWalletLoaded(t, c, sdkrouter.WalletID(u.ID)))
 }
 
 func TestMiddleware(t *testing.T) {
@@ -192,4 +181,12 @@ func TestMiddleware(t *testing.T) {
 	assert.Equal(t, logrus.TraceLevel, hook.LastEntry().Level)
 	assert.Equal(t, "touched user", hook.LastEntry().Message)
 	assert.Equal(t, 994, hook.LastEntry().Data["user_id"])
+}
+
+func isWalletLoaded(t *testing.T, c *ljsonrpc.Client, id string) bool {
+	wallets, err := c.WalletList(id, 1, 1)
+	if err != nil && !strings.Contains(err.Error(), `Couldn't find wallet`) {
+		require.NoError(t, err)
+	}
+	return len(wallets.Items) > 0
 }
