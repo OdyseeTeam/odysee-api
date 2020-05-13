@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/app/wallet/tracker"
+	"github.com/lbryio/lbrytv/internal/monitor"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -31,6 +32,7 @@ var unloadWallets = &cobra.Command{
 		_, err = tracker.Unload(boil.GetDB(), unloadOlderThan)
 		if err != nil {
 			log.Error(err)
+			monitor.ErrorToSentry(err)
 			os.Exit(1)
 		}
 	},

@@ -22,13 +22,11 @@ var logger = monitor.NewModuleLogger("wallet_tracker")
 
 func GetLogger() monitor.ModuleLogger { return logger } // for testing
 
-var utcLocation, _ = time.LoadLocation("UTC")
-
 // TimeNow returns the current time in UTC. The only way to set the local timezone in Go is to
 // set the TZ env var. Otherwise all times are created using the local timezone of your OS. This
 // can screw up your time comparisons if you're not careful. Best practice: always use UTC
 func TimeNow() time.Time {
-	return time.Now().In(utcLocation)
+	return time.Now().UTC()
 }
 
 // Touch sets the wallet access time for a user to now
