@@ -1,9 +1,9 @@
 package query
 
 import (
-	"encoding/json"
 	"fmt"
 
+	"github.com/lbryio/lbrytv/app/paid"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/errors"
 
@@ -28,25 +28,39 @@ func postProcessResponse(response *jsonrpc.RPCResponse, query *jsonrpc.RPCReques
 
 func responseProcessorGet(response *jsonrpc.RPCResponse, query *jsonrpc.RPCRequest) error {
 	var result map[string]interface{}
+	var txid string
+	var urlSuffix string
+
+	baseGetResponse := &ljsonrpc.GetResponse{}
+
 	err := response.GetObject(&result)
 	if err != nil {
 		return err
 	}
 
-	stringifiedParams, err := json.Marshal(query.Params)
+	// If content_fee is present we assume it's paid for, otherwise it's a free stream
+	if cFee, ok := result["content_fee"]; ok {
+		if cF, ok := cFee.(map[string]interface{}); ok {
+			txid = cF["txid"].(string)
+		}
+	}
+
+	err = ljsonrpc.Decode(result, baseGetResponse)
 	if err != nil {
 		return err
 	}
 
-	var queryParams map[string]interface{}
-	err = json.Unmarshal(stringifiedParams, &queryParams)
-	if err != nil {
-		return err
+	if txid != "" {
+		token, err := paid.CreateToken(baseGetResponse.SdHash, txid, baseGetResponse.Metadata.GetStream().Source.Size, paid.ExpTenSecPer100MB)
+		if err != nil {
+			return err
+		}
+		urlSuffix = fmt.Sprintf("paid/%s/%s", baseGetResponse.SdHash, token)
+	} else {
+		urlSuffix = fmt.Sprintf("free/%s", baseGetResponse.SdHash)
 	}
 
-	result["download_path"] = fmt.Sprintf(
-		"%s%s/%s", config.GetConfig().Viper.GetString("BaseContentURL"), queryParams["uri"], result["outpoint"])
-
+	result["streaming_url"] = config.GetConfig().Viper.GetString("BaseContentURL") + urlSuffix
 	response.Result = result
 	return nil
 }

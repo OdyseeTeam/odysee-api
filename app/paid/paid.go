@@ -1,6 +1,7 @@
 package paid
 
 import (
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -52,6 +53,24 @@ func CreateToken(sdHash string, txid string, streamSize uint64, expfunc Expfunc)
 	return km.createToken(sdHash, txid, streamSize, expfunc)
 }
 
+// GeneratePrivateKey generates an in-memory private key
+func GeneratePrivateKey() error {
+	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return err
+	}
+
+	k := &keyManager{privKey: privKey}
+	k.pubKeyMarshaled, err = k.marshalPublicKey()
+	if err != nil {
+		return err
+	}
+	logger.Log().Infof("generated an in-memory private key")
+
+	km = k
+	return nil
+}
+
 func (k *keyManager) createToken(sdHash string, txid string, streamSize uint64, expfunc Expfunc) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, &StreamToken{
 		sdHash,
@@ -87,10 +106,12 @@ func (k *keyManager) loadFromBytes(b []byte) error {
 		return err
 	}
 	k.privKey = key
+
 	k.pubKeyMarshaled, err = k.marshalPublicKey()
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 

@@ -1,8 +1,8 @@
-BaseContentURL: https://api.lbry.tv/content/
+BaseContentURL: https://cdn.lbryplayer.xyz/api/v2/streams/
 InternalAPIHost: https://api.lbry.com
 ProjectURL: https://lbry.tv
 
-DatabaseDSN: postgres://lbrytv:lbrytv@pgbouncer:5439
+DatabaseDSN: postgres://lbrytv:lbrytv@postgres.default.svc.cluster.local:5439
 Database:
   DBName: lbrytv
   Options: sslmode=disable

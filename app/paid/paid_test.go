@@ -66,6 +66,7 @@ func TestPublicKeyBytes(t *testing.T) {
 }
 
 func BenchmarkCreateToken(b *testing.B) {
+	logger.Disable()
 	for i := 0; i < b.N; i++ {
 		if _, err := CreateToken(testSDHash, testTxID, 100_000_000, ExpTenSecPer100MB); err != nil {
 			b.Fatal(err)
