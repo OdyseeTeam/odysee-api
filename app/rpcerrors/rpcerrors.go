@@ -5,6 +5,7 @@ import (
 
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -48,6 +49,8 @@ func (e RPCError) JSON() []byte {
 	return b
 }
 
+var ErrAuthRequired = errors.Base(responses.AuthRequiredErrorMessage)
+
 func newRPCErr(e error, code int) RPCError { return RPCError{errors.Err(e), code} }
 
 func NewInternalError(e error) RPCError         { return newRPCErr(e, rpcErrorCodeInternal) }
@@ -56,7 +59,7 @@ func NewMethodNotAllowedError(e error) RPCError { return newRPCErr(e, rpcErrorCo
 func NewInvalidParamsError(e error) RPCError    { return newRPCErr(e, rpcErrorCodeInvalidParams) }
 func NewSDKError(e error) RPCError              { return newRPCErr(e, rpcErrorCodeSDK) }
 func NewForbiddenError(e error) RPCError        { return newRPCErr(e, rpcErrorCodeForbidden) }
-func NewAuthRequiredError(e error) RPCError     { return newRPCErr(e, rpcErrorCodeAuthRequired) }
+func NewAuthRequiredError() RPCError            { return newRPCErr(ErrAuthRequired, rpcErrorCodeAuthRequired) }
 
 func isJSONParseError(err error) bool {
 	var e RPCError
@@ -67,6 +70,14 @@ func ErrorToJSON(err error) []byte {
 	var rpcErr RPCError
 	if errors.As(err, &rpcErr) {
 		return rpcErr.JSON()
+	}
+	return NewInternalError(err).JSON()
+}
+
+func ToJSON(err error) []byte {
+	var e RPCError
+	if errors.As(err, &e) {
+		return e.JSON()
 	}
 	return NewInternalError(err).JSON()
 }

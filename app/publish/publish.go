@@ -1,6 +1,7 @@
 package publish
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,9 +16,11 @@ import (
 	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/lbryio/lbrytv/internal/responses"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/ybbus/jsonrpc"
 )
 
 var logger = monitor.NewModuleLogger("publish")
@@ -41,7 +44,7 @@ type Handler struct {
 // in a mux.Router.
 func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 	user, err := auth.FromRequest(r)
-	if authErr := proxy.EnsureAuthenticated(user, err); authErr != nil {
+	if authErr := proxy.GetAuthError(user, err); authErr != nil {
 		w.Write(rpcerrors.ErrorToJSON(authErr))
 		return
 	}
@@ -69,18 +72,35 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		qCache = cache.FromRequest(r)
 	}
 
-	res := publish(
-		auth.SDKAddress(user),
-		f.Name(),
-		user.ID,
-		qCache,
-		[]byte(r.FormValue(jsonRPCFieldName)),
-	)
+	var rpcReq *jsonrpc.RPCRequest
+	err = json.Unmarshal([]byte(r.FormValue(jsonRPCFieldName)), &rpcReq)
+	if err != nil {
+		w.Write(rpcerrors.NewJSONParseError(err).JSON())
+		return
+	}
 
-	w.Write(res)
+	c := getCaller(auth.SDKAddress(user), f.Name(), user.ID, qCache)
+
+	rpcRes, err := c.Call(rpcReq)
+	if err != nil {
+		monitor.ErrorToSentry(err, map[string]string{"request": fmt.Sprintf("%+v", rpcReq), "response": fmt.Sprintf("%+v", rpcRes)})
+		logger.Log().Errorf("error calling lbrynet: %v, request: %+v", err, rpcReq)
+		w.Write(rpcerrors.ToJSON(err))
+		return
+	}
+
+	serialized, err := responses.JSONRPCSerialize(rpcRes)
+	if err != nil {
+		monitor.ErrorToSentry(err)
+		logger.Log().Errorf("error marshaling response: %v", err)
+		w.Write(rpcerrors.NewInternalError(err).JSON())
+		return
+	}
+
+	w.Write(serialized)
 }
 
-func publish(sdkAddress, filename string, userID int, qCache cache.QueryCache, rawQuery []byte) []byte {
+func getCaller(sdkAddress, filename string, userID int, qCache cache.QueryCache) *query.Caller {
 	c := query.NewCaller(sdkAddress, userID)
 	c.Cache = qCache
 	c.Preprocessor = func(q *query.Query) {
@@ -88,7 +108,7 @@ func publish(sdkAddress, filename string, userID int, qCache cache.QueryCache, r
 		params[fileNameParam] = filename
 		q.Request.Params = params
 	}
-	return c.CallRaw(rawQuery)
+	return c
 }
 
 // CanHandle checks if http.Request contains POSTed data in an accepted format.

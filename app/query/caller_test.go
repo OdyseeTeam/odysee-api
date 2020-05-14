@@ -1,18 +1,18 @@
 package query
 
 import (
-	"encoding/json"
 	"math/rand"
 	"testing"
 	"time"
 
+	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
+	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/test"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
-	"github.com/davecgh/go-spew/spew"
 	logrusTest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,22 +20,24 @@ import (
 )
 
 func TestCaller_CallRelaxedMethods(t *testing.T) {
-	reqChan := test.ReqChan()
-	srv := test.MockHTTPServer(reqChan)
-	defer srv.Close()
-	caller := NewCaller(srv.URL, 0)
-
 	for _, m := range relaxedMethods {
 		if m == MethodStatus {
 			continue
 		}
 		t.Run(m, func(t *testing.T) {
+			reqChan := test.ReqChan()
+			srv := test.MockHTTPServer(reqChan)
+			defer srv.Close()
 			srv.NextResponse <- test.EmptyResponse()
-			resp := caller.Call(jsonrpc.NewRequest(m))
-			require.NotEqual(t, "authentication required", test.StrToRes(t, string(resp)).Error.Message)
+
+			caller := NewCaller(srv.URL, 0)
+			resp, err := caller.Call(jsonrpc.NewRequest(m))
+			assert.Nil(t, resp)
+			assert.Error(t, err)                                       // empty response should be an error
+			assert.False(t, errors.Is(err, rpcerrors.ErrAuthRequired)) // but it should not be an auth error
 
 			receivedRequest := <-reqChan
-			expectedRequest := test.ReqToStr(t, jsonrpc.RPCRequest{
+			expectedRequest := test.ReqToStr(t, &jsonrpc.RPCRequest{
 				Method:  m,
 				Params:  nil,
 				JSONRPC: "2.0",
@@ -46,22 +48,23 @@ func TestCaller_CallRelaxedMethods(t *testing.T) {
 }
 
 func TestCaller_CallAmbivalentMethodsWithoutWallet(t *testing.T) {
-	reqChan := test.ReqChan()
-	srv := test.MockHTTPServer(reqChan)
-	defer srv.Close()
-	caller := NewCaller(srv.URL, 0)
-
 	for _, m := range relaxedMethods {
 		if !methodInList(m, walletSpecificMethods) {
 			continue
 		}
 		t.Run(m, func(t *testing.T) {
+			reqChan := test.ReqChan()
+			srv := test.MockHTTPServer(reqChan)
+			defer srv.Close()
+			caller := NewCaller(srv.URL, 0)
 			srv.NextResponse <- test.EmptyResponse()
-			resp := caller.Call(jsonrpc.NewRequest(m))
-			require.NotEqual(t, "authentication required", test.StrToRes(t, string(resp)).Error.Message)
+			resp, err := caller.Call(jsonrpc.NewRequest(m))
+			assert.Nil(t, resp)
+			assert.Error(t, err) // empty response should be an error
+			assert.False(t, errors.Is(err, rpcerrors.ErrAuthRequired))
 
 			receivedRequest := <-reqChan
-			expectedRequest := test.ReqToStr(t, jsonrpc.RPCRequest{
+			expectedRequest := test.ReqToStr(t, &jsonrpc.RPCRequest{
 				Method:  m,
 				Params:  nil,
 				JSONRPC: "2.0",
@@ -72,11 +75,7 @@ func TestCaller_CallAmbivalentMethodsWithoutWallet(t *testing.T) {
 }
 
 func TestCaller_CallAmbivalentMethodsWithWallet(t *testing.T) {
-	reqChan := test.ReqChan()
-	srv := test.MockHTTPServer(reqChan)
-	defer srv.Close()
 	dummyUserID := 123321
-	authedCaller := NewCaller(srv.URL, dummyUserID)
 	var methodsTested int
 
 	for _, m := range relaxedMethods {
@@ -85,12 +84,19 @@ func TestCaller_CallAmbivalentMethodsWithWallet(t *testing.T) {
 		}
 		methodsTested++
 		t.Run(m, func(t *testing.T) {
+			reqChan := test.ReqChan()
+			srv := test.MockHTTPServer(reqChan)
+			defer srv.Close()
 			srv.NextResponse <- test.EmptyResponse()
-			resp := authedCaller.Call(jsonrpc.NewRequest(m))
-			require.NotEqual(t, "authentication required", test.StrToRes(t, string(resp)).Error.Message)
+			authedCaller := NewCaller(srv.URL, dummyUserID)
+
+			resp, err := authedCaller.Call(jsonrpc.NewRequest(m))
+			assert.Nil(t, resp)
+			assert.Error(t, err) // empty response should be an error
+			assert.False(t, errors.Is(err, rpcerrors.ErrAuthRequired))
 
 			receivedRequest := <-reqChan
-			expectedRequest := test.ReqToStr(t, jsonrpc.RPCRequest{
+			expectedRequest := test.ReqToStr(t, &jsonrpc.RPCRequest{
 				Method: m,
 				Params: map[string]interface{}{
 					"wallet_id": sdkrouter.WalletID(dummyUserID),
@@ -107,31 +113,30 @@ func TestCaller_CallAmbivalentMethodsWithWallet(t *testing.T) {
 }
 
 func TestCaller_CallNonRelaxedMethods(t *testing.T) {
-	reqChan := test.ReqChan()
-	srv := test.MockHTTPServer(reqChan)
-	defer srv.Close()
-
-	caller := NewCaller(srv.URL, 0)
 	for _, m := range walletSpecificMethods {
 		if methodInList(m, relaxedMethods) {
 			continue
 		}
 		t.Run(m, func(t *testing.T) {
-			resp := caller.Call(jsonrpc.NewRequest(m))
-			select {
-			case <-reqChan:
-				t.Fatal("a request went throught")
-			default:
-			}
-			assert.Equal(t, "authentication required", test.StrToRes(t, string(resp)).Error.Message)
+			reqChan := test.ReqChan()
+			srv := test.MockHTTPServer(reqChan)
+			defer srv.Close()
+
+			caller := NewCaller(srv.URL, 0)
+			resp, err := caller.Call(jsonrpc.NewRequest(m))
+			assert.Nil(t, resp)
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, rpcerrors.ErrAuthRequired))
 		})
 	}
 }
 
 func TestCaller_CallForbiddenMethod(t *testing.T) {
 	caller := NewCaller(test.RandServerAddress(t), 0)
-	result := caller.Call(jsonrpc.NewRequest("stop"))
-	assert.Contains(t, string(result), `"message": "forbidden method"`)
+	resp, err := caller.Call(jsonrpc.NewRequest("stop"))
+	assert.Nil(t, resp)
+	assert.Error(t, err)
+	assert.Equal(t, "forbidden method", err.Error())
 }
 
 func TestCaller_CallAttachesWalletID(t *testing.T) {
@@ -146,7 +151,7 @@ func TestCaller_CallAttachesWalletID(t *testing.T) {
 	caller.Call(jsonrpc.NewRequest("channel_create", map[string]interface{}{"name": "test", "bid": "0.1"}))
 	receivedRequest := <-reqChan
 
-	expectedRequest := test.ReqToStr(t, jsonrpc.RPCRequest{
+	expectedRequest := test.ReqToStr(t, &jsonrpc.RPCRequest{
 		Method: "channel_create",
 		Params: map[string]interface{}{
 			"name":      "test",
@@ -219,9 +224,8 @@ func TestCaller_CallSDKError(t *testing.T) {
 
 	c := NewCaller(srv.URL, 0)
 	hook := logrusTest.NewLocal(logger.Entry.Logger)
-	response := c.Call(jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": "what"}))
-	var rpcResponse jsonrpc.RPCResponse
-	json.Unmarshal(response, &rpcResponse)
+	rpcResponse, err := c.Call(jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": "what"}))
+	require.NoError(t, err)
 	assert.Equal(t, rpcResponse.Error.Code, -32500)
 	assert.Equal(t, "query", hook.LastEntry().Data["module"])
 	assert.Equal(t, "resolve", hook.LastEntry().Data["method"])
@@ -233,27 +237,18 @@ func TestCaller_ClientJSONError(t *testing.T) {
 	ts.NextResponse <- `{"method":"version}` // note the missing close quote after "version
 
 	c := NewCaller(ts.URL, 0)
-	response := c.CallRaw([]byte(""))
-	spew.Dump(response)
-	var rpcResponse jsonrpc.RPCResponse
-	json.Unmarshal(response, &rpcResponse)
-	assert.Equal(t, "2.0", rpcResponse.JSONRPC)
-	assert.Equal(t, -32700, rpcResponse.Error.Code)
-	assert.Equal(t, "unexpected end of JSON input", rpcResponse.Error.Message)
+	_, err := c.Call(&jsonrpc.RPCRequest{Method: "resolve"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "could not decode body to rpc response")
 }
 
 func TestCaller_CallRaw(t *testing.T) {
 	c := NewCaller(test.RandServerAddress(t), 0)
-	for _, rawQ := range []string{``, ` `, `[]`, `[{}]`, `[""]`, `""`, `" "`} {
-		t.Run(rawQ, func(t *testing.T) {
-			r := c.CallRaw([]byte(rawQ))
-			assert.Contains(t, string(r), `"code": -32700`, `raw query: `+rawQ)
-		})
-	}
 	for _, rawQ := range []string{`{}`, `{"method": " "}`} {
 		t.Run(rawQ, func(t *testing.T) {
-			r := c.CallRaw([]byte(rawQ))
-			assert.Contains(t, string(r), `"code": -32080`, `raw query: `+rawQ)
+			_, err := c.Call(test.StrToReq(t, rawQ))
+			assert.Error(t, err)
+			assert.Equal(t, "no method in request", err.Error())
 		})
 	}
 }
@@ -263,15 +258,13 @@ func TestCaller_Resolve(t *testing.T) {
 	resolvedClaimID := "6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
 
 	request := jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": resolvedURL})
-	rawCallResponse := NewCaller(test.RandServerAddress(t), 0).Call(request)
-
-	var errorResponse jsonrpc.RPCResponse
-	err := json.Unmarshal(rawCallResponse, &errorResponse)
+	rpcRes, err := NewCaller(test.RandServerAddress(t), 0).Call(request)
 	require.NoError(t, err)
-	require.Nil(t, errorResponse.Error)
+	require.Nil(t, rpcRes.Error)
 
 	var resolveResponse ljsonrpc.ResolveResponse
-	parseRawResponse(t, rawCallResponse, &resolveResponse)
+	err = rpcRes.GetObject(&resolveResponse)
+	require.NoError(t, err)
 	assert.Equal(t, resolvedClaimID, resolveResponse[resolvedURL].ClaimID)
 }
 
@@ -281,20 +274,23 @@ func TestCaller_WalletBalance(t *testing.T) {
 
 	request := jsonrpc.NewRequest("wallet_balance")
 
-	result := NewCaller(test.RandServerAddress(t), 0).Call(request)
-	assert.Contains(t, string(result), `"message": "authentication required"`)
+	rpcRes, err := NewCaller(test.RandServerAddress(t), 0).Call(request)
+	assert.Nil(t, rpcRes)
+	assert.True(t, errors.Is(err, rpcerrors.ErrAuthRequired))
 
 	addr := test.RandServerAddress(t)
-	err := wallet.Create(addr, dummyUserID)
+	err = wallet.Create(addr, dummyUserID)
 	require.NoError(t, err)
 
 	hook := logrusTest.NewLocal(logger.Entry.Logger)
-	result = NewCaller(addr, dummyUserID).Call(request)
+	rpcRes, err = NewCaller(addr, dummyUserID).Call(request)
+	require.NoError(t, err)
 
 	var accountBalanceResponse struct {
 		Available string `json:"available"`
 	}
-	parseRawResponse(t, result, &accountBalanceResponse)
+	err = rpcRes.GetObject(&accountBalanceResponse)
+	require.NoError(t, err)
 	assert.EqualValues(t, "0.0", accountBalanceResponse.Available)
 	assert.Equal(t, map[string]interface{}{"wallet_id": sdkrouter.WalletID(dummyUserID)}, hook.LastEntry().Data["params"])
 	assert.Equal(t, "wallet_balance", hook.LastEntry().Data["method"])
@@ -333,14 +329,14 @@ func TestCaller_DontReloadWalletAfterOtherErrors(t *testing.T) {
 	require.NoError(t, err)
 
 	srv.QueueResponses(
-		test.ResToStr(t, jsonrpc.RPCResponse{
+		test.ResToStr(t, &jsonrpc.RPCResponse{
 			JSONRPC: "2.0",
 			Error: &jsonrpc.RPCError{
 				Message: "Couldn't find wallet: //",
 			},
 		}),
 		test.EmptyResponse(), // for the wallet_add call
-		test.ResToStr(t, jsonrpc.RPCResponse{
+		test.ResToStr(t, &jsonrpc.RPCResponse{
 			JSONRPC: "2.0",
 			Error: &jsonrpc.RPCError{
 				Message: "Wallet at path // was not found",
@@ -365,20 +361,20 @@ func TestCaller_DontReloadWalletIfAlreadyLoaded(t *testing.T) {
 	require.NoError(t, err)
 
 	srv.QueueResponses(
-		test.ResToStr(t, jsonrpc.RPCResponse{
+		test.ResToStr(t, &jsonrpc.RPCResponse{
 			JSONRPC: "2.0",
 			Error: &jsonrpc.RPCError{
 				Message: "Couldn't find wallet: //",
 			},
 		}),
 		test.EmptyResponse(), // for the wallet_add call
-		test.ResToStr(t, jsonrpc.RPCResponse{
+		test.ResToStr(t, &jsonrpc.RPCResponse{
 			JSONRPC: "2.0",
 			Error: &jsonrpc.RPCError{
 				Message: "Wallet at path // is already loaded",
 			},
 		}),
-		test.ResToStr(t, jsonrpc.RPCResponse{
+		test.ResToStr(t, &jsonrpc.RPCResponse{
 			JSONRPC: "2.0",
 			Result:  `"99999.00"`,
 		}),
@@ -393,19 +389,9 @@ func TestCaller_DontReloadWalletIfAlreadyLoaded(t *testing.T) {
 
 func TestSDKMethodStatus(t *testing.T) {
 	c := NewCaller(test.RandServerAddress(t), 0)
-	callResult := c.Call(jsonrpc.NewRequest("status"))
-	var rpcResponse jsonrpc.RPCResponse
-	json.Unmarshal(callResult, &rpcResponse)
+	rpcResponse, err := c.Call(jsonrpc.NewRequest("status"))
+	require.NoError(t, err)
 	assert.Equal(t,
 		"692EAWhtoqDuAfQ6KHMXxFxt8tkhmt7sfprEMHWKjy5hf6PwZcHDV542VHqRnFnTCD",
 		rpcResponse.Result.(map[string]interface{})["installation_id"].(string))
-}
-
-func parseRawResponse(t *testing.T, rawCallResponse []byte, v interface{}) {
-	assert.NotNil(t, rawCallResponse)
-	var res jsonrpc.RPCResponse
-	err := json.Unmarshal(rawCallResponse, &res)
-	require.NoError(t, err)
-	err = res.GetObject(v)
-	require.NoError(t, err)
 }

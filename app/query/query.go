@@ -7,7 +7,7 @@ import (
 	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/monitor"
-	"github.com/lbryio/lbrytv/internal/responses"
+
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -48,7 +48,7 @@ func NewQuery(req *jsonrpc.RPCRequest, walletID string) (*Query, error) {
 				q.Request.Params = map[string]interface{}{paramWalletID: q.WalletID}
 			}
 		} else if MethodRequiresWallet(q.Method()) {
-			return nil, rpcerrors.NewAuthRequiredError(errors.Err(responses.AuthRequiredErrorMessage))
+			return nil, rpcerrors.NewAuthRequiredError()
 		}
 	}
 

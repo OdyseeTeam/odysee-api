@@ -8,6 +8,7 @@ package proxy
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -46,18 +47,18 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req jsonrpc.RPCRequest
-	err = json.Unmarshal(body, &req)
+	var rpcReq *jsonrpc.RPCRequest
+	err = json.Unmarshal(body, &rpcReq)
 	if err != nil {
 		w.Write(rpcerrors.NewJSONParseError(err).JSON())
 		return
 	}
 
-	logger.Log().Tracef("call to method %s", req.Method)
+	logger.Log().Tracef("call to method %s", rpcReq.Method)
 
 	user, err := auth.FromRequest(r)
-	if query.MethodRequiresWallet(req.Method) {
-		authErr := EnsureAuthenticated(user, err)
+	if query.MethodRequiresWallet(rpcReq.Method) {
+		authErr := GetAuthError(user, err)
 		if authErr != nil {
 			w.Write(rpcerrors.ErrorToJSON(authErr))
 			return
@@ -65,7 +66,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var userID int
-	if query.MethodAcceptsWallet(req.Method) && user != nil {
+	if query.MethodAcceptsWallet(rpcReq.Method) && user != nil {
 		userID = user.ID
 	}
 
@@ -81,7 +82,25 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	c := query.NewCaller(sdkAddress, userID)
 	c.Cache = qCache
-	w.Write(c.Call(&req))
+
+	rpcRes, err := c.Call(rpcReq)
+
+	if err != nil {
+		monitor.ErrorToSentry(err, map[string]string{"request": fmt.Sprintf("%+v", rpcReq), "response": fmt.Sprintf("%+v", rpcRes)})
+		logger.Log().Errorf("error calling lbrynet: %v, request: %+v", err, rpcReq)
+		w.Write(rpcerrors.ToJSON(err))
+		return
+	}
+
+	serialized, err := responses.JSONRPCSerialize(rpcRes)
+	if err != nil {
+		monitor.ErrorToSentry(err)
+		logger.Log().Errorf("error marshaling response: %v", err)
+		w.Write(rpcerrors.NewInternalError(err).JSON())
+		return
+	}
+
+	w.Write(serialized)
 }
 
 // HandleCORS returns necessary CORS headers for pre-flight requests to proxy API
@@ -93,13 +112,13 @@ func HandleCORS(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func EnsureAuthenticated(user *models.User, err error) error {
+func GetAuthError(user *models.User, err error) error {
 	if err == nil && user != nil {
 		return nil
 	}
 
 	if errors.Is(err, auth.ErrNoAuthInfo) {
-		return rpcerrors.NewAuthRequiredError(errors.Err(responses.AuthRequiredErrorMessage))
+		return rpcerrors.NewAuthRequiredError()
 	} else if err != nil {
 		return rpcerrors.NewForbiddenError(err)
 	} else if user == nil {

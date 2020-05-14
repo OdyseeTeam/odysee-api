@@ -16,8 +16,6 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-var errGeneric = errors.Base("handler responded with an error")
-
 var httpLogger = NewModuleLogger("http_monitor")
 
 type responseRecorder struct {
@@ -99,9 +97,9 @@ func ErrorLoggingMiddleware(next http.Handler) http.Handler {
 
 		// No panics. Send recorded response to the real writer
 		if recoveredErr == nil {
-			if recorder.StatusCode >= http.StatusBadRequest {
-				recordRequestError(r, recorder)
-			}
+			//if recorder.StatusCode >= http.StatusBadRequest {
+			//	recordRequestError(r, recorder)
+			//}
 			recorder.send(w)
 			return
 		}

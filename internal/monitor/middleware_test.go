@@ -55,14 +55,14 @@ var testTableErrorLoggingMiddleware = []middlewareTestRow{
 		},
 		expectedStatus: http.StatusBadRequest,
 		expectedBody:   `{"status": "error"}`,
-		expectedLogEntry: map[string]interface{}{
-			"method":   "POST",
-			"url":      "/some-endpoint",
-			"status":   http.StatusBadRequest,
-			"response": `{"status": "error"}`,
-		},
-		expectedLogLevel:      log.ErrorLevel,
-		expectedLogStartsWith: "handler responded with an error",
+		//expectedLogEntry: map[string]interface{}{
+		//	"method":   "POST",
+		//	"url":      "/some-endpoint",
+		//	"status":   http.StatusBadRequest,
+		//	"response": `{"status": "error"}`,
+		//},
+		//expectedLogLevel:      log.ErrorLevel,
+		//expectedLogStartsWith: "handler responded with an error",
 	},
 
 	{
