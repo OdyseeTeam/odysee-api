@@ -12,6 +12,7 @@ import (
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/test"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -45,7 +46,7 @@ func TestLbrynetPublisher(t *testing.T) {
 
 	copyToDocker(t, f.Name())
 
-	query := []byte(`{
+	req := test.StrToReq(t, `{
 		"jsonrpc": "2.0",
 		"method": "stream_create",
 		"params": {
@@ -70,8 +71,9 @@ func TestLbrynetPublisher(t *testing.T) {
 	err = wallet.Create(server, userID)
 	require.NoError(t, err)
 
-	rawResp := publish(server, path.Join("/storage", path.Base(f.Name())), userID, nil, query)
+	res, err := getCaller(server, path.Join("/storage", path.Base(f.Name())), userID, nil).Call(req)
+	require.NoError(t, err)
 
 	// This is all we can check for now without running on testnet or crediting some funds to the test account
-	assert.Regexp(t, "Not enough funds to cover this transaction", string(rawResp))
+	assert.Regexp(t, "Not enough funds to cover this transaction", test.ResToStr(t, res))
 }

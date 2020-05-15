@@ -63,7 +63,8 @@ func ReqChan() chan *Request {
 }
 
 // ReqToStr stringifies a supplied RPCRequest
-func ReqToStr(t *testing.T, req jsonrpc.RPCRequest) string {
+func ReqToStr(t *testing.T, req *jsonrpc.RPCRequest) string {
+	t.Helper()
 	r, err := json.Marshal(req)
 	if err != nil {
 		t.Fatal(err)
@@ -72,8 +73,9 @@ func ReqToStr(t *testing.T, req jsonrpc.RPCRequest) string {
 }
 
 // StrToReq creates an RPCRequest from a supplied string
-func StrToReq(t *testing.T, req string) jsonrpc.RPCRequest {
-	var r jsonrpc.RPCRequest
+func StrToReq(t *testing.T, req string) *jsonrpc.RPCRequest {
+	t.Helper()
+	var r *jsonrpc.RPCRequest
 	err := json.Unmarshal([]byte(req), &r)
 	if err != nil {
 		t.Fatal(err)
@@ -82,7 +84,8 @@ func StrToReq(t *testing.T, req string) jsonrpc.RPCRequest {
 }
 
 // ResToStr stringifies a supplied RPCResponse
-func ResToStr(t *testing.T, res jsonrpc.RPCResponse) string {
+func ResToStr(t *testing.T, res *jsonrpc.RPCResponse) string {
+	t.Helper()
 	r, err := json.Marshal(res)
 	if err != nil {
 		t.Fatal(err)
@@ -91,8 +94,9 @@ func ResToStr(t *testing.T, res jsonrpc.RPCResponse) string {
 }
 
 // StrToRes creates an RPCResponse from a supplied string
-func StrToRes(t *testing.T, res string) jsonrpc.RPCResponse {
-	var r jsonrpc.RPCResponse
+func StrToRes(t *testing.T, res string) *jsonrpc.RPCResponse {
+	t.Helper()
+	var r *jsonrpc.RPCResponse
 	err := json.Unmarshal([]byte(res), &r)
 	if err != nil {
 		t.Fatal(err)
