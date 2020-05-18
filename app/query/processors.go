@@ -51,13 +51,13 @@ func responseProcessorGet(response *jsonrpc.RPCResponse, query *jsonrpc.RPCReque
 	}
 
 	if txid != "" {
-		token, err := paid.CreateToken(baseGetResponse.SdHash, txid, baseGetResponse.Metadata.GetStream().Source.Size, paid.ExpTenSecPer100MB)
+		token, err := paid.CreateToken(baseGetResponse.ClaimName+"/"+baseGetResponse.ClaimID, txid, baseGetResponse.Metadata.GetStream().Source.Size, paid.ExpTenSecPer100MB)
 		if err != nil {
 			return err
 		}
-		urlSuffix = fmt.Sprintf("paid/%s/%s", baseGetResponse.SdHash, token)
+		urlSuffix = fmt.Sprintf("paid/%s/%s/%s", baseGetResponse.ClaimName, baseGetResponse.ClaimID, token)
 	} else {
-		urlSuffix = fmt.Sprintf("free/%s", baseGetResponse.SdHash)
+		urlSuffix = fmt.Sprintf("free/%s/%s", baseGetResponse.ClaimName, baseGetResponse.ClaimID)
 	}
 
 	result["streaming_url"] = config.GetConfig().Viper.GetString("BaseContentURL") + urlSuffix

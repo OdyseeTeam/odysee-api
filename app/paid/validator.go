@@ -25,13 +25,13 @@ func InitPubKey(rawKey []byte) error {
 }
 
 // CanPlayStream is the main entry point for players to validate paid media tokens
-func CanPlayStream(sdHash string, stringToken string) (bool, error) {
+func CanPlayStream(streamID string, stringToken string) (bool, error) {
 	t, err := pubKM.ValidateToken(stringToken)
 	if err != nil {
 		return false, err
 	}
-	if t.SDHash != sdHash {
-		return false, fmt.Errorf("stream mismatch: requested %v, token valid for %v", sdHash, t.SDHash)
+	if t.StreamID != streamID {
+		return false, fmt.Errorf("stream mismatch: requested %v, token valid for %v", streamID, t.StreamID)
 	}
 	return true, nil
 }

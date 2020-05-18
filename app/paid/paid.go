@@ -22,10 +22,12 @@ var logger = monitor.NewModuleLogger("paid")
 // Should take stream size in bytes and return validity as Unix time
 type Expfunc func(uint64) int64
 
-// StreamToken contains stream hash and transaction id of a stream that has been purchased
+// StreamToken contains stream ID and transaction id of a stream that has been purchased.
+// StreamID can be any string uniquely identifying a stream, has to be consistent
+// for both API server and player server
 type StreamToken struct {
-	SDHash string `json:"sd"`
-	TxID   string `json:"txid"`
+	StreamID string `json:"sid"`
+	TxID     string `json:"txid"`
 	jwt.StandardClaims
 }
 
@@ -46,10 +48,10 @@ func InitPrivateKey(rawKey []byte) error {
 	return nil
 }
 
-// CreateToken takes stream hash, purchase transaction id and stream size to generate a JWS.
+// CreateToken takes stream ID, purchase transaction id and stream size to generate a JWS.
 // In addition it accepts expiry function that takes streamSize and returns token expiry date as Unix time
-func CreateToken(sdHash string, txid string, streamSize uint64, expfunc Expfunc) (string, error) {
-	return km.createToken(sdHash, txid, streamSize, expfunc)
+func CreateToken(streamID string, txid string, streamSize uint64, expfunc Expfunc) (string, error) {
+	return km.createToken(streamID, txid, streamSize, expfunc)
 }
 
 // GeneratePrivateKey generates an in-memory private key
@@ -70,9 +72,9 @@ func GeneratePrivateKey() error {
 	return nil
 }
 
-func (k *keyManager) createToken(sdHash string, txid string, streamSize uint64, expfunc Expfunc) (string, error) {
+func (k *keyManager) createToken(streamID string, txid string, streamSize uint64, expfunc Expfunc) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, &StreamToken{
-		sdHash,
+		streamID,
 		txid,
 		jwt.StandardClaims{
 			ExpiresAt: expfunc(streamSize),

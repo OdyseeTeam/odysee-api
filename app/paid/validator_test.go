@@ -23,7 +23,7 @@ func TestCanPlayStream(t *testing.T) {
 		{
 			name: "valid",
 			makeToken: func() (string, error) {
-				return CreateToken(testSDHash, testTxID, 120_000_000, ExpTenSecPer100MB)
+				return CreateToken(testStreamID, testTxID, 120_000_000, ExpTenSecPer100MB)
 			},
 			want:       true,
 			checkError: noError,
@@ -32,7 +32,7 @@ func TestCanPlayStream(t *testing.T) {
 			name: "expired",
 			makeToken: func() (string, error) {
 				expFunc := func(uint64) int64 { return 1 } //  Returns the 1st second of Unix epoch
-				return CreateToken(testSDHash, testTxID, 120_000_000, expFunc)
+				return CreateToken(testStreamID, testTxID, 120_000_000, expFunc)
 			},
 			want:       false,
 			checkError: func(t *testing.T, err error) { assert.Regexp(t, "token is expired by \\d+h\\d+m\\d+s", err) },
@@ -42,7 +42,7 @@ func TestCanPlayStream(t *testing.T) {
 			makeToken: func() (string, error) {
 				otherPkey, _ := rsa.GenerateKey(rand.Reader, 2048)
 				otherKM := &keyManager{privKey: otherPkey}
-				return otherKM.createToken(testSDHash, testTxID, 120_000_000, ExpTenSecPer100MB)
+				return otherKM.createToken(testStreamID, testTxID, 120_000_000, ExpTenSecPer100MB)
 			},
 			want:       false,
 			checkError: func(t *testing.T, err error) { assert.EqualError(t, err, "crypto/rsa: verification error") },
@@ -64,7 +64,7 @@ func TestCanPlayStream(t *testing.T) {
 			token, err := tt.makeToken()
 			require.NoError(t, err)
 
-			got, err := CanPlayStream(testSDHash, token)
+			got, err := CanPlayStream(testStreamID, token)
 			tt.checkError(t, err)
 			if got != tt.want {
 				t.Errorf("CanPlayStream() = %v, want %v", got, tt.want)
@@ -74,11 +74,11 @@ func TestCanPlayStream(t *testing.T) {
 }
 
 func BenchmarkParseToken(b *testing.B) {
-	token, err := CreateToken(testSDHash, testTxID, 100_000_000, ExpTenSecPer100MB)
+	token, err := CreateToken(testStreamID, testTxID, 100_000_000, ExpTenSecPer100MB)
 	require.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
-		if _, err := CanPlayStream(testSDHash, token); err != nil {
+		if _, err := CanPlayStream(testStreamID, token); err != nil {
 			b.Fatal(err)
 		}
 	}

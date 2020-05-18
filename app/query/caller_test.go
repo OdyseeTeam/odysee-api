@@ -426,7 +426,8 @@ func TestCaller_GetPaidPurchased(t *testing.T) {
 
 	uri := "lbry://@specialoperationstest#3/iOS-13-AdobeXD#9"
 	txid := "ff990688df370072f408e2db9d217d2cf331d92ac594d5e6e8391143e9d38160"
-	sdHash := "51ee258ebbe33c15d37a28e90b1ba1e9ddfddd277bede52bd59431ce1b6ed6475f6c2c7299210a98eb3b746cbffa1f94"
+	claimName := "Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis"
+	claimID := "d66f8ba85c85ca48daba9183bd349307fe30cb43"
 
 	dummyUserID := 123321
 	srv := test.MockHTTPServer(nil)
@@ -573,7 +574,7 @@ func TestCaller_GetPaidPurchased(t *testing.T) {
 	err := paid.GeneratePrivateKey()
 	require.NoError(t, err)
 
-	token, err := paid.CreateToken(sdHash, txid, 585600621, paid.ExpTenSecPer100MB)
+	token, err := paid.CreateToken(claimName+"/"+claimID, txid, 585600621, paid.ExpTenSecPer100MB)
 	require.NoError(t, err)
 
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
@@ -583,7 +584,7 @@ func TestCaller_GetPaidPurchased(t *testing.T) {
 	getResponse := &ljsonrpc.GetResponse{}
 	err = resp.GetObject(&getResponse)
 	require.NoError(t, err)
-	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/paid/"+sdHash+"/"+token, getResponse.StreamingURL)
+	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/paid/"+claimName+"/"+claimID+"/"+token, getResponse.StreamingURL)
 }
 
 func TestCaller_GetFree(t *testing.T) {
@@ -667,5 +668,5 @@ func TestCaller_GetFree(t *testing.T) {
 	err = resp.GetObject(&getResponse)
 	require.NoError(t, err)
 
-	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/free/d5169241150022f996fa7cd6a9a1c421937276a3275eb912790bd07ba7aec1fac5fd45431d226b8fb402691e79aeb24b", getResponse.StreamingURL)
+	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/free/what/19b9c243bea0c45175e6a6027911abbad53e983e", getResponse.StreamingURL)
 }
