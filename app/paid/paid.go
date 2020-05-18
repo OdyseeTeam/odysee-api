@@ -1,12 +1,14 @@
 package paid
 
+// Key files should be generated as follows:
+// $ openssl genrsa -out privateKey.pem 2048
+
 import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"io/ioutil"
 	"time"
 
 	"github.com/lbryio/lbrytv/internal/monitor"
@@ -34,16 +36,13 @@ type keyManager struct {
 
 var km *keyManager
 
-// InitPrivateKey loads a private key from `file` for later token signing and derived pubkey distribution.
-// Should be generated as follows:
-// $ openssl genrsa -out privateKey.pem 2048
-func InitPrivateKey(file string) error {
+// InitPrivateKey loads a private key from `[]bytes` for later token signing and derived pubkey distribution.
+func InitPrivateKey(rawKey []byte) error {
 	km = &keyManager{}
-	err := km.loadFromFile(file)
+	err := km.loadFromBytes(rawKey)
 	if err != nil {
 		return err
 	}
-	logger.Log().Infof("loaded private key from %s", file)
 	return nil
 }
 
@@ -82,18 +81,6 @@ func (k *keyManager) createToken(sdHash string, txid string, streamSize uint64, 
 	})
 	logger.Log().Debugf("created a token %v / %v", token.Header, token.Claims)
 	return token.SignedString(k.privKey)
-}
-
-func (k *keyManager) loadFromFile(file string) error {
-	f, err := ioutil.ReadFile(file)
-	if err != nil {
-		return err
-	}
-	err = k.loadFromBytes(f)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (k *keyManager) loadFromBytes(b []byte) error {

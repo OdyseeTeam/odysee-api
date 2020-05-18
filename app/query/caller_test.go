@@ -2,7 +2,6 @@ package query
 
 import (
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -418,14 +417,12 @@ func TestCaller_GetPaidCannotPurchase(t *testing.T) {
 	srvAddress := test.RandServerAddress(t)
 	uri := "lbry://@specialoperationstest#3/iOS-13-AdobeXD#9"
 	err := wallet.Create(srvAddress, dummyUserID)
+	require.NoError(t, err)
 
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
 	rawCallResponse := NewCaller(srvAddress, dummyUserID).Call(request)
 
-	var errorResponse jsonrpc.RPCResponse
-	err = json.Unmarshal(rawCallResponse, &errorResponse)
-	require.NoError(t, err)
-	fmt.Println(string(rawCallResponse))
+	errorResponse := test.StrToRes(t, string(rawCallResponse))
 	assert.Equal(t, "Not enough funds to cover this transaction.", errorResponse.Result.(map[string]interface{})["error"])
 }
 
@@ -439,6 +436,7 @@ func TestCaller_GetPaidPurchased(t *testing.T) {
 
 	dummyUserID := 123321
 	srv := test.MockHTTPServer(nil)
+	defer srv.Close()
 
 	srv.NextResponse <- `
 {
@@ -587,9 +585,7 @@ func TestCaller_GetPaidPurchased(t *testing.T) {
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
 	rawCallResponse := NewCaller(srv.URL, dummyUserID).Call(request)
 
-	var errorResponse jsonrpc.RPCResponse
-	err = json.Unmarshal(rawCallResponse, &errorResponse)
-	require.NoError(t, err)
+	errorResponse := test.StrToRes(t, string(rawCallResponse))
 	require.Nil(t, errorResponse.Error)
 
 	var getResponse ljsonrpc.GetResponse
@@ -673,9 +669,7 @@ func TestCaller_GetFree(t *testing.T) {
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
 	rawCallResponse := NewCaller(srv.URL, dummyUserID).Call(request)
 
-	var errorResponse jsonrpc.RPCResponse
-	err := json.Unmarshal(rawCallResponse, &errorResponse)
-	require.NoError(t, err)
+	errorResponse := test.StrToRes(t, string(rawCallResponse))
 	require.Nil(t, errorResponse.Error)
 
 	var getResponse ljsonrpc.GetResponse

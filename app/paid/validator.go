@@ -6,26 +6,21 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 
 	"github.com/dgrijalva/jwt-go"
 )
 
 type pubKeyManager struct {
-	url string
 	key *rsa.PublicKey
 }
 
 var pubKM *pubKeyManager
 
 // InitPubKey should be called with pubkey url as an argument before CanPlayStream can be called
-func InitPubKey(url string) error {
-	pubKM = &pubKeyManager{url: url}
-	err := pubKM.Download()
-	if err != nil {
-		return err
-	}
+func InitPubKey(rawKey []byte) error {
+	k := &pubKeyManager{}
+	k.loadFromBytes(rawKey)
+	pubKM = k
 	return nil
 }
 
@@ -52,19 +47,6 @@ func (k *pubKeyManager) loadFromBytes(b []byte) error {
 		return err
 	}
 	k.key = key
-	return nil
-}
-
-func (k *pubKeyManager) Download() error {
-	r, err := http.Get(k.url)
-	if err != nil {
-		return err
-	}
-	rawKey, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	k.loadFromBytes(rawKey)
 	return nil
 }
 

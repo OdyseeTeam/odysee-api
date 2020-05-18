@@ -21,5 +21,6 @@ func TestHandlePublicKeyRequest(t *testing.T) {
 	key, err := ioutil.ReadAll(response.Body)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, response.StatusCode)
+	assert.NotZero(t, key)
 	assert.Equal(t, km.PublicKeyBytes(), key)
 }

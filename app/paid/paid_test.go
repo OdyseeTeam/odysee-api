@@ -3,6 +3,7 @@ package paid
 import (
 	"encoding/pem"
 	"fmt"
+	"io/ioutil"
 	mrand "math/rand"
 	"os"
 	"os/exec"
@@ -31,7 +32,12 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	err = InitPrivateKey(keyFile)
+	rawKey, err := ioutil.ReadFile(keyFile)
+	if err != nil {
+		panic(err)
+	}
+
+	err = InitPrivateKey(rawKey)
 	if err != nil {
 		panic(err)
 	}
