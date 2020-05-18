@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
 	"time"
 
+	"github.com/lbryio/lbrytv/app/paid"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/server"
@@ -27,6 +29,12 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		key, err := ioutil.ReadFile(config.GetPaidTokenPrivKey())
+		if err != nil {
+			log.Fatal(err)
+		}
+		paid.InitPrivateKey(key)
 
 		// ServeUntilShutdown is blocking, should be last
 		s.ServeUntilShutdown()

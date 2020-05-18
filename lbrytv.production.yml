@@ -19,3 +19,5 @@ RefractorAddress: refractor.lbry.com:5567
 RefractorTimeout: 10
 
 ShouldLogResponses: false
+
+PaidTokenPrivKey: /secrets/token_privkey.rsa

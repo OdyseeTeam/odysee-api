@@ -191,3 +191,8 @@ func GetReflectorAddress() string {
 func ShouldLogResponses() bool {
 	return Config.Viper.GetBool("ShouldLogResponses")
 }
+
+// GetPaidTokenPrivKey returns absolute path to the private RSA key for generating paid tokens
+func GetPaidTokenPrivKey() string {
+	return Config.Viper.GetString("PaidTokenPrivKey")
+}

@@ -23,3 +23,5 @@ ReflectorTimeout: 60
 RefractorAddress: refractor.lbry.com:5567
 # RefractorTimeout (in seconds) is TCP timeout for streaming blobs off reflector/refractor.
 RefractorTimeout: 120
+
+PaidTokenPrivKey: token_privkey.rsa

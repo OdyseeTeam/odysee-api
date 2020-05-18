@@ -93,6 +93,7 @@ func (k *keyManager) loadFromBytes(b []byte) error {
 		return err
 	}
 	k.privKey = key
+	logger.Log().Infof("loaded a private RSA key (%v bytes)", key.Size())
 
 	k.pubKeyMarshaled, err = k.marshalPublicKey()
 	if err != nil {
