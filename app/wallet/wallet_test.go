@@ -124,7 +124,6 @@ func TestGetUserWithWallet_NewUserSDKError(t *testing.T) {
 	defer cleanup()
 
 	_, err := GetUserWithSDKServer(rt, url, "abc", "")
-	assert.EqualError(t, err, `user 751365: rpc call wallet_create() on http://failure.test: Post "http://failure.test": dial tcp: lookup failure.test: no such host`)
 	assert.Regexp(t, `.+dial tcp: lookup failure.test: no such host`, err.Error())
 
 	count, err := models.Users(models.UserWhere.ID.EQ(dummyUserID)).CountG()
