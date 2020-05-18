@@ -84,6 +84,8 @@ var walletSpecificMethods = []string{
 	"preference_get",
 	"preference_set",
 
+	"purchase_list",
+
 	"transaction_list",
 
 	"txo_list",
