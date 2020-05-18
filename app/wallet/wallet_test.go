@@ -124,7 +124,7 @@ func TestGetUserWithWallet_NewUserSDKError(t *testing.T) {
 	defer cleanup()
 
 	_, err := GetUserWithSDKServer(rt, url, "abc", "")
-	assert.Regexp(t, `.+dial tcp: lookup failure.test: no such host`, err.Error())
+	assert.Regexp(t, `.+dial tcp: lookup failure.test`, err.Error())
 
 	count, err := models.Users(models.UserWhere.ID.EQ(dummyUserID)).CountG()
 	assert.NoError(t, err)
