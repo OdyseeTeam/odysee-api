@@ -123,10 +123,9 @@ func TestGetUserWithWallet_NewUserSDKError(t *testing.T) {
 	url, cleanup := dummyAPI(srv)
 	defer cleanup()
 
-	u, err := GetUserWithSDKServer(rt, url, "abc", "")
+	_, err := GetUserWithSDKServer(rt, url, "abc", "")
 	assert.EqualError(t, err, `user 751365: rpc call wallet_create() on http://failure.test: Post "http://failure.test": dial tcp: lookup failure.test: no such host`)
 	assert.Regexp(t, `.+dial tcp: lookup failure.test: no such host`, err.Error())
-	assert.Nil(t, u)
 
 	count, err := models.Users(models.UserWhere.ID.EQ(dummyUserID)).CountG()
 	assert.NoError(t, err)
@@ -159,8 +158,8 @@ func TestGetUserWithWallet_ExistingUser(t *testing.T) {
 	defer cleanup()
 
 	u, err := GetUserWithSDKServer(rt, url, "abc", "")
-	require.NoError(t, err)
-	require.NotNil(t, u)
+	assert.NoError(t, err)
+	assert.NotNil(t, u)
 	assert.EqualValues(t, dummyUserID, u.ID)
 
 	count, err := models.Users().CountG()
@@ -229,7 +228,7 @@ func TestAssignSDKServerToUser_SDKAlreadyAssigned(t *testing.T) {
 	u.LbrynetServerID.SetValid(55)
 	rt := sdkrouter.New(config.GetLbrynetServers())
 	l := logrus.NewEntry(logrus.New())
-	err := assignSDKServerToUser(u, rt.RandomServer(), l)
+	err := assignSDKServerToUser(boil.GetDB(), u, rt.RandomServer(), l)
 	assert.EqualError(t, err, "user already has an sdk assigned")
 }
 
@@ -258,14 +257,14 @@ func TestAssignSDKServerToUser_ConcurrentUpdates(t *testing.T) {
 	}()
 
 	// assign one sdk
-	err = assignSDKServerToUser(u, s1, logger.Log())
+	err = assignSDKServerToUser(boil.GetDB(), u, s1, logger.Log())
 	require.NoError(t, err)
 	assert.True(t, u.LbrynetServerID.Valid)
 	assert.Equal(t, s1.ID, u.LbrynetServerID.Int)
 
 	// zero out assignment temporarily, and assign a different one
 	u.LbrynetServerID = null.Int{}
-	err = assignSDKServerToUser(u, s2, logger.Log())
+	err = assignSDKServerToUser(boil.GetDB(), u, s2, logger.Log())
 
 	// check that it actually got reassigned the first one instead of the new one
 	require.NoError(t, err)
