@@ -110,6 +110,29 @@ func TestGetUserWithWallet_NewUser(t *testing.T) {
 	require.Equal(t, u.LbrynetServerID.Int, sdk2.ID)
 }
 
+func TestGetUserWithWallet_NewUserSDKError(t *testing.T) {
+	setupDBTables()
+	srv := test.RandServerAddress(t)
+	sdk := &models.LbrynetServer{
+		Name:    "failing",
+		Address: "http://failure.test",
+	}
+	defer func() { sdk.DeleteG() }()
+	rt := sdkrouter.NewWithServers(sdk)
+
+	url, cleanup := dummyAPI(srv)
+	defer cleanup()
+
+	u, err := GetUserWithSDKServer(rt, url, "abc", "")
+	assert.EqualError(t, err, `user 751365: rpc call wallet_create() on http://failure.test: Post "http://failure.test": dial tcp: lookup failure.test: no such host`)
+	assert.Regexp(t, `.+dial tcp: lookup failure.test: no such host`, err.Error())
+	assert.Nil(t, u)
+
+	count, err := models.Users(models.UserWhere.ID.EQ(dummyUserID)).CountG()
+	assert.NoError(t, err)
+	assert.EqualValues(t, 0, count)
+}
+
 func TestGetUserWithWallet_NonexistentUser(t *testing.T) {
 	setupDBTables()
 
@@ -170,7 +193,7 @@ func TestGetUserWithWallet_ExistingUserWithoutSDKGetsAssignedOneOnRetrieve(t *te
 	defer func() { srv.DeleteG() }()
 
 	rt := sdkrouter.NewWithServers(srv)
-	u, err := createDBUser(userID)
+	u, err := createDBUser(storage.Conn.DB, userID)
 	require.NoError(t, err)
 	require.NotNil(t, u)
 
