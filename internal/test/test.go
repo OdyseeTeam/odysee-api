@@ -16,14 +16,14 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-type MockServer struct {
+type mockServer struct {
 	*httptest.Server
 	NextResponse chan<- string
 }
 
 func EmptyResponse() string { return "" } // helper method to make it clearer what's happening
 
-func (m *MockServer) QueueResponses(responses ...string) {
+func (m *mockServer) QueueResponses(responses ...string) {
 	go func() {
 		for _, r := range responses {
 			m.NextResponse <- r
@@ -41,9 +41,9 @@ type Request struct {
 // NOTE: if you want to make sure that you get requests in your requestChan one by one, limit the
 // channel to a buffer size of 1. then writes to the chan will block until you read it. see
 // ReqChan() for how to do this
-func MockHTTPServer(requestChan chan *Request) *MockServer {
+func MockHTTPServer(requestChan chan *Request) *mockServer {
 	next := make(chan string, 1)
-	return &MockServer{
+	return &mockServer{
 		NextResponse: next,
 		Server: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer r.Body.Close()
@@ -63,7 +63,8 @@ func ReqChan() chan *Request {
 }
 
 // ReqToStr stringifies a supplied RPCRequest
-func ReqToStr(t *testing.T, req jsonrpc.RPCRequest) string {
+func ReqToStr(t *testing.T, req *jsonrpc.RPCRequest) string {
+	t.Helper()
 	r, err := json.Marshal(req)
 	if err != nil {
 		t.Fatal(err)
@@ -72,8 +73,9 @@ func ReqToStr(t *testing.T, req jsonrpc.RPCRequest) string {
 }
 
 // StrToReq creates an RPCRequest from a supplied string
-func StrToReq(t *testing.T, req string) jsonrpc.RPCRequest {
-	var r jsonrpc.RPCRequest
+func StrToReq(t *testing.T, req string) *jsonrpc.RPCRequest {
+	t.Helper()
+	var r *jsonrpc.RPCRequest
 	err := json.Unmarshal([]byte(req), &r)
 	if err != nil {
 		t.Fatal(err)
@@ -82,7 +84,8 @@ func StrToReq(t *testing.T, req string) jsonrpc.RPCRequest {
 }
 
 // ResToStr stringifies a supplied RPCResponse
-func ResToStr(t *testing.T, res jsonrpc.RPCResponse) string {
+func ResToStr(t *testing.T, res *jsonrpc.RPCResponse) string {
+	t.Helper()
 	r, err := json.Marshal(res)
 	if err != nil {
 		t.Fatal(err)
@@ -91,8 +94,9 @@ func ResToStr(t *testing.T, res jsonrpc.RPCResponse) string {
 }
 
 // StrToRes creates an RPCResponse from a supplied string
-func StrToRes(t *testing.T, res string) jsonrpc.RPCResponse {
-	var r jsonrpc.RPCResponse
+func StrToRes(t *testing.T, res string) *jsonrpc.RPCResponse {
+	t.Helper()
+	var r *jsonrpc.RPCResponse
 	err := json.Unmarshal([]byte(res), &r)
 	if err != nil {
 		t.Fatal(err)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
 
@@ -36,6 +37,10 @@ func TrackUIMetric(w http.ResponseWriter, req *http.Request) {
 		Logger.Log().Errorf("invalid UI metric name: %s", metricName)
 		code = http.StatusBadRequest
 		resp["error"] = "Invalid metric name"
+	}
+
+	if errMsg, ok := resp["error"]; ok {
+		monitor.ErrorToSentry(errors.Err(errMsg))
 	}
 
 	w.WriteHeader(code)

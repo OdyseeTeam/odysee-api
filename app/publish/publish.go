@@ -1,6 +1,7 @@
 package publish
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -9,14 +10,17 @@ import (
 	"path"
 
 	"github.com/lbryio/lbrytv/app/auth"
+	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/query"
 	"github.com/lbryio/lbrytv/app/query/cache"
 	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/lbryio/lbrytv/internal/responses"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/ybbus/jsonrpc"
 )
 
 var logger = monitor.NewModuleLogger("publish")
@@ -39,10 +43,9 @@ type Handler struct {
 // It should be wrapped with users.Authenticator.Wrap before it can be used
 // in a mux.Router.
 func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-
 	user, err := auth.FromRequest(r)
-	if !rpcerrors.EnsureAuthenticated(w, user, err) {
+	if authErr := proxy.GetAuthError(user, err); authErr != nil {
+		w.Write(rpcerrors.ErrorToJSON(authErr))
 		return
 	}
 	if auth.SDKAddress(user) == "" {
@@ -69,25 +72,43 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		qCache = cache.FromRequest(r)
 	}
 
-	res := publish(
-		auth.SDKAddress(user),
-		f.Name(),
-		user.ID,
-		qCache,
-		[]byte(r.FormValue(jsonRPCFieldName)),
-	)
+	var rpcReq *jsonrpc.RPCRequest
+	err = json.Unmarshal([]byte(r.FormValue(jsonRPCFieldName)), &rpcReq)
+	if err != nil {
+		w.Write(rpcerrors.NewJSONParseError(err).JSON())
+		return
+	}
 
-	w.Write(res)
+	c := getCaller(auth.SDKAddress(user), f.Name(), user.ID, qCache)
+
+	rpcRes, err := c.Call(rpcReq)
+	if err != nil {
+		monitor.ErrorToSentry(err, map[string]string{"request": fmt.Sprintf("%+v", rpcReq), "response": fmt.Sprintf("%+v", rpcRes)})
+		logger.Log().Errorf("error calling lbrynet: %v, request: %+v", err, rpcReq)
+		w.Write(rpcerrors.ToJSON(err))
+		return
+	}
+
+	serialized, err := responses.JSONRPCSerialize(rpcRes)
+	if err != nil {
+		monitor.ErrorToSentry(err)
+		logger.Log().Errorf("error marshaling response: %v", err)
+		w.Write(rpcerrors.NewInternalError(err).JSON())
+		return
+	}
+
+	w.Write(serialized)
 }
 
-func publish(sdkAddress, filename string, userID int, qCache cache.QueryCache, rawQuery []byte) []byte {
-	c := query.NewCallerWithCache(sdkAddress, userID, qCache)
+func getCaller(sdkAddress, filename string, userID int, qCache cache.QueryCache) *query.Caller {
+	c := query.NewCaller(sdkAddress, userID)
+	c.Cache = qCache
 	c.Preprocessor = func(q *query.Query) {
 		params := q.ParamsAsMap()
 		params[fileNameParam] = filename
 		q.Request.Params = params
 	}
-	return c.CallRaw(rawQuery)
+	return c
 }
 
 // CanHandle checks if http.Request contains POSTed data in an accepted format.

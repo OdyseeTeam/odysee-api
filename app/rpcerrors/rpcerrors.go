@@ -2,14 +2,10 @@ package rpcerrors
 
 import (
 	"encoding/json"
-	"net/http"
 
-	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
-	"github.com/lbryio/lbrytv/models"
-
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -53,6 +49,8 @@ func (e RPCError) JSON() []byte {
 	return b
 }
 
+var ErrAuthRequired = errors.Base(responses.AuthRequiredErrorMessage)
+
 func newRPCErr(e error, code int) RPCError { return RPCError{errors.Err(e), code} }
 
 func NewInternalError(e error) RPCError         { return newRPCErr(e, rpcErrorCodeInternal) }
@@ -61,24 +59,25 @@ func NewMethodNotAllowedError(e error) RPCError { return newRPCErr(e, rpcErrorCo
 func NewInvalidParamsError(e error) RPCError    { return newRPCErr(e, rpcErrorCodeInvalidParams) }
 func NewSDKError(e error) RPCError              { return newRPCErr(e, rpcErrorCodeSDK) }
 func NewForbiddenError(e error) RPCError        { return newRPCErr(e, rpcErrorCodeForbidden) }
-func NewAuthRequiredError(e error) RPCError     { return newRPCErr(e, rpcErrorCodeAuthRequired) }
+func NewAuthRequiredError() RPCError            { return newRPCErr(ErrAuthRequired, rpcErrorCodeAuthRequired) }
 
 func isJSONParseError(err error) bool {
 	var e RPCError
 	return err != nil && errors.As(err, &e) && e.code == rpcErrorCodeJSONParse
 }
 
-func EnsureAuthenticated(w http.ResponseWriter, user *models.User, err error) bool {
-	if err == nil && user != nil {
-		return true
+func ErrorToJSON(err error) []byte {
+	var rpcErr RPCError
+	if errors.As(err, &rpcErr) {
+		return rpcErr.JSON()
 	}
+	return NewInternalError(err).JSON()
+}
 
-	if errors.Is(err, auth.ErrNoAuthInfo) {
-		w.Write(NewAuthRequiredError(errors.Err(responses.AuthRequiredErrorMessage)).JSON())
-	} else if err != nil {
-		w.Write(NewForbiddenError(err).JSON())
-	} else if user == nil {
-		w.Write(NewForbiddenError(errors.Err("must authenticate")).JSON())
+func ToJSON(err error) []byte {
+	var e RPCError
+	if errors.As(err, &e) {
+		return e.JSON()
 	}
-	return false
+	return NewInternalError(err).JSON()
 }

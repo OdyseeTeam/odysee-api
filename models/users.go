@@ -28,6 +28,7 @@ type User struct {
 	UpdatedAt       time.Time   `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	SDKAccountID    null.String `boil:"sdk_account_id" json:"sdk_account_id,omitempty" toml:"sdk_account_id" yaml:"sdk_account_id,omitempty"`
 	LbrynetServerID null.Int    `boil:"lbrynet_server_id" json:"lbrynet_server_id,omitempty" toml:"lbrynet_server_id" yaml:"lbrynet_server_id,omitempty"`
+	LastSeenAt      null.Time   `boil:"last_seen_at" json:"last_seen_at,omitempty" toml:"last_seen_at" yaml:"last_seen_at,omitempty"`
 
 	R *userR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -39,12 +40,14 @@ var UserColumns = struct {
 	UpdatedAt       string
 	SDKAccountID    string
 	LbrynetServerID string
+	LastSeenAt      string
 }{
 	ID:              "id",
 	CreatedAt:       "created_at",
 	UpdatedAt:       "updated_at",
 	SDKAccountID:    "sdk_account_id",
 	LbrynetServerID: "lbrynet_server_id",
+	LastSeenAt:      "last_seen_at",
 }
 
 // Generated where
@@ -101,12 +104,14 @@ var UserWhere = struct {
 	UpdatedAt       whereHelpertime_Time
 	SDKAccountID    whereHelpernull_String
 	LbrynetServerID whereHelpernull_Int
+	LastSeenAt      whereHelpernull_Time
 }{
 	ID:              whereHelperint{field: "\"users\".\"id\""},
 	CreatedAt:       whereHelpertime_Time{field: "\"users\".\"created_at\""},
 	UpdatedAt:       whereHelpertime_Time{field: "\"users\".\"updated_at\""},
 	SDKAccountID:    whereHelpernull_String{field: "\"users\".\"sdk_account_id\""},
 	LbrynetServerID: whereHelpernull_Int{field: "\"users\".\"lbrynet_server_id\""},
+	LastSeenAt:      whereHelpernull_Time{field: "\"users\".\"last_seen_at\""},
 }
 
 // UserRels is where relationship names are stored.
@@ -130,8 +135,8 @@ func (*userR) NewStruct() *userR {
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"id", "created_at", "updated_at", "sdk_account_id", "lbrynet_server_id"}
-	userColumnsWithoutDefault = []string{"id", "sdk_account_id", "lbrynet_server_id"}
+	userAllColumns            = []string{"id", "created_at", "updated_at", "sdk_account_id", "lbrynet_server_id", "last_seen_at"}
+	userColumnsWithoutDefault = []string{"id", "sdk_account_id", "lbrynet_server_id", "last_seen_at"}
 	userColumnsWithDefault    = []string{"created_at", "updated_at"}
 	userPrimaryKeyColumns     = []string{"id"}
 )

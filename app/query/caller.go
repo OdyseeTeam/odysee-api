@@ -17,7 +17,6 @@ import (
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
 )
@@ -32,12 +31,12 @@ const (
 type Caller struct {
 	// Preprocessor is applied to query before it's sent to the SDK.
 	Preprocessor func(q *Query)
+	// Cache stores cachable queries to improve performance
+	Cache cache.QueryCache
 
 	client   jsonrpc.RPCClient
 	userID   int
 	endpoint string
-
-	cache cache.QueryCache
 }
 
 func NewCaller(endpoint string, userID int) *Caller {
@@ -61,95 +60,9 @@ func NewCaller(endpoint string, userID int) *Caller {
 	}
 }
 
-func NewCallerWithCache(endpoint string, userID int, cache cache.QueryCache) *Caller {
-	c := NewCaller(endpoint, userID)
-	c.cache = cache
-	return c
-}
-
-func (c *Caller) CallRaw(rawQuery []byte) []byte {
-	var req jsonrpc.RPCRequest
-	err := json.Unmarshal(rawQuery, &req)
-	if err != nil {
-		return errorToJSON(rpcerrors.NewJSONParseError(err))
-	}
-	return c.Call(&req)
-}
-
-// Call method processes a raw query received from JSON-RPC client and forwards it to LbrynetServer.
+// Call method forwards a JSON-RPC request to the lbrynet server.
 // It returns a response that is ready to be sent back to the JSON-RPC client as is.
-func (c *Caller) Call(req *jsonrpc.RPCRequest) []byte {
-	r, err := c.call(req)
-	if err != nil {
-		monitor.ErrorToSentry(err, map[string]string{"request": spew.Sdump(req), "response": fmt.Sprintf("%v", r)})
-		logger.Log().Errorf("error calling lbrynet: %v, request: %s", err, spew.Sdump(req))
-		return errorToJSON(err)
-	}
-
-	serialized, err := json.MarshalIndent(r, "", "  ")
-	if err != nil {
-		monitor.ErrorToSentry(err)
-		logger.Log().Errorf("error marshaling response: %v", err)
-		return errorToJSON(rpcerrors.NewInternalError(err))
-	}
-
-	return serialized
-}
-
-// cacheHit returns true if we got a resolve query with more than `cacheResolveLongerThan` urls in it.
-func isCacheable(q *Query) bool {
-	if q.Method() == MethodResolve && q.Params() != nil {
-		paramsMap := q.Params().(map[string]interface{})
-		if urls, ok := paramsMap[paramUrls].([]interface{}); ok {
-			if len(urls) > cacheResolveLongerThan {
-				return true
-			}
-		}
-	} else if q.Method() == MethodClaimSearch {
-		return true
-	}
-	return false
-}
-
-// fromCache returns cached response or nil in case it's a miss or query shouldn't be cacheable.
-func (c *Caller) fromCache(q *Query) *jsonrpc.RPCResponse {
-	if c.cache == nil || !isCacheable(q) {
-		return nil
-	}
-
-	cached := c.cache.Retrieve(q.Method(), q.Params())
-	if cached == nil {
-		return nil
-	}
-
-	s, err := json.Marshal(cached)
-	if err != nil {
-		logger.Log().Errorf("error marshalling cached response")
-		return nil
-	}
-
-	response := q.newResponse()
-	err = json.Unmarshal(s, &response)
-	if err != nil {
-		return nil
-	}
-
-	logger.WithFields(logrus.Fields{"method": q.Method()}).Debug("cached query")
-	return response
-}
-
-func predefinedResponse(q *Query) *jsonrpc.RPCResponse {
-	switch q.Method() {
-	case MethodStatus:
-		response := q.newResponse()
-		response.Result = getStatusResponse()
-		return response
-	default:
-		return nil
-	}
-}
-
-func (c *Caller) call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
+func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 	walletID := ""
 	if c.userID != 0 {
 		walletID = sdkrouter.WalletID(c.userID)
@@ -172,21 +85,21 @@ func (c *Caller) call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 		c.Preprocessor(q)
 	}
 
-	r, err := c.callQueryWithRetry(q)
+	res, err := c.callQueryWithRetry(q)
 	if err != nil {
-		return r, rpcerrors.NewSDKError(err)
+		return nil, rpcerrors.NewSDKError(err)
 	}
 
-	err = postProcessResponse(r, q.Request)
+	err = postProcessResponse(res, q.Request)
 	if err != nil {
-		return r, rpcerrors.NewSDKError(err)
+		return res, rpcerrors.NewSDKError(err)
 	}
 
 	if isCacheable(q) {
-		c.cache.Save(q.Method(), q.Params(), r)
+		c.Cache.Save(q.Method(), q.Params(), res)
 	}
 
-	return r, nil
+	return res, nil
 }
 
 func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
@@ -257,12 +170,57 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 	return r, err
 }
 
-func errorToJSON(err error) []byte {
-	var rpcErr rpcerrors.RPCError
-	if errors.As(err, &rpcErr) {
-		return rpcErr.JSON()
+// isCacheable returns true if this query can be cached
+func isCacheable(q *Query) bool {
+	if q.Method() == MethodResolve && q.Params() != nil {
+		paramsMap := q.Params().(map[string]interface{})
+		if urls, ok := paramsMap[paramUrls].([]interface{}); ok {
+			if len(urls) > cacheResolveLongerThan {
+				return true
+			}
+		}
+	} else if q.Method() == MethodClaimSearch {
+		return true
 	}
-	return rpcerrors.NewInternalError(err).JSON()
+	return false
+}
+
+// fromCache returns cached response or nil in case it's a miss
+func (c *Caller) fromCache(q *Query) *jsonrpc.RPCResponse {
+	if c.Cache == nil || !isCacheable(q) {
+		return nil
+	}
+
+	cached := c.Cache.Retrieve(q.Method(), q.Params())
+	if cached == nil {
+		return nil
+	}
+
+	s, err := json.Marshal(cached)
+	if err != nil {
+		logger.Log().Errorf("error marshalling cached response")
+		return nil
+	}
+
+	response := q.newResponse()
+	err = json.Unmarshal(s, &response)
+	if err != nil {
+		return nil
+	}
+
+	logger.WithFields(logrus.Fields{"method": q.Method()}).Debug("cached query")
+	return response
+}
+
+func predefinedResponse(q *Query) *jsonrpc.RPCResponse {
+	switch q.Method() {
+	case MethodStatus:
+		response := q.newResponse()
+		response.Result = getStatusResponse()
+		return response
+	default:
+		return nil
+	}
 }
 
 func isErrWalletNotLoaded(r *jsonrpc.RPCResponse) bool {

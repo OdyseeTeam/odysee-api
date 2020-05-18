@@ -7,6 +7,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"
 )
@@ -33,21 +34,21 @@ func TestLogSuccessfulQuery(t *testing.T) {
 	LogSuccessfulQuery("resolve", 0.025, map[string]string{"urls": "one"}, response)
 
 	require.Equal(t, 1, len(hook.Entries))
-	require.Equal(t, logrus.InfoLevel, hook.LastEntry().Level)
-	require.Equal(t, "resolve", hook.LastEntry().Data["method"])
-	require.Equal(t, map[string]string{"urls": "one"}, hook.LastEntry().Data["params"])
-	require.Equal(t, 0.025, hook.LastEntry().Data["duration"])
-	require.Equal(t, "call processed", hook.LastEntry().Message)
+	assert.Equal(t, logrus.InfoLevel, hook.LastEntry().Level)
+	assert.Equal(t, "resolve", hook.LastEntry().Data["method"])
+	assert.Equal(t, map[string]string{"urls": "one"}, hook.LastEntry().Data["params"])
+	assert.Equal(t, 0.025, hook.LastEntry().Data["duration"])
+	assert.Equal(t, "call processed", hook.LastEntry().Message)
 
 	LogSuccessfulQuery("account_balance", 0.025, nil, nil)
 
 	require.Equal(t, 2, len(hook.Entries))
-	require.Equal(t, logrus.InfoLevel, hook.LastEntry().Level)
-	require.Equal(t, "account_balance", hook.LastEntry().Data["method"])
-	require.Equal(t, nil, hook.LastEntry().Data["params"])
-	require.Equal(t, 0.025, hook.LastEntry().Data["duration"])
-	require.Nil(t, hook.LastEntry().Data["response"])
-	require.Equal(t, "call processed", hook.LastEntry().Message)
+	assert.Equal(t, logrus.InfoLevel, hook.LastEntry().Level)
+	assert.Equal(t, "account_balance", hook.LastEntry().Data["method"])
+	assert.Equal(t, nil, hook.LastEntry().Data["params"])
+	assert.Equal(t, 0.025, hook.LastEntry().Data["duration"])
+	assert.Nil(t, hook.LastEntry().Data["response"])
+	assert.Equal(t, "call processed", hook.LastEntry().Message)
 
 	hook.Reset()
 }
@@ -74,15 +75,15 @@ func TestLogSuccessfulQuery(t *testing.T) {
 //
 //	l.LogSuccessfulQuery("resolve", "sdk1.local", 123, 0.025, map[string]string{"urls": "one"}, response)
 //
-//	require.Equal(t, 1, len(hook.Entries))
-//	require.Equal(t, log.InfoLevel, hook.LastEntry().Level)
-//	require.Equal(t, "resolve", hook.LastEntry().Data["method"])
-//	require.Equal(t, "sdk1.local", hook.LastEntry().Data["endpoint"])
-//	require.Equal(t, 123, hook.LastEntry().Data["user_id"])
-//	require.Equal(t, map[string]string{"urls": "one"}, hook.LastEntry().Data["params"])
-//	require.Equal(t, 0.025, hook.LastEntry().Data["duration"])
-//	require.Equal(t, response, hook.LastEntry().Data["response"])
-//	require.Equal(t, "call processed", hook.LastEntry().Message)
+//	assert.Equal(t, 1, len(hook.Entries))
+//	assert.Equal(t, log.InfoLevel, hook.LastEntry().Level)
+//	assert.Equal(t, "resolve", hook.LastEntry().Data["method"])
+//	assert.Equal(t, "sdk1.local", hook.LastEntry().Data["endpoint"])
+//	assert.Equal(t, 123, hook.LastEntry().Data["user_id"])
+//	assert.Equal(t, map[string]string{"urls": "one"}, hook.LastEntry().Data["params"])
+//	assert.Equal(t, 0.025, hook.LastEntry().Data["duration"])
+//	assert.Equal(t, response, hook.LastEntry().Data["response"])
+//	assert.Equal(t, "call processed", hook.LastEntry().Message)
 //
 //	hook.Reset()
 //}
@@ -100,15 +101,15 @@ func TestLogSuccessfulQuery(t *testing.T) {
 //	queryParams := map[string]string{"param1": "value1"}
 //	l.LogFailedQuery("unknown_method", "sdk2.local", 566, 2.34, queryParams, response)
 //
-//	require.Equal(t, 1, len(hook.Entries))
-//	require.Equal(t, log.ErrorLevel, hook.LastEntry().Level)
-//	require.Equal(t, "unknown_method", hook.LastEntry().Data["method"])
-//	require.Equal(t, "sdk2.local", hook.LastEntry().Data["endpoint"])
-//	require.Equal(t, 566, hook.LastEntry().Data["user_id"])
-//	require.Equal(t, queryParams, hook.LastEntry().Data["params"])
-//	require.Equal(t, response, hook.LastEntry().Data["response"])
-//	require.Equal(t, 2.34, hook.LastEntry().Data["duration"])
-//	require.Equal(t, "error from the target endpoint", hook.LastEntry().Message)
+//	assert.Equal(t, 1, len(hook.Entries))
+//	assert.Equal(t, log.ErrorLevel, hook.LastEntry().Level)
+//	assert.Equal(t, "unknown_method", hook.LastEntry().Data["method"])
+//	assert.Equal(t, "sdk2.local", hook.LastEntry().Data["endpoint"])
+//	assert.Equal(t, 566, hook.LastEntry().Data["user_id"])
+//	assert.Equal(t, queryParams, hook.LastEntry().Data["params"])
+//	assert.Equal(t, response, hook.LastEntry().Data["response"])
+//	assert.Equal(t, 2.34, hook.LastEntry().Data["duration"])
+//	assert.Equal(t, "error from the target endpoint", hook.LastEntry().Message)
 //
 //	hook.Reset()
 //}
@@ -119,10 +120,10 @@ func TestModuleLoggerLogF(t *testing.T) {
 	l.WithFields(logrus.Fields{"number": 1}).Info("error!")
 
 	require.Equal(t, 1, len(hook.Entries))
-	require.Equal(t, logrus.InfoLevel, hook.LastEntry().Level)
-	require.Equal(t, 1, hook.LastEntry().Data["number"])
-	require.Equal(t, "storage", hook.LastEntry().Data["module"])
-	require.Equal(t, "error!", hook.LastEntry().Message)
+	assert.Equal(t, logrus.InfoLevel, hook.LastEntry().Level)
+	assert.Equal(t, 1, hook.LastEntry().Data["number"])
+	assert.Equal(t, "storage", hook.LastEntry().Data["module"])
+	assert.Equal(t, "error!", hook.LastEntry().Message)
 
 	hook.Reset()
 }
@@ -133,9 +134,9 @@ func TestModuleLoggerLog(t *testing.T) {
 	l.Log().Info("error!")
 
 	require.Equal(t, 1, len(hook.Entries))
-	require.Equal(t, logrus.InfoLevel, hook.LastEntry().Level)
-	require.Equal(t, "storage", hook.LastEntry().Data["module"])
-	require.Equal(t, "error!", hook.LastEntry().Message)
+	assert.Equal(t, logrus.InfoLevel, hook.LastEntry().Level)
+	assert.Equal(t, "storage", hook.LastEntry().Data["module"])
+	assert.Equal(t, "error!", hook.LastEntry().Message)
 
 	hook.Reset()
 }
@@ -148,8 +149,8 @@ func TestModuleLoggerMasksTokens(t *testing.T) {
 	defer config.RestoreOverridden()
 
 	l.WithFields(logrus.Fields{"token": "SecRetT0Ken", "email": "abc@abc.com"}).Info("something happened")
-	require.Equal(t, "abc@abc.com", hook.LastEntry().Data["email"])
-	require.Equal(t, valueMask, hook.LastEntry().Data["token"])
+	assert.Equal(t, "abc@abc.com", hook.LastEntry().Data["email"])
+	assert.Equal(t, valueMask, hook.LastEntry().Data["token"])
 
 	hook.Reset()
 }

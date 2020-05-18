@@ -18,7 +18,7 @@ var rootCmd = &cobra.Command{
 	Use:   "lbrytv",
 	Short: "lbrytv is a backend API server for lbry.tv frontend",
 	Run: func(cmd *cobra.Command, args []string) {
-		rand.Seed(time.Now().UTC().UnixNano()) // always seed random!
+		rand.Seed(time.Now().UnixNano()) // always seed random!
 		sdkRouter := sdkrouter.New(config.GetLbrynetServers())
 		go sdkRouter.WatchLoad()
 

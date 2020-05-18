@@ -5,18 +5,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
 	"github.com/lbryio/lbrytv/app/query/cache"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
+	"github.com/lbryio/lbrytv/app/wallet/tracker"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/status"
-
-	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/volatiletech/sqlboiler/boil"
 )
 
 var logger = monitor.NewModuleLogger("api")
@@ -31,16 +32,9 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 		w.Write([]byte("lbrytv api"))
 	})
 
-	memCache := cache.NewMemoryCache()
-	authProvider := auth.NewIAPIProvider(sdkRouter, config.GetInternalAPIHost())
-	middlewareStack := middlewares(
-		sdkrouter.Middleware(sdkRouter),
-		auth.Middleware(authProvider),
-		cache.Middleware(memCache),
-	)
-
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
-	v1Router.Use(middlewareStack)
+	v1Router.Use(defaultMiddlewares(sdkRouter, config.GetInternalAPIHost()))
+
 	v1Router.HandleFunc("/proxy", proxy.HandleCORS).Methods(http.MethodOptions)
 	v1Router.HandleFunc("/proxy", upHandler.Handle).MatcherFunc(upHandler.CanHandle)
 	v1Router.HandleFunc("/proxy", proxy.Handle)
@@ -52,11 +46,22 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	internalRouter.HandleFunc("/whoami", status.WhoAMI)
 }
 
+func defaultMiddlewares(rt *sdkrouter.Router, internalAPIHost string) mux.MiddlewareFunc {
+	authProvider := auth.NewIAPIProvider(rt, internalAPIHost)
+	memCache := cache.NewMemoryCache()
+	return middlewares(
+		sdkrouter.Middleware(rt),
+		auth.Middleware(authProvider),
+		tracker.Middleware(boil.GetDB()),
+		cache.Middleware(memCache),
+	)
+}
+
 // applies several middleware in order
 func middlewares(mws ...mux.MiddlewareFunc) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
-		for _, mw := range mws {
-			next = mw(next)
+		for i := len(mws) - 1; i >= 0; i-- {
+			next = mws[i](next) // apply in reveres to get the intuitive LIFO order
 		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			next.ServeHTTP(w, r)

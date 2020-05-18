@@ -92,7 +92,7 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 		lastUpdate = time.Now()
 	}
 
-	user, err := auth.FromRequest(req)
+	user, _ := auth.FromRequest(req)
 	if user != nil {
 		response["user"] = map[string]interface{}{
 			"user_id":      user.ID,
