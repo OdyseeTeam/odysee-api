@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/lbryio/lbrytv/internal/monitor"
@@ -73,6 +74,9 @@ func GeneratePrivateKey() error {
 }
 
 func (k *keyManager) createToken(streamID string, txid string, streamSize uint64, expfunc Expfunc) (string, error) {
+	if k.privKey == nil {
+		return "", fmt.Errorf("cannot create a token, private key is not initialized (call InitPrivateKey)")
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, &StreamToken{
 		streamID,
 		txid,
