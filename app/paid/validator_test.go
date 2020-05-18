@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCanPlayStream(t *testing.T) {
+func TestVerifyStreamAccess(t *testing.T) {
 	noError := func(t *testing.T, err error) { assert.NoError(t, err) }
 	type tokenMaker func() (string, error)
 	type errChecker func(*testing.T, error)
@@ -17,7 +17,6 @@ func TestCanPlayStream(t *testing.T) {
 	tests := []struct {
 		name       string
 		makeToken  tokenMaker
-		want       bool
 		checkError errChecker
 	}{
 		{
@@ -25,7 +24,6 @@ func TestCanPlayStream(t *testing.T) {
 			makeToken: func() (string, error) {
 				return CreateToken(testStreamID, testTxID, 120_000_000, ExpTenSecPer100MB)
 			},
-			want:       true,
 			checkError: noError,
 		},
 		{
@@ -34,7 +32,6 @@ func TestCanPlayStream(t *testing.T) {
 				expFunc := func(uint64) int64 { return 1 } //  Returns the 1st second of Unix epoch
 				return CreateToken(testStreamID, testTxID, 120_000_000, expFunc)
 			},
-			want:       false,
 			checkError: func(t *testing.T, err error) { assert.Regexp(t, "token is expired by \\d+h\\d+m\\d+s", err) },
 		},
 		{
@@ -44,7 +41,6 @@ func TestCanPlayStream(t *testing.T) {
 				otherKM := &keyManager{privKey: otherPkey}
 				return otherKM.createToken(testStreamID, testTxID, 120_000_000, ExpTenSecPer100MB)
 			},
-			want:       false,
 			checkError: func(t *testing.T, err error) { assert.EqualError(t, err, "crypto/rsa: verification error") },
 		},
 		{
@@ -52,7 +48,6 @@ func TestCanPlayStream(t *testing.T) {
 			makeToken: func() (string, error) {
 				return CreateToken("wrOngHaSh", testTxID, 120_000_000, ExpTenSecPer100MB)
 			},
-			want: false,
 			checkError: func(t *testing.T, err error) {
 				assert.EqualError(t, err, "stream mismatch: requested bea4d30a1868a00e98297cfe8cdefc1be6c141b54bea3b7c95b34a66786c22ab4e9f35ae19aa453b3630e76afbd24fe2, token valid for wrOngHaSh")
 			},
@@ -64,11 +59,8 @@ func TestCanPlayStream(t *testing.T) {
 			token, err := tt.makeToken()
 			require.NoError(t, err)
 
-			got, err := CanPlayStream(testStreamID, token)
+			err = VerifyStreamAccess(testStreamID, token)
 			tt.checkError(t, err)
-			if got != tt.want {
-				t.Errorf("CanPlayStream() = %v, want %v", got, tt.want)
-			}
 		})
 	}
 }
@@ -78,7 +70,7 @@ func BenchmarkParseToken(b *testing.B) {
 	require.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
-		if _, err := CanPlayStream(testStreamID, token); err != nil {
+		if err := VerifyStreamAccess(testStreamID, token); err != nil {
 			b.Fatal(err)
 		}
 	}

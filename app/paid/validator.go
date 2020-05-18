@@ -16,7 +16,7 @@ type pubKeyManager struct {
 
 var pubKM *pubKeyManager
 
-// InitPubKey should be called with pubkey url as an argument before CanPlayStream can be called
+// InitPubKey should be called with pubkey url as an argument before VerifyStreamAccess can be called
 func InitPubKey(rawKey []byte) error {
 	k := &pubKeyManager{}
 	k.loadFromBytes(rawKey)
@@ -24,16 +24,16 @@ func InitPubKey(rawKey []byte) error {
 	return nil
 }
 
-// CanPlayStream is the main entry point for players to validate paid media tokens
-func CanPlayStream(streamID string, stringToken string) (bool, error) {
+// VerifyStreamAccess is the main entry point for players to validate paid media tokens
+func VerifyStreamAccess(streamID string, stringToken string) error {
 	t, err := pubKM.ValidateToken(stringToken)
 	if err != nil {
-		return false, err
+		return err
 	}
 	if t.StreamID != streamID {
-		return false, fmt.Errorf("stream mismatch: requested %v, token valid for %v", streamID, t.StreamID)
+		return fmt.Errorf("stream mismatch: requested %v, token valid for %v", streamID, t.StreamID)
 	}
-	return true, nil
+	return nil
 }
 
 func (k *pubKeyManager) loadFromBytes(b []byte) error {
