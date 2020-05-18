@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/lbryio/lbrytv/app/auth"
+	"github.com/lbryio/lbrytv/app/paid"
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
 	"github.com/lbryio/lbrytv/app/query/cache"
@@ -40,6 +41,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	v1Router.HandleFunc("/proxy", proxy.Handle)
 	v1Router.HandleFunc("/metric/ui", metrics.TrackUIMetric).Methods(http.MethodPost)
 	v1Router.HandleFunc("/status", status.GetStatus)
+	v1Router.HandleFunc("/paid/pubkey", paid.HandlePublicKeyRequest)
 
 	internalRouter := r.PathPrefix("/internal").Subrouter()
 	internalRouter.Handle("/metrics", promhttp.Handler())
