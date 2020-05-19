@@ -1,13 +1,17 @@
 package wallet
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
+	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/models"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
@@ -45,28 +49,50 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 	log.Data["has_email"] = remoteUser.HasVerifiedEmail
 	log.Debugf("user authenticated")
 
-	localUser, err := getOrCreateLocalUser(remoteUser.ID, log)
-	if err != nil {
-		return nil, err
-	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
 
-	if localUser.LbrynetServerID.IsZero() {
-		err := assignSDKServerToUser(localUser, rt.LeastLoaded(), log)
+	var localUser *models.User
+	err = tx(ctx, storage.Conn.DB.DB, func(tx *sql.Tx) error {
+		localUser, err = getOrCreateLocalUser(tx, remoteUser.ID, log)
 		if err != nil {
-			return nil, err
+			return err
 		}
-	}
 
-	return localUser, nil
+		if localUser.LbrynetServerID.IsZero() {
+			err := assignSDKServerToUser(tx, localUser, rt.LeastLoaded(), log)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	return localUser, err
 }
 
-func getOrCreateLocalUser(remoteUserID int, log *logrus.Entry) (*models.User, error) {
-	localUser, err := getDBUser(remoteUserID)
+func tx(ctx context.Context, db *sql.DB, fn func(tx *sql.Tx) error) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	err = fn(tx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func getOrCreateLocalUser(exec boil.Executor, remoteUserID int, log *logrus.Entry) (*models.User, error) {
+	localUser, err := getDBUser(exec, remoteUserID)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	} else if err == sql.ErrNoRows {
 		log.Infof("user not found in the database, creating")
-		localUser, err = createDBUser(remoteUserID)
+		localUser, err = createDBUser(exec, remoteUserID)
 		if err != nil {
 			return nil, err
 		}
@@ -78,9 +104,38 @@ func getOrCreateLocalUser(remoteUserID int, log *logrus.Entry) (*models.User, er
 	return localUser, nil
 }
 
+func createDBUser(exec boil.Executor, id int) (*models.User, error) {
+	log := logger.WithFields(logrus.Fields{"id": id})
+
+	u := &models.User{ID: id}
+	err := u.Insert(exec, boil.Infer())
+	if err == nil {
+		metrics.LbrytvNewUsers.Inc()
+		return u, nil
+	}
+
+	// Check if we encountered a primary key violation, it would mean another routine
+	// fired from another request has managed to create a user before us so we should try retrieving it again.
+	var pgErr *pq.Error
+	if errors.As(err, &pgErr) && pgErr.Code == pgUniqueConstraintViolation && pgErr.Column == "users_pkey" {
+		log.Debug("user creation conflict, trying to retrieve the local user again")
+		return getDBUser(exec, id)
+	}
+
+	log.Error("unknown error encountered while creating user: ", err)
+	return nil, err
+}
+
+func getDBUser(exec boil.Executor, id int) (*models.User, error) {
+	return models.Users(
+		models.UserWhere.ID.EQ(id),
+		qm.Load(models.UserRels.LbrynetServer),
+	).One(exec)
+}
+
 // assignSDKServerToUser permanently assigns an sdk to a user, and creates a wallet on that sdk for that user.
 // it ensures that the assigned sdk is set on user.R.LbrynetServer, so it can be accessed externally
-func assignSDKServerToUser(user *models.User, server *models.LbrynetServer, log *logrus.Entry) error {
+func assignSDKServerToUser(exec boil.Executor, user *models.User, server *models.LbrynetServer, log *logrus.Entry) error {
 	if user.ID == 0 {
 		return errors.Err("user must already exist in db")
 	}
@@ -105,7 +160,7 @@ func assignSDKServerToUser(user *models.User, server *models.LbrynetServer, log 
 		models.UserColumns.ID,
 		models.UserColumns.LbrynetServerID,
 	)
-	result, err := boil.GetDB().Exec(q, server.ID, user.ID)
+	result, err := exec.Exec(q, server.ID, user.ID)
 	if err != nil {
 		return errors.Err(err)
 	}
@@ -132,7 +187,7 @@ func assignSDKServerToUser(user *models.User, server *models.LbrynetServer, log 
 	if user.R == nil {
 		user.R = user.R.NewStruct()
 	}
-	srv, err := user.LbrynetServer().OneG()
+	srv, err := user.LbrynetServer().One(exec)
 	if err != nil {
 		return errors.Err(err)
 	}
@@ -144,34 +199,6 @@ func assignSDKServerToUser(user *models.User, server *models.LbrynetServer, log 
 	}
 
 	return nil
-}
-
-func createDBUser(id int) (*models.User, error) {
-	log := logger.WithFields(logrus.Fields{"id": id})
-
-	u := &models.User{ID: id}
-	err := u.InsertG(boil.Infer())
-	if err == nil {
-		return u, nil
-	}
-
-	// Check if we encountered a primary key violation, it would mean another routine
-	// fired from another request has managed to create a user before us so we should try retrieving it again.
-	var pgErr *pq.Error
-	if errors.As(err, &pgErr) && pgErr.Code == pgUniqueConstraintViolation && pgErr.Column == "users_pkey" {
-		log.Debug("user creation conflict, trying to retrieve the local user again")
-		return getDBUser(id)
-	}
-
-	log.Error("unknown error encountered while creating user: ", err)
-	return nil, err
-}
-
-func getDBUser(id int) (*models.User, error) {
-	return models.Users(
-		models.UserWhere.ID.EQ(id),
-		qm.Load(models.UserRels.LbrynetServer),
-	).OneG()
 }
 
 // Create creates a wallet on an sdk that can be immediately used in subsequent commands.

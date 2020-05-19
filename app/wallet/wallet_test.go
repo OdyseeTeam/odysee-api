@@ -110,6 +110,27 @@ func TestGetUserWithWallet_NewUser(t *testing.T) {
 	require.Equal(t, u.LbrynetServerID.Int, sdk2.ID)
 }
 
+func TestGetUserWithWallet_NewUserSDKError(t *testing.T) {
+	setupDBTables()
+	srv := test.RandServerAddress(t)
+	sdk := &models.LbrynetServer{
+		Name:    "failing",
+		Address: "http://failure.test",
+	}
+	defer func() { sdk.DeleteG() }()
+	rt := sdkrouter.NewWithServers(sdk)
+
+	url, cleanup := dummyAPI(srv)
+	defer cleanup()
+
+	_, err := GetUserWithSDKServer(rt, url, "abc", "")
+	assert.Regexp(t, `.+dial tcp: lookup failure.test`, err.Error())
+
+	count, err := models.Users(models.UserWhere.ID.EQ(dummyUserID)).CountG()
+	assert.NoError(t, err)
+	assert.EqualValues(t, 0, count)
+}
+
 func TestGetUserWithWallet_NonexistentUser(t *testing.T) {
 	setupDBTables()
 
@@ -136,8 +157,8 @@ func TestGetUserWithWallet_ExistingUser(t *testing.T) {
 	defer cleanup()
 
 	u, err := GetUserWithSDKServer(rt, url, "abc", "")
-	require.NoError(t, err)
-	require.NotNil(t, u)
+	assert.NoError(t, err)
+	assert.NotNil(t, u)
 	assert.EqualValues(t, dummyUserID, u.ID)
 
 	count, err := models.Users().CountG()
@@ -170,7 +191,7 @@ func TestGetUserWithWallet_ExistingUserWithoutSDKGetsAssignedOneOnRetrieve(t *te
 	defer func() { srv.DeleteG() }()
 
 	rt := sdkrouter.NewWithServers(srv)
-	u, err := createDBUser(userID)
+	u, err := createDBUser(storage.Conn.DB, userID)
 	require.NoError(t, err)
 	require.NotNil(t, u)
 
@@ -206,7 +227,7 @@ func TestAssignSDKServerToUser_SDKAlreadyAssigned(t *testing.T) {
 	u.LbrynetServerID.SetValid(55)
 	rt := sdkrouter.New(config.GetLbrynetServers())
 	l := logrus.NewEntry(logrus.New())
-	err := assignSDKServerToUser(u, rt.RandomServer(), l)
+	err := assignSDKServerToUser(boil.GetDB(), u, rt.RandomServer(), l)
 	assert.EqualError(t, err, "user already has an sdk assigned")
 }
 
@@ -235,14 +256,14 @@ func TestAssignSDKServerToUser_ConcurrentUpdates(t *testing.T) {
 	}()
 
 	// assign one sdk
-	err = assignSDKServerToUser(u, s1, logger.Log())
+	err = assignSDKServerToUser(boil.GetDB(), u, s1, logger.Log())
 	require.NoError(t, err)
 	assert.True(t, u.LbrynetServerID.Valid)
 	assert.Equal(t, s1.ID, u.LbrynetServerID.Int)
 
 	// zero out assignment temporarily, and assign a different one
 	u.LbrynetServerID = null.Int{}
-	err = assignSDKServerToUser(u, s2, logger.Log())
+	err = assignSDKServerToUser(boil.GetDB(), u, s2, logger.Log())
 
 	// check that it actually got reassigned the first one instead of the new one
 	require.NoError(t, err)

@@ -147,4 +147,11 @@ var (
 		},
 		[]string{"path"},
 	)
+
+	LbrytvNewUsers = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: nsLbrytv,
+		Subsystem: "users",
+		Name:      "count",
+		Help:      "Total number of new users created in the database",
+	})
 )
