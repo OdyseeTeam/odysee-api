@@ -65,8 +65,6 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 				return err
 			}
 		}
-
-		metrics.LbrytvNewUsers.Inc()
 		return nil
 	})
 
@@ -112,6 +110,7 @@ func createDBUser(exec boil.Executor, id int) (*models.User, error) {
 	u := &models.User{ID: id}
 	err := u.Insert(exec, boil.Infer())
 	if err == nil {
+		metrics.LbrytvNewUsers.Inc()
 		return u, nil
 	}
 
