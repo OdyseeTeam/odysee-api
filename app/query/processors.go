@@ -109,7 +109,7 @@ func responseProcessorGet(caller *Caller, query *Query, response *jsonrpc.RPCRes
 }
 
 func checkReceipt(obj map[string]interface{}) *PurchaseReceipt {
-	receipt := &PurchaseReceipt{}
+	var receipt *PurchaseReceipt
 	err := ljsonrpc.Decode(obj["purchase_receipt"], &receipt)
 	if err != nil {
 		logger.Log().Debug("error decoding receipt:", err)

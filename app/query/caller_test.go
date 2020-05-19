@@ -2,6 +2,7 @@ package query
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -482,6 +483,7 @@ func TestCaller_GetPaidPurchasedMissingPurchase(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/paid/"+claimName+"/"+claimID+"/"+token, getResponse.StreamingURL)
 	assert.NotNil(t, getResponse.PurchaseReceipt)
+	fmt.Println(getResponse.PurchaseReceipt)
 	assert.EqualValues(t, "250.0", getResponse.PurchaseReceipt.(map[string]interface{})["amount"])
 }
 
