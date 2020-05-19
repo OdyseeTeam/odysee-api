@@ -52,6 +52,11 @@ func responseProcessorGet(caller *Caller, query *Query, response *jsonrpc.RPCRes
 		return err
 	}
 
+	// If this is a lbrynet error response, don't attempt to process it
+	if basicGetResp.ClaimName == "" {
+		return nil
+	}
+
 	stream := basicGetResp.Metadata.GetStream()
 	if stream.Fee != nil && stream.Fee.Amount > 0 {
 		if receipt = checkReceipt(result); receipt == nil {
@@ -104,14 +109,7 @@ func responseProcessorGet(caller *Caller, query *Query, response *jsonrpc.RPCRes
 }
 
 func checkReceipt(obj map[string]interface{}) *PurchaseReceipt {
-	// var txid string
-	// if receipt, ok := obj["purchase_receipt"]; ok {
-	// 	if receiptMap, ok := receipt.(map[string]interface{}); ok {
-	// 		txid = receiptMap["txid"].(string)
-	// 	}
-	// }
-	// return txid
-	var receipt *PurchaseReceipt
+	receipt := &PurchaseReceipt{}
 	err := ljsonrpc.Decode(obj["purchase_receipt"], &receipt)
 	if err != nil {
 		logger.Log().Debug("error decoding receipt:", err)
