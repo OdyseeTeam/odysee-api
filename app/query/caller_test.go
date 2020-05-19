@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/lbrytv/app/paid"
+	"github.com/lbryio/lbrytv-player/pkg/paid"
 	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"

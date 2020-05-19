@@ -3,7 +3,7 @@ package query
 import (
 	"fmt"
 
-	"github.com/lbryio/lbrytv/app/paid"
+	"github.com/lbryio/lbrytv-player/pkg/paid"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/errors"
 

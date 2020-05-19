@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/lbryio/lbrytv-player/pkg/paid"
 	"github.com/lbryio/lbrytv/app/auth"
-	"github.com/lbryio/lbrytv/app/paid"
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/publish"
 	"github.com/lbryio/lbrytv/app/query/cache"
