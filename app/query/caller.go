@@ -90,7 +90,7 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 		return nil, rpcerrors.NewSDKError(err)
 	}
 
-	err = postProcessResponse(res, q.Request)
+	err = postProcessResponse(c, q, res)
 	if err != nil {
 		return res, rpcerrors.NewSDKError(err)
 	}
