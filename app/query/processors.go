@@ -3,6 +3,7 @@ package query
 import (
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/lbryio/lbrytv-player/pkg/paid"
 	"github.com/lbryio/lbrytv/config"
@@ -73,6 +74,11 @@ func queryProcessorGet(method string, caller *Caller, query *Query) (*jsonrpc.RP
 		} else {
 			return nil, fmt.Errorf("purchase error: %v", purchaseRes.Error.Message)
 		}
+	} else {
+		// Assuming the stream is of a paid variety and we have paid for the stream
+		isPaidStream = true
+		// This is needed so changes can propagate for the subsequent resolve
+		time.Sleep(1 * time.Second)
 	}
 
 	resolveResponse := ljsonrpc.ResolveResponse{}
