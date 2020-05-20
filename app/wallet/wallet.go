@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/internal/errors"
@@ -49,8 +48,9 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 	log.Data["has_email"] = remoteUser.HasVerifiedEmail
 	log.Debugf("user authenticated")
 
-	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancelFn()
+	//ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	//defer cancelFn()
+	ctx := context.Background() // seeing if this fixes https://sentry.lbry.tech/organizations/lbry/issues/2699/
 
 	var localUser *models.User
 	err = tx(ctx, storage.Conn.DB.DB, func(tx *sql.Tx) error {
