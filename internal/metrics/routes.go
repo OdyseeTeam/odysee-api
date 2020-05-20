@@ -32,11 +32,11 @@ func TrackUIMetric(w http.ResponseWriter, req *http.Request) {
 		resp["error"] = "Invalid metric name"
 	}
 
-	if errMsg, ok := resp["error"]; ok {
-		monitor.ErrorToSentry(errors.Err(errMsg))
-	}
-
 	w.WriteHeader(code)
 	respByte, _ := json.Marshal(&resp)
 	w.Write(respByte)
+
+	if errMsg, ok := resp["error"]; ok {
+		monitor.ErrorToSentry(errors.Err(errMsg), map[string]string{"response": string(respByte)})
+	}
 }
