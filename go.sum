@@ -397,6 +397,10 @@ github.com/lbryio/lbry.go v1.1.2/go.mod h1:JtyI30bU51rm0LZ/po3mQuzf++14OWb6kR/6m
 github.com/lbryio/lbry.go/v2 v2.4.5/go.mod h1:if3y+rnBnsZN4aYsWF/kHGpCta8kmLFflqRnMkKlX08=
 github.com/lbryio/lbry.go/v2 v2.6.1-0.20200514165635-1fa1df36d407 h1:9TMwF4TeJ50SEKN4IRhh5zsPqltuLTzbmhwFqPstGKM=
 github.com/lbryio/lbry.go/v2 v2.6.1-0.20200514165635-1fa1df36d407/go.mod h1:LgFKEpZzJE72DVgSXXfg+2IGOhrC9Lzj6eLma18iNz8=
+github.com/lbryio/lbry.go/v2 v2.6.1-0.20200520171819-ccef4d8e4d76 h1:IDVt0S5t080gYb+XP9+cWt9+BuYKPSe1TP2T9zpC6HQ=
+github.com/lbryio/lbry.go/v2 v2.6.1-0.20200520171819-ccef4d8e4d76/go.mod h1:LgFKEpZzJE72DVgSXXfg+2IGOhrC9Lzj6eLma18iNz8=
+github.com/lbryio/lbry.go/v2 v2.6.1-0.20200520181153-043d873efeac h1:HzVSlQVfdt9QHvtoq17VVZWlWkzC7fzwTVhEsgkNvu8=
+github.com/lbryio/lbry.go/v2 v2.6.1-0.20200520181153-043d873efeac/go.mod h1:LgFKEpZzJE72DVgSXXfg+2IGOhrC9Lzj6eLma18iNz8=
 github.com/lbryio/lbryschema.go v0.0.0-20190428231007-c54836bca002/go.mod h1:dAzPCBj3CKKWBGYBZxK6tKBP5SCgY2tqd9SnQd/OyKo=
 github.com/lbryio/lbryschema.go v0.0.0-20190602173230-6d2f69a36f46 h1:LemfR+rMxhf7nnOrzy2HqS7Me7SZ5gEwOcNFzKC8ySQ=
 github.com/lbryio/lbryschema.go v0.0.0-20190602173230-6d2f69a36f46/go.mod h1:dAzPCBj3CKKWBGYBZxK6tKBP5SCgY2tqd9SnQd/OyKo=

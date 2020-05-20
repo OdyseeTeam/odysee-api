@@ -10,7 +10,7 @@ require (
 	github.com/jinzhu/gorm v1.9.9
 	github.com/jmoiron/sqlx v0.0.0-20170430194603-d9bd385d68c0
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
-	github.com/lbryio/lbry.go/v2 v2.6.1-0.20200514165635-1fa1df36d407
+	github.com/lbryio/lbry.go/v2 v2.6.1-0.20200520171819-ccef4d8e4d76
 	github.com/lbryio/lbryschema.go v0.0.0-20190602173230-6d2f69a36f46
 	github.com/lbryio/lbrytv-player v0.3.0
 	github.com/lbryio/reflector.go v1.1.3-0.20200403124949-9c1b023de685

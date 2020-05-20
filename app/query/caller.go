@@ -81,16 +81,26 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 		return pr, nil
 	}
 
+	// This is for external code to call
 	if c.Preprocessor != nil {
 		c.Preprocessor(q)
 	}
 
-	res, err := c.callQueryWithRetry(q)
+	method := q.Method()
+
+	res, err := preProcessQuery(method, c, q)
 	if err != nil {
 		return nil, rpcerrors.NewSDKError(err)
 	}
 
-	err = postProcessResponse(c, q, res)
+	if res == nil {
+		res, err = c.callQueryWithRetry(q)
+		if err != nil {
+			return nil, rpcerrors.NewSDKError(err)
+		}
+	}
+
+	err = postProcessResponse(method, c, q, res)
 	if err != nil {
 		return nil, rpcerrors.NewSDKError(err)
 	}
