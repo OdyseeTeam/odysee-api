@@ -1,7 +1,9 @@
 package query
 
 import (
+	"errors"
 	"fmt"
+	"regexp"
 
 	"github.com/lbryio/lbrytv-player/pkg/paid"
 	"github.com/lbryio/lbrytv/config"
@@ -10,6 +12,8 @@ import (
 
 	"github.com/ybbus/jsonrpc"
 )
+
+var reAlreadyPurchased = regexp.MustCompile(`(?i)You already have a purchase for claim_id`)
 
 type PurchaseReceipt struct {
 	Address       string `json:"file_name"`
@@ -26,7 +30,8 @@ type PurchaseReceipt struct {
 func postProcessResponse(caller *Caller, query *Query, response *jsonrpc.RPCResponse) error {
 	switch query.Method() {
 	case MethodGet:
-		return responseProcessorGet(caller, query, response)
+		res := responseProcessorGet(caller, query, response)
+		return res
 	default:
 		return nil
 	}
@@ -58,40 +63,58 @@ func responseProcessorGet(caller *Caller, query *Query, response *jsonrpc.RPCRes
 	}
 
 	stream := basicGetResp.Metadata.GetStream()
-	if stream.Fee != nil && stream.Fee.Amount > 0 {
-		if receipt = checkReceipt(result); receipt == nil {
-			url := query.ParamsAsMap()["uri"].(string)
-			resReq := jsonrpc.NewRequest(
-				MethodResolve,
-				map[string]interface{}{
-					"urls":                     url,
-					"include_purchase_receipt": true,
-				},
-			)
+	isPaidStream := stream.Fee != nil && stream.Fee.Amount > 0
+	if isPaidStream {
+		purchaseQuery, err := NewQuery(jsonrpc.NewRequest(
+			MethodPurchaseCreate,
+			map[string]interface{}{
+				"url":      url,
+				"blocking": true,
+			},
+		), query.WalletID)
+		if err != nil {
+			return err
+		}
+		purchaseRes, err := caller.callQueryWithRetry(purchaseQuery)
+		if err != nil {
+			return err
+		}
+		if purchaseRes.Error != nil && !reAlreadyPurchased.MatchString(purchaseRes.Error.Message) {
+			return fmt.Errorf("purchase error: %v", purchaseRes.Error.Message)
+		}
 
-			resQuery, err := NewQuery(resReq, query.WalletID)
-			if err != nil {
-				return err
-			}
+		url := query.ParamsAsMap()["uri"].(string)
 
-			log.Debug("receipt not found on a paid stream, trying to resolve", resQuery.Params())
-			resRespRaw, err := caller.callQueryWithRetry(resQuery)
-			if err != nil {
-				return err
-			}
+		resQuery, err := NewQuery(jsonrpc.NewRequest(
+			MethodResolve,
+			map[string]interface{}{
+				"urls":                     url,
+				"include_purchase_receipt": true,
+			},
+		), query.WalletID)
+		if err != nil {
+			return err
+		}
 
-			log.Debugf("got resolve response")
-			resResult := map[string]interface{}{}
-			err = resRespRaw.GetObject(&resResult)
-			if err != nil {
-				log.Debug("error parsing resolve response:", err)
-				return err
+		log.Debug("receipt not found on a paid stream, trying to resolve")
+		resRespRaw, err := caller.callQueryWithRetry(resQuery)
+		if err != nil {
+			return err
+		}
+
+		resResult := map[string]interface{}{}
+		err = resRespRaw.GetObject(&resResult)
+		if err != nil {
+			log.Debug("error parsing resolve response:", err)
+			return err
+		}
+		if resEntry, ok := resResult[url]; ok {
+			receipt = checkReceipt(resEntry.(map[string]interface{}))
+			if receipt != nil {
+				log.Debugf("found receipt in resolve")
 			}
-			if resEntry, ok := resResult[url]; ok {
-				receipt = checkReceipt(resEntry.(map[string]interface{}))
-			} else {
-				log.Debug("couldn't retrieve resolve response entry", resRespRaw)
-			}
+		} else {
+			log.Debug("couldn't retrieve resolve response entry")
 		}
 	}
 
@@ -102,12 +125,16 @@ func responseProcessorGet(caller *Caller, query *Query, response *jsonrpc.RPCRes
 			return err
 		}
 		urlSuffix = fmt.Sprintf("paid/%s/%s/%s", basicGetResp.ClaimName, basicGetResp.ClaimID, token)
-	} else {
+		result["purchase_receipt"] = receipt
+	} else if !isPaidStream {
 		urlSuffix = fmt.Sprintf("free/%s/%s", basicGetResp.ClaimName, basicGetResp.ClaimID)
+	} else {
+		log.Error("purchase receipt missing")
+		return errors.New("purchase receipt missing on a paid stream")
 	}
 
 	result["streaming_url"] = config.GetConfig().Viper.GetString("BaseContentURL") + urlSuffix
-	result["purchase_receipt"] = receipt
+
 	response.Result = result
 	return nil
 }

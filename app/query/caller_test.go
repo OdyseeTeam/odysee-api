@@ -424,7 +424,7 @@ func TestCaller_GetPaidPurchased(t *testing.T) {
 	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v2/streams/")
 	defer config.RestoreOverridden()
 
-	uri := "lbry://@specialoperationstest#3/iOS-13-AdobeXD#9"
+	uri := "Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis#d66f8ba85c85ca48daba9183bd349307fe30cb43"
 	txid := "ff990688df370072f408e2db9d217d2cf331d92ac594d5e6e8391143e9d38160"
 	claimName := "Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis"
 	claimID := "d66f8ba85c85ca48daba9183bd349307fe30cb43"
@@ -433,7 +433,11 @@ func TestCaller_GetPaidPurchased(t *testing.T) {
 	srv := test.MockHTTPServer(nil)
 	defer srv.Close()
 
-	srv.QueueResponses(getResponseWithPurchase)
+	srv.QueueResponses(
+		getResponseWithPurchase,
+		purchaseCreateResponse,
+		resolveResponseWithPurchase,
+	)
 
 	err := paid.GeneratePrivateKey()
 	require.NoError(t, err)
@@ -443,8 +447,9 @@ func TestCaller_GetPaidPurchased(t *testing.T) {
 
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
 	resp, err := NewCaller(srv.URL, dummyUserID).Call(request)
-
+	require.NoError(t, err)
 	require.Nil(t, resp.Error)
+
 	getResponse := &ljsonrpc.GetResponse{}
 	err = resp.GetObject(&getResponse)
 	require.NoError(t, err)
@@ -467,7 +472,11 @@ func TestCaller_GetPaidPurchasedMissingPurchase(t *testing.T) {
 	srv := test.MockHTTPServer(reqChan)
 	defer srv.Close()
 
-	srv.QueueResponses(getResponseWithMissingPurchase, resolveResponseWithPurchase)
+	srv.QueueResponses(
+		getResponseWithMissingPurchase,
+		purchaseCreateResponse,
+		resolveResponseWithPurchase,
+	)
 
 	err := paid.GeneratePrivateKey()
 	require.NoError(t, err)
@@ -482,6 +491,18 @@ func TestCaller_GetPaidPurchasedMissingPurchase(t *testing.T) {
 	<-reqChan
 	receivedRequest := <-reqChan
 	expectedRequest := test.ReqToStr(t, &jsonrpc.RPCRequest{
+		Method: MethodPurchaseCreate,
+		Params: map[string]interface{}{
+			"wallet_id": sdkrouter.WalletID(dummyUserID),
+			"url":       uri,
+			"blocking":  true,
+		},
+		JSONRPC: "2.0",
+	})
+	assert.EqualValues(t, expectedRequest, receivedRequest.Body)
+
+	receivedRequest = <-reqChan
+	expectedRequest = test.ReqToStr(t, &jsonrpc.RPCRequest{
 		Method: MethodResolve,
 		Params: map[string]interface{}{
 			"wallet_id":                sdkrouter.WalletID(dummyUserID),
@@ -510,17 +531,14 @@ func TestCaller_GetPaidPurchasedMissingEverything(t *testing.T) {
 	srv := test.MockHTTPServer(nil)
 	defer srv.Close()
 
-	srv.QueueResponses(getResponseWithMissingPurchase, resolveResponseWithoutPurchase)
-
+	srv.QueueResponses(
+		getResponseWithMissingPurchase,
+		purchaseCreateResponse,
+		resolveResponseWithoutPurchase,
+	)
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
-	resp, err := NewCaller(srv.URL, dummyUserID).Call(request)
-	require.Nil(t, resp.Error)
-
-	getResponse := &ljsonrpc.GetResponse{}
-	err = resp.GetObject(&getResponse)
-	require.NoError(t, err)
-	assert.Equal(t, "", getResponse.StreamingURL)
-	assert.Nil(t, getResponse.PurchaseReceipt)
+	_, err := NewCaller(srv.URL, dummyUserID).Call(request)
+	require.EqualError(t, err, "purchase receipt missing on a paid stream")
 }
 
 func TestCaller_GetFree(t *testing.T) {
@@ -532,69 +550,7 @@ func TestCaller_GetFree(t *testing.T) {
 	dummyUserID := 123321
 	srv := test.MockHTTPServer(nil)
 
-	srv.NextResponse <- `
-	{
-		"id": 0,
-		"jsonrpc": "2.0",
-		"result":
-		{
-			"added_on": 1589469363,
-			"blobs_completed": 0,
-			"blobs_in_stream": 76,
-			"blobs_remaining": 76,
-			"channel_claim_id": null,
-			"channel_name": null,
-			"claim_id": "19b9c243bea0c45175e6a6027911abbad53e983e",
-			"claim_name": "what",
-			"completed": false,
-			"confirmations": 377229,
-			"content_fee": null,
-			"download_directory": null,
-			"download_path": null,
-			"file_name": null,
-			"height": 387055,
-			"is_fully_reflected": false,
-			"key": "0edc1705489d7a2b2bcad3fea7e5ce92",
-			"metadata": {
-			  "author": "Samuel Bryan",
-			  "description": "What is LBRY? An introduction with Alex Tabarrok",
-			  "languages": [
-				"en"
-			  ],
-			  "license": "LBRY inc",
-			  "source": {
-				"media_type": "video/mp4",
-				"sd_hash": "d5169241150022f996fa7cd6a9a1c421937276a3275eb912790bd07ba7aec1fac5fd45431d226b8fb402691e79aeb24b"
-			  },
-			  "stream_type": "video",
-			  "thumbnail": {
-				"url": "https://s3.amazonaws.com/files.lbry.io/logo.png"
-			  },
-			  "title": "What is LBRY?"
-			},
-			"mime_type": "video/mp4",
-			"nout": 0,
-			"outpoint": "555ef2de37698f1c1d36d1d95bdf7b18d51483c76765a2ca63ff45bae5df65e9:0",
-			"points_paid": 0.0,
-			"protobuf": "000a570a3d2209766964656f2f6d70343230d5169241150022f996fa7cd6a9a1c421937276a3275eb912790bd07ba7aec1fac5fd45431d226b8fb402691e79aeb24b120c53616d75656c20427279616e1a084c42525920696e63420d57686174206973204c4252593f4a3057686174206973204c4252593f20416e20696e74726f64756374696f6e207769746820416c6578205461626172726f6b52312a2f68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f66696c65732e6c6272792e696f2f6c6f676f2e706e6762020801",
-			"purchase_receipt": null,
-			"reflector_progress": 0,
-			"sd_hash": "d5169241150022f996fa7cd6a9a1c421937276a3275eb912790bd07ba7aec1fac5fd45431d226b8fb402691e79aeb24b",
-			"status": "running",
-			"stopped": false,
-			"stream_hash": "9f41e37b1ea706d1b431a65f634b89c5aadefb106280da3661e4d565d47bc938a345755cafb2af807bcfc9fbde3306e3",
-			"stream_name": "LBRY100.mp4",
-			"streaming_url": "http://localhost:5280/stream/d5169241150022f996fa7cd6a9a1c421937276a3275eb912790bd07ba7aec1fac5fd45431d226b8fb402691e79aeb24b",
-			"suggested_file_name": "LBRY100.mp4",
-			"timestamp": 1529028062,
-			"total_bytes": 158433829,
-			"total_bytes_lower_bound": 158433813,
-			"txid": "555ef2de37698f1c1d36d1d95bdf7b18d51483c76765a2ca63ff45bae5df65e9",
-			"uploading_to_reflector": false,
-			"written_bytes": 0
-		  }
-	}
-	`
+	srv.NextResponse <- getResponseFree
 
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
 	resp, err := NewCaller(srv.URL, dummyUserID).Call(request)
@@ -606,6 +562,70 @@ func TestCaller_GetFree(t *testing.T) {
 
 	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/free/what/19b9c243bea0c45175e6a6027911abbad53e983e", getResponse.StreamingURL)
 }
+
+var getResponseFree = `
+{
+	"id": 0,
+	"jsonrpc": "2.0",
+	"result":
+	{
+		"added_on": 1589469363,
+		"blobs_completed": 0,
+		"blobs_in_stream": 76,
+		"blobs_remaining": 76,
+		"channel_claim_id": null,
+		"channel_name": null,
+		"claim_id": "19b9c243bea0c45175e6a6027911abbad53e983e",
+		"claim_name": "what",
+		"completed": false,
+		"confirmations": 377229,
+		"content_fee": null,
+		"download_directory": null,
+		"download_path": null,
+		"file_name": null,
+		"height": 387055,
+		"is_fully_reflected": false,
+		"key": "0edc1705489d7a2b2bcad3fea7e5ce92",
+		"metadata": {
+			"author": "Samuel Bryan",
+			"description": "What is LBRY? An introduction with Alex Tabarrok",
+			"languages": [
+			"en"
+			],
+			"license": "LBRY inc",
+			"source": {
+			"media_type": "video/mp4",
+			"sd_hash": "d5169241150022f996fa7cd6a9a1c421937276a3275eb912790bd07ba7aec1fac5fd45431d226b8fb402691e79aeb24b"
+			},
+			"stream_type": "video",
+			"thumbnail": {
+			"url": "https://s3.amazonaws.com/files.lbry.io/logo.png"
+			},
+			"title": "What is LBRY?"
+		},
+		"mime_type": "video/mp4",
+		"nout": 0,
+		"outpoint": "555ef2de37698f1c1d36d1d95bdf7b18d51483c76765a2ca63ff45bae5df65e9:0",
+		"points_paid": 0.0,
+		"protobuf": "000a570a3d2209766964656f2f6d70343230d5169241150022f996fa7cd6a9a1c421937276a3275eb912790bd07ba7aec1fac5fd45431d226b8fb402691e79aeb24b120c53616d75656c20427279616e1a084c42525920696e63420d57686174206973204c4252593f4a3057686174206973204c4252593f20416e20696e74726f64756374696f6e207769746820416c6578205461626172726f6b52312a2f68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f66696c65732e6c6272792e696f2f6c6f676f2e706e6762020801",
+		"purchase_receipt": null,
+		"reflector_progress": 0,
+		"sd_hash": "d5169241150022f996fa7cd6a9a1c421937276a3275eb912790bd07ba7aec1fac5fd45431d226b8fb402691e79aeb24b",
+		"status": "running",
+		"stopped": false,
+		"stream_hash": "9f41e37b1ea706d1b431a65f634b89c5aadefb106280da3661e4d565d47bc938a345755cafb2af807bcfc9fbde3306e3",
+		"stream_name": "LBRY100.mp4",
+		"streaming_url": "http://localhost:5280/stream/d5169241150022f996fa7cd6a9a1c421937276a3275eb912790bd07ba7aec1fac5fd45431d226b8fb402691e79aeb24b",
+		"suggested_file_name": "LBRY100.mp4",
+		"timestamp": 1529028062,
+		"total_bytes": 158433829,
+		"total_bytes_lower_bound": 158433813,
+		"txid": "555ef2de37698f1c1d36d1d95bdf7b18d51483c76765a2ca63ff45bae5df65e9",
+		"uploading_to_reflector": false,
+		"written_bytes": 0
+		}
+}
+`
 
 var getResponseWithPurchase = `
 {
@@ -1007,7 +1027,7 @@ var resolveResponseWithoutPurchase = `
       "normalized_name": "body-language---robert-f.-kennedy-assassination---hypnosis",
       "nout": 0,
       "permanent_url": "lbry://Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis#d66f8ba85c85ca48daba9183bd349307fe30cb43",
-      "purchase_receipt": nil,
+      "purchase_receipt": null,
       "short_url": "lbry://Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis#d",
       "signing_channel": {
         "address": "bJ5oueNUmpPpHkK3dEBtmdqy1dGyTmJgiq",
@@ -1107,6 +1127,38 @@ var resolveResponseWithoutPurchase = `
       },
       "value_type": "stream"
     }
+  },
+  "id": 0
+}
+`
+
+var purchaseCreateResponse = `
+{
+  "jsonrpc": "2.0",
+  "error": {
+	"code": -32500,
+	"data": {
+	  "args": [],
+	  "command": "purchase_create",
+	  "kwargs": {
+		"allow_duplicate_purchase": false,
+		"blocking": false,
+		"claim_id": "f2b88f9ed44bf722175a64def450652391b814e8",
+		"funding_account_ids": [],
+		"override_max_key_fee": false,
+		"preview": false,
+		"wallet_id": "lbrytv-id.1763208.wallet"
+	  },
+	  "name": "Exception",
+	  "traceback": [
+		"Traceback (most recent call last):",
+		"  File \"lbry/extras/daemon/daemon.py\", line 698, in _process_rpc_call",
+		"  File \"lbry/extras/daemon/daemon.py\", line 2239, in jsonrpc_purchase_create",
+		"Exception: You already have a purchase for claim_id 'f2b88f9ed44bf722175a64def450652391b814e8'. Use --allow-duplicate-purchase flag to override.",
+		""
+	  ]
+	},
+	"message": "You already have a purchase for claim_id 'f2b88f9ed44bf722175a64def450652391b814e8'. Use --allow-duplicate-purchase flag to override."
   },
   "id": 0
 }

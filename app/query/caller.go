@@ -92,7 +92,7 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 
 	err = postProcessResponse(c, q, res)
 	if err != nil {
-		return res, rpcerrors.NewSDKError(err)
+		return nil, rpcerrors.NewSDKError(err)
 	}
 
 	if isCacheable(q) {

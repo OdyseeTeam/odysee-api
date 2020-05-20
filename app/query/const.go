@@ -12,12 +12,13 @@ const (
 	paramWalletID  = "wallet_id"
 	paramUrls      = "urls"
 
-	MethodGet         = "get"
-	MethodFileList    = "file_list"
-	MethodAccountList = "account_list"
-	MethodStatus      = "status"
-	MethodResolve     = "resolve"
-	MethodClaimSearch = "claim_search"
+	MethodGet            = "get"
+	MethodFileList       = "file_list"
+	MethodAccountList    = "account_list"
+	MethodStatus         = "status"
+	MethodResolve        = "resolve"
+	MethodClaimSearch    = "claim_search"
+	MethodPurchaseCreate = "purchase_create"
 )
 
 // relaxedMethods are methods which are allowed to be called without wallet_id.
@@ -39,6 +40,7 @@ var relaxedMethods = []string{
 // whether wallet_id is required.
 var walletSpecificMethods = []string{
 	MethodGet,
+	MethodPurchaseCreate,
 
 	"resolve",
 	"claim_search",
