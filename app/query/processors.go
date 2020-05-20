@@ -87,7 +87,11 @@ func responseProcessorGet(caller *Caller, query *Query, response *jsonrpc.RPCRes
 				log.Debug("error parsing resolve response:", err)
 				return err
 			}
-			receipt = checkReceipt(resResult[url].(map[string]interface{}))
+			if resEntry, ok := resResult[url]; ok {
+				receipt = checkReceipt(resEntry.(map[string]interface{}))
+			} else {
+				log.Debug("couldn't retrieve resolve response entry")
+			}
 		}
 	}
 
