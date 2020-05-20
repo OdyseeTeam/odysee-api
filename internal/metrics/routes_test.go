@@ -37,12 +37,6 @@ func TestTimeToStartEvent(t *testing.T) {
 	assert.Equal(t, `{"name":"`+name+`"}`, rr.Body.String())
 }
 
-func TestTimeToStartEventNoValue(t *testing.T) {
-	name := "time_to_start"
-	rr := testMetricUIEvent(t, http.MethodPost, name, "")
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-}
-
 func testMetricUIEvent(t *testing.T, method, name, value string) *httptest.ResponseRecorder {
 	req, err := http.NewRequest(method, "/api/v1/metric/ui", nil)
 	require.NoError(t, err)

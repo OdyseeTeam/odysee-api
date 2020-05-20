@@ -25,14 +25,7 @@ func TrackUIMetric(w http.ResponseWriter, req *http.Request) {
 	case "buffer":
 		UIBufferCount.Inc()
 	case "time_to_start":
-		t := cast.ToFloat64(req.FormValue("value"))
-		if t == 0 {
-			Logger.Log().Errorf("Time to start cannot be 0")
-			code = http.StatusBadRequest
-			resp["error"] = "Time to start cannot be 0"
-		} else {
-			UITimeToStart.Observe(t)
-		}
+		UITimeToStart.Observe(cast.ToFloat64(req.FormValue("value")))
 	default:
 		Logger.Log().Errorf("invalid UI metric name: %s", metricName)
 		code = http.StatusBadRequest
