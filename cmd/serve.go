@@ -34,7 +34,10 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		paid.InitPrivateKey(key)
+		err = paid.InitPrivateKey(key)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		// ServeUntilShutdown is blocking, should be last
 		s.ServeUntilShutdown()

@@ -60,20 +60,21 @@ func responseProcessorGet(caller *Caller, query *Query, response *jsonrpc.RPCRes
 	stream := basicGetResp.Metadata.GetStream()
 	if stream.Fee != nil && stream.Fee.Amount > 0 {
 		if receipt = checkReceipt(result); receipt == nil {
-			log.Debugf("receipt not found on a paid stream, trying to resolve")
 			url := query.ParamsAsMap()["uri"].(string)
-			resReq := &jsonrpc.RPCRequest{
-				Method: MethodResolve,
-				Params: map[string]string{
-					"urls": url,
+			resReq := jsonrpc.NewRequest(
+				MethodResolve,
+				map[string]interface{}{
+					"urls":                     url,
+					"include_purchase_receipt": true,
 				},
-				JSONRPC: "2.0",
-			}
+			)
 
 			resQuery, err := NewQuery(resReq, query.WalletID)
 			if err != nil {
 				return err
 			}
+
+			log.Debug("receipt not found on a paid stream, trying to resolve", resQuery.Params())
 			resRespRaw, err := caller.callQueryWithRetry(resQuery)
 			if err != nil {
 				return err
@@ -89,7 +90,7 @@ func responseProcessorGet(caller *Caller, query *Query, response *jsonrpc.RPCRes
 			if resEntry, ok := resResult[url]; ok {
 				receipt = checkReceipt(resEntry.(map[string]interface{}))
 			} else {
-				log.Debug("couldn't retrieve resolve response entry")
+				log.Debug("couldn't retrieve resolve response entry", resRespRaw)
 			}
 		}
 	}

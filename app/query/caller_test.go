@@ -2,7 +2,6 @@ package query
 
 import (
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -463,7 +462,9 @@ func TestCaller_GetPaidPurchasedMissingPurchase(t *testing.T) {
 	claimID := "d66f8ba85c85ca48daba9183bd349307fe30cb43"
 
 	dummyUserID := 123321
-	srv := test.MockHTTPServer(nil)
+
+	reqChan := test.ReqChan()
+	srv := test.MockHTTPServer(reqChan)
 	defer srv.Close()
 
 	srv.QueueResponses(getResponseWithMissingPurchase, resolveResponseWithPurchase)
@@ -478,13 +479,48 @@ func TestCaller_GetPaidPurchasedMissingPurchase(t *testing.T) {
 	resp, err := NewCaller(srv.URL, dummyUserID).Call(request)
 	require.Nil(t, resp.Error)
 
+	<-reqChan
+	receivedRequest := <-reqChan
+	expectedRequest := test.ReqToStr(t, &jsonrpc.RPCRequest{
+		Method: MethodResolve,
+		Params: map[string]interface{}{
+			"wallet_id":                sdkrouter.WalletID(dummyUserID),
+			"urls":                     uri,
+			"include_purchase_receipt": true,
+		},
+		JSONRPC: "2.0",
+	})
+	assert.EqualValues(t, expectedRequest, receivedRequest.Body)
+
 	getResponse := &ljsonrpc.GetResponse{}
 	err = resp.GetObject(&getResponse)
 	require.NoError(t, err)
 	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/paid/"+claimName+"/"+claimID+"/"+token, getResponse.StreamingURL)
 	assert.NotNil(t, getResponse.PurchaseReceipt)
-	fmt.Println(getResponse.PurchaseReceipt)
 	assert.EqualValues(t, "250.0", getResponse.PurchaseReceipt.(map[string]interface{})["amount"])
+}
+
+func TestCaller_GetPaidPurchasedMissingEverything(t *testing.T) {
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v2/streams/")
+	defer config.RestoreOverridden()
+
+	uri := "Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis#d66f8ba85c85ca48daba9183bd349307fe30cb43"
+
+	dummyUserID := 123321
+	srv := test.MockHTTPServer(nil)
+	defer srv.Close()
+
+	srv.QueueResponses(getResponseWithMissingPurchase, resolveResponseWithoutPurchase)
+
+	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
+	resp, err := NewCaller(srv.URL, dummyUserID).Call(request)
+	require.Nil(t, resp.Error)
+
+	getResponse := &ljsonrpc.GetResponse{}
+	err = resp.GetObject(&getResponse)
+	require.NoError(t, err)
+	assert.Equal(t, "", getResponse.StreamingURL)
+	assert.Nil(t, getResponse.PurchaseReceipt)
 }
 
 func TestCaller_GetFree(t *testing.T) {
@@ -835,6 +871,143 @@ var resolveResponseWithPurchase = `
         "txid": "ff990688df370072f408e2db9d217d2cf331d92ac594d5e6e8391143e9d38160",
         "type": "purchase"
       },
+      "short_url": "lbry://Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis#d",
+      "signing_channel": {
+        "address": "bJ5oueNUmpPpHkK3dEBtmdqy1dGyTmJgiq",
+        "amount": "800.0",
+        "canonical_url": "lbry://@Bombards_Body_Language#f",
+        "claim_id": "f399d873e0c37cf24de9569b5f22bbb30a5c6709",
+        "claim_op": "update",
+        "confirmations": 19240,
+        "has_signing_key": false,
+        "height": 747770,
+        "meta": {
+          "activation_height": 687996,
+          "claims_in_channel": 253,
+          "creation_height": 687996,
+          "creation_timestamp": 1577197630,
+          "effective_amount": "2969.71",
+          "expiration_height": 2790396,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "2169.71",
+          "take_over_height": 687996,
+          "trending_global": 0.0,
+          "trending_group": 0,
+          "trending_local": 0.0,
+          "trending_mixed": -20.426517486572266
+        },
+        "name": "@Bombards_Body_Language",
+        "normalized_name": "@bombards_body_language",
+        "nout": 0,
+        "permanent_url": "lbry://@Bombards_Body_Language#f399d873e0c37cf24de9569b5f22bbb30a5c6709",
+        "short_url": "lbry://@Bombards_Body_Language#f",
+        "timestamp": 1586802450,
+        "txid": "36d7a1495102ff3b91fe26f255b9403b9e25fe16c869af71adc941ad39167b77",
+        "type": "claim",
+        "value": {
+          "cover": {
+            "url": "https://spee.ch/1/dcc5f235-a895-4c8b-9e61-2177449b96c4.jpg"
+          },
+          "description": "This is a channel dedicated to helping people see the corruption and deception of public figures using body language analysis.\nTo help support this channel and to learn more about body language, You can visit my [website](https://bombardsbodylanguage.com/) where you can view exclusive content, as well as a tutorial series that explains my methods in more detail.\n\n",
+          "public_key": "3056301006072a8648ce3d020106052b8104000a034200041633f79926012767fe36a84c11dd7d66050c796bfdb26dc66599e5612b9bbce819e46df10a54ad67bdce1ae42455d5e60995eccbc7a013e72913553140187e30",
+          "public_key_id": "baKc1SpWE3XqH4auz2C9a7eUhQ1G2XE76R",
+          "tags": [
+            "body language",
+            "bombards",
+            "education",
+            "ghost",
+            "news",
+            "politics"
+          ],
+          "thumbnail": {
+            "url": "https://spee.ch/6/c33bdd7f-3f0d-4f93-a275-5e9ad238f673.jpeg"
+          },
+          "title": "Bombards Body Language",
+          "website_url": "https://bombardsbodylanguage.com/"
+        },
+        "value_type": "channel"
+      },
+      "timestamp": 1587495005,
+      "txid": "a6005c8b55122eb1663041362546928e5961a037882fa04d52e70c190324ee64",
+      "type": "claim",
+      "value": {
+        "description": "This is one of my personal favourites! \n\nTo help support this channel and to learn more about body language, You can visit my website where you can view exclusive content, as well as a tutorial series that explains my methods in more detail.\n\nhttps://bombardsbodylanguage.com/\n\nNote: All comments in my videos are strictly my opinion.",
+        "fee": {
+          "address": "bWczbT1P6JQQ63PiDvFiYbkRYpQs6h6oap",
+          "amount": "250",
+          "currency": "LBC"
+        },
+        "languages": [
+          "en"
+        ],
+        "license": "None",
+        "release_time": "1587499210",
+        "source": {
+          "hash": "fae1e6db07c03a857f526ae9956d80be64dd95b85eeb79560d5f0fb8aea6e70531f089587f946f8916f42052abdb4fb2",
+          "media_type": "video/mp4",
+          "name": "Body Language - Robert F. Kennedy Assassination \u0026 Hypnosis.mp4",
+          "sd_hash": "51ee258ebbe33c15d37a28e90b1ba1e9ddfddd277bede52bd59431ce1b6ed6475f6c2c7299210a98eb3b746cbffa1f94",
+          "size": "585600621"
+        },
+        "stream_type": "video",
+        "tags": [
+          "assassination",
+          "body language",
+          "education",
+          "hypnosis",
+          "kennedy"
+        ],
+        "thumbnail": {
+          "url": "https://spee.ch/0/EVTMYSEf0OLuvjkMGRrFHubl.jpeg"
+        },
+        "title": "Body Language - Robert F. Kennedy Assassination \u0026 Hypnosis",
+        "video": {
+          "duration": 1504,
+          "height": 1080,
+          "width": 1920
+        }
+      },
+      "value_type": "stream"
+    }
+  },
+  "id": 0
+}
+`
+
+var resolveResponseWithoutPurchase = `
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis#d66f8ba85c85ca48daba9183bd349307fe30cb43": {
+      "address": "bWczbT1P6JQQ63PiDvFiYbkRYpQs6h6oap",
+      "amount": "0.1",
+      "canonical_url": "lbry://@Bombards_Body_Language#f/Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis#d",
+      "claim_id": "d66f8ba85c85ca48daba9183bd349307fe30cb43",
+      "claim_op": "update",
+      "confirmations": 14930,
+      "height": 752080,
+      "is_channel_signature_valid": true,
+      "meta": {
+        "activation_height": 752069,
+        "creation_height": 752069,
+        "creation_timestamp": 1587493237,
+        "effective_amount": "0.1",
+        "expiration_height": 2854469,
+        "is_controlling": true,
+        "reposted": 4,
+        "support_amount": "0.0",
+        "take_over_height": 752069,
+        "trending_global": 0.0,
+        "trending_group": 0,
+        "trending_local": 0.0,
+        "trending_mixed": 0.0
+      },
+      "name": "Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis",
+      "normalized_name": "body-language---robert-f.-kennedy-assassination---hypnosis",
+      "nout": 0,
+      "permanent_url": "lbry://Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis#d66f8ba85c85ca48daba9183bd349307fe30cb43",
+      "purchase_receipt": nil,
       "short_url": "lbry://Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis#d",
       "signing_channel": {
         "address": "bJ5oueNUmpPpHkK3dEBtmdqy1dGyTmJgiq",

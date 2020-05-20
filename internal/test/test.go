@@ -59,7 +59,7 @@ func MockHTTPServer(requestChan chan *Request) *mockServer {
 // ReqChan makes a channel for reading received requests one by one.
 // Use it in conjunction with MockHTTPServer
 func ReqChan() chan *Request {
-	return make(chan *Request, 1)
+	return make(chan *Request, 999)
 }
 
 // ReqToStr stringifies a supplied RPCRequest
