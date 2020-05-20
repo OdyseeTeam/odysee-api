@@ -70,7 +70,6 @@ func responseProcessorGet(caller *Caller, query *Query, response *jsonrpc.RPCRes
 				JSONRPC: "2.0",
 			}
 
-			fmt.Println(resReq)
 			resQuery, err := NewQuery(resReq, query.WalletID)
 			if err != nil {
 				return err
