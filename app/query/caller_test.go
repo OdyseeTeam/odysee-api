@@ -182,7 +182,7 @@ func TestCaller_AddPreflightHookAmendingQueryParams(t *testing.T) {
 
 	c := NewCaller(srv.URL, 0)
 
-	c.AddPreflightHook(func(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
+	c.AddPreflightHook(relaxedMethods[0], func(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
 		params := q.ParamsAsMap()
 		if params == nil {
 			q.Request.Params = map[string]string{"param": "123"}
@@ -211,7 +211,7 @@ func TestCaller_AddPreflightHookReturningEarlyResponse(t *testing.T) {
 
 	c := NewCaller(srv.URL, 0)
 
-	c.AddPreflightHook(func(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
+	c.AddPreflightHook(relaxedMethods[0], func(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
 		return &jsonrpc.RPCResponse{Result: map[string]string{"ok": "ok"}}, nil
 	})
 
@@ -230,7 +230,7 @@ func TestCaller_AddPreflightHookReturningError(t *testing.T) {
 
 	c := NewCaller(srv.URL, 0)
 
-	c.AddPreflightHook(func(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
+	c.AddPreflightHook(relaxedMethods[0], func(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
 		return &jsonrpc.RPCResponse{Result: map[string]string{"ok": "ok"}}, errors.Err("an error occured")
 	})
 

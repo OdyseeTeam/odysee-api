@@ -26,14 +26,18 @@ const (
 	walletLoadRetryWait = 100 * time.Millisecond
 )
 
-type PreflightHook func(c *Caller, q *Query) (*jsonrpc.RPCResponse, error)
+type Hook func(c *Caller, q *Query) (*jsonrpc.RPCResponse, error)
+type hookEntry struct {
+	method   string
+	function Hook
+}
 
 // Caller patches through JSON-RPC requests from clients, doing pre/post-processing,
 // account processing and validation.
 type Caller struct {
 	// Preprocessor is applied to query before it's sent to the SDK.
 	Preprocessor   func(q *Query)
-	preflightHooks []PreflightHook
+	preflightHooks []hookEntry
 
 	// Cache stores cachable queries to improve performance
 	Cache cache.QueryCache
@@ -68,8 +72,15 @@ func NewCaller(endpoint string, userID int) *Caller {
 // allowing to amend the query before it gets sent to the JSON-RPC server,
 // with an option to return an early response, avoiding sending the query
 // to JSON-RPC server altogether
-func (c *Caller) AddPreflightHook(hf PreflightHook) {
-	c.preflightHooks = append(c.preflightHooks, hf)
+func (c *Caller) AddPreflightHook(method string, hf Hook) {
+	c.preflightHooks = append(c.preflightHooks, hookEntry{method, hf})
+	logger.Log().Debugf("added a preflight hook for method %v", method)
+}
+
+func (c *Caller) addDefaultHooks() {
+	c.AddPreflightHook("", fromCache)
+	c.AddPreflightHook("status", getStatusResponse)
+	c.AddPreflightHook("get", preflightHookGet)
 }
 
 // Call method forwards a JSON-RPC request to the lbrynet server.
@@ -85,30 +96,19 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 		return nil, err
 	}
 
-	if cached := c.fromCache(q); cached != nil {
-		return cached, nil
-	}
-
-	if pr := predefinedResponse(q); pr != nil {
-		return pr, nil
-	}
+	var res *jsonrpc.RPCResponse
 
 	// Applying preflight hooks
-	for _, hf := range c.preflightHooks {
-		res, err := hf(c, q)
-		if err != nil {
-			return nil, rpcerrors.NewSDKError(err)
+	for _, hook := range c.preflightHooks {
+		if hook.method == "" || hook.method == q.Method() {
+			res, err = hook.function(c, q)
+			if err != nil {
+				return nil, rpcerrors.NewSDKError(err)
+			}
+			if res != nil {
+				return res, nil
+			}
 		}
-		if res != nil {
-			return res, nil
-		}
-	}
-
-	method := q.Method()
-
-	res, err := preProcessQuery(method, c, q)
-	if err != nil {
-		return nil, rpcerrors.NewSDKError(err)
 	}
 
 	if res == nil {
@@ -116,11 +116,6 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 		if err != nil {
 			return nil, rpcerrors.NewSDKError(err)
 		}
-	}
-
-	err = postProcessResponse(method, c, q, res)
-	if err != nil {
-		return nil, rpcerrors.NewSDKError(err)
 	}
 
 	if isCacheable(q) {
@@ -214,41 +209,30 @@ func isCacheable(q *Query) bool {
 }
 
 // fromCache returns cached response or nil in case it's a miss
-func (c *Caller) fromCache(q *Query) *jsonrpc.RPCResponse {
+func fromCache(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
 	if c.Cache == nil || !isCacheable(q) {
-		return nil
+		return nil, nil
 	}
 
 	cached := c.Cache.Retrieve(q.Method(), q.Params())
 	if cached == nil {
-		return nil
+		return nil, nil
 	}
 
 	s, err := json.Marshal(cached)
 	if err != nil {
 		logger.Log().Errorf("error marshalling cached response")
-		return nil
+		return nil, nil
 	}
 
 	response := q.newResponse()
 	err = json.Unmarshal(s, &response)
 	if err != nil {
-		return nil
+		return nil, nil
 	}
 
 	logger.WithFields(logrus.Fields{"method": q.Method()}).Debug("cached query")
-	return response
-}
-
-func predefinedResponse(q *Query) *jsonrpc.RPCResponse {
-	switch q.Method() {
-	case MethodStatus:
-		response := q.newResponse()
-		response.Result = getStatusResponse()
-		return response
-	default:
-		return nil
-	}
+	return response, nil
 }
 
 func isErrWalletNotLoaded(r *jsonrpc.RPCResponse) bool {
