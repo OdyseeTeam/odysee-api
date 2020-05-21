@@ -61,7 +61,7 @@ func TestCaller_CallRelaxedMethods(t *testing.T) {
 
 func TestCaller_CallAmbivalentMethodsWithoutWallet(t *testing.T) {
 	for _, m := range relaxedMethods {
-		if !methodInList(m, walletSpecificMethods) {
+		if !methodInList(m, walletSpecificMethods) || m == MethodGet {
 			continue
 		}
 		t.Run(m, func(t *testing.T) {
