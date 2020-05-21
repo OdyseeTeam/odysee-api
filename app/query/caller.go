@@ -26,11 +26,15 @@ const (
 	walletLoadRetryWait = 100 * time.Millisecond
 )
 
+type PreflightHook func(c *Caller, q *Query) (*jsonrpc.RPCResponse, error)
+
 // Caller patches through JSON-RPC requests from clients, doing pre/post-processing,
 // account processing and validation.
 type Caller struct {
 	// Preprocessor is applied to query before it's sent to the SDK.
-	Preprocessor func(q *Query)
+	Preprocessor   func(q *Query)
+	preflightHooks []PreflightHook
+
 	// Cache stores cachable queries to improve performance
 	Cache cache.QueryCache
 
@@ -60,6 +64,14 @@ func NewCaller(endpoint string, userID int) *Caller {
 	}
 }
 
+// AddPreflightHook adds query pre-flight hook function,
+// allowing to amend the query before it gets sent to the JSON-RPC server,
+// with an option to return an early response, avoiding sending the query
+// to JSON-RPC server altogether
+func (c *Caller) AddPreflightHook(hf PreflightHook) {
+	c.preflightHooks = append(c.preflightHooks, hf)
+}
+
 // Call method forwards a JSON-RPC request to the lbrynet server.
 // It returns a response that is ready to be sent back to the JSON-RPC client as is.
 func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
@@ -81,9 +93,15 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 		return pr, nil
 	}
 
-	// This is for external code to call
-	if c.Preprocessor != nil {
-		c.Preprocessor(q)
+	// Applying preflight hooks
+	for _, hf := range c.preflightHooks {
+		res, err := hf(c, q)
+		if err != nil {
+			return nil, rpcerrors.NewSDKError(err)
+		}
+		if res != nil {
+			return res, nil
+		}
 	}
 
 	method := q.Method()

@@ -175,14 +175,14 @@ func TestCaller_CallAttachesWalletID(t *testing.T) {
 	assert.EqualValues(t, expectedRequest, receivedRequest.Body)
 }
 
-func TestCaller_SetPreprocessor(t *testing.T) {
+func TestCaller_AddPreflightHookAmendingQueryParams(t *testing.T) {
 	reqChan := test.ReqChan()
 	srv := test.MockHTTPServer(reqChan)
 	defer srv.Close()
 
 	c := NewCaller(srv.URL, 0)
 
-	c.Preprocessor = func(q *Query) {
+	c.AddPreflightHook(func(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
 		params := q.ParamsAsMap()
 		if params == nil {
 			q.Request.Params = map[string]string{"param": "123"}
@@ -190,7 +190,8 @@ func TestCaller_SetPreprocessor(t *testing.T) {
 			params["param"] = "123"
 			q.Request.Params = params
 		}
-	}
+		return nil, nil
+	})
 
 	srv.NextResponse <- test.EmptyResponse()
 
@@ -201,6 +202,43 @@ func TestCaller_SetPreprocessor(t *testing.T) {
 	p, ok := lastRequest.Params.(map[string]interface{})
 	assert.True(t, ok, req.Body)
 	assert.Equal(t, "123", p["param"], req.Body)
+}
+
+func TestCaller_AddPreflightHookReturningEarlyResponse(t *testing.T) {
+	reqChan := test.ReqChan()
+	srv := test.MockHTTPServer(reqChan)
+	defer srv.Close()
+
+	c := NewCaller(srv.URL, 0)
+
+	c.AddPreflightHook(func(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
+		return &jsonrpc.RPCResponse{Result: map[string]string{"ok": "ok"}}, nil
+	})
+
+	srv.NextResponse <- test.EmptyResponse()
+
+	res, err := c.Call(jsonrpc.NewRequest(relaxedMethods[0]))
+	require.NoError(t, err)
+
+	assert.Equal(t, map[string]string{"ok": "ok"}, res.Result)
+}
+
+func TestCaller_AddPreflightHookReturningError(t *testing.T) {
+	reqChan := test.ReqChan()
+	srv := test.MockHTTPServer(reqChan)
+	defer srv.Close()
+
+	c := NewCaller(srv.URL, 0)
+
+	c.AddPreflightHook(func(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
+		return &jsonrpc.RPCResponse{Result: map[string]string{"ok": "ok"}}, errors.Err("an error occured")
+	})
+
+	srv.NextResponse <- test.EmptyResponse()
+
+	res, err := c.Call(jsonrpc.NewRequest(relaxedMethods[0]))
+	assert.EqualError(t, err, "an error occured")
+	assert.Nil(t, res)
 }
 
 func TestCaller_CallSDKError(t *testing.T) {
