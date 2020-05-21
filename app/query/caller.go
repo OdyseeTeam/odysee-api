@@ -48,7 +48,7 @@ type Caller struct {
 }
 
 func NewCaller(endpoint string, userID int) *Caller {
-	return &Caller{
+	c := &Caller{
 		client: jsonrpc.NewClientWithOpts(endpoint, &jsonrpc.RPCClientOpts{
 			HTTPClient: &http.Client{
 				Timeout: sdkrouter.RPCTimeout,
@@ -66,6 +66,8 @@ func NewCaller(endpoint string, userID int) *Caller {
 		endpoint: endpoint,
 		userID:   userID,
 	}
+	c.addDefaultHooks()
+	return c
 }
 
 // AddPreflightHook adds query pre-flight hook function,
