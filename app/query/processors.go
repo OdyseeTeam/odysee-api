@@ -8,6 +8,7 @@ import (
 
 	"github.com/lbryio/lbrytv-player/pkg/paid"
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/metrics"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
@@ -21,8 +22,10 @@ var rePurchaseFree = regexp.MustCompile(`(?i)does not have a purchase price`)
 // This workaround is due to stability issues in the lbrynet SDK `get` method implementation.
 // Only `ParamStreamingUrl` will be returned, plus `purchase_receipt` if stream has been paid for.
 func preflightHookGet(caller *Caller, query *Query) (*jsonrpc.RPCResponse, error) {
-	var urlSuffix string
-	var isPaidStream bool
+	var (
+		urlSuffix, metricLabel string
+		isPaidStream           bool
+	)
 
 	response := &jsonrpc.RPCResponse{
 		ID:      query.Request.ID,
@@ -36,73 +39,56 @@ func preflightHookGet(caller *Caller, query *Query) (*jsonrpc.RPCResponse, error
 	url := query.ParamsAsMap()["uri"].(string)
 	log := logger.Log().WithField("url", url)
 
-	purchaseQuery, err := NewQuery(jsonrpc.NewRequest(
-		MethodPurchaseCreate,
-		map[string]interface{}{
-			"url":      url,
-			"blocking": true,
-		},
-	), query.WalletID)
+	claim, err := resolve(caller, query, url)
 	if err != nil {
 		return nil, err
 	}
-	purchaseRes, err := caller.callQueryWithRetry(purchaseQuery)
-	if err != nil {
-		return nil, err
-	}
-	if purchaseRes.Error != nil {
-		if reAlreadyPurchased.MatchString(purchaseRes.Error.Message) {
-			log.Debug("purchase_create says stream is already purchased")
-			isPaidStream = true
-		} else if rePurchaseFree.MatchString(purchaseRes.Error.Message) {
-			log.Debug("purchase_create says stream is free")
-			isPaidStream = false
-		} else {
-			return nil, fmt.Errorf("purchase error: %v", purchaseRes.Error.Message)
-		}
-	} else {
-		// Assuming the stream is of a paid variety and we have paid for the stream
-		isPaidStream = true
-		// This is needed so changes can propagate for the subsequent resolve
-		time.Sleep(1 * time.Second)
-	}
-
-	resolveResponse := ljsonrpc.ResolveResponse{}
-
-	resQuery, err := NewQuery(jsonrpc.NewRequest(
-		MethodResolve,
-		map[string]interface{}{
-			"urls":                     url,
-			"include_purchase_receipt": true,
-			"include_protobuf":         true,
-		},
-	), query.WalletID)
-	if err != nil {
-		return nil, err
-	}
-
-	resRespRaw, err := caller.callQueryWithRetry(resQuery)
-	if err != nil {
-		return nil, err
-	}
-
-	resResult := map[string]interface{}{}
-	err = resRespRaw.GetObject(&resResult)
-	if err != nil {
-		log.Debug("error parsing resolve response:", err)
-		return nil, err
-	}
-	err = ljsonrpc.Decode(resResult, &resolveResponse)
-	if err != nil {
-		return nil, err
-	}
-
-	claim, ok := resolveResponse[url]
-	if !ok {
-		return nil, fmt.Errorf("could not find a corresponding entry in the resolve response")
-	}
-
 	stream := claim.Value.GetStream()
+
+	if stream.Fee != nil && stream.Fee.Amount > 0 {
+		isPaidStream = true
+
+		purchaseQuery, err := NewQuery(jsonrpc.NewRequest(
+			MethodPurchaseCreate,
+			map[string]interface{}{
+				"url":      url,
+				"blocking": true,
+			},
+		), query.WalletID)
+		if err != nil {
+			return nil, err
+		}
+		purchaseRes, err := caller.callQueryWithRetry(purchaseQuery)
+		if err != nil {
+			return nil, err
+		}
+		if purchaseRes.Error != nil {
+			if reAlreadyPurchased.MatchString(purchaseRes.Error.Message) {
+				log.Debug("purchase_create says stream is already purchased")
+			} else if rePurchaseFree.MatchString(purchaseRes.Error.Message) {
+				log.Debug("purchase_create says stream is free")
+			} else {
+				return nil, fmt.Errorf("purchase error: %v", purchaseRes.Error.Message)
+			}
+		} else {
+			// Assuming the stream is of a paid variety and we have just paid for the stream
+			metrics.LbrytvPurchases.Inc()
+			// This is needed so changes can propagate for the subsequent resolve
+			time.Sleep(1 * time.Second)
+			claim, err = resolve(caller, query, url)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	if isPaidStream {
+		metricLabel = metrics.LabelValuePaid
+	} else {
+		metricLabel = metrics.LabelValueFree
+	}
+	metrics.LbrytvStreamRequests.WithLabelValues(metricLabel).Inc()
+
 	size := stream.GetSource().Size
 
 	if err != nil {
@@ -130,6 +116,45 @@ func preflightHookGet(caller *Caller, query *Query) (*jsonrpc.RPCResponse, error
 
 	response.Result = responseResult
 	return response, nil
+}
+
+func resolve(c *Caller, q *Query, url string) (*ljsonrpc.Claim, error) {
+	log := logger.Log().WithField("url", url)
+
+	resolveResponse := ljsonrpc.ResolveResponse{}
+	resQuery, err := NewQuery(jsonrpc.NewRequest(
+		MethodResolve,
+		map[string]interface{}{
+			"urls":                     url,
+			"include_purchase_receipt": true,
+			"include_protobuf":         true,
+		},
+	), q.WalletID)
+	if err != nil {
+		return nil, err
+	}
+
+	resRespRaw, err := c.callQueryWithRetry(resQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	resResult := map[string]interface{}{}
+	err = resRespRaw.GetObject(&resResult)
+	if err != nil {
+		log.Debug("error parsing resolve response:", err)
+		return nil, err
+	}
+	err = ljsonrpc.Decode(resResult, &resolveResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	claim, ok := resolveResponse[url]
+	if !ok {
+		return nil, fmt.Errorf("could not find a corresponding entry in the resolve response")
+	}
+	return &claim, err
 }
 
 func checkIsPaidStream(s interface{}) bool {

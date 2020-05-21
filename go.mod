@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/getsentry/sentry-go v0.5.1
 	github.com/gobuffalo/packr/v2 v2.8.0
+	github.com/google/martian v2.1.0+incompatible
 	github.com/gorilla/mux v1.7.3
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a
 	github.com/jinzhu/gorm v1.9.9

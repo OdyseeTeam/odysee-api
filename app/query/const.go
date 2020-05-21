@@ -24,7 +24,8 @@ const (
 var relaxedMethods = []string{
 	"blob_announce",
 	"status",
-	"resolve",
+	MethodResolve,
+	MethodGet,
 	"transaction_show",
 	"stream_cost_estimate",
 	"claim_search",

@@ -437,13 +437,72 @@ func TestCaller_DontReloadWalletIfAlreadyLoaded(t *testing.T) {
 	require.Equal(t, `"99999.00"`, r.Result)
 }
 
-func TestSDKMethodStatus(t *testing.T) {
+func TestCaller_Status(t *testing.T) {
 	c := NewCaller(test.RandServerAddress(t), 0)
 	rpcResponse, err := c.Call(jsonrpc.NewRequest("status"))
 	require.NoError(t, err)
 	assert.Equal(t,
 		"692EAWhtoqDuAfQ6KHMXxFxt8tkhmt7sfprEMHWKjy5hf6PwZcHDV542VHqRnFnTCD",
 		rpcResponse.Result.(map[string]interface{})["installation_id"].(string))
+}
+
+func TestCaller_GetFreeUnauthenticated(t *testing.T) {
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v2/streams/")
+	defer config.RestoreOverridden()
+
+	srvAddress := test.RandServerAddress(t)
+	uri := "what#19b9c243bea0c45175e6a6027911abbad53e983e"
+
+	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
+	resp, err := NewCaller(srvAddress, 0).Call(request)
+	require.NoError(t, err)
+	require.Nil(t, resp.Error)
+
+	getResponse := &ljsonrpc.GetResponse{}
+	err = resp.GetObject(&getResponse)
+	require.NoError(t, err)
+	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/free/what/19b9c243bea0c45175e6a6027911abbad53e983e", getResponse.StreamingURL)
+}
+
+func TestCaller_GetFreeAuthenticated(t *testing.T) {
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v2/streams/")
+	defer config.RestoreOverridden()
+
+	uri := "what"
+
+	dummyUserID := 123321
+	srv := test.MockHTTPServer(nil)
+
+	srv.QueueResponses(
+		resolveResponseFree,
+	)
+	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
+	resp, err := NewCaller(srv.URL, dummyUserID).Call(request)
+	require.NoError(t, err)
+	require.Nil(t, resp.Error)
+
+	getResponse := &ljsonrpc.GetResponse{}
+	err = resp.GetObject(&getResponse)
+	require.NoError(t, err)
+	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/free/what/19b9c243bea0c45175e6a6027911abbad53e983e", getResponse.StreamingURL)
+}
+
+func TestCaller_GetInvalidURLAuthenticated(t *testing.T) {
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v2/streams/")
+	defer config.RestoreOverridden()
+
+	uri := "what#@1||||"
+
+	dummyUserID := 123321
+	srv := test.MockHTTPServer(nil)
+
+	srv.QueueResponses(
+		resolveResponseFree,
+	)
+	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
+	resp, err := NewCaller(srv.URL, dummyUserID).Call(request)
+	assert.EqualError(t, err, "could not find a corresponding entry in the resolve response")
+	assert.Nil(t, resp)
 }
 
 func TestCaller_GetPaidCannotPurchase(t *testing.T) {
@@ -456,6 +515,16 @@ func TestCaller_GetPaidCannotPurchase(t *testing.T) {
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
 	resp, err := NewCaller(srvAddress, dummyUserID).Call(request)
 	assert.EqualError(t, err, "purchase error: Not enough funds to cover this transaction.")
+	assert.Nil(t, resp)
+}
+
+func TestCaller_GetPaidUnauthenticated(t *testing.T) {
+	srvAddress := test.RandServerAddress(t)
+	uri := "lbry://@specialoperationstest#3/iOS-13-AdobeXD#9"
+
+	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
+	resp, err := NewCaller(srvAddress, 0).Call(request)
+	assert.EqualError(t, err, "authentication required")
 	assert.Nil(t, resp)
 }
 
@@ -473,6 +542,7 @@ func TestCaller_GetPaidPurchased(t *testing.T) {
 	defer srv.Close()
 
 	srv.QueueResponses(
+		resolveResponseWithPurchase,
 		purchaseCreateExistingResponse,
 		resolveResponseWithPurchase,
 	)
@@ -506,6 +576,7 @@ func TestCaller_GetPaidResolveLag(t *testing.T) {
 	defer srv.Close()
 
 	srv.QueueResponses(
+		resolveResponseWithoutPurchase,
 		purchaseCreateResponse,
 		resolveResponseWithoutPurchase,
 	)
@@ -531,22 +602,37 @@ func TestCaller_GetPaidPurchasedMissingPurchase(t *testing.T) {
 	defer srv.Close()
 
 	srv.QueueResponses(
-		purchaseCreateExistingResponse,
+		resolveResponseWithoutPurchase,
+		purchaseCreateResponse,
 		resolveResponseWithPurchase,
 	)
 
 	err := paid.GeneratePrivateKey()
 	require.NoError(t, err)
 
+	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
+	resp, err := NewCaller(srv.URL, dummyUserID).Call(request)
+	require.NoError(t, err)
+	require.Nil(t, resp.Error)
+
 	token, err := paid.CreateToken(claimName+"/"+claimID, txid, 585600621, paid.ExpTenSecPer100MB)
 	require.NoError(t, err)
 
-	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
-	resp, err := NewCaller(srv.URL, dummyUserID).Call(request)
-	require.Nil(t, resp.Error)
-
 	receivedRequest := <-reqChan
 	expectedRequest := test.ReqToStr(t, &jsonrpc.RPCRequest{
+		Method: MethodResolve,
+		Params: map[string]interface{}{
+			"wallet_id":                sdkrouter.WalletID(dummyUserID),
+			"urls":                     uri,
+			"include_purchase_receipt": true,
+			"include_protobuf":         true,
+		},
+		JSONRPC: "2.0",
+	})
+	assert.EqualValues(t, expectedRequest, receivedRequest.Body)
+
+	receivedRequest = <-reqChan
+	expectedRequest = test.ReqToStr(t, &jsonrpc.RPCRequest{
 		Method: MethodPurchaseCreate,
 		Params: map[string]interface{}{
 			"wallet_id": sdkrouter.WalletID(dummyUserID),
@@ -589,36 +675,13 @@ func TestCaller_GetPaidPurchasedMissingEverything(t *testing.T) {
 	defer srv.Close()
 
 	srv.QueueResponses(
+		resolveResponseWithoutPurchase,
 		purchaseCreateExistingResponse,
 		resolveResponseWithoutPurchase,
 	)
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
 	_, err := NewCaller(srv.URL, dummyUserID).Call(request)
 	require.EqualError(t, err, "couldn't find purchase receipt for paid stream")
-}
-
-func TestCaller_GetFree(t *testing.T) {
-	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v2/streams/")
-	defer config.RestoreOverridden()
-
-	uri := "what"
-
-	dummyUserID := 123321
-	srv := test.MockHTTPServer(nil)
-
-	srv.QueueResponses(
-		purchaseCreateFreeResponse,
-		resolveResponseFree,
-	)
-	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
-	resp, err := NewCaller(srv.URL, dummyUserID).Call(request)
-	require.NoError(t, err)
-	require.Nil(t, resp.Error)
-	getResponse := &ljsonrpc.GetResponse{}
-	err = resp.GetObject(&getResponse)
-	require.NoError(t, err)
-
-	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/free/what/19b9c243bea0c45175e6a6027911abbad53e983e", getResponse.StreamingURL)
 }
 
 var resolveResponseWithPurchase = `
