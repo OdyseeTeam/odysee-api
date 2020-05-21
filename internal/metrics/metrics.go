@@ -108,4 +108,23 @@ var (
 		Name:      "count",
 		Help:      "Total number of stream requests received",
 	}, []string{LabelNameType})
+
+	LbrytvDBOpenConnections = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: nsLbrytv,
+		Subsystem: "db",
+		Name:      "conns_open",
+		Help:      "Number of open db connections in the Go connection pool",
+	})
+	LbrytvDBInUseConnections = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: nsLbrytv,
+		Subsystem: "db",
+		Name:      "conns_in_use",
+		Help:      "Number of in-use db connections in the Go connection pool",
+	})
+	LbrytvDBIdleConnections = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: nsLbrytv,
+		Subsystem: "db",
+		Name:      "conns_idle",
+		Help:      "Number of idle db connections in the Go connection pool",
+	})
 )
