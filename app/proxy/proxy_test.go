@@ -64,6 +64,7 @@ func TestProxyDontAuthRelaxedMethods(t *testing.T) {
 		apiCalls++
 	}))
 	config.Override("InternalAPIHost", ts.URL)
+	defer config.RestoreOverridden()
 
 	rawReq := jsonrpc.NewRequest("resolve", map[string]string{"urls": "what"})
 	raw, err := json.Marshal(rawReq)

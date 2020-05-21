@@ -15,71 +15,13 @@ const (
 
 	LabelSource   = "source"
 	LabelInstance = "instance"
+
+	LabelNameType  = "type"
+	LabelValuePaid = "paid"
+	LabelValueFree = "free"
 )
 
 var (
-	PlayerStreamsRunning = promauto.NewGauge(prometheus.GaugeOpts{
-		Namespace: nsPlayer,
-		Subsystem: "streams",
-		Name:      "running",
-		Help:      "Number of streams currently playing",
-	})
-	PlayerRetrieverSpeed = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: nsPlayer,
-		Subsystem: "retriever",
-		Name:      "speed_mbps",
-		Help:      "Speed of blob/chunk retrieval",
-	}, []string{LabelSource})
-
-	PlayerInBytes = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: nsPlayer,
-		Name:      "in_bytes",
-		Help:      "Total number of bytes downloaded",
-	})
-	PlayerOutBytes = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: nsPlayer,
-		Name:      "out_bytes",
-		Help:      "Total number of bytes streamed out",
-	})
-
-	PlayerCacheHitCount = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: nsPlayer,
-		Subsystem: "cache",
-		Name:      "hit_count",
-		Help:      "Total number of blobs found in the local cache",
-	})
-	PlayerCacheMissCount = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: nsPlayer,
-		Subsystem: "cache",
-		Name:      "miss_count",
-		Help:      "Total number of blobs that were not in the local cache",
-	})
-	PlayerCacheErrorCount = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: nsPlayer,
-		Subsystem: "cache",
-		Name:      "error_count",
-		Help:      "Total number of errors retrieving blobs from the local cache",
-	})
-
-	PlayerCacheSize = promauto.NewGauge(prometheus.GaugeOpts{
-		Namespace: nsPlayer,
-		Subsystem: "cache",
-		Name:      "size",
-		Help:      "Current size of cache",
-	})
-	PlayerCacheDroppedCount = promauto.NewGauge(prometheus.GaugeOpts{
-		Namespace: nsPlayer,
-		Subsystem: "cache",
-		Name:      "dropped_count",
-		Help:      "Total number of blobs dropped at the admission time",
-	})
-	PlayerCacheRejectedCount = promauto.NewGauge(prometheus.GaugeOpts{
-		Namespace: nsPlayer,
-		Subsystem: "cache",
-		Name:      "rejected_count",
-		Help:      "Total number of blobs rejected at the admission time",
-	})
-
 	IAPIAuthSuccessDurations = promauto.NewHistogram(prometheus.HistogramOpts{
 		Namespace: nsIAPI,
 		Subsystem: "auth",
@@ -154,4 +96,16 @@ var (
 		Name:      "count",
 		Help:      "Total number of new users created in the database",
 	})
+	LbrytvPurchases = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: nsLbrytv,
+		Subsystem: "purchase",
+		Name:      "count",
+		Help:      "Total number of purchases done",
+	})
+	LbrytvStreamRequests = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: nsLbrytv,
+		Subsystem: "stream",
+		Name:      "count",
+		Help:      "Total number of stream requests received",
+	}, []string{LabelNameType})
 )

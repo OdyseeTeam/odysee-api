@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
 	"time"
 
+	"github.com/lbryio/lbrytv-player/pkg/paid"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/server"
@@ -24,6 +26,15 @@ var rootCmd = &cobra.Command{
 
 		s := server.NewServer(config.GetAddress(), sdkRouter)
 		err := s.Start()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		key, err := ioutil.ReadFile(config.GetPaidTokenPrivKey())
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = paid.InitPrivateKey(key)
 		if err != nil {
 			log.Fatal(err)
 		}
