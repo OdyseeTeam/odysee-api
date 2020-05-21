@@ -31,6 +31,7 @@ func main() {
 	}
 	defer conn.Close()
 	conn.SetDefaultConnection()
+	go conn.WatchMetrics(10 * time.Second)
 
 	rMgr := reflection.NewManager("/nonexistent", config.GetReflectorAddress())
 	rMgr.Initialize()

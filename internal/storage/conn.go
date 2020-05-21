@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
-	"github.com/sirupsen/logrus"
 
 	_ "github.com/jinzhu/gorm/dialects/postgres" // Dialect import
 	"github.com/jmoiron/sqlx"
+	"github.com/sirupsen/logrus"
 	"github.com/volatiletech/sqlboiler/boil"
 )
 
@@ -106,4 +107,15 @@ func (c *Connection) SpawnConn(dbName string) (*Connection, error) {
 	p.DBName = dbName
 	cSpawn := InitConn(p)
 	return cSpawn, cSpawn.Connect()
+}
+
+func (c *Connection) WatchMetrics(interval time.Duration) {
+	t := time.NewTicker(interval)
+	for {
+		<-t.C
+		stats := c.DB.Stats()
+		metrics.LbrytvDBOpenConnections.Set(float64(stats.OpenConnections))
+		metrics.LbrytvDBInUseConnections.Set(float64(stats.InUse))
+		metrics.LbrytvDBIdleConnections.Set(float64(stats.Idle))
+	}
 }
