@@ -33,7 +33,7 @@ func parseRawResponse(t *testing.T, rawCallResponse []byte, v interface{}) {
 
 func TestCaller_CallRelaxedMethods(t *testing.T) {
 	for _, m := range relaxedMethods {
-		if m == MethodStatus {
+		if m == MethodStatus || m == MethodGet {
 			continue
 		}
 		t.Run(m, func(t *testing.T) {
