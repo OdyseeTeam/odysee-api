@@ -17,6 +17,9 @@ import (
 var reAlreadyPurchased = regexp.MustCompile(`(?i)you already have a purchase`)
 var rePurchaseFree = regexp.MustCompile(`(?i)does not have a purchase price`)
 
+// preflightHookGet will completely replace `get` request from the client with `purchase_create` + `resolve`.
+// This workaround is due to stability issues in the lbrynet SDK `get` method implementation.
+// Only `ParamStreamingUrl` will be returned, plus `purchase_receipt` if stream has been paid for.
 func preflightHookGet(caller *Caller, query *Query) (*jsonrpc.RPCResponse, error) {
 	var urlSuffix string
 	var isPaidStream bool
@@ -26,9 +29,10 @@ func preflightHookGet(caller *Caller, query *Query) (*jsonrpc.RPCResponse, error
 		JSONRPC: query.Request.JSONRPC,
 	}
 	responseResult := map[string]interface{}{
-		"streaming_url": "UNSET",
+		ParamStreamingUrl: "UNSET",
 	}
 
+	// uri vs url is not a typo, `get` query parameter will be called `uri`. It's `url(s)` in all other method calls.
 	url := query.ParamsAsMap()["uri"].(string)
 	log := logger.Log().WithField("url", url)
 
@@ -117,12 +121,12 @@ func preflightHookGet(caller *Caller, query *Query) (*jsonrpc.RPCResponse, error
 			return nil, err
 		}
 		urlSuffix = fmt.Sprintf("paid/%s/%s/%s", claim.Name, claim.ClaimID, token)
-		responseResult["purchase_receipt"] = claim.PurchaseReceipt
+		responseResult[ParamPurchaseReceipt] = claim.PurchaseReceipt
 	} else {
 		urlSuffix = fmt.Sprintf("free/%s/%s", claim.Name, claim.ClaimID)
 	}
 
-	responseResult["streaming_url"] = config.GetConfig().Viper.GetString("BaseContentURL") + urlSuffix
+	responseResult[ParamStreamingUrl] = config.GetConfig().Viper.GetString("BaseContentURL") + urlSuffix
 
 	response.Result = responseResult
 	return response, nil

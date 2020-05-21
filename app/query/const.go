@@ -15,6 +15,9 @@ const (
 	MethodResolve        = "resolve"
 	MethodClaimSearch    = "claim_search"
 	MethodPurchaseCreate = "purchase_create"
+
+	ParamStreamingUrl    = "streaming_url"
+	ParamPurchaseReceipt = "purchase_receipt"
 )
 
 // relaxedMethods are methods which are allowed to be called without wallet_id.
