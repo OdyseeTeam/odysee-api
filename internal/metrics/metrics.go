@@ -102,6 +102,13 @@ var (
 		Name:      "count",
 		Help:      "Total number of purchases done",
 	})
+	LbrytvPurchaseAmounts = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: nsLbrytv,
+		Subsystem: "purchase",
+		Name:      "amounts",
+		Help:      "Purchase amounts",
+		Buckets:   []float64{1, 10, 100, 1000, 10000},
+	})
 	LbrytvStreamRequests = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: nsLbrytv,
 		Subsystem: "stream",
