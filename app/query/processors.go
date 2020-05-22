@@ -74,6 +74,7 @@ func preflightHookGet(caller *Caller, query *Query) (*jsonrpc.RPCResponse, error
 			// Assuming the stream is of a paid variety and we have just paid for the stream
 			metrics.LbrytvPurchases.Inc()
 			metrics.LbrytvPurchaseAmounts.Observe(float64(stream.Fee.Amount))
+			log.Infof("made a purchase for %.2f LBC", float64(stream.Fee.Amount))
 			// This is needed so changes can propagate for the subsequent resolve
 			time.Sleep(1 * time.Second)
 			claim, err = resolve(caller, query, url)
