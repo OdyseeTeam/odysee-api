@@ -18,9 +18,9 @@ import (
 	"github.com/volatiletech/sqlboiler/queries/qm"
 )
 
-var logger = monitor.NewModuleLogger("wallet_tracker")
+var wtLogger = monitor.NewModuleLogger("wallet_tracker")
 
-func GetLogger() monitor.ModuleLogger { return logger } // for testing
+func GetLogger() monitor.ModuleLogger { return wtLogger } // for testing
 
 // TimeNow returns the current time in UTC. The only way to set the local timezone in Go is to
 // set the TZ env var. Otherwise all times are created using the local timezone of your OS. This
@@ -40,7 +40,7 @@ func Touch(db boil.Executor, userID int) error {
 	if err != nil {
 		return errors.Err(err)
 	}
-	logger.WithFields(logrus.Fields{"user_id": userID}).Trace("touched user")
+	wtLogger.WithFields(logrus.Fields{"user_id": userID}).Trace("touched user")
 	return nil
 }
 
@@ -48,7 +48,7 @@ func Touch(db boil.Executor, userID int) error {
 func Unload(db boil.Executor, olderThan time.Duration) (int, error) {
 	start := time.Now() // not TimeNow() because its just for checking call duration
 	cutoffTime := TimeNow().Add(-olderThan)
-	logger.Log().Infof("unloading wallets that were not accessed since %s", cutoffTime)
+	wtLogger.Log().Infof("unloading wallets that were not accessed since %s", cutoffTime)
 
 	users, err := models.Users(
 		models.UserWhere.LastSeenAt.LT(null.TimeFrom(cutoffTime)),
@@ -66,7 +66,7 @@ func Unload(db boil.Executor, olderThan time.Duration) (int, error) {
 			continue
 		}
 
-		l := logger.WithFields(logrus.Fields{"user_id": user.ID})
+		l := wtLogger.WithFields(logrus.Fields{"user_id": user.ID})
 
 		err = wallet.UnloadWallet(user.R.LbrynetServer.Address, user.ID)
 		if err != nil {
@@ -89,7 +89,7 @@ func Unload(db boil.Executor, olderThan time.Duration) (int, error) {
 		}
 	}
 
-	logger.Log().Infof("unloaded %d wallets in %s", len(users), time.Since(start))
+	wtLogger.Log().Infof("unloaded %d wallets in %s", len(users), time.Since(start))
 	return len(users), nil
 }
 
@@ -100,7 +100,7 @@ func Middleware(db boil.Executor) mux.MiddlewareFunc {
 
 			user, err := auth.FromRequest(r)
 			if err != nil && !errors.Is(err, auth.ErrNoAuthInfo) {
-				logger.Log().Error(err)
+				wtLogger.Log().Error(err)
 				return
 			}
 			if user == nil {
@@ -110,7 +110,7 @@ func Middleware(db boil.Executor) mux.MiddlewareFunc {
 			err = Touch(db, user.ID)
 			if err != nil {
 				monitor.ErrorToSentry(err)
-				logger.Log().Errorf("error touching wallet access time: %v", err)
+				wtLogger.Log().Errorf("error touching wallet access time: %v", err)
 			}
 		})
 	}
