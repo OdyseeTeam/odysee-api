@@ -45,7 +45,8 @@ func preflightHookGet(caller *Caller, query *Query) (*jsonrpc.RPCResponse, error
 	}
 	stream := claim.Value.GetStream()
 
-	if stream.Fee != nil && stream.Fee.Amount > 0 {
+	feeAmount := stream.GetFee().GetAmount()
+	if feeAmount > 0 {
 		isPaidStream = true
 
 		purchaseQuery, err := NewQuery(jsonrpc.NewRequest(
@@ -73,8 +74,8 @@ func preflightHookGet(caller *Caller, query *Query) (*jsonrpc.RPCResponse, error
 		} else {
 			// Assuming the stream is of a paid variety and we have just paid for the stream
 			metrics.LbrytvPurchases.Inc()
-			metrics.LbrytvPurchaseAmounts.Observe(float64(stream.Fee.Amount))
-			log.Infof("made a purchase for %.2f LBC", float64(stream.Fee.Amount))
+			metrics.LbrytvPurchaseAmounts.Observe(float64(feeAmount))
+			log.Infof("made a purchase for %d LBC", feeAmount)
 			// This is needed so changes can propagate for the subsequent resolve
 			time.Sleep(1 * time.Second)
 			claim, err = resolve(caller, query, url)
@@ -91,20 +92,15 @@ func preflightHookGet(caller *Caller, query *Query) (*jsonrpc.RPCResponse, error
 	}
 	metrics.LbrytvStreamRequests.WithLabelValues(metricLabel).Inc()
 
-	size := stream.GetSource().Size
-
-	if err != nil {
-		return nil, fmt.Errorf("error getting size by magic: %v", err)
-	}
-
 	if isPaidStream {
+		size := stream.GetSource().GetSize()
 		if claim.PurchaseReceipt == nil {
 			log.Errorf("stream was paid for but receipt not found in the resolve response")
 			return nil, fmt.Errorf("couldn't find purchase receipt for paid stream")
 		}
 
-		log.Debugf("creating stream token with stream id=%s, txid=%s, size=%v", claim.Name+"/"+claim.ClaimID, claim.PurchaseReceipt.Txid, uint64(size))
-		token, err := paid.CreateToken(claim.Name+"/"+claim.ClaimID, claim.PurchaseReceipt.Txid, uint64(size), paid.ExpTenSecPer100MB)
+		log.Debugf("creating stream token with stream id=%s, txid=%s, size=%v", claim.Name+"/"+claim.ClaimID, claim.PurchaseReceipt.Txid, size)
+		token, err := paid.CreateToken(claim.Name+"/"+claim.ClaimID, claim.PurchaseReceipt.Txid, size, paid.ExpTenSecPer100MB)
 		if err != nil {
 			return nil, err
 		}
@@ -157,12 +153,6 @@ func resolve(c *Caller, q *Query, url string) (*ljsonrpc.Claim, error) {
 		return nil, fmt.Errorf("could not find a corresponding entry in the resolve response")
 	}
 	return &claim, err
-}
-
-func checkIsPaidStream(s interface{}) bool {
-	f := s.(ljsonrpc.File)
-	stream := f.Metadata.GetStream()
-	return stream.Fee != nil && stream.Fee.Amount > 0
 }
 
 func getStatusResponse(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
