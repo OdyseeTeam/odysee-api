@@ -117,12 +117,11 @@ func createDBUser(exec boil.Executor, id int) (*models.User, error) {
 	// Check if we encountered a primary key violation, it would mean another routine
 	// fired from another request has managed to create a user before us so we should try retrieving it again.
 	var pgErr *pq.Error
-	if errors.As(err, &pgErr) && pgErr.Code == pgUniqueConstraintViolation && pgErr.Column == "users_pkey" {
-		log.Debug("user creation conflict, trying to retrieve the local user again")
+	if errors.As(err, &pgErr) && pgErr.Code == pgUniqueConstraintViolation {
+		log.Info("user creation conflict, trying to retrieve the local user again")
 		return getDBUser(exec, id)
 	}
-
-	log.Error("unknown error encountered while creating user: ", err)
+	log.Error("unknown error encountered while creating user:", err)
 	return nil, err
 }
 
