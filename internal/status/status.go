@@ -22,7 +22,6 @@ var PlayerServers = []string{
 	"https://player2.lbryplayer.xyz",
 	"https://player3.lbryplayer.xyz",
 	"https://player4.lbryplayer.xyz",
-	"https://player5.lbryplayer.xyz",
 	"https://player6.lbryplayer.xyz",
 }
 
