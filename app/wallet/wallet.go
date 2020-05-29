@@ -132,8 +132,16 @@ func getDBUser(exec boil.Executor, id int) (*models.User, error) {
 	).One(exec)
 }
 
+// GetDBUserG returns a database user with LbrynetServer selected, using the global executor.
+func GetDBUserG(id int) (*models.User, error) {
+	return models.Users(
+		models.UserWhere.ID.EQ(id),
+		qm.Load(models.UserRels.LbrynetServer),
+	).OneG()
+}
+
 // assignSDKServerToUser permanently assigns an sdk to a user, and creates a wallet on that sdk for that user.
-// it ensures that the assigned sdk is set on user.R.LbrynetServer, so it can be accessed externally
+// it ensures that the assigned sdk is set on user.R.LbrynetServer, so it can be accessed externally.
 func assignSDKServerToUser(exec boil.Executor, user *models.User, server *models.LbrynetServer, log *logrus.Entry) error {
 	if user.ID == 0 {
 		return errors.Err("user must already exist in db")

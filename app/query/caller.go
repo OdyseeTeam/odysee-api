@@ -88,6 +88,10 @@ func (c *Caller) addDefaultHooks() {
 // Call method forwards a JSON-RPC request to the lbrynet server.
 // It returns a response that is ready to be sent back to the JSON-RPC client as is.
 func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
+	if c.endpoint == "" {
+		return nil, errors.Err("cannot call blank endpoint")
+	}
+
 	walletID := ""
 	if c.userID != 0 {
 		walletID = sdkrouter.WalletID(c.userID)

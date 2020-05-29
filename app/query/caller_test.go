@@ -31,6 +31,12 @@ func parseRawResponse(t *testing.T, rawCallResponse []byte, v interface{}) {
 	require.NoError(t, err)
 }
 
+func TestCaller_CallBlankEndpoint(t *testing.T) {
+	c := NewCaller("", 0)
+	_, err := c.Call(jsonrpc.NewRequest("status"))
+	require.EqualError(t, err, "cannot call blank endpoint")
+}
+
 func TestCaller_CallRelaxedMethods(t *testing.T) {
 	for _, m := range relaxedMethods {
 		if m == MethodStatus || m == MethodGet {

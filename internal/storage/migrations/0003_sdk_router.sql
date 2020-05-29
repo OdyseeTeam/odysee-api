@@ -20,11 +20,11 @@ ALTER TABLE users
 -- +migrate StatementBegin
 INSERT INTO lbrynet_servers(name, address)
     VALUES
-        ('default',  'http://lbrynet1:5279/'),
-        ('lbrynet2', 'http://lbrynet2:5279/'),
-        ('lbrynet3', 'http://lbrynet3:5279/'),
-        ('lbrynet4', 'http://lbrynet4:5279/'),
-        ('lbrynet5', 'http://lbrynet5:5279/');
+        ('default',  'http://localhost:5279/'),
+        ('lbrynet2', 'http://localhost:5279/'),
+        ('lbrynet3', 'http://localhost:5279/'),
+        ('lbrynet4', 'http://localhost:5279/'),
+        ('lbrynet5', 'http://localhost:5279/');
 -- +migrate StatementEnd
 
 -- +migrate StatementBegin

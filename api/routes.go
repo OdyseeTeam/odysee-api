@@ -32,11 +32,11 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	r.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("lbrytv api"))
 	})
+	r.HandleFunc("/", proxy.HandleCORS).Methods(http.MethodOptions)
 
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
 	v1Router.Use(defaultMiddlewares(sdkRouter, config.GetInternalAPIHost()))
 
-	v1Router.HandleFunc("/proxy", proxy.HandleCORS).Methods(http.MethodOptions)
 	v1Router.HandleFunc("/proxy", upHandler.Handle).MatcherFunc(upHandler.CanHandle)
 	v1Router.HandleFunc("/proxy", proxy.Handle)
 	v1Router.HandleFunc("/metric/ui", metrics.TrackUIMetric).Methods(http.MethodPost)
@@ -46,6 +46,9 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	internalRouter := r.PathPrefix("/internal").Subrouter()
 	internalRouter.Handle("/metrics", promhttp.Handler())
 	internalRouter.HandleFunc("/whoami", status.WhoAMI)
+
+	v2Router := r.PathPrefix("/api/v2").Subrouter()
+	v2Router.HandleFunc("/status", status.GetStatusV2)
 }
 
 func defaultMiddlewares(rt *sdkrouter.Router, internalAPIHost string) mux.MiddlewareFunc {
