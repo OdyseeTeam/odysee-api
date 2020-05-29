@@ -32,23 +32,28 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	r.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("lbrytv api"))
 	})
-	r.HandleFunc("/", proxy.HandleCORS).Methods(http.MethodOptions)
+	r.HandleFunc("", proxy.HandleCORS)
 
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
 	v1Router.Use(defaultMiddlewares(sdkRouter, config.GetInternalAPIHost()))
 
 	v1Router.HandleFunc("/proxy", upHandler.Handle).MatcherFunc(upHandler.CanHandle)
-	v1Router.HandleFunc("/proxy", proxy.Handle)
+	v1Router.HandleFunc("/proxy", proxy.Handle).Methods(http.MethodPost)
+	v1Router.HandleFunc("/proxy", proxy.HandleCORS).Methods(http.MethodOptions)
+
 	v1Router.HandleFunc("/metric/ui", metrics.TrackUIMetric).Methods(http.MethodPost)
-	v1Router.HandleFunc("/status", status.GetStatus)
-	v1Router.HandleFunc("/paid/pubkey", paid.HandlePublicKeyRequest)
+	v1Router.HandleFunc("/metric/ui", proxy.HandleCORS).Methods(http.MethodOptions)
+
+	v1Router.HandleFunc("/status", status.GetStatus).Methods(http.MethodGet)
+	v1Router.HandleFunc("/paid/pubkey", paid.HandlePublicKeyRequest).Methods(http.MethodGet)
 
 	internalRouter := r.PathPrefix("/internal").Subrouter()
 	internalRouter.Handle("/metrics", promhttp.Handler())
 	internalRouter.HandleFunc("/whoami", status.WhoAMI)
 
 	v2Router := r.PathPrefix("/api/v2").Subrouter()
-	v2Router.HandleFunc("/status", status.GetStatusV2)
+	v2Router.HandleFunc("/status", status.GetStatusV2).Methods(http.MethodGet)
+	v2Router.HandleFunc("/status", proxy.HandleCORS).Methods(http.MethodOptions)
 }
 
 func defaultMiddlewares(rt *sdkrouter.Router, internalAPIHost string) mux.MiddlewareFunc {

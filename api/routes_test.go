@@ -50,21 +50,26 @@ func TestRoutesPublish(t *testing.T) {
 func TestRoutesOptions(t *testing.T) {
 	r := mux.NewRouter()
 	rt := sdkrouter.New(config.GetLbrynetServers())
-
-	req, err := http.NewRequest("OPTIONS", "/api/v1/proxy", nil)
-	require.NoError(t, err)
-	rr := httptest.NewRecorder()
-
 	InstallRoutes(r, rt)
-	r.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Equal(t, "7200", rr.Result().Header.Get("Access-Control-Max-Age"))
-	assert.Equal(t, "*", rr.Result().Header.Get("Access-Control-Allow-Origin"))
-	assert.Equal(
-		t,
-		"X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept",
-		rr.Result().Header.Get("Access-Control-Allow-Headers"),
-	)
+
+	for _, url := range []string{"/api/v1/proxy", "/api/v2/status"} {
+		t.Run(url, func(t *testing.T) {
+			req, err := http.NewRequest("OPTIONS", url, nil)
+			require.NoError(t, err)
+			rr := httptest.NewRecorder()
+
+			r.ServeHTTP(rr, req)
+			h := rr.Result().Header
+			assert.Equal(t, http.StatusOK, rr.Code)
+			assert.Equal(t, "7200", h.Get("Access-Control-Max-Age"))
+			assert.Equal(t, "*", h.Get("Access-Control-Allow-Origin"))
+			assert.Equal(
+				t,
+				"X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept",
+				h.Get("Access-Control-Allow-Headers"),
+			)
+		})
+	}
 }
 
 func TestMiddlewareOrder(t *testing.T) {
