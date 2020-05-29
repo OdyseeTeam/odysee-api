@@ -36,7 +36,7 @@ var testTableErrorLoggingMiddleware = []middlewareTestRow{
 			panic("panic ensued")
 		},
 		expectedStatus:      http.StatusInternalServerError,
-		expectedJSONMessage: "panic ensued",
+		expectedJSONMessage: "panic: panic ensued",
 		expectedLogEntry: map[string]interface{}{
 			"method":   "POST",
 			"url":      "/some-endpoint",
@@ -44,7 +44,7 @@ var testTableErrorLoggingMiddleware = []middlewareTestRow{
 			"response": "everything good so far...",
 		},
 		expectedLogLevel:      log.ErrorLevel,
-		expectedLogStartsWith: "RECOVERED PANIC: panic ensued",
+		expectedLogStartsWith: "RECOVERED PANIC: panic: panic ensued",
 	},
 
 	{

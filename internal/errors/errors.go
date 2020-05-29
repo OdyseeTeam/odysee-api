@@ -10,7 +10,7 @@ import (
 )
 
 // The maximum number of stack frames on any error.
-const maxStackDepth = 50
+const maxStackDepth = 100
 
 // traced is an error with an attached stack trace
 type traced struct {
@@ -97,8 +97,7 @@ func wrap(skip int, e interface{}, fmtParams ...interface{}) *traced {
 	}
 
 	var stack []uintptr
-	type stackTracer interface{ StackTrace() pkgerr.StackTrace } // interop with pkg/errors stack
-	if withStack, ok := e.(stackTracer); ok {
+	if withStack, ok := e.(interface{ StackTrace() pkgerr.StackTrace }); ok { // interop with pkg/errors stack
 		// get their stacktrace
 		pkgStack := withStack.StackTrace()
 		stack = make([]uintptr, len(pkgStack))
@@ -163,4 +162,38 @@ func Base(format string, a ...interface{}) error {
 func HasTrace(err error) bool {
 	_, ok := err.(*traced)
 	return ok
+}
+
+/*
+Recover is similar to the bulitin `recover()`, except it includes a stack trace as well
+Since `recover()` only works when called inside a deferred function (but not any function
+called by it), you should call Recover() as follows
+
+	err := func() (e error) {
+		defer errors.Recover(&e)
+		funcThatMayPanic()
+		return e
+	}()
+
+*/
+func Recover(e *error) {
+	p := recover()
+	if p == nil {
+		return
+	}
+
+	err, ok := p.(error)
+	if !ok {
+		err = fmt.Errorf("%v", p)
+	}
+
+	stack := make([]uintptr, maxStackDepth)
+	length := runtime.Callers(4, stack[:])
+	stack = stack[:length]
+
+	*e = &traced{
+		err:    err,
+		stack:  stack,
+		prefix: "panic",
+	}
 }
