@@ -117,10 +117,7 @@ func preflightHookGet(caller *Caller, query *Query) (*jsonrpc.RPCResponse, error
 }
 
 func resolve(c *Caller, q *Query, url string) (*ljsonrpc.Claim, error) {
-	log := logger.Log().WithField("url", url)
-
-	resolveResponse := ljsonrpc.ResolveResponse{}
-	resQuery, err := NewQuery(jsonrpc.NewRequest(
+	resolveQuery, err := NewQuery(jsonrpc.NewRequest(
 		MethodResolve,
 		map[string]interface{}{
 			"urls":                     url,
@@ -132,18 +129,13 @@ func resolve(c *Caller, q *Query, url string) (*ljsonrpc.Claim, error) {
 		return nil, err
 	}
 
-	resRespRaw, err := c.callQueryWithRetry(resQuery)
+	rawResolveResponse, err := c.callQueryWithRetry(resolveQuery)
 	if err != nil {
 		return nil, err
 	}
 
-	resResult := map[string]interface{}{}
-	err = resRespRaw.GetObject(&resResult)
-	if err != nil {
-		log.Debug("error parsing resolve response:", err)
-		return nil, err
-	}
-	err = ljsonrpc.Decode(resResult, &resolveResponse)
+	var resolveResponse ljsonrpc.ResolveResponse
+	err = ljsonrpc.Decode(rawResolveResponse.Result, &resolveResponse)
 	if err != nil {
 		return nil, err
 	}
