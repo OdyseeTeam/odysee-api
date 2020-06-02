@@ -71,7 +71,11 @@ func (e *traced) TypeName() string {
 
 // Err returns an error with stack trace
 func Err(e interface{}, fmtParams ...interface{}) error {
-	return wrap(1, e, fmtParams...)
+	err := wrap(1, e, fmtParams...)
+	if err == nil {
+		return nil // need this so we don't return a nil *traced pointer, only a real nil
+	}
+	return err
 }
 
 // wrap intelligently creates/handles errors, while preserving the stack trace.

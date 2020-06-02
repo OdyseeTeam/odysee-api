@@ -53,3 +53,10 @@ func itPanics() {
 func itPanicsDeeper() {
 	panic("But who shall dwell in these worlds if they be inhabited?… Are we or they Lords of the World?… And how are all things made for man?")
 }
+
+func TestErr_NilPointer(t *testing.T) {
+	e := Err(nil)
+	assert.NotPanics(t, func() {
+		Unwrap(e)
+	})
+}
