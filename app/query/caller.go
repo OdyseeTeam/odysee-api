@@ -58,7 +58,7 @@ func NewCaller(endpoint string, userID int) *Caller {
 						KeepAlive: 120 * time.Second,
 					}).Dial,
 					TLSHandshakeTimeout:   30 * time.Second,
-					ResponseHeaderTimeout: 300 * time.Second,
+					ResponseHeaderTimeout: 600 * time.Second,
 					ExpectContinueTimeout: 1 * time.Second,
 				},
 			},
