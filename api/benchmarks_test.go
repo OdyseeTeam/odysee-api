@@ -72,10 +72,10 @@ func TestMain(m *testing.M) {
 	}
 	dbConn, connCleanup := storage.CreateTestConn(params)
 	dbConn.SetDefaultConnection()
-	defer connCleanup()
 
 	code := m.Run()
 
+	connCleanup()
 	os.Exit(code)
 }
 

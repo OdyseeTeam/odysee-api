@@ -20,8 +20,11 @@ func TestMain(m *testing.M) {
 	}
 	dbConn, connCleanup := storage.CreateTestConn(params)
 	dbConn.SetDefaultConnection()
-	defer connCleanup()
-	os.Exit(m.Run())
+
+	code := m.Run()
+
+	connCleanup()
+	os.Exit(code)
 }
 
 func TestInitializeWithYML(t *testing.T) {
