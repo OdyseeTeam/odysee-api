@@ -1,6 +1,8 @@
 package wallet
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -191,11 +193,12 @@ func TestGetUserWithWallet_ExistingUserWithoutSDKGetsAssignedOneOnRetrieve(t *te
 	srv.InsertG(boil.Infer())
 	defer func() { srv.DeleteG() }()
 
-	rt := sdkrouter.NewWithServers(srv)
-	u, err := createDBUser(storage.Conn.DB, userID)
+	u := &models.User{ID: userID}
+	err := u.Insert(storage.Conn.DB, boil.Infer())
 	require.NoError(t, err)
-	require.NotNil(t, u)
+	assert.False(t, u.CreatedAt.IsZero())
 
+	rt := sdkrouter.NewWithServers(srv)
 	u, err = GetUserWithSDKServer(rt, ts.URL, "abc", "")
 	require.NoError(t, err)
 	assert.True(t, u.LbrynetServerID.Valid)
@@ -361,4 +364,50 @@ func TestCreateWalletLoadWallet(t *testing.T) {
 
 	err = LoadWallet(addr, userID)
 	require.NoError(t, err)
+}
+
+func TestCreateDBUser_ConcurrentDuplicateUser(t *testing.T) {
+	storage.Conn.Truncate([]string{models.TableNames.Users})
+
+	id := 123
+	user := &models.User{ID: id}
+	err := user.Insert(storage.Conn.DB.DB, boil.Infer())
+	require.NoError(t, err)
+
+	// we want the very first getDBUser() call in getOrCreateLocalUser() to return no results to
+	// simulate the case where that call returns nothing and then the user is created in another
+	// request
+
+	mockExecutor := &firstQueryNoResults{}
+
+	err = inTx(context.Background(), storage.Conn.DB.DB, func(tx *sql.Tx) error {
+		mockExecutor.ex = tx
+		_, err := getOrCreateLocalUser(mockExecutor, id, logger.Log())
+		return err
+	})
+
+	assert.NoError(t, err)
+}
+
+type firstQueryNoResults struct {
+	ex    boil.Executor
+	calls int
+}
+
+func (m *firstQueryNoResults) Exec(query string, args ...interface{}) (sql.Result, error) {
+	return m.ex.Exec(query, args...)
+}
+func (m *firstQueryNoResults) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	m.calls++
+	if m.calls == 1 {
+		return nil, errors.Err(sql.ErrNoRows)
+	}
+	return m.ex.Query(query, args...)
+}
+func (m *firstQueryNoResults) QueryRow(query string, args ...interface{}) *sql.Row {
+	m.calls++
+	if m.calls == 1 {
+		return m.ex.QueryRow("SELECT 0 <> 0") // just want something with no rows
+	}
+	return m.ex.QueryRow(query, args...)
 }
