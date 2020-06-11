@@ -19,6 +19,9 @@ const (
 	LabelNameType  = "type"
 	LabelValuePaid = "paid"
 	LabelValueFree = "free"
+
+	FailureKindNet = "net"
+	FailureKindRPC = "rpc"
 )
 
 var (
@@ -55,7 +58,7 @@ var (
 			Help:      "Failed method call latency distributions",
 			Buckets:   callsSecondsBuckets,
 		},
-		[]string{"method", "endpoint"},
+		[]string{"method", "endpoint", "kind"},
 	)
 
 	LbrynetWalletsLoaded = promauto.NewGaugeVec(prometheus.GaugeOpts{
