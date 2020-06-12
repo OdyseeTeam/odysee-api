@@ -7,6 +7,7 @@ import (
 
 	"github.com/lbryio/lbrytv/models"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -131,14 +132,25 @@ func GetAddress() string {
 
 //GetLbrynetServers returns the names/addresses of every SDK server
 func GetLbrynetServers() map[string]string {
-	servers, err := models.LbrynetServers().AllG()
-	if err != nil {
-		panic("Could not retrieve lbrynet server list from db and config is not set.")
+	if Config.Viper.GetString(deprecatedLbrynet) != "" &&
+		len(Config.Viper.GetStringMapString(lbrynetServers)) > 0 {
+		logrus.Panicf("Both %s and %s are set. This is a highlander situation...there can be only 1.", deprecatedLbrynet, lbrynetServers)
 	}
-	if len(servers) == 0 {
-		panic("There are no servers listed in the db and config is not set.")
+
+	if len(Config.Viper.GetStringMapString(lbrynetServers)) > 0 {
+		return Config.Viper.GetStringMapString(lbrynetServers)
+	} else if Config.Viper.GetString(deprecatedLbrynet) != "" {
+		return map[string]string{"sdk": Config.Viper.GetString(deprecatedLbrynet)}
+	} else {
+		servers, err := models.LbrynetServers().AllG()
+		if err != nil {
+			panic("Could not retrieve lbrynet server list from db and config is not set.")
+		}
+		if len(servers) == 0 {
+			panic("There are no servers listed in the db and config is not set.")
+		}
+		return nil
 	}
-	return nil
 }
 
 // GetInternalAPIHost returns the address of internal-api server
