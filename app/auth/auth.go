@@ -67,10 +67,3 @@ func Middleware(provider Provider) mux.MiddlewareFunc {
 		})
 	}
 }
-
-func SDKAddress(u *models.User) string {
-	if u != nil && u.R != nil && u.R.LbrynetServer != nil {
-		return u.R.LbrynetServer.Address
-	}
-	return ""
-}
