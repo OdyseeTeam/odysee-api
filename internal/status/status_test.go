@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/lbryio/lbrytv/app/auth"
@@ -19,7 +20,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetStatusV2_Unauthenticated(t *testing.T) {
+func TestMain(m *testing.M) {
+	// These tests requires an environment close to production setup, i.e. no loading from the config
+	config.Override("LbrynetServers", map[string]string{})
+	defer config.RestoreOverridden()
+
 	dbConfig := config.GetDatabase()
 	params := storage.ConnParams{
 		Connection: dbConfig.Connection,
@@ -28,8 +33,13 @@ func TestGetStatusV2_Unauthenticated(t *testing.T) {
 	}
 	c, connCleanup := storage.CreateTestConn(params)
 	c.SetDefaultConnection()
+
 	defer connCleanup()
 
+	os.Exit(m.Run())
+}
+
+func TestGetStatusV2_Unauthenticated(t *testing.T) {
 	rr := httptest.NewRecorder()
 	r, _ := http.NewRequest("GET", "", nil)
 	provider := func(token, ip string) (*models.User, error) { return nil, nil }
@@ -50,16 +60,6 @@ func TestGetStatusV2_Unauthenticated(t *testing.T) {
 }
 
 func TestGetStatusV2_UnauthenticatedOffline(t *testing.T) {
-	dbConfig := config.GetDatabase()
-	params := storage.ConnParams{
-		Connection: dbConfig.Connection,
-		DBName:     dbConfig.DBName,
-		Options:    dbConfig.Options,
-	}
-	c, connCleanup := storage.CreateTestConn(params)
-	c.SetDefaultConnection()
-	defer connCleanup()
-
 	_, err := models.LbrynetServers().UpdateAllG(models.M{"address": "http://malfunctioning/"})
 	require.NoError(t, err)
 	defer func() {
@@ -97,16 +97,6 @@ func TestGetStatusV2_UnauthenticatedOffline(t *testing.T) {
 }
 
 func TestGetStatusV2_Authenticated(t *testing.T) {
-	dbConfig := config.GetDatabase()
-	params := storage.ConnParams{
-		Connection: dbConfig.Connection,
-		DBName:     dbConfig.DBName,
-		Options:    dbConfig.Options,
-	}
-	c, connCleanup := storage.CreateTestConn(params)
-	c.SetDefaultConnection()
-	defer connCleanup()
-
 	ts := test.MockHTTPServer(nil)
 	defer ts.Close()
 	ts.NextResponse <- `{

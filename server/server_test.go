@@ -2,16 +2,33 @@ package server
 
 import (
 	"net/http"
+	"os"
 	"syscall"
 	"testing"
 	"time"
 
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/storage"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMain(m *testing.M) {
+	dbConfig := config.GetDatabase()
+	params := storage.ConnParams{
+		Connection: dbConfig.Connection,
+		DBName:     dbConfig.DBName,
+		Options:    dbConfig.Options,
+	}
+	c, connCleanup := storage.CreateTestConn(params)
+	c.SetDefaultConnection()
+
+	defer connCleanup()
+
+	os.Exit(m.Run())
+}
 
 func TestStartAndServeUntilShutdown(t *testing.T) {
 	server := NewServer("localhost:40080", sdkrouter.New(config.GetLbrynetServers()))
