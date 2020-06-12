@@ -88,9 +88,9 @@ func TestGetStatusV2_UnauthenticatedOffline(t *testing.T) {
 		statusOffline,
 		lbrynetStatus["status"],
 	)
-	assert.EqualValues(
+	assert.Regexp(
 		t,
-		"rpc call resolve() on http://malfunctioning/: Post \"http://malfunctioning/\": dial tcp: lookup malfunctioning: no such host",
+		"dial tcp: lookup malfunctioning",
 		lbrynetStatus["error"],
 	)
 	assert.Nil(t, respStatus["user"])
