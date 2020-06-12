@@ -70,7 +70,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		userID = user.ID
 	}
 
-	sdkAddress := auth.SDKAddress(user)
+	sdkAddress := sdkrouter.GetSDKAddress(user)
 	if sdkAddress == "" {
 		rt := sdkrouter.FromRequest(r)
 		sdkAddress = rt.RandomServer().Address

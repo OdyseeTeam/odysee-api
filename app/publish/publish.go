@@ -14,6 +14,7 @@ import (
 	"github.com/lbryio/lbrytv/app/query"
 	"github.com/lbryio/lbrytv/app/query/cache"
 	"github.com/lbryio/lbrytv/app/rpcerrors"
+	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
@@ -48,7 +49,7 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		w.Write(rpcerrors.ErrorToJSON(authErr))
 		return
 	}
-	if auth.SDKAddress(user) == "" {
+	if sdkrouter.GetSDKAddress(user) == "" {
 		w.Write(rpcerrors.NewInternalError(errors.Err("user does not have sdk address assigned")).JSON())
 		logger.Log().Errorf("user %d does not have sdk address assigned", user.ID)
 		return
@@ -79,7 +80,7 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c := getCaller(auth.SDKAddress(user), f.Name(), user.ID, qCache)
+	c := getCaller(sdkrouter.GetSDKAddress(user), f.Name(), user.ID, qCache)
 
 	rpcRes, err := c.Call(rpcReq)
 	if err != nil {

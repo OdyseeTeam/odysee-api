@@ -166,3 +166,18 @@ func WalletID(userID int) string {
 	const template = "lbrytv-id.%d.wallet"
 	return fmt.Sprintf(template, userID)
 }
+
+func GetSDKAddress(u *models.User) string {
+	s := GetLbrynetServer(u)
+	if s == nil {
+		return ""
+	}
+	return s.Address
+}
+
+func GetLbrynetServer(u *models.User) *models.LbrynetServer {
+	if u != nil && u.R != nil && u.R.LbrynetServer != nil {
+		return u.R.LbrynetServer
+	}
+	return nil
+}

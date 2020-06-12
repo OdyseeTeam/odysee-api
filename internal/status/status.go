@@ -14,6 +14,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/ip"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
+	"github.com/lbryio/lbrytv/models"
 	"github.com/ybbus/jsonrpc"
 
 	"github.com/jinzhu/copier"
@@ -109,67 +110,63 @@ func GetStatusV2(w http.ResponseWriter, r *http.Request) {
 	respStatus := http.StatusOK
 	var response statusResponse
 
-	if cachedResponse != nil && lastUpdate.After(time.Now().Add(statusCacheValidity)) {
-		copier.Copy(&response, cachedResponse)
+	services := map[string]ServerList{
+		"lbrynet": {},
+	}
+	response = statusResponse{
+		"timestamp":     fmt.Sprintf("%v", time.Now().UTC()),
+		"services":      services,
+		"general_state": statusOK,
+	}
+	failureDetected := false
+
+	var (
+		userID        int
+		qCache        cache.QueryCache
+		lbrynetServer *models.LbrynetServer
+	)
+	rt := sdkrouter.New(config.GetLbrynetServers())
+	user, err := auth.FromRequest(r)
+	if err != nil || user == nil {
+		lbrynetServer = rt.RandomServer()
 	} else {
-		services := map[string]ServerList{
-			"lbrynet": {},
-		}
-		response = statusResponse{
-			"timestamp":     fmt.Sprintf("%v", time.Now().UTC()),
-			"services":      services,
-			"general_state": statusOK,
-		}
-		failureDetected := false
+		lbrynetServer = sdkrouter.GetLbrynetServer(user)
+		userID = user.ID
+	}
 
-		var (
-			userID     int
-			qCache     cache.QueryCache
-			sdkAddress string
-		)
-		rt := sdkrouter.New(config.GetLbrynetServers())
-		user, err := auth.FromRequest(r)
-		if err != nil {
-			sdkAddress = rt.RandomServer().Address
-		} else {
-			sdkAddress = auth.SDKAddress(user)
-			userID = user.ID
-		}
+	srv := ServerItem{Address: lbrynetServer.Name, Status: statusOK}
 
-		srv := ServerItem{Address: sdkAddress, Status: statusOK}
+	if cache.IsOnRequest(r) {
+		qCache = cache.FromRequest(r)
+	}
 
-		if cache.IsOnRequest(r) {
-			qCache = cache.FromRequest(r)
-		}
+	c := query.NewCaller(lbrynetServer.Address, userID)
+	c.Cache = qCache
+	rpcRes, err := c.Call(jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": resolveURL}))
 
-		c := query.NewCaller(sdkAddress, userID)
-		c.Cache = qCache
-		rpcRes, err := c.Call(jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": resolveURL}))
-
-		if err != nil {
-			srv.Error = err.Error()
-			srv.Status = statusOffline
-			failureDetected = true
-			logger.Log().Error("we're failing: ", err)
-		} else if rpcRes.Error != nil {
-			srv.Error = rpcRes.Error.Message
-			srv.Status = statusNotReady
-			failureDetected = true
-			logger.Log().Error("we're failing: ", err)
-		} else {
-			if user != nil {
-				response["user"] = map[string]interface{}{
-					"user_id":      user.ID,
-					"assigned_sdk": auth.SDKAddress(user),
-				}
+	if err != nil {
+		srv.Error = err.Error()
+		srv.Status = statusOffline
+		failureDetected = true
+		logger.Log().Error("we're failing: ", err)
+	} else if rpcRes.Error != nil {
+		srv.Error = rpcRes.Error.Message
+		srv.Status = statusNotReady
+		failureDetected = true
+		logger.Log().Error("we're failing: ", err)
+	} else {
+		if user != nil {
+			response["user"] = map[string]interface{}{
+				"user_id":      user.ID,
+				"assigned_sdk": lbrynetServer.Name,
 			}
 		}
+	}
 
-		services["lbrynet"] = append(services["lbrynet"], srv)
+	services["lbrynet"] = append(services["lbrynet"], srv)
 
-		if failureDetected {
-			response["general_state"] = statusFailing
-		}
+	if failureDetected {
+		response["general_state"] = statusFailing
 	}
 
 	responses.AddJSONContentType(w)
