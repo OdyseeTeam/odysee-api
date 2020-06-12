@@ -45,9 +45,9 @@ const (
 )
 
 type ServerItem struct {
-	Address string `json:"address"`
-	Status  string `json:"status"`
-	Error   string `json:"error,omitempty"`
+	Name   string `json:"name"`
+	Status string `json:"status"`
+	Error  string `json:"error,omitempty"`
 }
 type ServerList []ServerItem
 type statusResponse map[string]interface{}
@@ -73,12 +73,12 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 
 		sdks := sdkrouter.FromRequest(req).GetAll()
 		for _, s := range sdks {
-			services["lbrynet"] = append(services["lbrynet"], ServerItem{Address: s.Address, Status: statusOK})
+			services["lbrynet"] = append(services["lbrynet"], ServerItem{Name: s.Name, Status: statusOK})
 		}
 
 		for _, ps := range PlayerServers {
 			r, err := http.Get(ps)
-			srv := ServerItem{Address: ps, Status: statusOK}
+			srv := ServerItem{Name: ps, Status: statusOK}
 			if err != nil {
 				srv.Error = fmt.Sprintf("%v", err)
 				srv.Status = statusOffline
@@ -110,8 +110,8 @@ func GetStatusV2(w http.ResponseWriter, r *http.Request) {
 	respStatus := http.StatusOK
 	var response statusResponse
 
-	services := map[string]ServerList{
-		"lbrynet": {},
+	services := map[string]*ServerItem{
+		"lbrynet": nil,
 	}
 	response = statusResponse{
 		"timestamp":     fmt.Sprintf("%v", time.Now().UTC()),
@@ -134,7 +134,7 @@ func GetStatusV2(w http.ResponseWriter, r *http.Request) {
 		userID = user.ID
 	}
 
-	srv := ServerItem{Address: lbrynetServer.Name, Status: statusOK}
+	srv := ServerItem{Name: lbrynetServer.Name, Status: statusOK}
 
 	if cache.IsOnRequest(r) {
 		qCache = cache.FromRequest(r)
@@ -163,7 +163,7 @@ func GetStatusV2(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	services["lbrynet"] = append(services["lbrynet"], srv)
+	services["lbrynet"] = &srv
 
 	if failureDetected {
 		response["general_state"] = statusFailing
@@ -180,10 +180,10 @@ func GetStatusV2(w http.ResponseWriter, r *http.Request) {
 
 func WhoAMI(w http.ResponseWriter, req *http.Request) {
 	details := map[string]string{
-		"ip":                fmt.Sprintf("%v", req.RemoteAddr),
-		"X-Forwarded-For":   req.Header.Get("X-Forwarded-For"),
-		"X-Real-Ip":         req.Header.Get("X-Real-Ip"),
-		"AddressForRequest": ip.AddressForRequest(req),
+		"ip":              fmt.Sprintf("%v", req.RemoteAddr),
+		"X-Forwarded-For": req.Header.Get("X-Forwarded-For"),
+		"X-Real-Ip":       req.Header.Get("X-Real-Ip"),
+		"NameForRequest":  ip.AddressForRequest(req),
 	}
 
 	responses.AddJSONContentType(w)

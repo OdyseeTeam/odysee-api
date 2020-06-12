@@ -45,7 +45,7 @@ func TestGetStatusV2_Unauthenticated(t *testing.T) {
 	err = json.Unmarshal(respBody, &respStatus)
 	require.NoError(t, err)
 
-	assert.Equal(t, statusOK, respStatus["general_state"])
+	assert.Equal(t, statusOK, respStatus["general_state"], respStatus)
 	assert.Nil(t, respStatus["user"])
 }
 
@@ -82,15 +82,17 @@ func TestGetStatusV2_UnauthenticatedOffline(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, statusFailing, respStatus["general_state"])
-	assert.Equal(
+	lbrynetStatus := respStatus["services"].(map[string]interface{})["lbrynet"].(map[string]interface{})
+	assert.EqualValues(
 		t,
-		map[string]interface{}{
-			"lbrynet": []interface{}{map[string]interface{}{
-				"address": "http://malfunctioning/",
-				"status":  statusOffline,
-				"error":   "rpc call resolve() on http://malfunctioning/: Post \"http://malfunctioning/\": dial tcp: lookup malfunctioning: no such host",
-			}},
-		}, respStatus["services"])
+		statusOffline,
+		lbrynetStatus["status"],
+	)
+	assert.EqualValues(
+		t,
+		"rpc call resolve() on http://malfunctioning/: Post \"http://malfunctioning/\": dial tcp: lookup malfunctioning: no such host",
+		lbrynetStatus["error"],
+	)
 	assert.Nil(t, respStatus["user"])
 }
 
@@ -139,11 +141,17 @@ func TestGetStatusV2_Authenticated(t *testing.T) {
 	require.NotNil(t, respStatus["user"])
 	userDetails := respStatus["user"].(map[string]interface{})
 	assert.EqualValues(t, 123, userDetails["user_id"])
-	assert.EqualValues(t, sdkrouter.GetSDKAddress(u), userDetails["assigned_sdk"])
+	assert.EqualValues(t, sdkrouter.GetLbrynetServer(u).Name, userDetails["assigned_sdk"])
 
+	lbrynetStatus := respStatus["services"].(map[string]interface{})["lbrynet"].(map[string]interface{})
 	assert.Equal(
 		t,
-		map[string]interface{}{
-			"lbrynet": []interface{}{map[string]interface{}{"address": sdkrouter.GetSDKAddress(u), "status": statusOK}},
-		}, respStatus["services"])
+		sdkrouter.GetLbrynetServer(u).Name,
+		lbrynetStatus["name"],
+	)
+	assert.Equal(
+		t,
+		statusOK,
+		lbrynetStatus["status"],
+	)
 }

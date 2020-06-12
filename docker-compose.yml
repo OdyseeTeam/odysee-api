@@ -1,14 +1,15 @@
-version: '3.2'
+version: "3.2"
 
 services:
   lbrynet:
     image: lbry/lbrynet-tv:latest
     ports:
       - "5581:5279"
+      - "5279:5279"
     volumes:
-    - type: bind
-      source: storage
-      target: /storage
+      - type: bind
+        source: storage
+        target: /storage
     environment:
       SDK_CONFIG: /daemon/daemon_settings.yml
       # SDK_LBRYUM_SERVERS: wallet:50001
@@ -20,9 +21,9 @@ services:
     ports:
       - 8080:8080
     volumes:
-    - type: bind
-      source: storage
-      target: /storage
+      - type: bind
+        source: storage
+        target: /storage
     environment:
       LW_LBRYNET: http://lbrynet:5279/
       LW_DEBUG: 1
@@ -38,9 +39,9 @@ services:
     ports:
       - "50001:50001"
     volumes:
-    - type: bind
-      source: wallet
-      target: /wallet
+      - type: bind
+        source: wallet
+        target: /wallet
     environment:
       # DAEMON_URL: http://lbry:lbry@127.0.0.1:9245
       TCP_PORT: 50001
@@ -55,9 +56,9 @@ services:
   lbrycrd:
     image: lbry/lbrycrd:linux-x86_64-production
     volumes:
-    - type: bind
-      source: lbrycrd
-      target: /data
+      - type: bind
+        source: lbrycrd
+        target: /data
     environment:
       RPC_USER: lbry
       RPC_PASSWORD: lbry
@@ -69,15 +70,15 @@ services:
     ports:
       - "5432:5432"
     volumes:
-    - type: bind
-      source: pgdata
-      target: /pgdata
+      - type: bind
+        source: pgdata
+        target: /pgdata
     environment:
       POSTGRES_USER: lbrytv
       POSTGRES_PASSWORD: lbrytv
       PGDATA: /pgdata
-      TZ: 'UTC'
-      PGTZ: 'UTC'
+      TZ: "UTC"
+      PGTZ: "UTC"
   watchtower:
     image: containrrr/watchtower
     command: --interval 30 --cleanup --label-enable --debug
@@ -98,7 +99,6 @@ services:
       - ${PWD}/deployments/docker/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
   smtp:
     image: namshi/smtp:latest
-
 
 volumes:
   pgdata:
