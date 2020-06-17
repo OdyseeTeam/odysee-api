@@ -10,7 +10,6 @@ import (
 	"github.com/lbryio/lbrytv/internal/monitor"
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
-	"github.com/lbryio/lbry.go/v2/stream"
 	"github.com/lbryio/reflector.go/reflector"
 )
 
@@ -132,16 +131,16 @@ func (r *Manager) ReflectAll() (*RunStats, error) {
 	logger.Log().Debugf("checking %v for blobs...", r.blobsPath)
 	f, err := os.Open(r.blobsPath)
 	if err != nil {
-		return nil, err
+		return nil, errors.Err(err)
 	}
 
 	entries, err := f.Readdir(-1)
 	if err != nil {
-		return nil, err
+		return nil, errors.Err(err)
 	}
 	err = f.Close()
 	if err != nil {
-		return nil, err
+		return nil, errors.Err(err)
 	}
 
 	for _, file := range entries {
@@ -176,7 +175,7 @@ func (r *Manager) ReflectAll() (*RunStats, error) {
 				stats.Unlock()
 			}
 
-			err = rc.SendBlob(stream.Blob(b))
+			err = rc.SendBlob(b)
 			if errors.Is(err, reflector.ErrBlobExists) || err == nil {
 				stats.Lock()
 				stats.ReflectedBlobs++

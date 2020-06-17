@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"runtime/debug"
 
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/errors"
@@ -80,19 +79,10 @@ func ErrorLoggingMiddleware(next http.Handler) http.Handler {
 
 		// Record response from next handler, recovering any panics therein
 		recorder := &responseRecorder{}
-		recoveredErr, stack := func() (err error, stack []byte) {
-			defer func() {
-				if p := recover(); p != nil {
-					var ok bool
-					err, ok = p.(error)
-					if !ok {
-						err = fmt.Errorf("%v", p)
-					}
-					stack = debug.Stack()
-				}
-			}()
+		recoveredErr := func() (err error) {
+			defer errors.Recover(&err)
 			next.ServeHTTP(recorder, r.WithContext(ctx))
-			return err, stack
+			return err
 		}()
 
 		// No panics. Send recorded response to the real writer
@@ -106,18 +96,20 @@ func ErrorLoggingMiddleware(next http.Handler) http.Handler {
 
 		// There was a panic. Handle it and send error response
 
-		recordPanic(recoveredErr, r, recorder, stack)
+		recordPanic(recoveredErr, r, recorder)
 
-		if config.IsProduction() {
-			stack = nil
+		stack := ""
+		if !config.IsProduction() {
+			stack = errors.Trace(recoveredErr)
 		}
+
 		responses.AddJSONContentType(w)
 		rsp, _ := json.Marshal(jsonrpc.RPCResponse{
 			JSONRPC: "2.0",
 			Error: &jsonrpc.RPCError{
 				Code:    -1,
 				Message: recoveredErr.Error(),
-				Data:    string(stack),
+				Data:    stack,
 			},
 		})
 		w.WriteHeader(http.StatusInternalServerError)
@@ -147,7 +139,7 @@ func recordRequestError(r *http.Request, rec *responseRecorder) {
 	})
 }
 
-func recordPanic(err error, r *http.Request, rec *responseRecorder, stack []byte) {
+func recordPanic(err error, r *http.Request, rec *responseRecorder) {
 	snippetLen := len(rec.Body.String())
 	if snippetLen > 500 {
 		snippetLen = 500
@@ -158,7 +150,7 @@ func recordPanic(err error, r *http.Request, rec *responseRecorder, stack []byte
 		"url":      r.URL.Path,
 		"status":   rec.StatusCode,
 		"response": rec.Body.String()[:snippetLen],
-	}).Error(fmt.Errorf("RECOVERED PANIC: %v, trace: %s", err, string(stack)))
+	}).Error(fmt.Errorf("RECOVERED PANIC: %v, trace: %s", err, errors.Trace(err)))
 
 	hub := sentry.GetHubFromContext(r.Context())
 	if hub == nil {

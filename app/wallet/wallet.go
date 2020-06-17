@@ -27,8 +27,13 @@ var logger = monitor.NewModuleLogger("wallet")
 func DisableLogger() { logger.Disable() } // for testing
 
 // TokenHeader is the name of HTTP header which is supplied by client and should contain internal-api auth_token.
-const TokenHeader = "X-Lbry-Auth-Token"
-const pgUniqueConstraintViolation = "23505"
+const (
+	TokenHeader = "X-Lbry-Auth-Token"
+
+	pgUniqueConstraintViolation   = "23505"
+	pgAbortedTransactionViolation = "25P02"
+	txMaxRetries                  = 2
+)
 
 // GetUserWithWallet gets user by internal-apis auth token. If the user does not have a
 // wallet yet, they are assigned an SDK and a wallet is created for them on that SDK.
@@ -53,7 +58,7 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 	defer cancelFn()
 
 	var localUser *models.User
-	err = tx(ctx, storage.Conn.DB.DB, func(tx *sql.Tx) error {
+	err = inTx(ctx, storage.Conn.DB.DB, func(tx *sql.Tx) error {
 		localUser, err = getOrCreateLocalUser(tx, remoteUser.ID, log)
 		if err != nil {
 			return err
@@ -71,65 +76,86 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 	return localUser, err
 }
 
-func tx(ctx context.Context, db *sql.DB, fn func(tx *sql.Tx) error) error {
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
+func inTx(ctx context.Context, db *sql.DB, f func(tx *sql.Tx) error) error {
+	var (
+		tx  *sql.Tx
+		err error
+	)
+
+	for i := 0; i < txMaxRetries; i++ {
+		tx, err = db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		err = f(tx)
+
+		if err == nil {
+			return tx.Commit()
+		}
+
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			logger.Log().Errorf("rolling back tx: %v", rollbackErr)
+		}
+
+		// in postgres, if an error occurs inside a transaction, you can't do anything else
+		// you havee to roll the transaction back and start a new one
+		// more info: https://community.pivotal.io/s/article/How-to-Overcome-the-Error-current-transaction-is-aborted-commands-ignored-until-end-of-transaction-block
+		var pgErr *pq.Error
+		if errors.As(err, &pgErr) && pgErr.Code == pgAbortedTransactionViolation {
+			logger.Log().Debug("attempted query in aborted transaction, re-trying")
+			continue
+		}
+
+		break
 	}
 
-	err = fn(tx)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	return tx.Commit()
+	return err
 }
 
 func getOrCreateLocalUser(exec boil.Executor, remoteUserID int, log *logrus.Entry) (*models.User, error) {
 	localUser, err := getDBUser(exec, remoteUserID)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, err
-	} else if err == sql.ErrNoRows {
-		log.Infof("user not found in the database, creating")
-		localUser, err = createDBUser(exec, remoteUserID)
-		if err != nil {
-			return nil, err
+
+	if err == nil {
+		if localUser.LbrynetServerID.IsZero() {
+			// Should not happen, but not enforced in DB structure yet
+			log.Errorf("user %d found in db but doesn't have sdk assigned", localUser.ID)
 		}
-	} else if localUser.LbrynetServerID.IsZero() {
-		// Should not happen, but not enforced in DB structure yet
-		log.Errorf("user %d found in db but doesn't have sdk assigned", localUser.ID)
+		return localUser, nil
 	}
 
-	return localUser, nil
-}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
 
-func createDBUser(exec boil.Executor, id int) (*models.User, error) {
-	log := logger.WithFields(logrus.Fields{"id": id})
+	log.Infof("user not found in the database, creating")
 
-	u := &models.User{ID: id}
-	err := u.Insert(exec, boil.Infer())
+	u := &models.User{ID: remoteUserID}
+	err = u.Insert(exec, boil.Infer())
 	if err == nil {
 		metrics.LbrytvNewUsers.Inc()
 		return u, nil
 	}
 
-	// Check if we encountered a primary key violation, it would mean another routine
-	// fired from another request has managed to create a user before us so we should try retrieving it again.
+	// Check if we encountered a primary key violation, it would mean another routine fired another
+	// request managed to create a user before us and we should retrieve that user record.
 	var pgErr *pq.Error
 	if errors.As(err, &pgErr) && pgErr.Code == pgUniqueConstraintViolation {
 		log.Info("user creation conflict, trying to retrieve the local user again")
-		return getDBUser(exec, id)
+		return getDBUser(exec, remoteUserID)
 	}
+
 	log.Error("unknown error encountered while creating user:", err)
 	return nil, err
 }
 
 func getDBUser(exec boil.Executor, id int) (*models.User, error) {
-	return models.Users(
+	user, err := models.Users(
 		models.UserWhere.ID.EQ(id),
 		qm.Load(models.UserRels.LbrynetServer),
 	).One(exec)
+	return user, errors.Err(err)
 }
 
 // GetDBUserG returns a database user with LbrynetServer selected, using the global executor.

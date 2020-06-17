@@ -35,12 +35,13 @@ func TestMain(m *testing.M) {
 		DBName:     dbConfig.DBName,
 		Options:    dbConfig.Options,
 	}
-	c, connCleanup := storage.CreateTestConn(params)
-	c.SetDefaultConnection()
+	dbConn, connCleanup := storage.CreateTestConn(params)
+	dbConn.SetDefaultConnection()
 
-	defer connCleanup()
+	code := m.Run()
 
-	os.Exit(m.Run())
+	connCleanup()
+	os.Exit(code)
 }
 
 func testFuncSetup() {

@@ -37,12 +37,12 @@ func TestMain(m *testing.M) {
 		DBName:     dbConfig.DBName,
 		Options:    dbConfig.Options + "&TimeZone=UTC",
 	}
-	c, connCleanup := storage.CreateTestConn(params)
-	c.SetDefaultConnection()
+	dbConn, connCleanup := storage.CreateTestConn(params)
+	dbConn.SetDefaultConnection()
 
 	code := m.Run()
-	connCleanup()
 
+	connCleanup()
 	os.Exit(code)
 }
 

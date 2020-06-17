@@ -26,14 +26,13 @@ func copyToDocker(t *testing.T, fileName string) {
 
 func TestLbrynetPublisher(t *testing.T) {
 	dbConfig := config.GetDatabase()
-	params := storage.ConnParams{
+	c, connCleanup := storage.CreateTestConn(storage.ConnParams{
 		Connection: dbConfig.Connection,
 		DBName:     dbConfig.DBName,
 		Options:    dbConfig.Options,
-	}
-	c, connCleanup := storage.CreateTestConn(params)
-	c.SetDefaultConnection()
+	})
 	defer connCleanup()
+	c.SetDefaultConnection()
 
 	data := []byte("test file")
 	f, err := ioutil.TempFile(os.TempDir(), "*")
