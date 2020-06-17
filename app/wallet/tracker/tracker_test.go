@@ -40,9 +40,10 @@ func TestMain(m *testing.M) {
 	c, connCleanup := storage.CreateTestConn(params)
 	c.SetDefaultConnection()
 
-	defer connCleanup()
+	code := m.Run()
+	connCleanup()
 
-	os.Exit(m.Run())
+	os.Exit(code)
 }
 
 func TestTouch(t *testing.T) {

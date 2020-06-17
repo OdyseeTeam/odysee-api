@@ -2,6 +2,7 @@ package status
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,7 @@ import (
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/middleware"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/test"
 	"github.com/lbryio/lbrytv/models"
@@ -34,17 +36,22 @@ func TestMain(m *testing.M) {
 	c, connCleanup := storage.CreateTestConn(params)
 	c.SetDefaultConnection()
 
-	defer connCleanup()
+	code := m.Run()
+	connCleanup()
 
-	os.Exit(m.Run())
+	os.Exit(code)
 }
 
 func TestGetStatusV2_Unauthenticated(t *testing.T) {
 	rr := httptest.NewRecorder()
 	r, _ := http.NewRequest("GET", "", nil)
-	provider := func(token, ip string) (*models.User, error) { return nil, nil }
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	handler := sdkrouter.Middleware(rt)(auth.Middleware(provider)(http.HandlerFunc(GetStatusV2)))
+	handler := middleware.Apply(
+		middleware.Chain(
+			sdkrouter.Middleware(rt),
+			auth.NilMiddleware,
+		), GetStatusV2)
+
 	handler.ServeHTTP(rr, r)
 	response := rr.Result()
 	respBody, err := ioutil.ReadAll(response.Body)
@@ -55,8 +62,8 @@ func TestGetStatusV2_Unauthenticated(t *testing.T) {
 	err = json.Unmarshal(respBody, &respStatus)
 	require.NoError(t, err)
 
-	assert.Equal(t, statusOK, respStatus["general_state"], respStatus)
-	assert.Nil(t, respStatus["user"])
+	assert.Equal(t, statusOK, respStatus.GeneralState, respStatus)
+	assert.Nil(t, respStatus.User)
 }
 
 func TestGetStatusV2_UnauthenticatedOffline(t *testing.T) {
@@ -68,9 +75,13 @@ func TestGetStatusV2_UnauthenticatedOffline(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	r, _ := http.NewRequest("GET", "", nil)
-	provider := func(token, ip string) (*models.User, error) { return nil, nil }
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	handler := sdkrouter.Middleware(rt)(auth.Middleware(provider)(http.HandlerFunc(GetStatusV2)))
+	handler := middleware.Apply(
+		middleware.Chain(
+			sdkrouter.Middleware(rt),
+			auth.NilMiddleware,
+		), GetStatusV2)
+
 	handler.ServeHTTP(rr, r)
 	response := rr.Result()
 	respBody, err := ioutil.ReadAll(response.Body)
@@ -81,19 +92,20 @@ func TestGetStatusV2_UnauthenticatedOffline(t *testing.T) {
 	err = json.Unmarshal(respBody, &respStatus)
 	require.NoError(t, err)
 
-	assert.Equal(t, statusFailing, respStatus["general_state"])
-	lbrynetStatus := respStatus["services"].(map[string]interface{})["lbrynet"].(map[string]interface{})
+	assert.Equal(t, statusFailing, respStatus.GeneralState)
+	fmt.Printf("%v", respStatus)
+	lbrynetStatus := respStatus.Services["lbrynet"][0]
 	assert.EqualValues(
 		t,
 		statusOffline,
-		lbrynetStatus["status"],
+		lbrynetStatus.Status,
 	)
 	assert.Regexp(
 		t,
 		"dial tcp: lookup malfunctioning",
-		lbrynetStatus["error"],
+		lbrynetStatus.Error,
 	)
-	assert.Nil(t, respStatus["user"])
+	assert.Nil(t, respStatus.User)
 }
 
 func TestGetStatusV2_Authenticated(t *testing.T) {
@@ -112,7 +124,11 @@ func TestGetStatusV2_Authenticated(t *testing.T) {
 	r, _ := http.NewRequest("GET", "", nil)
 	r.Header.Add(wallet.TokenHeader, "anystringwilldo")
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	handler := sdkrouter.Middleware(rt)(auth.Middleware(auth.NewIAPIProvider(rt, ts.URL))(http.HandlerFunc(GetStatusV2)))
+	handler := middleware.Apply(
+		middleware.Chain(
+			sdkrouter.Middleware(rt),
+			auth.MiddlewareWithProvider(rt, ts.URL),
+		), GetStatusV2)
 
 	handler.ServeHTTP(rr, r)
 	response := rr.Result()
@@ -127,21 +143,20 @@ func TestGetStatusV2_Authenticated(t *testing.T) {
 	err = json.Unmarshal(respBody, &respStatus)
 	require.NoError(t, err)
 
-	assert.Equal(t, statusOK, respStatus["general_state"])
-	require.NotNil(t, respStatus["user"])
-	userDetails := respStatus["user"].(map[string]interface{})
-	assert.EqualValues(t, 123, userDetails["user_id"])
-	assert.EqualValues(t, sdkrouter.GetLbrynetServer(u).Name, userDetails["assigned_sdk"])
+	assert.Equal(t, statusOK, respStatus.GeneralState)
+	require.NotNil(t, respStatus.User)
+	assert.EqualValues(t, 123, respStatus.User.ID)
+	assert.EqualValues(t, sdkrouter.GetLbrynetServer(u).Name, respStatus.User.AssignedLbrynetServer)
 
-	lbrynetStatus := respStatus["services"].(map[string]interface{})["lbrynet"].(map[string]interface{})
+	lbrynetStatus := respStatus.Services["lbrynet"][0]
 	assert.Equal(
 		t,
 		sdkrouter.GetLbrynetServer(u).Name,
-		lbrynetStatus["name"],
+		lbrynetStatus.Name,
 	)
 	assert.Equal(
 		t,
 		statusOK,
-		lbrynetStatus["status"],
+		lbrynetStatus.Status,
 	)
 }

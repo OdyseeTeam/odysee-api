@@ -4,30 +4,33 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/ip"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
-
-	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
-var logger = monitor.NewModuleLogger("auth")
+var (
+	logger      = monitor.NewModuleLogger("auth")
+	nilProvider = func(token, ip string) (*models.User, error) { return nil, nil }
+
+	ErrNoAuthInfo = errors.Base("authentication token missing")
+)
 
 type ctxKey int
 
 const contextKey ctxKey = iota
-
-var ErrNoAuthInfo = errors.Base("authentication token missing")
 
 type result struct {
 	user *models.User
 	err  error
 }
 
+// FromRequest retrieves user from http.Request that went through our Middleware
 func FromRequest(r *http.Request) (*models.User, error) {
 	v := r.Context().Value(contextKey)
 	if v == nil {
@@ -49,6 +52,7 @@ func NewIAPIProvider(rt *sdkrouter.Router, internalAPIHost string) Provider {
 	}
 }
 
+// Middleware tries to authenticate user using request header
 func Middleware(provider Provider) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -66,4 +70,13 @@ func Middleware(provider Provider) mux.MiddlewareFunc {
 			next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), contextKey, result{user, err})))
 		})
 	}
+}
+
+// NilMiddleware is useful when you need to test your logic without involving real authentication
+var NilMiddleware = Middleware(nilProvider)
+
+// MiddlewareWithProvider is useful when you want to
+func MiddlewareWithProvider(rt *sdkrouter.Router, internalAPIHost string) mux.MiddlewareFunc {
+	p := NewIAPIProvider(rt, internalAPIHost)
+	return Middleware(p)
 }

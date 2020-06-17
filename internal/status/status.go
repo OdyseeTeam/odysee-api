@@ -11,7 +11,6 @@ import (
 	"github.com/lbryio/lbrytv/app/query/cache"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/ip"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/models"
@@ -44,13 +43,22 @@ const (
 	statusCacheValidity = 120 * time.Second
 )
 
-type ServerItem struct {
+type serverItem struct {
 	Name   string `json:"name"`
 	Status string `json:"status"`
 	Error  string `json:"error,omitempty"`
 }
-type ServerList []ServerItem
-type statusResponse map[string]interface{}
+type serverList []*serverItem
+type userData struct {
+	ID                    int    `json:"id"`
+	AssignedLbrynetServer string `json:"assigned_lbrynet_server"`
+}
+type statusResponse struct {
+	Timestamp    string                `json:"timestamp"`
+	Services     map[string]serverList `json:"services"`
+	GeneralState string                `json:"general_state"`
+	User         *userData             `json:"user,omitempty"`
+}
 
 func GetStatus(w http.ResponseWriter, req *http.Request) {
 	respStatus := http.StatusOK
@@ -60,25 +68,25 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 		//response = *cachedResponse
 		copier.Copy(&response, cachedResponse)
 	} else {
-		services := map[string]ServerList{
+		services := map[string]serverList{
 			"lbrynet": {},
 			"player":  {},
 		}
 		response = statusResponse{
-			"timestamp":     fmt.Sprintf("%v", time.Now().UTC()),
-			"services":      services,
-			"general_state": statusOK,
+			Timestamp:    fmt.Sprintf("%v", time.Now().UTC()),
+			Services:     services,
+			GeneralState: statusOK,
 		}
 		failureDetected := false
 
 		sdks := sdkrouter.FromRequest(req).GetAll()
 		for _, s := range sdks {
-			services["lbrynet"] = append(services["lbrynet"], ServerItem{Name: s.Name, Status: statusOK})
+			services["lbrynet"] = append(services["lbrynet"], &serverItem{Name: s.Name, Status: statusOK})
 		}
 
 		for _, ps := range PlayerServers {
 			r, err := http.Get(ps)
-			srv := ServerItem{Name: ps, Status: statusOK}
+			srv := serverItem{Name: ps, Status: statusOK}
 			if err != nil {
 				srv.Error = fmt.Sprintf("%v", err)
 				srv.Status = statusOffline
@@ -88,10 +96,10 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 				srv.Error = fmt.Sprintf("http status %v", r.StatusCode)
 				failureDetected = true
 			}
-			services["player"] = append(services["player"], srv)
+			services["player"] = append(services["player"], &srv)
 		}
 		if failureDetected {
-			response["general_state"] = statusFailing
+			response.GeneralState = statusFailing
 		}
 		cachedResponse = &response
 		lastUpdate = time.Now()
@@ -110,13 +118,10 @@ func GetStatusV2(w http.ResponseWriter, r *http.Request) {
 	respStatus := http.StatusOK
 	var response statusResponse
 
-	services := map[string]*ServerItem{
-		"lbrynet": nil,
-	}
 	response = statusResponse{
-		"timestamp":     fmt.Sprintf("%v", time.Now().UTC()),
-		"services":      services,
-		"general_state": statusOK,
+		Timestamp:    fmt.Sprintf("%v", time.Now().UTC()),
+		Services:     nil,
+		GeneralState: statusOK,
 	}
 	failureDetected := false
 
@@ -134,7 +139,7 @@ func GetStatusV2(w http.ResponseWriter, r *http.Request) {
 		userID = user.ID
 	}
 
-	srv := ServerItem{Name: lbrynetServer.Name, Status: statusOK}
+	srv := serverItem{Name: lbrynetServer.Name, Status: statusOK}
 
 	if cache.IsOnRequest(r) {
 		qCache = cache.FromRequest(r)
@@ -156,38 +161,24 @@ func GetStatusV2(w http.ResponseWriter, r *http.Request) {
 		logger.Log().Error("we're failing: ", err)
 	} else {
 		if user != nil {
-			response["user"] = map[string]interface{}{
-				"user_id":      user.ID,
-				"assigned_sdk": lbrynetServer.Name,
+			response.User = &userData{
+				ID:                    user.ID,
+				AssignedLbrynetServer: lbrynetServer.Name,
 			}
 		}
 	}
 
-	services["lbrynet"] = &srv
+	response.Services = map[string]serverList{
+		"lbrynet": []*serverItem{&srv},
+	}
 
 	if failureDetected {
-		response["general_state"] = statusFailing
+		response.GeneralState = statusFailing
 	}
 
 	responses.AddJSONContentType(w)
 	w.WriteHeader(respStatus)
 	respByte, err := json.MarshalIndent(response, "", "  ")
-	if err != nil {
-		logger.Log().Error(err)
-	}
-	w.Write(respByte)
-}
-
-func WhoAMI(w http.ResponseWriter, req *http.Request) {
-	details := map[string]string{
-		"ip":              fmt.Sprintf("%v", req.RemoteAddr),
-		"X-Forwarded-For": req.Header.Get("X-Forwarded-For"),
-		"X-Real-Ip":       req.Header.Get("X-Real-Ip"),
-		"NameForRequest":  ip.AddressForRequest(req),
-	}
-
-	responses.AddJSONContentType(w)
-	respByte, err := json.MarshalIndent(&details, "", "  ")
 	if err != nil {
 		logger.Log().Error(err)
 	}

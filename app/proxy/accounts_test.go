@@ -13,9 +13,9 @@ import (
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/middleware"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/test"
-	"github.com/lbryio/lbrytv/models"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
@@ -68,7 +68,11 @@ func TestWithWrongAuthToken(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	handler := sdkrouter.Middleware(rt)(auth.Middleware(auth.NewIAPIProvider(rt, ts.URL))(http.HandlerFunc(Handle)))
+	handler := middleware.Apply(
+		middleware.Chain(
+			sdkrouter.Middleware(rt),
+			auth.MiddlewareWithProvider(rt, ts.URL),
+		), Handle)
 	handler.ServeHTTP(rr, r)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -101,7 +105,11 @@ func TestAuthEmailNotVerified(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	handler := sdkrouter.Middleware(rt)(auth.Middleware(auth.NewIAPIProvider(rt, ts.URL))(http.HandlerFunc(Handle)))
+	handler := middleware.Apply(
+		middleware.Chain(
+			sdkrouter.Middleware(rt),
+			auth.MiddlewareWithProvider(rt, ts.URL),
+		), Handle)
 	handler.ServeHTTP(rr, r)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -110,8 +118,6 @@ func TestAuthEmailNotVerified(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "must authenticate", response.Error.Message)
 }
-
-var nilProvider = func(token, ip string) (*models.User, error) { return nil, nil }
 
 func TestWithoutToken(t *testing.T) {
 	testFuncSetup()
@@ -123,7 +129,11 @@ func TestWithoutToken(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	handler := sdkrouter.Middleware(rt)(auth.Middleware(nilProvider)(http.HandlerFunc(Handle)))
+	handler := middleware.Apply(
+		middleware.Chain(
+			sdkrouter.Middleware(rt),
+			auth.NilMiddleware,
+		), Handle)
 	handler.ServeHTTP(rr, r)
 
 	require.Equal(t, http.StatusOK, rr.Code)
@@ -149,7 +159,11 @@ func TestAccountSpecificWithoutToken(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	handler := sdkrouter.Middleware(rt)(auth.Middleware(nilProvider)(http.HandlerFunc(Handle)))
+	handler := middleware.Apply(
+		middleware.Chain(
+			sdkrouter.Middleware(rt),
+			auth.NilMiddleware,
+		), Handle)
 	handler.ServeHTTP(rr, r)
 
 	require.Equal(t, http.StatusOK, rr.Code)
