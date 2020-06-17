@@ -131,12 +131,12 @@ func GetStatusV2(w http.ResponseWriter, r *http.Request) {
 		lbrynetServer *models.LbrynetServer
 	)
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	user, err := auth.FromRequest(r)
-	if err != nil || user == nil {
+	authRes, err := auth.FromRequest(r)
+	if err != nil || authRes.User == nil {
 		lbrynetServer = rt.RandomServer()
 	} else {
-		lbrynetServer = sdkrouter.GetLbrynetServer(user)
-		userID = user.ID
+		lbrynetServer = sdkrouter.GetLbrynetServer(authRes.User)
+		userID = authRes.User.ID
 	}
 
 	srv := serverItem{Name: lbrynetServer.Name, Status: statusOK}
@@ -160,9 +160,9 @@ func GetStatusV2(w http.ResponseWriter, r *http.Request) {
 		failureDetected = true
 		logger.Log().Error("we're failing: ", err)
 	} else {
-		if user != nil {
+		if authRes.User != nil {
 			response.User = &userData{
-				ID:                    user.ID,
+				ID:                    authRes.User.ID,
 				AssignedLbrynetServer: lbrynetServer.Name,
 			}
 		}

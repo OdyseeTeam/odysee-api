@@ -83,7 +83,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	c := query.NewCaller(sdkAddress, userID)
 	// Logging remote IP with query
-	c.AddPostflightHook("wallet_send", func(_ *query.Caller, ctx *query.Context) (*jsonrpc.RPCResponse, error) {
+	c.AddPostflightHook("wallet_", func(_ *query.Caller, ctx *query.Context) (*jsonrpc.RPCResponse, error) {
 		ctx.LogEntry = ctx.LogEntry.WithField("remote_ip", authRes.RemoteIP)
 		return nil, nil
 	})
