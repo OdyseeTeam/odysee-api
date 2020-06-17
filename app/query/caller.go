@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/lbryio/lbrytv/app/query/cache"
@@ -26,18 +27,24 @@ const (
 	walletLoadRetryWait = 100 * time.Millisecond
 )
 
-type Hook func(c *Caller, q *Query) (*jsonrpc.RPCResponse, error)
+type Hook func(c *Caller, ctx *Context) (*jsonrpc.RPCResponse, error)
 type hookEntry struct {
 	method   string
 	function Hook
+}
+type Context struct {
+	Query    *Query
+	Response *jsonrpc.RPCResponse
+	LogEntry *logrus.Entry
 }
 
 // Caller patches through JSON-RPC requests from clients, doing pre/post-processing,
 // account processing and validation.
 type Caller struct {
 	// Preprocessor is applied to query before it's sent to the SDK.
-	Preprocessor   func(q *Query)
-	preflightHooks []hookEntry
+	Preprocessor    func(q *Query)
+	preflightHooks  []hookEntry
+	postflightHooks []hookEntry
 
 	// Cache stores cachable queries to improve performance
 	Cache cache.QueryCache
@@ -45,6 +52,11 @@ type Caller struct {
 	client   jsonrpc.RPCClient
 	userID   int
 	endpoint string
+}
+
+type UserParams struct {
+	ID int
+	IP string
 }
 
 func NewCaller(endpoint string, userID int) *Caller {
@@ -70,13 +82,21 @@ func NewCaller(endpoint string, userID int) *Caller {
 	return c
 }
 
-// AddPreflightHook adds query pre-flight hook function,
+// AddPreflightHook adds query preflight hook function,
 // allowing to amend the query before it gets sent to the JSON-RPC server,
 // with an option to return an early response, avoiding sending the query
-// to JSON-RPC server altogether
+// to JSON-RPC server altogether.
 func (c *Caller) AddPreflightHook(method string, hf Hook) {
 	c.preflightHooks = append(c.preflightHooks, hookEntry{method, hf})
 	logger.Log().Debugf("added a preflight hook for method %v", method)
+}
+
+// AddPostflightHook adds query postflight hook function,
+// allowing to amend the response before it gets sent back to the client
+// or to modify log entry fields.
+func (c *Caller) AddPostflightHook(method string, hf Hook) {
+	c.postflightHooks = append(c.preflightHooks, hookEntry{method, hf})
+	logger.Log().Debugf("added a postflight hook for method %v", method)
 }
 
 func (c *Caller) addDefaultHooks() {
@@ -103,11 +123,10 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 	}
 
 	var res *jsonrpc.RPCResponse
-
 	// Applying preflight hooks
 	for _, hook := range c.preflightHooks {
 		if hook.method == "" || hook.method == q.Method() {
-			res, err = hook.function(c, q)
+			res, err = hook.function(c, &Context{Query: q})
 			if err != nil {
 				return nil, rpcerrors.NewSDKError(err)
 			}
@@ -186,15 +205,33 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 		"user_id":  c.userID,
 		"duration": duration,
 	}
+	logEntry := logger.WithFields(logFields)
+
+	var hookResp *jsonrpc.RPCResponse
+	// Applying postflight hooks
+	ctx := &Context{Query: q, Response: r, LogEntry: logEntry}
+	for _, hook := range c.postflightHooks {
+		if hook.method == "" || hook.method == q.Method() || strings.Contains(q.Method(), hook.method) {
+			hookResp, err = hook.function(c, ctx)
+			if err != nil {
+				return nil, rpcerrors.NewSDKError(err)
+			}
+			if hookResp != nil {
+				r = hookResp
+			}
+		}
+	}
+	logEntry = ctx.LogEntry
+
 	if err != nil || (r != nil && r.Error != nil) {
 		logFields["response"] = r.Error
-		logger.WithFields(logFields).Error("rpc call error")
+		logEntry.Error("rpc call error")
 		metrics.ProxyCallFailedDurations.WithLabelValues(q.Method(), c.endpoint, metrics.FailureKindRPC).Observe(duration)
 	} else {
 		if config.ShouldLogResponses() {
 			logFields["response"] = r
 		}
-		logger.WithFields(logFields).Debug("rpc call processed")
+		logEntry.Debug("rpc call processed")
 	}
 
 	return r, err
@@ -216,12 +253,12 @@ func isCacheable(q *Query) bool {
 }
 
 // fromCache returns cached response or nil in case it's a miss
-func fromCache(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
-	if c.Cache == nil || !isCacheable(q) {
+func fromCache(c *Caller, ctx *Context) (*jsonrpc.RPCResponse, error) {
+	if c.Cache == nil || !isCacheable(ctx.Query) {
 		return nil, nil
 	}
 
-	cached := c.Cache.Retrieve(q.Method(), q.Params())
+	cached := c.Cache.Retrieve(ctx.Query.Method(), ctx.Query.Params())
 	if cached == nil {
 		return nil, nil
 	}
@@ -232,13 +269,13 @@ func fromCache(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
 		return nil, nil
 	}
 
-	response := q.newResponse()
+	response := ctx.Query.newResponse()
 	err = json.Unmarshal(s, &response)
 	if err != nil {
 		return nil, nil
 	}
 
-	logger.WithFields(logrus.Fields{"method": q.Method()}).Debug("cached query")
+	logger.WithFields(logrus.Fields{"method": ctx.Query.Method()}).Debug("cached query")
 	return response, nil
 }
 

@@ -101,33 +101,34 @@ func TestMiddleware_Error(t *testing.T) {
 	assert.Equal(t, "something broke", string(body))
 }
 
-func TestFromRequestSuccess(t *testing.T) {
-	expected := result{nil, errors.Base("a test")}
+func TestFromRequestReturnsResult(t *testing.T) {
+	expected := Result{User: nil, RemoteIP: "8.8.8.8", err: errors.Base("some imaginary error")}
 	ctx := context.WithValue(context.Background(), contextKey, expected)
 
 	r, err := http.NewRequestWithContext(ctx, http.MethodPost, "", &bytes.Buffer{})
 	require.NoError(t, err)
 
-	var user *models.User
+	var res Result
 	assert.NotPanics(t, func() {
-		user, err = FromRequest(r)
+		res, err = FromRequest(r)
 	})
-	assert.Nil(t, user)
+	assert.Nil(t, res.User)
 	assert.Equal(t, expected.err.Error(), err.Error())
+	assert.Equal(t, "8.8.8.8", res.RemoteIP)
 }
 
 func TestFromRequestFail(t *testing.T) {
 	r, err := http.NewRequest(http.MethodPost, "", &bytes.Buffer{})
 	require.NoError(t, err)
-	user, err := FromRequest(r)
-	assert.Nil(t, user)
+	res, err := FromRequest(r)
+	assert.Nil(t, res.User)
 	assert.Error(t, err)
 	assert.Equal(t, "auth.Middleware is required", err.Error())
 }
 
 func authChecker(w http.ResponseWriter, r *http.Request) {
-	user, err := FromRequest(r)
-	if user != nil && err != nil {
+	res, err := FromRequest(r)
+	if res.User != nil && err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("this should never happen"))
 		return
@@ -136,9 +137,9 @@ func authChecker(w http.ResponseWriter, r *http.Request) {
 	if errors.Is(err, ErrNoAuthInfo) {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("no auth info"))
-	} else if user != nil {
+	} else if res.User != nil {
 		w.WriteHeader(http.StatusAccepted)
-		w.Write([]byte(fmt.Sprintf("%d", user.ID)))
+		w.Write([]byte(fmt.Sprintf("%d", res.User.ID)))
 	} else if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))

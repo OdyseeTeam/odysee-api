@@ -25,19 +25,20 @@ type ctxKey int
 
 const contextKey ctxKey = iota
 
-type result struct {
-	user *models.User
-	err  error
+type Result struct {
+	User     *models.User
+	RemoteIP string
+	err      error
 }
 
 // FromRequest retrieves user from http.Request that went through our Middleware
-func FromRequest(r *http.Request) (*models.User, error) {
+func FromRequest(r *http.Request) (Result, error) {
 	v := r.Context().Value(contextKey)
 	if v == nil {
-		return nil, errors.Err("auth.Middleware is required")
+		return Result{}, errors.Err("auth.Middleware is required")
 	}
-	res := v.(result)
-	return res.user, res.err
+	result := v.(Result)
+	return result, result.err
 }
 
 // Provider tries to authenticate using the provided auth token
@@ -56,10 +57,13 @@ func NewIAPIProvider(rt *sdkrouter.Router, internalAPIHost string) Provider {
 func Middleware(provider Provider) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var user *models.User
-			var err error
+			var (
+				addr string
+				user *models.User
+				err  error
+			)
+			addr = ip.AddressForRequest(r)
 			if token, ok := r.Header[wallet.TokenHeader]; ok {
-				addr := ip.AddressForRequest(r)
 				user, err = provider(token[0], addr)
 				if err != nil {
 					logger.WithFields(logrus.Fields{"ip": addr}).Debugf("error authenticating user")
@@ -67,7 +71,7 @@ func Middleware(provider Provider) mux.MiddlewareFunc {
 			} else {
 				err = errors.Err(ErrNoAuthInfo)
 			}
-			next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), contextKey, result{user, err})))
+			next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), contextKey, Result{user, addr, err})))
 		})
 	}
 }

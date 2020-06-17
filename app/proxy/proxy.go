@@ -56,7 +56,8 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 
 	logger.Log().Tracef("call to method %s", rpcReq.Method)
 
-	user, err := auth.FromRequest(r)
+	authRes, err := auth.FromRequest(r)
+	user := authRes.User
 	if query.MethodRequiresWallet(rpcReq.Method) {
 		authErr := GetAuthError(user, err)
 		if authErr != nil {
@@ -81,6 +82,11 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		qCache = cache.FromRequest(r)
 	}
 	c := query.NewCaller(sdkAddress, userID)
+	// Logging remote IP with query
+	c.AddPostflightHook("wallet_send", func(_ *query.Caller, ctx *query.Context) (*jsonrpc.RPCResponse, error) {
+		ctx.LogEntry = ctx.LogEntry.WithField("remote_ip", authRes.RemoteIP)
+		return nil, nil
+	})
 	c.Cache = qCache
 
 	rpcRes, err := c.Call(rpcReq)

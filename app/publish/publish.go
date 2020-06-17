@@ -44,7 +44,8 @@ type Handler struct {
 // It should be wrapped with users.Authenticator.Wrap before it can be used
 // in a mux.Router.
 func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
-	user, err := auth.FromRequest(r)
+	authRes, err := auth.FromRequest(r)
+	user := authRes.User
 	if authErr := proxy.GetAuthError(user, err); authErr != nil {
 		w.Write(rpcerrors.ErrorToJSON(authErr))
 		return
@@ -104,10 +105,10 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 func getCaller(sdkAddress, filename string, userID int, qCache cache.QueryCache) *query.Caller {
 	c := query.NewCaller(sdkAddress, userID)
 	c.Cache = qCache
-	c.AddPreflightHook("", func(_ *query.Caller, q *query.Query) (*jsonrpc.RPCResponse, error) {
-		params := q.ParamsAsMap()
+	c.AddPreflightHook("", func(_ *query.Caller, ctx *query.Context) (*jsonrpc.RPCResponse, error) {
+		params := ctx.Query.ParamsAsMap()
 		params[fileNameParam] = filename
-		q.Request.Params = params
+		ctx.Query.Request.Params = params
 		return nil, nil
 	})
 	return c

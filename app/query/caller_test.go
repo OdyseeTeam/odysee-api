@@ -188,13 +188,13 @@ func TestCaller_AddPreflightHookAmendingQueryParams(t *testing.T) {
 
 	c := NewCaller(srv.URL, 0)
 
-	c.AddPreflightHook(relaxedMethods[0], func(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
-		params := q.ParamsAsMap()
+	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, ctx *Context) (*jsonrpc.RPCResponse, error) {
+		params := ctx.Query.ParamsAsMap()
 		if params == nil {
-			q.Request.Params = map[string]string{"param": "123"}
+			ctx.Query.Request.Params = map[string]string{"param": "123"}
 		} else {
 			params["param"] = "123"
-			q.Request.Params = params
+			ctx.Query.Request.Params = params
 		}
 		return nil, nil
 	})
@@ -217,7 +217,7 @@ func TestCaller_AddPreflightHookReturningEarlyResponse(t *testing.T) {
 
 	c := NewCaller(srv.URL, 0)
 
-	c.AddPreflightHook(relaxedMethods[0], func(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
+	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, _ *Context) (*jsonrpc.RPCResponse, error) {
 		return &jsonrpc.RPCResponse{Result: map[string]string{"ok": "ok"}}, nil
 	})
 
@@ -236,7 +236,7 @@ func TestCaller_AddPreflightHookReturningError(t *testing.T) {
 
 	c := NewCaller(srv.URL, 0)
 
-	c.AddPreflightHook(relaxedMethods[0], func(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
+	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, _ *Context) (*jsonrpc.RPCResponse, error) {
 		return &jsonrpc.RPCResponse{Result: map[string]string{"ok": "ok"}}, errors.Err("an error occured")
 	})
 
@@ -245,6 +245,73 @@ func TestCaller_AddPreflightHookReturningError(t *testing.T) {
 	res, err := c.Call(jsonrpc.NewRequest(relaxedMethods[0]))
 	assert.EqualError(t, err, "an error occured")
 	assert.Nil(t, res)
+}
+
+func TestCaller_AddPostflightHook_Response(t *testing.T) {
+	dummyUserID := rand.Intn(100)
+	reqChan := test.ReqChan()
+	srv := test.MockHTTPServer(reqChan)
+	defer srv.Close()
+	addr := test.RandServerAddress(t)
+	err := wallet.Create(addr, dummyUserID)
+	require.NoError(t, err)
+	c := NewCaller(srv.URL, dummyUserID)
+
+	srv.NextResponse <- `
+	{
+	"jsonrpc": "2.0",
+	"result": {
+		"available": "64.36180199",
+		"reserved": "0.0",
+		"reserved_subtotals": {
+		"claims": "0.0",
+		"supports": "0.0",
+		"tips": "0.0"
+		},
+		"total": "64.36180199"
+	},
+	"id": 0
+	}
+	`
+
+	c.AddPostflightHook("wallet_", func(c *Caller, ctx *Context) (*jsonrpc.RPCResponse, error) {
+		ctx.Response.Result = "0.0"
+		return ctx.Response, nil
+	})
+
+	res, err := c.Call(jsonrpc.NewRequest(MethodWalletBalance))
+	require.NoError(t, err)
+	assert.Equal(t, "0.0", res.Result)
+}
+
+func TestCaller_AddPostflightHook_Logging(t *testing.T) {
+	logHook := logrusTest.NewLocal(logger.Entry.Logger)
+	reqChan := test.ReqChan()
+	srv := test.MockHTTPServer(reqChan)
+	defer srv.Close()
+
+	c := NewCaller(srv.URL, 0)
+	srv.NextResponse <- `
+	{
+		"jsonrpc": "2.0",
+		"result": {
+		  "what:19b9c243bea0c45175e6a6027911abbad53e983e": {
+			"error": "what:19b9c243bea0c45175e6a6027911abbad53e983e is not a valid url"
+		  }
+		},
+		"id": 0
+	}
+	`
+
+	c.AddPostflightHook(MethodResolve, func(c *Caller, ctx *Context) (*jsonrpc.RPCResponse, error) {
+		ctx.LogEntry = ctx.LogEntry.WithField("remote_ip", "8.8.8.8")
+		return nil, nil
+	})
+
+	res, err := c.Call(jsonrpc.NewRequest(MethodResolve))
+	require.NoError(t, err)
+	assert.Contains(t, res.Result.(map[string]interface{}), "what:19b9c243bea0c45175e6a6027911abbad53e983e")
+	assert.Equal(t, "8.8.8.8", logHook.LastEntry().Data["remote_ip"])
 }
 
 func TestCaller_CallSDKError(t *testing.T) {

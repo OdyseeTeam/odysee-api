@@ -98,7 +98,8 @@ func Middleware(db boil.Executor) mux.MiddlewareFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			next.ServeHTTP(w, r)
 
-			user, err := auth.FromRequest(r)
+			authRes, err := auth.FromRequest(r)
+			user := authRes.User
 			if err != nil && !errors.Is(err, auth.ErrNoAuthInfo) {
 				wtLogger.Log().Error(err)
 				return
