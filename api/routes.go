@@ -15,6 +15,7 @@ import (
 	"github.com/lbryio/lbrytv/app/wallet/tracker"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
+	"github.com/lbryio/lbrytv/internal/middleware"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/status"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -49,7 +50,6 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 
 	internalRouter := r.PathPrefix("/internal").Subrouter()
 	internalRouter.Handle("/metrics", promhttp.Handler())
-	internalRouter.HandleFunc("/whoami", status.WhoAMI)
 
 	v2Router := r.PathPrefix("/api/v2").Subrouter()
 	v2Router.HandleFunc("/status", status.GetStatusV2).Methods(http.MethodGet)
@@ -59,24 +59,12 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 func defaultMiddlewares(rt *sdkrouter.Router, internalAPIHost string) mux.MiddlewareFunc {
 	authProvider := auth.NewIAPIProvider(rt, internalAPIHost)
 	memCache := cache.NewMemoryCache()
-	return middlewares(
+	return middleware.Chain(
 		sdkrouter.Middleware(rt),
 		auth.Middleware(authProvider),
 		tracker.Middleware(boil.GetDB()),
 		cache.Middleware(memCache),
 	)
-}
-
-// applies several middleware in order
-func middlewares(mws ...mux.MiddlewareFunc) mux.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
-		for i := len(mws) - 1; i >= 0; i-- {
-			next = mws[i](next) // apply in reveres to get the intuitive LIFO order
-		}
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r)
-		})
-	}
 }
 
 func methodTimer(next http.Handler) http.Handler {
