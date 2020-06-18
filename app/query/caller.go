@@ -27,15 +27,29 @@ const (
 	walletLoadRetryWait = 100 * time.Millisecond
 )
 
-type Hook func(c *Caller, ctx *Context) (*jsonrpc.RPCResponse, error)
+// Hook is a function that can be applied to certain methods during preflight or postflight phase
+// using context data about the client query being performed.
+// Hooks can modify both query and response, as well as perform additional queries via supplied Caller.
+// If nil is returned instead of *jsonrpc.RPCResponse, original response is returned.
+type Hook func(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error)
 type hookEntry struct {
 	method   string
 	function Hook
 }
-type Context struct {
+
+// HookContext contains data about the query being performed.
+// When supplied in the postflight stage, it will contain Response and LogEntry, otherwise those will be nil.
+type HookContext struct {
 	Query    *Query
 	Response *jsonrpc.RPCResponse
-	LogEntry *logrus.Entry
+	logEntry *logrus.Entry
+}
+
+// AddLogField injects additional data into default post-query log entry
+func (hc *HookContext) AddLogField(key string, value interface{}) {
+	if hc.logEntry != nil {
+		hc.logEntry.Data[key] = value
+	}
 }
 
 // Caller patches through JSON-RPC requests from clients, doing pre/post-processing,
@@ -52,11 +66,6 @@ type Caller struct {
 	client   jsonrpc.RPCClient
 	userID   int
 	endpoint string
-}
-
-type UserParams struct {
-	ID int
-	IP string
 }
 
 func NewCaller(endpoint string, userID int) *Caller {
@@ -122,11 +131,11 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 		return nil, err
 	}
 
-	var res *jsonrpc.RPCResponse
 	// Applying preflight hooks
+	var res *jsonrpc.RPCResponse
 	for _, hook := range c.preflightHooks {
-		if hook.method == "" || hook.method == q.Method() {
-			res, err = hook.function(c, &Context{Query: q})
+		if isMatchingHook(q.Method(), hook) {
+			res, err = hook.function(c, &HookContext{Query: q})
 			if err != nil {
 				return nil, rpcerrors.NewSDKError(err)
 			}
@@ -207,12 +216,12 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 	}
 	logEntry := logger.WithFields(logFields)
 
-	var hookResp *jsonrpc.RPCResponse
 	// Applying postflight hooks
-	ctx := &Context{Query: q, Response: r, LogEntry: logEntry}
+	var hookResp *jsonrpc.RPCResponse
+	hctx := &HookContext{Query: q, Response: r, logEntry: logEntry}
 	for _, hook := range c.postflightHooks {
-		if hook.method == "" || hook.method == q.Method() || strings.Contains(q.Method(), hook.method) {
-			hookResp, err = hook.function(c, ctx)
+		if isMatchingHook(q.Method(), hook) {
+			hookResp, err = hook.function(c, hctx)
 			if err != nil {
 				return nil, rpcerrors.NewSDKError(err)
 			}
@@ -221,7 +230,6 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 			}
 		}
 	}
-	logEntry = ctx.LogEntry
 
 	if err != nil || (r != nil && r.Error != nil) {
 		logFields["response"] = r.Error
@@ -252,13 +260,17 @@ func isCacheable(q *Query) bool {
 	return false
 }
 
+func isMatchingHook(m string, hook hookEntry) bool {
+	return hook.method == "" || hook.method == m || strings.Contains(m, hook.method)
+}
+
 // fromCache returns cached response or nil in case it's a miss
-func fromCache(c *Caller, ctx *Context) (*jsonrpc.RPCResponse, error) {
-	if c.Cache == nil || !isCacheable(ctx.Query) {
+func fromCache(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
+	if c.Cache == nil || !isCacheable(hctx.Query) {
 		return nil, nil
 	}
 
-	cached := c.Cache.Retrieve(ctx.Query.Method(), ctx.Query.Params())
+	cached := c.Cache.Retrieve(hctx.Query.Method(), hctx.Query.Params())
 	if cached == nil {
 		return nil, nil
 	}
@@ -269,13 +281,13 @@ func fromCache(c *Caller, ctx *Context) (*jsonrpc.RPCResponse, error) {
 		return nil, nil
 	}
 
-	response := ctx.Query.newResponse()
+	response := hctx.Query.newResponse()
 	err = json.Unmarshal(s, &response)
 	if err != nil {
 		return nil, nil
 	}
 
-	logger.WithFields(logrus.Fields{"method": ctx.Query.Method()}).Debug("cached query")
+	logger.WithFields(logrus.Fields{"method": hctx.Query.Method()}).Debug("cached query")
 	return response, nil
 }
 

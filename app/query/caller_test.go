@@ -188,13 +188,13 @@ func TestCaller_AddPreflightHookAmendingQueryParams(t *testing.T) {
 
 	c := NewCaller(srv.URL, 0)
 
-	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, ctx *Context) (*jsonrpc.RPCResponse, error) {
-		params := ctx.Query.ParamsAsMap()
+	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
+		params := hctx.Query.ParamsAsMap()
 		if params == nil {
-			ctx.Query.Request.Params = map[string]string{"param": "123"}
+			hctx.Query.Request.Params = map[string]string{"param": "123"}
 		} else {
 			params["param"] = "123"
-			ctx.Query.Request.Params = params
+			hctx.Query.Request.Params = params
 		}
 		return nil, nil
 	})
@@ -217,7 +217,7 @@ func TestCaller_AddPreflightHookReturningEarlyResponse(t *testing.T) {
 
 	c := NewCaller(srv.URL, 0)
 
-	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, _ *Context) (*jsonrpc.RPCResponse, error) {
+	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, _ *HookContext) (*jsonrpc.RPCResponse, error) {
 		return &jsonrpc.RPCResponse{Result: map[string]string{"ok": "ok"}}, nil
 	})
 
@@ -236,7 +236,7 @@ func TestCaller_AddPreflightHookReturningError(t *testing.T) {
 
 	c := NewCaller(srv.URL, 0)
 
-	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, _ *Context) (*jsonrpc.RPCResponse, error) {
+	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, _ *HookContext) (*jsonrpc.RPCResponse, error) {
 		return &jsonrpc.RPCResponse{Result: map[string]string{"ok": "ok"}}, errors.Err("an error occured")
 	})
 
@@ -274,9 +274,9 @@ func TestCaller_AddPostflightHook_Response(t *testing.T) {
 	}
 	`
 
-	c.AddPostflightHook("wallet_", func(c *Caller, ctx *Context) (*jsonrpc.RPCResponse, error) {
-		ctx.Response.Result = "0.0"
-		return ctx.Response, nil
+	c.AddPostflightHook("wallet_", func(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
+		hctx.Response.Result = "0.0"
+		return hctx.Response, nil
 	})
 
 	res, err := c.Call(jsonrpc.NewRequest(MethodWalletBalance))
@@ -284,7 +284,7 @@ func TestCaller_AddPostflightHook_Response(t *testing.T) {
 	assert.Equal(t, "0.0", res.Result)
 }
 
-func TestCaller_AddPostflightHook_Logging(t *testing.T) {
+func TestCaller_AddPostflightHook_LogField(t *testing.T) {
 	logHook := logrusTest.NewLocal(logger.Entry.Logger)
 	reqChan := test.ReqChan()
 	srv := test.MockHTTPServer(reqChan)
@@ -303,8 +303,8 @@ func TestCaller_AddPostflightHook_Logging(t *testing.T) {
 	}
 	`
 
-	c.AddPostflightHook(MethodResolve, func(c *Caller, ctx *Context) (*jsonrpc.RPCResponse, error) {
-		ctx.LogEntry = ctx.LogEntry.WithField("remote_ip", "8.8.8.8")
+	c.AddPostflightHook(MethodResolve, func(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
+		hctx.AddLogField("remote_ip", "8.8.8.8")
 		return nil, nil
 	})
 
