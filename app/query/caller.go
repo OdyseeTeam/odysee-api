@@ -261,7 +261,7 @@ func isCacheable(q *Query) bool {
 }
 
 func isMatchingHook(m string, hook hookEntry) bool {
-	return hook.method == "" || hook.method == m || strings.Contains(m, hook.method)
+	return hook.method == "" || hook.method == m || strings.HasPrefix(m, hook.method)
 }
 
 // fromCache returns cached response or nil in case it's a miss
