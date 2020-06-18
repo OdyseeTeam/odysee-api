@@ -14,6 +14,7 @@ import (
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet/tracker"
 	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/ip"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/middleware"
 	"github.com/lbryio/lbrytv/internal/monitor"
@@ -60,6 +61,7 @@ func defaultMiddlewares(rt *sdkrouter.Router, internalAPIHost string) mux.Middle
 	authProvider := auth.NewIAPIProvider(rt, internalAPIHost)
 	memCache := cache.NewMemoryCache()
 	return middleware.Chain(
+		ip.Middleware,
 		sdkrouter.Middleware(rt),
 		auth.Middleware(authProvider),
 		tracker.Middleware(boil.GetDB()),

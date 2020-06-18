@@ -44,8 +44,7 @@ type Handler struct {
 // It should be wrapped with users.Authenticator.Wrap before it can be used
 // in a mux.Router.
 func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
-	authRes, err := auth.FromRequest(r)
-	user := authRes.User
+	user, err := auth.FromRequest(r)
 	if authErr := proxy.GetAuthError(user, err); authErr != nil {
 		w.Write(rpcerrors.ErrorToJSON(authErr))
 		return
