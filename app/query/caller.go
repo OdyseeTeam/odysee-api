@@ -68,6 +68,8 @@ type Caller struct {
 	// Cache stores cachable queries to improve performance
 	Cache cache.QueryCache
 
+	Duration float64
+
 	client   jsonrpc.RPCClient
 	userID   int
 	endpoint string
@@ -136,6 +138,10 @@ func (c *Caller) CloneWithoutHook(method string, name string) *Caller {
 	return cc
 }
 
+func (c *Caller) Endpoint() string {
+	return c.endpoint
+}
+
 // Call method forwards a JSON-RPC request to the lbrynet server.
 // It returns a response that is ready to be sent back to the JSON-RPC client as is.
 func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
@@ -183,9 +189,8 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 
 func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 	var (
-		r        *jsonrpc.RPCResponse
-		err      error
-		duration float64
+		r   *jsonrpc.RPCResponse
+		err error
 	)
 
 	for i := 0; i < walletLoadRetries; i++ {
@@ -193,13 +198,13 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 
 		r, err = c.client.CallRaw(q.Request)
 
-		duration = time.Since(start).Seconds()
-		metrics.ProxyCallDurations.WithLabelValues(q.Method(), c.endpoint).Observe(duration)
+		c.Duration = time.Since(start).Seconds()
+		metrics.ProxyCallDurations.WithLabelValues(q.Method(), c.endpoint).Observe(c.Duration)
 
 		// Generally a HTTP transport failure (connect error etc)
 		if err != nil {
 			logger.Log().Errorf("error sending query to %v: %v", c.endpoint, err)
-			metrics.ProxyCallFailedDurations.WithLabelValues(q.Method(), c.endpoint, metrics.FailureKindNet).Observe(duration)
+			metrics.ProxyCallFailedDurations.WithLabelValues(q.Method(), c.endpoint, metrics.FailureKindNet).Observe(c.Duration)
 			return nil, errors.Err(err)
 		}
 
@@ -234,7 +239,7 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 		"params":   q.Params(),
 		"endpoint": c.endpoint,
 		"user_id":  c.userID,
-		"duration": duration,
+		"duration": c.Duration,
 	}
 	logEntry := logger.WithFields(logFields)
 
@@ -256,7 +261,7 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 	if err != nil || (r != nil && r.Error != nil) {
 		logFields["response"] = r.Error
 		logEntry.Error("rpc call error")
-		metrics.ProxyCallFailedDurations.WithLabelValues(q.Method(), c.endpoint, metrics.FailureKindRPC).Observe(duration)
+		metrics.ProxyCallFailedDurations.WithLabelValues(q.Method(), c.endpoint, metrics.FailureKindRPC).Observe(c.Duration)
 	} else {
 		if config.ShouldLogResponses() {
 			logFields["response"] = r

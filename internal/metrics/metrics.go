@@ -6,12 +6,13 @@ import (
 )
 
 const (
-	nsPlayer  = "player"
-	nsIAPI    = "iapi"
-	nsProxy   = "proxy"
-	nsLbrynet = "lbrynet"
-	nsUI      = "ui"
-	nsLbrytv  = "lbrytv"
+	nsPlayer   = "player"
+	nsIAPI     = "iapi"
+	nsProxy    = "proxy"
+	nsLbrynext = "lbrynext"
+	nsLbrynet  = "lbrynet"
+	nsUI       = "ui"
+	nsLbrytv   = "lbrytv"
 
 	LabelSource   = "source"
 	LabelInstance = "instance"
@@ -22,6 +23,9 @@ const (
 
 	FailureKindNet = "net"
 	FailureKindRPC = "rpc"
+
+	GroupControl      = "control"
+	GroupExperimental = "experimental"
 )
 
 var (
@@ -137,4 +141,25 @@ var (
 		Name:      "conns_idle",
 		Help:      "Number of idle db connections in the Go connection pool",
 	})
+
+	LbrynextCallDurations = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: nsLbrynext,
+			Subsystem: "calls",
+			Name:      "total_seconds",
+			Help:      "Method call latency distributions",
+			Buckets:   callsSecondsBuckets,
+		},
+		[]string{"method", "endpoint", "group"},
+	)
+	// LbrynextCallFailedDurations = promauto.NewHistogramVec(
+	// 	prometheus.HistogramOpts{
+	// 		Namespace: nsLbrynext,
+	// 		Subsystem: "calls",
+	// 		Name:      "failed_seconds",
+	// 		Help:      "Failed method call latency distributions",
+	// 		Buckets:   callsSecondsBuckets,
+	// 	},
+	// 	[]string{"method", "endpoint", "kind"},
+	// )
 )

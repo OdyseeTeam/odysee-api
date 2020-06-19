@@ -41,9 +41,10 @@ func configureSentry(release, env string) {
 	}
 }
 
-// ErrorToSentry sends to Sentry general exception info with some extra provided detail (like user email, claim url etc)
-func ErrorToSentry(err error, params ...map[string]string) {
+// ErrorToSentry sends to Sentry general exception info with some optional extra detail (like user email, claim url etc)
+func ErrorToSentry(err error, params ...map[string]string) *sentry.EventID {
 	var extra map[string]string
+	var eventID *sentry.EventID
 	if len(params) > 0 {
 		extra = params[0]
 	} else {
@@ -56,4 +57,19 @@ func ErrorToSentry(err error, params ...map[string]string) {
 		}
 		sentry.CaptureException(err)
 	})
+	return eventID
+}
+
+func MessageToSentry(msg string, level sentry.Level, params map[string]string) *sentry.EventID {
+	var eventID *sentry.EventID
+	sentry.WithScope(func(scope *sentry.Scope) {
+		for k, v := range params {
+			scope.SetExtra(k, v)
+		}
+		event := sentry.NewEvent()
+		event.Level = level
+		event.Message = msg
+		eventID = sentry.CaptureEvent(event)
+	})
+	return eventID
 }
