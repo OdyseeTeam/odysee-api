@@ -104,12 +104,12 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 func getCaller(sdkAddress, filename string, userID int, qCache cache.QueryCache) *query.Caller {
 	c := query.NewCaller(sdkAddress, userID)
 	c.Cache = qCache
-	c.AddPreflightHook("", func(_ *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
+	c.AddPreflightHook(query.AllMethodsHook, func(_ *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
 		params := hctx.Query.ParamsAsMap()
 		params[fileNameParam] = filename
 		hctx.Query.Request.Params = params
 		return nil, nil
-	})
+	}, "")
 	return c
 }
 

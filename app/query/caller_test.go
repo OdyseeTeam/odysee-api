@@ -197,7 +197,7 @@ func TestCaller_AddPreflightHookAmendingQueryParams(t *testing.T) {
 			hctx.Query.Request.Params = params
 		}
 		return nil, nil
-	})
+	}, "")
 
 	srv.NextResponse <- test.EmptyResponse()
 
@@ -219,7 +219,7 @@ func TestCaller_AddPreflightHookReturningEarlyResponse(t *testing.T) {
 
 	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, _ *HookContext) (*jsonrpc.RPCResponse, error) {
 		return &jsonrpc.RPCResponse{Result: map[string]string{"ok": "ok"}}, nil
-	})
+	}, "")
 
 	srv.NextResponse <- test.EmptyResponse()
 
@@ -238,7 +238,7 @@ func TestCaller_AddPreflightHookReturningError(t *testing.T) {
 
 	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, _ *HookContext) (*jsonrpc.RPCResponse, error) {
 		return &jsonrpc.RPCResponse{Result: map[string]string{"ok": "ok"}}, errors.Err("an error occured")
-	})
+	}, "")
 
 	srv.NextResponse <- test.EmptyResponse()
 
@@ -277,7 +277,7 @@ func TestCaller_AddPostflightHook_Response(t *testing.T) {
 	c.AddPostflightHook("wallet_", func(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
 		hctx.Response.Result = "0.0"
 		return hctx.Response, nil
-	})
+	}, "")
 
 	res, err := c.Call(jsonrpc.NewRequest(MethodWalletBalance))
 	require.NoError(t, err)
@@ -306,7 +306,7 @@ func TestCaller_AddPostflightHook_LogField(t *testing.T) {
 	c.AddPostflightHook(MethodResolve, func(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
 		hctx.AddLogField("remote_ip", "8.8.8.8")
 		return nil, nil
-	})
+	}, "")
 
 	res, err := c.Call(jsonrpc.NewRequest(MethodResolve))
 	require.NoError(t, err)

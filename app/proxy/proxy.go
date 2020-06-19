@@ -86,7 +86,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	c.AddPostflightHook("wallet_", func(_ *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
 		hctx.AddLogField("remote_ip", ip.FromRequest(r))
 		return nil, nil
-	})
+	}, "")
 	c.Cache = qCache
 
 	rpcRes, err := c.Call(rpcReq)

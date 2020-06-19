@@ -25,6 +25,10 @@ import (
 const (
 	walletLoadRetries   = 3
 	walletLoadRetryWait = 100 * time.Millisecond
+	builtinHookName     = "builtin"
+
+	// AllMethodsHook is used as the first argument to Add*Hook to make it apply to all methods
+	AllMethodsHook = ""
 )
 
 // Hook is a function that can be applied to certain methods during preflight or postflight phase
@@ -35,6 +39,7 @@ type Hook func(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error)
 type hookEntry struct {
 	method   string
 	function Hook
+	name     string
 }
 
 // HookContext contains data about the query being performed.
@@ -95,23 +100,40 @@ func NewCaller(endpoint string, userID int) *Caller {
 // allowing to amend the query before it gets sent to the JSON-RPC server,
 // with an option to return an early response, avoiding sending the query
 // to JSON-RPC server altogether.
-func (c *Caller) AddPreflightHook(method string, hf Hook) {
-	c.preflightHooks = append(c.preflightHooks, hookEntry{method, hf})
+func (c *Caller) AddPreflightHook(method string, hf Hook, name string) {
+	c.preflightHooks = append(c.preflightHooks, hookEntry{method, hf, name})
 	logger.Log().Debugf("added a preflight hook for method %v", method)
 }
 
 // AddPostflightHook adds query postflight hook function,
 // allowing to amend the response before it gets sent back to the client
 // or to modify log entry fields.
-func (c *Caller) AddPostflightHook(method string, hf Hook) {
-	c.postflightHooks = append(c.preflightHooks, hookEntry{method, hf})
+func (c *Caller) AddPostflightHook(method string, hf Hook, name string) {
+	c.postflightHooks = append(c.preflightHooks, hookEntry{method, hf, name})
 	logger.Log().Debugf("added a postflight hook for method %v", method)
 }
 
 func (c *Caller) addDefaultHooks() {
-	c.AddPreflightHook("", fromCache)
-	c.AddPreflightHook("status", getStatusResponse)
-	c.AddPreflightHook("get", preflightHookGet)
+	c.AddPreflightHook("", fromCache, builtinHookName)
+	c.AddPreflightHook("status", getStatusResponse, builtinHookName)
+	c.AddPreflightHook("get", preflightHookGet, builtinHookName)
+}
+
+func (c *Caller) CloneWithoutHook(method string, name string) *Caller {
+	cc := NewCaller(c.endpoint, c.userID)
+	for _, h := range c.postflightHooks {
+		if h.method == method && h.name == name {
+			continue
+		}
+		cc.AddPostflightHook(h.method, h.function, h.name)
+	}
+	for _, h := range c.preflightHooks {
+		if h.method == method && h.name == name {
+			continue
+		}
+		cc.AddPreflightHook(h.method, h.function, h.name)
+	}
+	return cc
 }
 
 // Call method forwards a JSON-RPC request to the lbrynet server.
