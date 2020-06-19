@@ -3,7 +3,7 @@ module github.com/lbryio/lbrytv
 go 1.14
 
 require (
-	github.com/getsentry/sentry-go v0.5.1
+	github.com/getsentry/sentry-go v0.6.1
 	github.com/gobuffalo/packr/v2 v2.8.0
 	github.com/gorilla/mux v1.7.3
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a
@@ -19,6 +19,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.3.0
 	github.com/rubenv/sql-migrate v0.0.0-20200429072036-ae26b214fa43
+	github.com/sergi/go-diff v1.1.0
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cast v1.3.0
 	github.com/spf13/cobra v0.0.6
