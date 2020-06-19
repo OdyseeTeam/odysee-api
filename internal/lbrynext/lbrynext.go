@@ -69,7 +69,8 @@ func compareResponses(r *jsonrpc.RPCResponse, xr *jsonrpc.RPCResponse) (string, 
 		return string(rBody), string(xrBody), nil
 	}
 	dmp := diffmatchpatch.New()
-	return string(rBody), string(xrBody), dmp.DiffMain(string(rBody), string(xrBody), true)
+	diff := dmp.DiffMain(string(rBody), string(xrBody), true)
+	return string(rBody), string(xrBody), diff
 }
 
 func diffPlainText(diffs []diffmatchpatch.Diff) string {
@@ -78,13 +79,13 @@ func diffPlainText(diffs []diffmatchpatch.Diff) string {
 		text := diff.Text
 		switch diff.Type {
 		case diffmatchpatch.DiffInsert:
-			buff.WriteString("+>>>")
+			buff.WriteString("+>>")
 			buff.WriteString(text)
-			buff.WriteString("<<<+")
+			buff.WriteString("<<+")
 		case diffmatchpatch.DiffDelete:
-			buff.WriteString("->>>")
+			buff.WriteString("->>")
 			buff.WriteString(text)
-			buff.WriteString("<<<-")
+			buff.WriteString("<<-")
 		case diffmatchpatch.DiffEqual:
 			buff.WriteString(text)
 		}
