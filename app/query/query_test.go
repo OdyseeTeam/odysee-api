@@ -33,3 +33,13 @@ func TestQueryParamsAsMap(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, searchParams, q.ParamsAsMap())
 }
+
+func TestQueryIsAuthenticated(t *testing.T) {
+	q, err := NewQuery(jsonrpc.NewRequest("resolve"), "12345")
+	require.NoError(t, err)
+	assert.True(t, q.IsAuthenticated())
+
+	q, err = NewQuery(jsonrpc.NewRequest("resolve"), "")
+	require.NoError(t, err)
+	assert.False(t, q.IsAuthenticated())
+}

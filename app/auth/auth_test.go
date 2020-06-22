@@ -11,6 +11,8 @@ import (
 
 	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/internal/errors"
+	"github.com/lbryio/lbrytv/internal/ip"
+	"github.com/lbryio/lbrytv/internal/middleware"
 	"github.com/lbryio/lbrytv/models"
 
 	"github.com/stretchr/testify/assert"
@@ -33,7 +35,9 @@ func TestMiddleware_AuthSuccess(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	Middleware(provider)(http.HandlerFunc(authChecker)).ServeHTTP(rr, r)
+	middleware.Apply(middleware.Chain(
+		ip.Middleware, Middleware(provider),
+	), authChecker).ServeHTTP(rr, r)
 
 	response := rr.Result()
 	body, err := ioutil.ReadAll(response.Body)
@@ -54,7 +58,7 @@ func TestMiddleware_AuthFailure(t *testing.T) {
 		}
 		return nil, nil
 	}
-	Middleware(provider)(http.HandlerFunc(authChecker)).ServeHTTP(rr, r)
+	middleware.Apply(Middleware(provider), authChecker).ServeHTTP(rr, r)
 
 	response := rr.Result()
 	body, err := ioutil.ReadAll(response.Body)
@@ -74,7 +78,7 @@ func TestMiddleware_NoAuthInfo(t *testing.T) {
 		}
 		return nil, nil
 	}
-	Middleware(provider)(http.HandlerFunc(authChecker)).ServeHTTP(rr, r)
+	middleware.Apply(Middleware(provider), authChecker).ServeHTTP(rr, r)
 
 	response := rr.Result()
 	body, err := ioutil.ReadAll(response.Body)
@@ -92,7 +96,7 @@ func TestMiddleware_Error(t *testing.T) {
 	provider := func(token, ip string) (*models.User, error) {
 		return nil, errors.Base("something broke")
 	}
-	Middleware(provider)(http.HandlerFunc(authChecker)).ServeHTTP(rr, r)
+	middleware.Apply(Middleware(provider), authChecker).ServeHTTP(rr, r)
 
 	response := rr.Result()
 	body, err := ioutil.ReadAll(response.Body)

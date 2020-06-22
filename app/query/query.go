@@ -40,7 +40,7 @@ func NewQuery(req *jsonrpc.RPCRequest, walletID string) (*Query, error) {
 	}
 
 	if MethodAcceptsWallet(q.Method()) {
-		if q.WalletID != "" {
+		if q.IsAuthenticated() {
 			if p := q.ParamsAsMap(); p != nil {
 				p[paramWalletID] = q.WalletID
 				q.Request.Params = p
@@ -63,6 +63,11 @@ func (q *Query) Method() string {
 // Params is a shortcut for query params.
 func (q *Query) Params() interface{} {
 	return q.Request.Params
+}
+
+// IsAuthenticated returns true if query is performed by an authenticated user
+func (q *Query) IsAuthenticated() bool {
+	return q.WalletID != ""
 }
 
 // ParamsAsMap returns query params converted to plain map.

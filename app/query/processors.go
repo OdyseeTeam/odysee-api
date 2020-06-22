@@ -21,11 +21,12 @@ var rePurchaseFree = regexp.MustCompile(`(?i)does not have a purchase price`)
 // preflightHookGet will completely replace `get` request from the client with `purchase_create` + `resolve`.
 // This workaround is due to stability issues in the lbrynet SDK `get` method implementation.
 // Only `ParamStreamingUrl` will be returned, plus `purchase_receipt` if stream has been paid for.
-func preflightHookGet(caller *Caller, query *Query) (*jsonrpc.RPCResponse, error) {
+func preflightHookGet(caller *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
 	var (
 		urlSuffix, metricLabel string
 		isPaidStream           bool
 	)
+	query := hctx.Query
 
 	response := &jsonrpc.RPCResponse{
 		ID:      query.Request.ID,
@@ -147,7 +148,7 @@ func resolve(c *Caller, q *Query, url string) (*ljsonrpc.Claim, error) {
 	return &claim, err
 }
 
-func getStatusResponse(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
+func getStatusResponse(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
 	var response map[string]interface{}
 
 	rawResponse := `
@@ -204,7 +205,7 @@ func getStatusResponse(c *Caller, q *Query) (*jsonrpc.RPCResponse, error) {
 	  }
 	`
 	json.Unmarshal([]byte(rawResponse), &response)
-	rpcResponse := q.newResponse()
+	rpcResponse := hctx.Query.newResponse()
 	rpcResponse.Result = response
 	return rpcResponse, nil
 }

@@ -59,7 +59,7 @@ func Middleware(provider Provider) mux.MiddlewareFunc {
 			var user *models.User
 			var err error
 			if token, ok := r.Header[wallet.TokenHeader]; ok {
-				addr := ip.AddressForRequest(r)
+				addr := ip.FromRequest(r)
 				user, err = provider(token[0], addr)
 				if err != nil {
 					logger.WithFields(logrus.Fields{"ip": addr}).Debugf("error authenticating user")

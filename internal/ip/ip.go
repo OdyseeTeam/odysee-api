@@ -5,7 +5,11 @@ import (
 	"net"
 	"net/http"
 	"strings"
+
+	"github.com/lbryio/lbrytv/internal/monitor"
 )
+
+var logger = monitor.NewModuleLogger("ip")
 
 // most of this is from https://husobee.github.io/golang/ip-address/2015/12/17/remote-ip-go.html
 
