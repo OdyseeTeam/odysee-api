@@ -6,9 +6,11 @@ package models
 var TableNames = struct {
 	GorpMigrations string
 	LbrynetServers string
+	QueryLog       string
 	Users          string
 }{
 	GorpMigrations: "gorp_migrations",
 	LbrynetServers: "lbrynet_servers",
+	QueryLog:       "query_log",
 	Users:          "users",
 }
