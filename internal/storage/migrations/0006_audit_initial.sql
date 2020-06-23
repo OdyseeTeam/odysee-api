@@ -3,7 +3,7 @@
 -- +migrate StatementBegin
 CREATE TABLE "query_log" (
     "id" SERIAL PRIMARY KEY,
-    "method" varchar NOT NULL CHECK (method <> ''),
+    "method" varchar NOT NULL,
     "timestamp" timestamp NOT NULL DEFAULT now(),
     "user_id" uinteger,
 
