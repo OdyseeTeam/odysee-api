@@ -14,66 +14,77 @@ import "testing"
 func TestParent(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrations)
 	t.Run("LbrynetServers", testLbrynetServers)
+	t.Run("QueryLogs", testQueryLogs)
 	t.Run("Users", testUsers)
 }
 
 func TestDelete(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsDelete)
 	t.Run("LbrynetServers", testLbrynetServersDelete)
+	t.Run("QueryLogs", testQueryLogsDelete)
 	t.Run("Users", testUsersDelete)
 }
 
 func TestQueryDeleteAll(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsQueryDeleteAll)
 	t.Run("LbrynetServers", testLbrynetServersQueryDeleteAll)
+	t.Run("QueryLogs", testQueryLogsQueryDeleteAll)
 	t.Run("Users", testUsersQueryDeleteAll)
 }
 
 func TestSliceDeleteAll(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsSliceDeleteAll)
 	t.Run("LbrynetServers", testLbrynetServersSliceDeleteAll)
+	t.Run("QueryLogs", testQueryLogsSliceDeleteAll)
 	t.Run("Users", testUsersSliceDeleteAll)
 }
 
 func TestExists(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsExists)
 	t.Run("LbrynetServers", testLbrynetServersExists)
+	t.Run("QueryLogs", testQueryLogsExists)
 	t.Run("Users", testUsersExists)
 }
 
 func TestFind(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsFind)
 	t.Run("LbrynetServers", testLbrynetServersFind)
+	t.Run("QueryLogs", testQueryLogsFind)
 	t.Run("Users", testUsersFind)
 }
 
 func TestBind(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsBind)
 	t.Run("LbrynetServers", testLbrynetServersBind)
+	t.Run("QueryLogs", testQueryLogsBind)
 	t.Run("Users", testUsersBind)
 }
 
 func TestOne(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsOne)
 	t.Run("LbrynetServers", testLbrynetServersOne)
+	t.Run("QueryLogs", testQueryLogsOne)
 	t.Run("Users", testUsersOne)
 }
 
 func TestAll(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsAll)
 	t.Run("LbrynetServers", testLbrynetServersAll)
+	t.Run("QueryLogs", testQueryLogsAll)
 	t.Run("Users", testUsersAll)
 }
 
 func TestCount(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsCount)
 	t.Run("LbrynetServers", testLbrynetServersCount)
+	t.Run("QueryLogs", testQueryLogsCount)
 	t.Run("Users", testUsersCount)
 }
 
 func TestHooks(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsHooks)
 	t.Run("LbrynetServers", testLbrynetServersHooks)
+	t.Run("QueryLogs", testQueryLogsHooks)
 	t.Run("Users", testUsersHooks)
 }
 
@@ -82,6 +93,8 @@ func TestInsert(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsInsertWhitelist)
 	t.Run("LbrynetServers", testLbrynetServersInsert)
 	t.Run("LbrynetServers", testLbrynetServersInsertWhitelist)
+	t.Run("QueryLogs", testQueryLogsInsert)
+	t.Run("QueryLogs", testQueryLogsInsertWhitelist)
 	t.Run("Users", testUsersInsert)
 	t.Run("Users", testUsersInsertWhitelist)
 }
@@ -143,29 +156,34 @@ func TestToManyRemove(t *testing.T) {
 func TestReload(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsReload)
 	t.Run("LbrynetServers", testLbrynetServersReload)
+	t.Run("QueryLogs", testQueryLogsReload)
 	t.Run("Users", testUsersReload)
 }
 
 func TestReloadAll(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsReloadAll)
 	t.Run("LbrynetServers", testLbrynetServersReloadAll)
+	t.Run("QueryLogs", testQueryLogsReloadAll)
 	t.Run("Users", testUsersReloadAll)
 }
 
 func TestSelect(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsSelect)
 	t.Run("LbrynetServers", testLbrynetServersSelect)
+	t.Run("QueryLogs", testQueryLogsSelect)
 	t.Run("Users", testUsersSelect)
 }
 
 func TestUpdate(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsUpdate)
 	t.Run("LbrynetServers", testLbrynetServersUpdate)
+	t.Run("QueryLogs", testQueryLogsUpdate)
 	t.Run("Users", testUsersUpdate)
 }
 
 func TestSliceUpdateAll(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsSliceUpdateAll)
 	t.Run("LbrynetServers", testLbrynetServersSliceUpdateAll)
+	t.Run("QueryLogs", testQueryLogsSliceUpdateAll)
 	t.Run("Users", testUsersSliceUpdateAll)
 }

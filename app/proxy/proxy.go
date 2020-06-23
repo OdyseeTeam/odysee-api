@@ -18,6 +18,7 @@ import (
 	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
+	"github.com/lbryio/lbrytv/internal/audit"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/ip"
 	"github.com/lbryio/lbrytv/internal/monitor"
@@ -82,9 +83,15 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		qCache = cache.FromRequest(r)
 	}
 	c := query.NewCaller(sdkAddress, userID)
+
+	remoteIP := ip.FromRequest(r)
 	// Logging remote IP with query
 	c.AddPostflightHook("wallet_", func(_ *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
-		hctx.AddLogField("remote_ip", ip.FromRequest(r))
+		hctx.AddLogField("remote_ip", remoteIP)
+		return nil, nil
+	}, "")
+	c.AddPostflightHook(query.MethodWalletSend, func(_ *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
+		audit.LogQuery(user.ID, remoteIP, query.MethodWalletSend, body)
 		return nil, nil
 	}, "")
 	c.Cache = qCache
