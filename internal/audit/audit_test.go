@@ -55,3 +55,26 @@ func TestLogQuery(t *testing.T) {
 
 	assert.Equal(t, expReq, loggedReq)
 }
+
+func TestLogQueryNoUserNoRemoteIP(t *testing.T) {
+	var dummyUserID int
+	jReq := jsonrpc.NewRequest(
+		query.MethodWalletSend,
+		map[string]interface{}{"addresses": []string{"dgjkldfjgldkfjgkldfjg"}, "amount": "6.49999000"})
+	q := test.ReqToStr(t, jReq)
+	ql := LogQuery(dummyUserID, "", query.MethodWalletSend, []byte(q))
+	ql, err := models.QueryLogs(models.QueryLogWhere.ID.EQ(ql.ID)).OneG()
+	require.NoError(t, err)
+	assert.Equal(t, "", ql.RemoteIP)
+	assert.EqualValues(t, null.IntFrom(dummyUserID), ql.UserID)
+
+	loggedReq := &jsonrpc.RPCRequest{}
+	expReq := &jsonrpc.RPCRequest{}
+
+	err = ql.Body.Unmarshal(&loggedReq)
+	require.NoError(t, err)
+	err = json.Unmarshal([]byte(q), expReq)
+	require.NoError(t, err)
+
+	assert.Equal(t, expReq, loggedReq)
+}

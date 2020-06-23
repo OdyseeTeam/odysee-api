@@ -7,7 +7,7 @@ CREATE TABLE "query_log" (
     "timestamp" timestamp NOT NULL DEFAULT now(),
     "user_id" uinteger,
 
-    "remote_ip" varchar NOT NULL CHECK (remote_ip <> ''),
+    "remote_ip" varchar NOT NULL,
     "body" jsonb
 );
 CREATE INDEX queries_method_idx ON query_log(method);

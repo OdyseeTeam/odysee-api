@@ -91,7 +91,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		return nil, nil
 	}, "")
 	c.AddPostflightHook(query.MethodWalletSend, func(_ *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
-		audit.LogQuery(user.ID, remoteIP, query.MethodWalletSend, body)
+		audit.LogQuery(userID, remoteIP, query.MethodWalletSend, body)
 		return nil, nil
 	}, "")
 	c.Cache = qCache
