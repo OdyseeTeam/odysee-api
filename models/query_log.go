@@ -132,8 +132,8 @@ type queryLogL struct{}
 
 var (
 	queryLogAllColumns            = []string{"id", "method", "timestamp", "user_id", "remote_ip", "body"}
-	queryLogColumnsWithoutDefault = []string{"id", "method", "user_id", "remote_ip", "body"}
-	queryLogColumnsWithDefault    = []string{"timestamp"}
+	queryLogColumnsWithoutDefault = []string{"method", "user_id", "remote_ip", "body"}
+	queryLogColumnsWithDefault    = []string{"id", "timestamp"}
 	queryLogPrimaryKeyColumns     = []string{"id"}
 )
 
