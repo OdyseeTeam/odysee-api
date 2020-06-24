@@ -2,11 +2,13 @@ package lbrynext
 
 import (
 	"bytes"
+	"fmt"
 	"math/rand"
 	"time"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/lbryio/lbrytv/app/query"
+	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
@@ -29,29 +31,37 @@ func InstallHooks(c *query.Caller) {
 		if !q.IsAuthenticated() && rand.Intn(100) <= propagationPct {
 			// Launch le Experiment
 			r := hctx.Response
-			cc := c.CloneWithoutHook(query.MethodResolve, resolveHookName)
-			go func() {
-				xr, err := cc.Call(q.Request)
+			cc := c.CloneWithoutHook(config.GetExperimentalLbrynetServer(), query.MethodResolve, resolveHookName)
+			xr, err := cc.Call(q.Request)
 
-				metrics.LbrynextCallDurations.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupControl).Observe(c.Duration)
-				metrics.LbrynextCallDurations.WithLabelValues(q.Method(), cc.Endpoint(), metrics.GroupExperimental).Observe(cc.Duration)
+			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupControl).Observe(c.Duration)
+			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), cc.Endpoint(), metrics.GroupExperimental).Observe(cc.Duration)
 
-				if err != nil {
-					logger.Log().Error("experimental call errored:", err)
-					return
-				}
-				rBody, xrBody, diff := compareResponses(r, xr)
-				if diff != nil {
+			log := logger.Log().WithField("method", query.MethodResolve)
+			if err != nil {
+				log.Error("experimental call errored:", err)
+				return nil, nil
+			}
+			rBody, xrBody, diff := compareResponses(r, xr)
+			fmt.Println(diff)
+			if diff != nil {
+				if config.IsProduction() {
 					msg := "experimental call result differs"
 					extra := map[string]string{
 						"method":       query.MethodResolve,
 						"original":     rBody,
 						"experimental": xrBody,
+						"diff":         diffPlainText(diff),
 					}
 					eventID := monitor.MessageToSentry(msg, sentry.LevelWarning, extra)
-					logger.Log().Errorf("%v, see %v%v", msg, sentryURL, eventID)
+					log.Errorf("%v, see %v%v", msg, sentryURL, eventID)
+				} else {
+					msg := "experimental call result differs"
+					log.Errorf("%v: %v", msg, diffPlainText(diff))
 				}
-			}()
+				return nil, nil
+			}
+			log.Info("experimental call succeeded")
 		}
 		return nil, nil
 	}, resolveHookName)
@@ -60,17 +70,25 @@ func InstallHooks(c *query.Caller) {
 func compareResponses(r *jsonrpc.RPCResponse, xr *jsonrpc.RPCResponse) (string, string, []diffmatchpatch.Diff) {
 	rBody, err := responses.JSONRPCSerialize(r)
 	if err != nil {
-		logger.Log().Error("original call response parsing error:", err)
-		return string(rBody), "", nil
+		logger.Log().Error("original call response serialization error:", err)
+		return "", "", nil
 	}
 	xrBody, err := responses.JSONRPCSerialize(xr)
 	if err != nil {
-		logger.Log().Error("experimental call response parsing error:", err)
-		return string(rBody), string(xrBody), nil
+		logger.Log().Error("experimental call response serialization error:", err)
+		return "", "", nil
 	}
+
+	srBody := string(rBody)
+	sxrBody := string(xrBody)
+
+	if srBody == sxrBody {
+		return srBody, sxrBody, nil
+	}
+
 	dmp := diffmatchpatch.New()
-	diff := dmp.DiffMain(string(rBody), string(xrBody), true)
-	return string(rBody), string(xrBody), diff
+	diff := dmp.DiffMain(srBody, sxrBody, true)
+	return srBody, sxrBody, diff
 }
 
 func diffPlainText(diffs []diffmatchpatch.Diff) string {

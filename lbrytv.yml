@@ -25,3 +25,5 @@ RefractorAddress: refractor.lbry.com:5567
 RefractorTimeout: 120
 
 PaidTokenPrivKey: token_privkey.rsa
+
+ExperimentalLbrynetServer: http://localhost:5279/

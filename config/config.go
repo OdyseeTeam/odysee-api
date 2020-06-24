@@ -196,3 +196,7 @@ func ShouldLogResponses() bool {
 func GetPaidTokenPrivKey() string {
 	return Config.Viper.GetString("PaidTokenPrivKey")
 }
+
+func GetExperimentalLbrynetServer() string {
+	return Config.Viper.GetString("ExperimentalLbrynetServer")
+}

@@ -121,8 +121,8 @@ func (c *Caller) addDefaultHooks() {
 	c.AddPreflightHook("get", preflightHookGet, builtinHookName)
 }
 
-func (c *Caller) CloneWithoutHook(method string, name string) *Caller {
-	cc := NewCaller(c.endpoint, c.userID)
+func (c *Caller) CloneWithoutHook(endpoint, method, name string) *Caller {
+	cc := NewCaller(endpoint, c.userID)
 	for _, h := range c.postflightHooks {
 		if h.method == method && h.name == name {
 			continue

@@ -21,3 +21,5 @@ RefractorTimeout: 10
 ShouldLogResponses: false
 
 PaidTokenPrivKey: /secrets/token_privkey.rsa
+
+ExperimentalLbrynetServer: http://lbrynext.lbrynext.default.svc.cluster.local:5279/
