@@ -16,6 +16,7 @@ const (
 	MethodClaimSearch    = "claim_search"
 	MethodPurchaseCreate = "purchase_create"
 	MethodWalletBalance  = "wallet_balance"
+	MethodWalletSend     = "wallet_send"
 
 	ParamStreamingUrl    = "streaming_url"
 	ParamPurchaseReceipt = "purchase_receipt"

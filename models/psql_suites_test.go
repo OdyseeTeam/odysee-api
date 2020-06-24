@@ -10,5 +10,7 @@ func TestUpsert(t *testing.T) {
 
 	t.Run("LbrynetServers", testLbrynetServersUpsert)
 
+	t.Run("QueryLogs", testQueryLogsUpsert)
+
 	t.Run("Users", testUsersUpsert)
 }
