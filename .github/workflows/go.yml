@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    branches: ["feature/git-actions"]
+    branches: ["*"]
 
 jobs:
   test:
@@ -64,20 +64,12 @@ jobs:
       - run: ./goreleaser --rm-dist --snapshot
 
       - name: Release Production Docker Image
-        if: github.ref == 'refs/heads/feature/git-actions'
-        # if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master'
         uses: docker/build-push-action@v1
-        # with:
-        #   username: ${{ secrets.DOCKER_USERNAME }}
-        #   password: ${{ secrets.DOCKER_PASSWORD }}
-        #   repository: lbry/lbrytv
-        #   tags: latest
-        #   tag_with_ref: true
         with:
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          registry: docker.pkg.github.com
-          repository: lbryio/lbrytv/lbrytv
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: lbry/lbrytv
           tags: latest,sha-${{ steps.slug.outputs.sha7 }}
           tag_with_ref: true
           tag_with_sha: true
@@ -86,10 +78,8 @@ jobs:
         if: github.ref == 'refs/heads/dev'
         uses: docker/build-push-action@v1
         with:
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          registry: docker.pkg.github.com
-          repository: lbryio/lbrytv/lbrytv
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
           tags: latest-dev
           tag_with_ref: true
           tag_with_sha: true
