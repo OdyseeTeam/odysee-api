@@ -104,5 +104,6 @@ jobs:
           event_type: deploy-lbrytv
           client_payload: |
             tag: sha-${{ steps.slug.outputs.sha7 }}
+            branch: ${GITHUB_REF##*/}
         env:
           GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
