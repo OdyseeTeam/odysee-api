@@ -48,19 +48,18 @@ jobs:
     steps:
       - checkout
       - run: ./scripts/deploy.sh deployment api
-
-workflows:
-  version: 2
-  integrate:
-    jobs:
-      - test
-      - publish-image:
-          requires:
-            - test
-          filters:
-            branches:
-              only:
-                - master
-      - deploy-to-cluster:
-          requires:
-            - publish-image
+# workflows:
+#   version: 2
+#   integrate:
+#     jobs:
+#       - test
+#       - publish-image:
+#           requires:
+#             - test
+#           filters:
+#             branches:
+#               only:
+#                 - master
+#       - deploy-to-cluster:
+#           requires:
+#             - publish-image
