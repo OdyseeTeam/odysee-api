@@ -7,20 +7,20 @@ before:
     # you may remove this if you don't need go generate
     - go generate ./...
 builds:
-- env:
-  - CGO_ENABLED=0
-  goos:
-  - linux
-  - darwin
-  goarch:
-  - amd64
-  binary: lbrytv
-  hooks:
-    pre: packr2
-    post: packr2 clean
-  ldflags:
-  - '-s -w -X github.com/lbryio/lbrytv/version.version={{.Version}} -X github.com/lbryio/lbrytv/version.commit={{.ShortCommit}} -X github.com/lbryio/lbrytv/version.date={{.Date}}'
-  main: ./main.go
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+    binary: lbrytv
+    hooks:
+      pre: packr2
+      post: packr2 clean
+    ldflags:
+      - "-s -w -X github.com/lbryio/lbrytv/version.version={{.Version}} -X github.com/lbryio/lbrytv/version.commit={{.ShortCommit}} -X github.com/lbryio/lbrytv/version.date={{.Date}}"
+    main: ./main.go
 
 archives:
   - id: zip
@@ -31,12 +31,12 @@ archives:
       386: i386
       amd64: x86_64
 checksum:
-  name_template: 'checksums.txt'
+  name_template: "checksums.txt"
 snapshot:
   name_template: "{{ .Tag }}-next"
 changelog:
   sort: asc
   filters:
     exclude:
-    - '^docs:'
-    - '^test:'
+      - "^docs:"
+      - "^test:"
