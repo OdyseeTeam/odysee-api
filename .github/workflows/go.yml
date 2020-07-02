@@ -47,6 +47,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: Get short SHA
+        id: slug
+        run: echo "::set-output name=sha7::$(echo ${GITHUB_SHA} | cut -c1-8)"
+
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
         with:
@@ -74,12 +78,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: docker.pkg.github.com
           repository: lbryio/lbrytv/lbrytv
-          tags: latest
+          tags: latest,sha-${{ steps.slug.outputs.sha7 }}
           tag_with_ref: true
           tag_with_sha: true
 
       - name: Release Dev Docker Image
-        # if: github.ref == 'refs/heads/dev'
+        if: github.ref == 'refs/heads/dev'
         uses: docker/build-push-action@v1
         with:
           username: ${{ github.actor }}
@@ -99,6 +103,6 @@ jobs:
           repository: lbryio/lbrytv-deployment
           event_type: deploy-lbrytv
           client_payload: |
-            tag: ${{ github.sha }}
+            tag: sha-${{ steps.slug.outputs.sha7 }}
         env:
           GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
