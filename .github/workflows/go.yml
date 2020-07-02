@@ -41,6 +41,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/master' || 'refs/heads/dev'
+    env:
+      GOROOT: /usr/local/go
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -53,7 +55,7 @@ jobs:
 
       - run: curl -sLO https://git.io/goreleaser && chmod +x goreleaser
       - run: go get github.com/gobuffalo/packr/v2/packr2@v2.7.1
-      - run: GOROOT=. ./goreleaser --rm-dist --snapshot
+      - run: ./goreleaser --rm-dist --snapshot
 
       - name: Release Production Docker Image
         if: github.ref == 'refs/heads/feature/git-actions'
