@@ -48,18 +48,27 @@ jobs:
     steps:
       - checkout
       - run: ./scripts/deploy.sh deployment api
-# workflows:
-#   version: 2
-#   integrate:
-#     jobs:
-#       - test
-#       - publish-image:
-#           requires:
-#             - test
-#           filters:
-#             branches:
-#               only:
-#                 - master
-#       - deploy-to-cluster:
-#           requires:
-#             - publish-image
+  goenv:
+    docker:
+      - image: lbry/lbrytv-ci:latest
+    steps:
+      - run: go env
+
+workflows:
+  version: 2
+  # integrate:
+  #   jobs:
+  #     - test
+  #     - publish-image:
+  #         requires:
+  #           - test
+  #         filters:
+  #           branches:
+  #             only:
+  #               - master
+  #     - deploy-to-cluster:
+  #         requires:
+  #           - publish-image
+  debug:
+    jobs:
+      - goenv
