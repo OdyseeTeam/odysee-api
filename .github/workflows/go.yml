@@ -86,7 +86,7 @@ jobs:
           tag_with_sha: true
 
       - name: Ping deployment repo
-        if: github.ref == 'refs/heads/feature/git-actions'
+        if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master'
         uses: octokit/request-action@v2.x
         id: deploy
         with:
