@@ -11,6 +11,9 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
       - name: Set up containers
         run: docker-compose up -d lbrynet postgres
 
@@ -22,9 +25,6 @@ jobs:
         with:
           go-version: ^1.13
         id: go
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
 
       - name: Prepare for tests
         run: |
