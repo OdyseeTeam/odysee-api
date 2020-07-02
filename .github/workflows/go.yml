@@ -1,12 +1,12 @@
-name: Integrate
+name: Release
 
 on:
   push:
-    branches: ["*"]
+    branches: ["feature/git-actions"]
 
 jobs:
   test:
-    name: Test
+    name: Run Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -36,14 +36,20 @@ jobs:
           go test -covermode=count -coverprofile=coverage.out ./...
           goveralls -coverprofile=coverage.out -service=circle-ci -ignore=models/ -repotoken ${{ secrets.COVERALLS_TOKEN }}
 
-  publish:
-    name: Publish
+  publish-image:
+    name: Release Docker Image
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' || 'refs/heads/dev'
+    env:
+      GOROOT: /usr/local/go
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+
+      - name: Get short SHA
+        id: slug
+        run: echo "::set-output name=sha7::$(echo ${GITHUB_SHA} | cut -c1-8)"
 
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
@@ -51,52 +57,53 @@ jobs:
           go-version: ^1.13
         id: go
 
-      - run: curl -sLO https://git.io/goreleaser && chmod +x goreleaser
-      - run: go get -u github.com/gobuffalo/packr/v2/packr2
+      - name: Get goreleaser
+        run: curl -sLO https://github.com/goreleaser/goreleaser/releases/download/v0.131.1/goreleaser_Linux_x86_64.tar.gz && tar xfz goreleaser_Linux_x86_64.tar.gz && chmod +x goreleaser
+
+      - run: go get github.com/gobuffalo/packr/v2/packr2@v2.7.1
       - run: ./goreleaser --rm-dist --snapshot
 
-      - name: Build Docker image
+      - name: Release Production Docker Image
+        if: github.ref == 'refs/heads/feature/git-actions'
+        # if: github.ref == 'refs/heads/master'
         uses: docker/build-push-action@v1
+        # with:
+        #   username: ${{ secrets.DOCKER_USERNAME }}
+        #   password: ${{ secrets.DOCKER_PASSWORD }}
+        #   repository: lbry/lbrytv
+        #   tags: latest
+        #   tag_with_ref: true
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          repository: lbry/lbrytv
-          tags: latest
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: docker.pkg.github.com
+          repository: lbryio/lbrytv/lbrytv
+          tags: latest,sha-${{ steps.slug.outputs.sha7 }}
           tag_with_ref: true
-          push: ${{ startsWith(github.ref, 'refs/tags/') }}
+          tag_with_sha: true
 
-  publish-dev:
-    name: Publish Dev
-    runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/dev'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Set up Go 1.x
-        uses: actions/setup-go@v2
-        with:
-          go-version: ^1.13
-        id: go
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
-
-      - run: curl -sLO https://git.io/goreleaser && chmod +x goreleaser
-      - run: go get -u github.com/gobuffalo/packr/v2/packr2
-      - run: ./goreleaser --rm-dist --snapshot
-
-      - name: Build Docker image
+      - name: Release Dev Docker Image
+        if: github.ref == 'refs/heads/dev'
         uses: docker/build-push-action@v1
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          repository: lbry/lbrytv
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: docker.pkg.github.com
+          repository: lbryio/lbrytv/lbrytv
           tags: latest-dev
           tag_with_ref: true
-          push: ${{ startsWith(github.ref, 'refs/tags/') }}
+          tag_with_sha: true
+
+      - name: Ping deployment repo
+        if: github.ref == 'refs/heads/feature/git-actions'
+        uses: octokit/request-action@v2.x
+        id: deploy
+        with:
+          route: POST /repos/:repository/dispatches
+          repository: lbryio/lbrytv-deployment
+          event_type: deploy-lbrytv
+          client_payload: |
+            tag: sha-${{ steps.slug.outputs.sha7 }}
+            branch: ${GITHUB_REF##*/}
+        env:
+          GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
