@@ -534,7 +534,7 @@ func TestCaller_GetFreeUnauthenticated(t *testing.T) {
 	getResponse := &ljsonrpc.GetResponse{}
 	err = resp.GetObject(&getResponse)
 	require.NoError(t, err)
-	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/free/what-d51692/19b9c243bea0c45175e6a6027911abbad53e983e", getResponse.StreamingURL)
+	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/free/what/19b9c243bea0c45175e6a6027911abbad53e983e/d51692", getResponse.StreamingURL)
 }
 
 func TestCaller_GetFreeAuthenticated(t *testing.T) {
@@ -557,7 +557,7 @@ func TestCaller_GetFreeAuthenticated(t *testing.T) {
 	getResponse := &ljsonrpc.GetResponse{}
 	err = resp.GetObject(&getResponse)
 	require.NoError(t, err)
-	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/free/what-d51692/19b9c243bea0c45175e6a6027911abbad53e983e", getResponse.StreamingURL)
+	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/free/what/19b9c243bea0c45175e6a6027911abbad53e983e/d51692", getResponse.StreamingURL)
 }
 
 func TestCaller_GetInvalidURLAuthenticated(t *testing.T) {
@@ -635,7 +635,7 @@ func TestCaller_GetPaidPurchased(t *testing.T) {
 	getResponse := &ljsonrpc.GetResponse{}
 	err = resp.GetObject(&getResponse)
 	require.NoError(t, err)
-	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/paid/"+claimName+"-"+sdHash+"/"+claimID+"/"+token, getResponse.StreamingURL)
+	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/paid/"+claimName+"/"+claimID+"/"+sdHash+"/"+token, getResponse.StreamingURL)
 	assert.NotNil(t, getResponse.PurchaseReceipt)
 }
 
@@ -734,7 +734,7 @@ func TestCaller_GetPaidPurchasedMissingPurchase(t *testing.T) {
 	getResponse := &ljsonrpc.GetResponse{}
 	err = resp.GetObject(&getResponse)
 	require.NoError(t, err)
-	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/paid/"+claimName+"-"+sdHash+"/"+claimID+"/"+token, getResponse.StreamingURL)
+	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/paid/"+claimName+"/"+claimID+"/"+sdHash+"/"+token, getResponse.StreamingURL)
 	assert.NotNil(t, getResponse.PurchaseReceipt)
 	assert.EqualValues(t, "250.0", getResponse.PurchaseReceipt.(map[string]interface{})["amount"])
 }
