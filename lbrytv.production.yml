@@ -1,4 +1,4 @@
-BaseContentURL: https://cdn.lbryplayer.xyz/api/v2/streams/
+BaseContentURL: https://cdn.lbryplayer.xyz/api/v3/streams/
 InternalAPIHost: https://api.lbry.com
 ProjectURL: https://lbry.tv
 
