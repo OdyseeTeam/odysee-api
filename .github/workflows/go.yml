@@ -40,7 +40,7 @@ jobs:
     name: Release Docker Image
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/master' || 'refs/heads/dev'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
     env:
       GOROOT: /usr/local/go
     steps:
