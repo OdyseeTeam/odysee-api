@@ -520,7 +520,7 @@ func TestCaller_Status(t *testing.T) {
 }
 
 func TestCaller_GetFreeUnauthenticated(t *testing.T) {
-	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v2/streams/")
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v3/streams/")
 	defer config.RestoreOverridden()
 
 	srvAddress := test.RandServerAddress(t)
@@ -534,11 +534,11 @@ func TestCaller_GetFreeUnauthenticated(t *testing.T) {
 	getResponse := &ljsonrpc.GetResponse{}
 	err = resp.GetObject(&getResponse)
 	require.NoError(t, err)
-	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/free/what/19b9c243bea0c45175e6a6027911abbad53e983e", getResponse.StreamingURL)
+	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v3/streams/free/what/19b9c243bea0c45175e6a6027911abbad53e983e/d51692", getResponse.StreamingURL)
 }
 
 func TestCaller_GetFreeAuthenticated(t *testing.T) {
-	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v2/streams/")
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v3/streams/")
 	defer config.RestoreOverridden()
 
 	uri := "what"
@@ -557,11 +557,11 @@ func TestCaller_GetFreeAuthenticated(t *testing.T) {
 	getResponse := &ljsonrpc.GetResponse{}
 	err = resp.GetObject(&getResponse)
 	require.NoError(t, err)
-	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/free/what/19b9c243bea0c45175e6a6027911abbad53e983e", getResponse.StreamingURL)
+	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v3/streams/free/what/19b9c243bea0c45175e6a6027911abbad53e983e/d51692", getResponse.StreamingURL)
 }
 
 func TestCaller_GetInvalidURLAuthenticated(t *testing.T) {
-	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v2/streams/")
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v3/streams/")
 	defer config.RestoreOverridden()
 
 	uri := "what#@1||||"
@@ -602,12 +602,13 @@ func TestCaller_GetPaidUnauthenticated(t *testing.T) {
 }
 
 func TestCaller_GetPaidPurchased(t *testing.T) {
-	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v2/streams/")
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v3/streams/")
 	defer config.RestoreOverridden()
 
 	uri := "Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis#d66f8ba85c85ca48daba9183bd349307fe30cb43"
 	txid := "ff990688df370072f408e2db9d217d2cf331d92ac594d5e6e8391143e9d38160"
 	claimName := "Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis"
+	sdHash := "51ee25"
 	claimID := "d66f8ba85c85ca48daba9183bd349307fe30cb43"
 
 	dummyUserID := 123321
@@ -634,12 +635,12 @@ func TestCaller_GetPaidPurchased(t *testing.T) {
 	getResponse := &ljsonrpc.GetResponse{}
 	err = resp.GetObject(&getResponse)
 	require.NoError(t, err)
-	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/paid/"+claimName+"/"+claimID+"/"+token, getResponse.StreamingURL)
+	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v3/streams/paid/"+claimName+"/"+claimID+"/"+sdHash+"/"+token, getResponse.StreamingURL)
 	assert.NotNil(t, getResponse.PurchaseReceipt)
 }
 
 func TestCaller_GetPaidResolveLag(t *testing.T) {
-	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v2/streams/")
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v3/streams/")
 	defer config.RestoreOverridden()
 
 	uri := "Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis#d66f8ba85c85ca48daba9183bd349307fe30cb43"
@@ -660,12 +661,13 @@ func TestCaller_GetPaidResolveLag(t *testing.T) {
 }
 
 func TestCaller_GetPaidPurchasedMissingPurchase(t *testing.T) {
-	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v2/streams/")
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v3/streams/")
 	defer config.RestoreOverridden()
 
 	uri := "Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis#d66f8ba85c85ca48daba9183bd349307fe30cb43"
 	txid := "ff990688df370072f408e2db9d217d2cf331d92ac594d5e6e8391143e9d38160"
 	claimName := "Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis"
+	sdHash := "51ee25"
 	claimID := "d66f8ba85c85ca48daba9183bd349307fe30cb43"
 
 	dummyUserID := 123321
@@ -732,13 +734,13 @@ func TestCaller_GetPaidPurchasedMissingPurchase(t *testing.T) {
 	getResponse := &ljsonrpc.GetResponse{}
 	err = resp.GetObject(&getResponse)
 	require.NoError(t, err)
-	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v2/streams/paid/"+claimName+"/"+claimID+"/"+token, getResponse.StreamingURL)
+	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v3/streams/paid/"+claimName+"/"+claimID+"/"+sdHash+"/"+token, getResponse.StreamingURL)
 	assert.NotNil(t, getResponse.PurchaseReceipt)
 	assert.EqualValues(t, "250.0", getResponse.PurchaseReceipt.(map[string]interface{})["amount"])
 }
 
 func TestCaller_GetPaidPurchasedMissingEverything(t *testing.T) {
-	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v2/streams/")
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v3/streams/")
 	defer config.RestoreOverridden()
 
 	uri := "Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis#d66f8ba85c85ca48daba9183bd349307fe30cb43"
