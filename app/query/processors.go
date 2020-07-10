@@ -113,7 +113,7 @@ func preflightHookGet(caller *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, 
 		urlSuffix = fmt.Sprintf("free/%s/%s/%s", claim.Name, claim.ClaimID, sdHash)
 	}
 
-	responseResult[ParamStreamingUrl] = config.GetConfig().Viper.GetString("BaseContentURL") + urlSuffix
+	responseResult[ParamStreamingUrl] = config.GetGlobalConfig().Viper.GetString("BaseContentURL") + urlSuffix
 
 	response.Result = responseResult
 	return response, nil

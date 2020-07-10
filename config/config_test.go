@@ -8,7 +8,7 @@ import (
 )
 
 func TestOverride(t *testing.T) {
-	c := GetConfig()
+	c := GetGlobalConfig()
 	originalSetting := c.Viper.Get("Lbrynet")
 	Override("Lbrynet", "http://www.google.com:8080/api/proxy")
 	assert.Equal(t, "http://www.google.com:8080/api/proxy", c.Viper.Get("Lbrynet"))
@@ -20,7 +20,7 @@ func TestOverride(t *testing.T) {
 func TestOverrideInEnv(t *testing.T) {
 	os.Setenv("LW_LBRYNETSERVERS", `{"z": "http://abc:5279/"}`)
 	oldConfig := Config
-	Config = NewConfig()
+	Config = NewConfig(globalConfigName)
 	assert.Equal(t, map[string]string{"z": "http://abc:5279/"}, GetLbrynetServers())
 	Config = oldConfig
 }

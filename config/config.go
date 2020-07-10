@@ -13,6 +13,7 @@ import (
 
 type configWrapper struct {
 	Viper      *viper.Viper
+	configName string
 	overridden map[string]interface{}
 }
 
@@ -24,6 +25,7 @@ type DBConfig struct {
 
 const lbrynetServers = "LbrynetServers"
 const deprecatedLbrynet = "Lbrynet"
+const globalConfigName = "lbrytv"
 
 var once sync.Once
 var Config *configWrapper
@@ -33,18 +35,18 @@ var Config *configWrapper
 var overriddenValues map[string]interface{}
 
 func init() {
-	Config = GetConfig()
+	Config = GetGlobalConfig()
 }
 
-func GetConfig() *configWrapper {
+func GetGlobalConfig() *configWrapper {
 	once.Do(func() {
-		Config = NewConfig()
+		Config = NewConfig(globalConfigName)
 	})
 	return Config
 }
 
-func NewConfig() *configWrapper {
-	c := &configWrapper{}
+func NewConfig(configName string) *configWrapper {
+	c := &configWrapper{configName: configName} // name of config file (without extension)
 	c.Init()
 	c.Read()
 	return c
@@ -53,6 +55,8 @@ func NewConfig() *configWrapper {
 func (c *configWrapper) Init() {
 	c.overridden = make(map[string]interface{})
 	c.Viper = viper.New()
+
+	c.Viper.SetConfigName(c.configName)
 
 	c.Viper.SetEnvPrefix("LW")
 	c.Viper.SetDefault("Debug", false)
@@ -69,15 +73,12 @@ func (c *configWrapper) Init() {
 	c.Viper.SetDefault("ReflectorTimeout", int64(10))
 	c.Viper.SetDefault("RefractorTimeout", int64(10))
 
-	c.Viper.SetConfigName("lbrytv") // name of config file (without extension)
-
 	c.Viper.AddConfigPath(os.Getenv("LBRYTV_CONFIG_DIR"))
 	c.Viper.AddConfigPath(ProjectRoot())
 	c.Viper.AddConfigPath(".")
 	c.Viper.AddConfigPath("..")
-	c.Viper.AddConfigPath("../..")
-	c.Viper.AddConfigPath("../../..") // TODO: walk all the way up the tree, as long as dir is readable
-	c.Viper.AddConfigPath("$HOME/.lbrytv")
+	c.Viper.AddConfigPath("../../")
+	c.Viper.AddConfigPath("../../../")
 }
 
 func (c *configWrapper) Read() {
@@ -112,7 +113,7 @@ func Override(key string, value interface{}) {
 
 // RestoreOverridden restores original v values overridden by Override
 func RestoreOverridden() {
-	c := GetConfig()
+	c := GetGlobalConfig()
 	v := c.Viper
 	if len(c.overridden) == 0 {
 		return
@@ -159,11 +160,16 @@ func GetInternalAPIHost() string {
 }
 
 // GetDatabase returns postgresql database server connection config
+func (c *configWrapper) GetDatabase() DBConfig {
+	var dbc DBConfig
+	c.Viper.UnmarshalKey("Database", &dbc)
+	dbc.Connection = c.Viper.GetString("DatabaseDSN")
+	return dbc
+}
+
+// GetDatabase returns postgresql database server connection config
 func GetDatabase() DBConfig {
-	var config DBConfig
-	Config.Viper.UnmarshalKey("Database", &config)
-	config.Connection = Config.Viper.GetString("DatabaseDSN")
-	return config
+	return Config.GetDatabase()
 }
 
 // GetSentryDSN returns sentry.io service DSN

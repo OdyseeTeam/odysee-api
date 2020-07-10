@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
+	github.com/getkin/kin-openapi v0.15.0
 	github.com/getsentry/sentry-go v0.6.1
 	github.com/gobuffalo/packr/v2 v2.8.0
 	github.com/gorilla/mux v1.7.3
@@ -15,6 +16,7 @@ require (
 	github.com/lbryio/lbrytv-player v0.3.0
 	github.com/lbryio/reflector.go v1.1.3-0.20200403124949-9c1b023de685
 	github.com/lib/pq v1.7.0
+	github.com/markbates/pkger v0.17.0
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
 	github.com/nsf/jsondiff v0.0.0-20190712045011-8443391ee9b6
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -22,9 +24,9 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.3.0
 	github.com/rubenv/sql-migrate v0.0.0-20200429072036-ae26b214fa43
-	github.com/sergi/go-diff v1.1.0
+	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/sirupsen/logrus v1.4.2
-	github.com/spf13/afero v1.3.0 // indirect
+	github.com/spf13/afero v1.3.1 // indirect
 	github.com/spf13/cast v1.3.1
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.7.0
@@ -33,10 +35,8 @@ require (
 	github.com/volatiletech/null v8.0.0+incompatible
 	github.com/volatiletech/sqlboiler v3.4.0+incompatible
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
-	golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4 // indirect
+	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
 	golang.org/x/text v0.3.3 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/ini.v1 v1.57.0 // indirect
-	gopkg.in/nullbio/null.v6 v6.0.0-20161116030900-40264a2e6b79
-	gotest.tools v2.2.0+incompatible
 )

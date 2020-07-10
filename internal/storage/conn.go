@@ -32,9 +32,10 @@ type Connection struct {
 
 // ConnParams are accepted by InitConn, containing database server parameters.
 type ConnParams struct {
-	Connection string
-	DBName     string
-	Options    string
+	Connection     string
+	DBName         string
+	Options        string
+	MigrationsPath string
 }
 
 // Conn holds a global database connection.
