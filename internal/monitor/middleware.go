@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/responses"
 
@@ -99,7 +98,7 @@ func ErrorLoggingMiddleware(next http.Handler) http.Handler {
 		recordPanic(recoveredErr, r, recorder)
 
 		stack := ""
-		if !config.IsProduction() {
+		if !isProduction() {
 			stack = errors.Trace(recoveredErr)
 		}
 

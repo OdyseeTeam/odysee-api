@@ -10,12 +10,12 @@ import (
 	"github.com/lbryio/lbrytv/apps/collector/models"
 	env "github.com/lbryio/lbrytv/apps/environment"
 	"github.com/lbryio/lbrytv/internal/responses"
-	"github.com/markbates/pkger"
-	"github.com/volatiletech/sqlboiler/boil"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/gorilla/mux"
+	"github.com/markbates/pkger"
+	"github.com/volatiletech/sqlboiler/boil"
 )
 
 func RouteInstaller(r *mux.Router, _ *env.Environment) {

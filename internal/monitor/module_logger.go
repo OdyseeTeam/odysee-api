@@ -4,8 +4,6 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/lbryio/lbrytv/apps/lbrytv/config"
-
 	"github.com/sirupsen/logrus"
 )
 
@@ -37,7 +35,7 @@ func NewModuleLogger(moduleName string) ModuleLogger {
 // Example:
 //  logger.WithFields(F{"query": "..."}).Info("query error")
 func (m ModuleLogger) WithFields(fields logrus.Fields) *logrus.Entry {
-	if v, ok := fields[TokenF]; ok && v != "" && config.IsProduction() {
+	if v, ok := fields[TokenF]; ok && v != "" && isProduction() {
 		fields[TokenF] = valueMask
 	}
 	return m.Entry.WithFields(fields)

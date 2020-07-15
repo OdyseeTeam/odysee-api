@@ -22,21 +22,6 @@ builds:
       - "-s -w -X github.com/lbryio/lbrytv/version.version={{.Version}} -X github.com/lbryio/lbrytv/version.commit={{.ShortCommit}} -X github.com/lbryio/lbrytv/version.date={{.Date}}"
     main: ./main.go
 
-  - id: collector
-    env:
-      - CGO_ENABLED=0
-    goos:
-      - linux
-    goarch:
-      - amd64
-    binary: lbrytv
-    hooks:
-      pre: pkger
-      post: rm pkged.go
-    # ldflags:
-    #   - "-s -w -X github.com/lbryio/lbrytv/version.version={{.Version}} -X github.com/lbryio/lbrytv/version.commit={{.ShortCommit}} -X github.com/lbryio/lbrytv/version.date={{.Date}}"
-    main: ./apps/collector/main.go
-
 archives:
   - id: zip
     replacements:
