@@ -7,7 +7,7 @@ import (
 
 	"github.com/lbryio/lbry.go/v2/extras/null"
 	"github.com/lbryio/lbrytv/app/query"
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/test"
 	"github.com/lbryio/lbrytv/models"

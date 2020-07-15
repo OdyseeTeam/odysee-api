@@ -52,7 +52,6 @@ func EventHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := openapi3filter.ValidateRequest(context.Background(), validator); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "validation error: %v", err)
 		return
 	}
 

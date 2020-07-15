@@ -1,55 +1,29 @@
 package config
 
 import (
-	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestOverride(t *testing.T) {
-	c := GetGlobalConfig()
+	c := NewConfig()
+	err := c.Viper.ReadConfig(strings.NewReader("Lbrynet: http://localhost:5279"))
+	require.Nil(t, err)
 	originalSetting := c.Viper.Get("Lbrynet")
-	Override("Lbrynet", "http://www.google.com:8080/api/proxy")
+	c.Override("Lbrynet", "http://www.google.com:8080/api/proxy")
 	assert.Equal(t, "http://www.google.com:8080/api/proxy", c.Viper.Get("Lbrynet"))
-	RestoreOverridden()
+	c.RestoreOverridden()
 	assert.Equal(t, originalSetting, c.Viper.Get("Lbrynet"))
-	assert.Empty(t, overriddenValues)
-}
-
-func TestOverrideInEnv(t *testing.T) {
-	os.Setenv("LW_LBRYNETSERVERS", `{"z": "http://abc:5279/"}`)
-	oldConfig := Config
-	Config = NewConfig(globalConfigName)
-	assert.Equal(t, map[string]string{"z": "http://abc:5279/"}, GetLbrynetServers())
-	Config = oldConfig
+	assert.Empty(t, c.overridden)
 }
 
 func TestIsProduction(t *testing.T) {
-	Override("Debug", false)
-	assert.True(t, IsProduction())
-	Override("Debug", true)
-	assert.False(t, IsProduction())
-	defer RestoreOverridden()
-}
-
-func TestGetLbrynetServers(t *testing.T) {
-	Override("LbrynetServers", map[string]string{
-		"sdk1": "http://lbrynet1:5279/",
-		"sdk2": "http://lbrynet2:5279/",
-		"sdk3": "http://lbrynet3:5279/",
-	})
-	defer RestoreOverridden()
-	assert.Equal(t, map[string]string{
-		"sdk1": "http://lbrynet1:5279/",
-		"sdk2": "http://lbrynet2:5279/",
-		"sdk3": "http://lbrynet3:5279/",
-	}, GetLbrynetServers())
-}
-
-func TestGetLbrynetServersNoDB(t *testing.T) {
-	if Config.Viper.GetString(deprecatedLbrynet) != "" &&
-		len(Config.Viper.GetStringMapString(lbrynetServers)) > 0 {
-		t.Fatalf("Both %s and %s are set. This is a highlander situation...there can be only one.", deprecatedLbrynet, lbrynetServers)
-	}
+	c := NewConfig()
+	c.Override("Debug", false)
+	assert.True(t, c.IsProduction())
+	c.Override("Debug", true)
+	assert.False(t, c.IsProduction())
 }

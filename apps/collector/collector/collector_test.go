@@ -19,7 +19,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	appConfig := config.NewConfig("collector")
+	appConfig := config.ReadConfig("collector")
 	dbConfig := appConfig.GetDatabase()
 	params := storage.ConnParams{
 		Connection:     dbConfig.Connection,
@@ -101,7 +101,7 @@ func TestEventHandler(t *testing.T) {
 			respBody, err := ioutil.ReadAll(response.Body)
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedStatus, response.StatusCode)
-			if test.expectedStatus == 200 {
+			if test.expectedStatus != 200 {
 				assert.Equal(t, test.expectedBody, respBody, "unexpected response: %s", respBody)
 			}
 		})

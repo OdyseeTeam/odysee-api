@@ -8,7 +8,7 @@ import (
 func ForCollector() *Environment {
 	e := &Environment{objects: map[string]interface{}{}}
 
-	appConfig := config.NewConfig("collector")
+	appConfig := config.ReadConfig("collector")
 	dbConfig := appConfig.GetDatabase()
 	conn := storage.InitConn(storage.ConnParams{
 		Connection:     dbConfig.Connection,

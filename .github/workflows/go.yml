@@ -58,7 +58,9 @@ jobs:
         id: go
 
       - name: Get goreleaser
-        run: curl -sLO https://github.com/goreleaser/goreleaser/releases/download/v0.131.1/goreleaser_Linux_x86_64.tar.gz && tar xfz goreleaser_Linux_x86_64.tar.gz && chmod +x goreleaser
+        run: >
+          curl -sLO https://github.com/goreleaser/goreleaser/releases/download/v0.140.0/goreleaser_Linux_x86_64.tar.gz &&
+          tar xfz goreleaser_Linux_x86_64.tar.gz && chmod +x goreleaser
 
       - run: go get github.com/gobuffalo/packr/v2/packr2@v2.7.1
       - run: ./goreleaser --rm-dist --snapshot

@@ -1,7 +1,7 @@
 package monitor
 
 import (
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/responses"
 
 	"github.com/getsentry/sentry-go"

@@ -1,7 +1,7 @@
 package monitor
 
 import (
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/version"
 
 	"github.com/sirupsen/logrus"

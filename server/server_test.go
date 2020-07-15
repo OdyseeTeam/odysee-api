@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/storage"
 
 	"github.com/stretchr/testify/assert"

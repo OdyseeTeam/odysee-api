@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv-player/pkg/paid"
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
@@ -113,7 +113,7 @@ func preflightHookGet(caller *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, 
 		urlSuffix = fmt.Sprintf("free/%s/%s/%s", claim.Name, claim.ClaimID, sdHash)
 	}
 
-	responseResult[ParamStreamingUrl] = config.GetGlobalConfig().Viper.GetString("BaseContentURL") + urlSuffix
+	responseResult[ParamStreamingUrl] = config.Config.Viper.GetString("BaseContentURL") + urlSuffix
 
 	response.Result = responseResult
 	return response, nil
