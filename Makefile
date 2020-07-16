@@ -2,7 +2,6 @@ VERSION := $(shell git describe --tags)
 
 .PHONY: prepare_test
 prepare_test:
-	# docker cp conf/test_daemon_settings.yml $(shell docker-compose ps -q test_daemon):/storage/data/daemon_settings.yml
 	docker-compose up --no-start test_lbrynet
 	docker cp conf/daemon_settings.yml $(shell docker-compose ps -q test_lbrynet):/storage/data/daemon_settings.yml
 	docker-compose start test_daemon
@@ -58,8 +57,17 @@ retag:
 	git tag -d $(tag)
 	git tag $(tag)
 
-.PHONY: models
-models:
+get_sqlboiler:
 	go get -u -t github.com/volatiletech/sqlboiler@v3.4.0
 	go get -u -t github.com/volatiletech/sqlboiler/drivers/sqlboiler-psql@v3.4.0
+
+.PHONY: models
+models: get_sqlboiler
 	sqlboiler --add-global-variants --wipe psql --no-context
+
+app_path := ./apps/collector
+.PHONY: collector_models
+collector_models: get_sqlboiler
+	sqlboiler --no-tests --add-global-variants --wipe psql --no-context -o $(app_path)/models -c $(app_path)/sqlboiler.toml
+	# So sqlboiler can discover their sqlboiler.toml config files instead of reaching for the one in the root
+	# find . -name boil_main_test.go|xargs sed -i '' -e 's/outputDirDepth = 3/outputDirDepth = 1/g'

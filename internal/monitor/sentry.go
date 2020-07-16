@@ -1,7 +1,6 @@
 package monitor
 
 import (
-	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/responses"
 
 	"github.com/getsentry/sentry-go"
@@ -11,10 +10,9 @@ var IgnoredExceptions = []string{
 	responses.AuthRequiredErrorMessage,
 }
 
-func configureSentry(release, env string) {
-	dsn := config.GetSentryDSN()
+func ConfigureSentry(dsn, release, env string) {
 	if dsn == "" {
-		logger.Log().Info("sentry disabled (no DNS configured)")
+		logger.Log().Info("sentry disabled (no DSN configured)")
 		return
 	}
 
