@@ -6,3 +6,4 @@
   pass   = "ZnPfJ!4vTb-nURv8M!JkkuAcjYLYbkiX"
   blacklist = ["migrations", "other"]
   sslmode = "disable"
+  testdbname = "collector_test"

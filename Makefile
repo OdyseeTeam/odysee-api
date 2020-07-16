@@ -65,7 +65,9 @@ get_sqlboiler:
 models: get_sqlboiler
 	sqlboiler --add-global-variants --wipe psql --no-context
 
-app_path := "apps/collector"
+app_path := ./apps/collector
 .PHONY: collector_models
 collector_models: get_sqlboiler
 	sqlboiler --add-global-variants --wipe psql --no-context -o $(app_path)/models -c $(app_path)/sqlboiler.toml
+	# So sqlboiler can discover their sqlboiler.toml config files instead of reaching for the one in the root
+	find . -name boil_main_test.go|xargs sed -i '' -e 's/outputDirDepth = 3/outputDirDepth = 1/g'

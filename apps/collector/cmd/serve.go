@@ -2,9 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
-	"time"
 
 	"github.com/lbryio/lbrytv/apps/collector/collector"
 	"github.com/lbryio/lbrytv/apps/environment"
@@ -18,8 +16,6 @@ var rootCmd = &cobra.Command{
 	Use:   "metrics",
 	Short: "metrics is a metrics collection server for lbry.tv",
 	Run: func(cmd *cobra.Command, args []string) {
-		rand.Seed(time.Now().UnixNano()) // always seed random!
-
 		e := environment.ForCollector()
 		conn := e.Get("storage").(*storage.Connection)
 		m := storage.NewMigrator(conn, "./apps/collector/migrations")
