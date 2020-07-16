@@ -37,7 +37,6 @@ func init() {
 	c.Viper.BindEnv("Lbrynet")
 	c.Viper.BindEnv("SentryDSN")
 	c.Viper.BindEnv("DatabaseDSN")
-	c.Viper.BindEnv(lbrynetServers)
 
 	c.Viper.SetDefault("Address", ":8080")
 	c.Viper.SetDefault("Host", "http://localhost:8080")

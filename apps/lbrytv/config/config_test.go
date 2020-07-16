@@ -1,20 +1,10 @@
 package config
 
 import (
-	"os"
 	"testing"
 
-	cfg "github.com/lbryio/lbrytv/config"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestOverrideInEnv(t *testing.T) {
-	os.Setenv("LW_LBRYNETSERVERS", `{"z": "http://abc:5279/"}`)
-	oldConfig := Config
-	Config = cfg.ReadConfig(configName)
-	assert.Equal(t, map[string]string{"z": "http://abc:5279/"}, GetLbrynetServers())
-	Config = oldConfig
-}
 
 func TestGetLbrynetServers(t *testing.T) {
 	Config.Override("LbrynetServers", map[string]string{
