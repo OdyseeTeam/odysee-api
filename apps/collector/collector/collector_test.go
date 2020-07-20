@@ -12,6 +12,7 @@ import (
 	"github.com/lbryio/lbrytv/apps/collector/models"
 	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/storage"
+	"github.com/lbryio/lbrytv/pkg/app"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,6 +35,17 @@ func TestMain(m *testing.M) {
 
 	connCleanup()
 	os.Exit(code)
+}
+
+func TestHealthz(t *testing.T) {
+	app := app.New("127.0.0.1:11111")
+	app.InstallRoutes(RouteInstaller)
+	app.Start()
+	defer app.Shutdown()
+
+	r, err := http.Get("http://127.0.0.1:11111/healthz")
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, r.StatusCode)
 }
 
 func TestEventHandler(t *testing.T) {
@@ -93,8 +105,9 @@ func TestEventHandler(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			req, _ := http.NewRequest(http.MethodPost, "https://collector.api.lbry.tv/api/v1/events/video", bytes.NewReader(test.input))
+			req, _ := http.NewRequest(http.MethodPost, "/api/v1/events/video", bytes.NewReader(test.input))
 			req.Header.Add("content-type", "application/json; charset=utf-8")
+			req.Header.Add("host", "collector-service.dev.lbry.tv")
 			rr := httptest.NewRecorder()
 			EventHandler(rr, req)
 			response := rr.Result()

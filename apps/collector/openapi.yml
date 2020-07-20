@@ -1,7 +1,9 @@
 openapi: "3.0.0"
-servers:
-  - url: https://collector.api.lbry.tv
-  - url: https://dev.collector.api.lbry.tv
+# servers:
+#   - url: https://collector-service.lbry.tv
+#     description: Production server
+#   - url: https://collector-service.dev.lbry.tv
+#     description: Development server
 info:
   title: Advanced Metrics Collector
   version: "0.0.1"

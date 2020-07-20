@@ -30,8 +30,8 @@ func CreateTestConn(params ConnParams) (*Connection, func()) {
 	}
 
 	if params.MigrationsPath != "" {
-		migrator := NewMigrator(testConn, params.MigrationsPath)
-		migrator.MigrateUp()
+		migrator := NewMigrator(params.MigrationsPath)
+		migrator.MigrateUp(testConn)
 	} else {
 		testConn.MigrateUp()
 	}

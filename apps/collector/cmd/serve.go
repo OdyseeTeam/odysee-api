@@ -18,10 +18,8 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		e := environment.ForCollector()
 		conn := e.Get("storage").(*storage.Connection)
-		m := storage.NewMigrator(conn, "./apps/collector/migrations")
-		m.MigrateUp()
-
-		// db.SetDefaultConnection()
+		collector.Migrator.MigrateUp(conn)
+		conn.SetDefaultConnection()
 
 		app := app.New(":8080")
 		app.InstallRoutes(collector.RouteInstaller)

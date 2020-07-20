@@ -34,6 +34,7 @@ func ReadConfig(configName string) *ConfigWrapper {
 
 func (c *ConfigWrapper) initPaths() {
 	c.Viper.SetConfigName(c.configName)
+	c.Viper.AddConfigPath("./config/")
 	c.Viper.AddConfigPath(".")
 	c.Viper.AddConfigPath("..")
 	c.Viper.AddConfigPath("../../")
