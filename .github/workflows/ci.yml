@@ -63,7 +63,7 @@ jobs:
       - run: go get github.com/gobuffalo/packr/v2/packr2@v2.7.1
       - run: ./goreleaser --rm-dist --snapshot
 
-      - name: Release Production Docker Image
+      - name: Push docker image to production
         if: github.ref == 'refs/heads/master'
         uses: docker/build-push-action@v1
         with:
@@ -74,18 +74,18 @@ jobs:
           tag_with_ref: true
           tag_with_sha: true
 
-      - name: Release Dev Docker Image
+      - name: Push docker image to dev
         if: github.ref == 'refs/heads/dev'
         uses: docker/build-push-action@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           repository: lbry/lbrytv
-          tags: latest-dev
+          tags: latest-dev,sha-${{ steps.slug.outputs.sha7 }}
           tag_with_ref: true
           tag_with_sha: true
 
-      - name: Ping deployment repo
+      - name: Deploy
         if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master'
         uses: octokit/request-action@v2.x
         id: deploy
@@ -96,5 +96,21 @@ jobs:
           client_payload: |
             tag: sha-${{ steps.slug.outputs.sha7 }}
             ref: ${{ github.ref }}
+            service: lbrytv-api
+        env:
+          GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
+
+      - name: Deploy
+        if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master'
+        uses: octokit/request-action@v2.x
+        id: deploy
+        with:
+          route: POST /repos/:repository/dispatches
+          repository: lbryio/lbrytv-deployment
+          event_type: deploy-lbrytv
+          client_payload: |
+            tag: sha-${{ steps.slug.outputs.sha7 }}
+            ref: ${{ github.ref }}
+            service: lbrytv-api
         env:
           GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
