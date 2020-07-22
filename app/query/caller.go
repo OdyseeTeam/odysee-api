@@ -261,7 +261,7 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 		if config.ShouldLogResponses() {
 			logFields["response"] = r
 		}
-		logEntry.Debug("rpc call processed")
+		logEntry.Log(getLogLevel(q.Method()), "rpc call processed")
 	}
 
 	return r, err
@@ -280,6 +280,13 @@ func isCacheable(q *Query) bool {
 		return true
 	}
 	return false
+}
+
+func getLogLevel(m string) logrus.Level {
+	if methodInList(m, []string{MethodWalletBalance, MethodSyncApply}) {
+		return logrus.DebugLevel
+	}
+	return logrus.InfoLevel
 }
 
 func isMatchingHook(m string, hook hookEntry) bool {
