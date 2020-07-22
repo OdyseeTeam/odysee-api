@@ -103,7 +103,7 @@ func TestEventHandler(t *testing.T) {
 	require.NoError(t, err)
 	serialized, err = json.Marshal(event)
 	require.NoError(t, err)
-	tests = append(tests, testData{"buffering event with missing fields", serialized, http.StatusBadRequest, []byte(``)})
+	tests = append(tests, testData{"buffering event with missing fields", serialized, http.StatusBadRequest, []byte(`Error at "/data":Doesn't match schema "oneOf"`)})
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -117,7 +117,7 @@ func TestEventHandler(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedStatus, response.StatusCode)
 			if test.expectedStatus != 200 {
-				assert.Equal(t, test.expectedBody, respBody, "unexpected response: %s", respBody)
+				assert.Contains(t, string(respBody), string(test.expectedBody))
 			}
 		})
 	}
