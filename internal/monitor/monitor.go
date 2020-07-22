@@ -38,14 +38,14 @@ func isProduction() bool {
 }
 
 func LogMode() string {
-	if IsProduction {
+	if isProduction() {
 		return "production"
 	}
 	return "develop"
 }
 
 func configureLogLevelAndFormat(l *logrus.Logger) {
-	if IsProduction {
+	if isProduction() {
 		l.SetLevel(logrus.InfoLevel)
 		l.SetFormatter(&jsonFormatter)
 	} else {
