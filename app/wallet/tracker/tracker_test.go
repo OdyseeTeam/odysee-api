@@ -168,6 +168,7 @@ func TestMiddleware(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	hook := logrusTest.NewLocal(GetLogger().Entry.Logger)
+	GetLogger().Entry.Logger.SetLevel(logrus.TraceLevel)
 
 	auth.Middleware(authProvider)(
 		Middleware(boil.GetDB())(
