@@ -103,18 +103,3 @@ jobs:
             service: lbrytv-api
         env:
           GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
-
-      - name: Deploy
-        if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master'
-        uses: octokit/request-action@v2.x
-        id: deploy
-        with:
-          route: POST /repos/:repository/dispatches
-          repository: lbryio/lbrytv-deployment
-          event_type: deploy-lbrytv
-          client_payload: |
-            tag: sha-${{ steps.slug.outputs.sha7 }}
-            ref: ${{ github.ref }}
-            service: lbrytv-api
-        env:
-          GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
