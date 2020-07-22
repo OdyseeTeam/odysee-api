@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/lbryio/lbrytv/apps/collector/models"
 	"github.com/lbryio/lbrytv/config"
@@ -42,6 +43,7 @@ func TestHealthz(t *testing.T) {
 	app.InstallRoutes(RouteInstaller)
 	app.Start()
 	defer app.Shutdown()
+	time.Sleep(200 * time.Millisecond)
 
 	r, err := http.Get("http://127.0.0.1:11111/healthz")
 	require.NoError(t, err)
