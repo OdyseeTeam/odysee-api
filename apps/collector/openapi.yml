@@ -1,7 +1,9 @@
 openapi: "3.0.0"
-servers:
-  - url: https://collector.api.lbry.tv
-  - url: https://dev.collector.api.lbry.tv
+# servers:
+#   - url: https://collector-service.api.lbry.tv
+#     description: Production server
+#   - url: https://collector-service.dev.lbry.tv
+#     description: Development server
 info:
   title: Advanced Metrics Collector
   version: "0.0.1"
@@ -72,7 +74,7 @@ components:
           minimum: 1
         stream_duration:
           type: integer
-          description: stream duration, seconds
+          description: stream duration, milliseconds
           minimum: 1
         stream_bitrate:
           type: integer

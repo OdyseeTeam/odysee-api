@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/lbryio/lbrytv/apps/collector/collector"
 	"github.com/lbryio/lbrytv/apps/environment"
 	"github.com/lbryio/lbrytv/internal/storage"
 
@@ -17,7 +18,6 @@ var dbMigrateUp = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		e := environment.ForCollector()
 		conn := e.Get("storage").(*storage.Connection)
-		m := storage.NewMigrator(conn, "./apps/collector/migrations")
-		m.MigrateUp()
+		collector.Migrator.MigrateUp(conn)
 	},
 }

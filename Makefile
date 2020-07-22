@@ -71,3 +71,7 @@ collector_models: get_sqlboiler
 	sqlboiler --no-tests --add-global-variants --wipe psql --no-context -o $(app_path)/models -c $(app_path)/sqlboiler.toml
 	# So sqlboiler can discover their sqlboiler.toml config files instead of reaching for the one in the root
 	# find . -name boil_main_test.go|xargs sed -i '' -e 's/outputDirDepth = 3/outputDirDepth = 1/g'
+
+GORELEASER_CURRENT_TAG := $(shell git describe --tags --match 'collector-v*'|sed -e 's/.*\-v//')
+collector:
+	goreleaser build -f apps/collector/.goreleaser.yml --snapshot --rm-dist

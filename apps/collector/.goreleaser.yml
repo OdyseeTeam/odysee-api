@@ -18,8 +18,8 @@ builds:
       - amd64
     binary: collector
     hooks:
-      pre: pkger
-      post: rm -f pkged.go
+      pre: pkger -o apps/collector/collector
+      post: find . -name pkged.go -delete
     # ldflags:
     #   - "-s -w -X github.com/lbryio/lbrytv/version.version={{.Version}} -X github.com/lbryio/lbrytv/version.commit={{.ShortCommit}} -X github.com/lbryio/lbrytv/version.date={{.Date}}"
     main: apps/collector/main.go

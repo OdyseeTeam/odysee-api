@@ -14,7 +14,7 @@ func ForCollector() *Environment {
 		Connection:     dbConfig.Connection,
 		DBName:         dbConfig.DBName,
 		Options:        dbConfig.Options,
-		MigrationsPath: "./apps/collector/migrations",
+		MigrationsPath: "/apps/collector/migrations",
 	})
 
 	err := conn.Connect()
