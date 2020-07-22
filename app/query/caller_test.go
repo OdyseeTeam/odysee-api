@@ -16,6 +16,7 @@ import (
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
+	"github.com/sirupsen/logrus"
 	logrusTest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -286,6 +287,7 @@ func TestCaller_AddPostflightHook_Response(t *testing.T) {
 
 func TestCaller_AddPostflightHook_LogField(t *testing.T) {
 	logHook := logrusTest.NewLocal(logger.Entry.Logger)
+	logger.Entry.Logger.SetLevel(logrus.TraceLevel)
 	reqChan := test.ReqChan()
 	srv := test.MockHTTPServer(reqChan)
 	defer srv.Close()
