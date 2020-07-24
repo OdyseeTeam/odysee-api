@@ -1,6 +1,9 @@
-name: CI
+name: Integrate Lbrytv Service
 
-on: push
+on:
+  push:
+    tags:
+      - "*-v*.*.*"
 
 jobs:
   test:
@@ -9,7 +12,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-        fetch-depth: 0
 
       - name: Set up containers
         run: docker-compose up -d lbrynet postgres postgres-collector
@@ -50,10 +52,6 @@ jobs:
         id: slug
         run: echo "::set-output name=sha7::$(echo ${GITHUB_SHA} | cut -c1-7)"
 
-      - name: Get version
-        id: version
-        run: echo "::set-output name=version::$(git describe --tags)"
-
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
         with:
@@ -75,7 +73,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           repository: lbry/lbrytv
-          tags: latest,sha-${{ steps.slug.outputs.sha7 }},${{ steps.version.outputs.version }}
+          tags: latest,sha-${{ steps.slug.outputs.sha7 }}
           tag_with_ref: true
           tag_with_sha: true
 
@@ -86,7 +84,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           repository: lbry/lbrytv
-          tags: latest-dev,sha-${{ steps.slug.outputs.sha7 }},${{ steps.version.outputs.version }}
+          tags: latest-dev
           tag_with_ref: true
           tag_with_sha: true
 
@@ -101,6 +99,19 @@ jobs:
           client_payload: |
             tag: sha-${{ steps.slug.outputs.sha7 }}
             ref: ${{ github.ref }}
-            service: lbrytv-api
+        env:
+          GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
+
+      - name: Deploy
+        if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master'
+        uses: octokit/request-action@v2.x
+        id: deploy
+        with:
+          route: POST /repos/:repository/dispatches
+          repository: lbryio/lbrytv-deployment
+          event_type: deploy-lbrytv
+          client_payload: |
+            tag: sha-${{ steps.slug.outputs.sha7 }}
+            ref: ${{ github.ref }}
         env:
           GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
