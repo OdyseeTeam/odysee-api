@@ -9,7 +9,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-        fetch-depth: 0
 
       - name: Set up containers
         run: docker-compose up -d lbrynet postgres postgres-collector
@@ -46,6 +45,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Get short SHA
         id: slug
