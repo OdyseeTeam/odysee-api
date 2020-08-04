@@ -47,10 +47,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get short SHA
-        id: slug
-        run: echo "::set-output name=sha7::$(echo ${GITHUB_SHA} | cut -c1-7)"
-
       - name: Get version
         id: version
         run: echo "::set-output name=version::$(git describe --tags)"
@@ -76,9 +72,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           repository: lbry/lbrytv
-          tags: latest,sha-${{ steps.slug.outputs.sha7 }},${{ steps.version.outputs.version }}
-          tag_with_ref: true
-          tag_with_sha: true
+          tags: latest,${{ steps.version.outputs.version }}
 
       - name: Push docker image to dev
         if: github.ref == 'refs/heads/dev'
@@ -87,9 +81,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           repository: lbry/lbrytv
-          tags: latest-dev,sha-${{ steps.slug.outputs.sha7 }},${{ steps.version.outputs.version }}
-          tag_with_ref: true
-          tag_with_sha: true
+          tags: latest-dev,${{ steps.version.outputs.version }}
 
       - name: Deploy
         if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master'
@@ -100,7 +92,7 @@ jobs:
           repository: lbryio/lbrytv-deployment
           event_type: deploy-lbrytv
           client_payload: |
-            tag: sha-${{ steps.slug.outputs.sha7 }}
+            tag: ${{ steps.version.outputs.version }}
             ref: ${{ github.ref }}
             service: lbrytv-api
         env:
