@@ -1,11 +1,5 @@
 VERSION := $(shell git describe --tags)
 
-.PHONY: prepare_test
-prepare_test:
-	docker-compose up --no-start test_lbrynet
-	docker cp conf/daemon_settings.yml $(shell docker-compose ps -q test_lbrynet):/storage/data/daemon_settings.yml
-	docker-compose start test_daemon
-
 .PHONY: test
 test:
 	go test -cover ./...
@@ -13,6 +7,12 @@ test:
 .PHONY: test_race
 test_race:
 	go test -race -gcflags=all=-d=checkptr=0 ./...
+
+prepare_test:
+	go get golang.org/x/tools/cmd/cover
+	go get github.com/mattn/goveralls
+	go run . db_migrate_up
+	go run ./apps/collector db_migrate_up
 
 .PHONY: test_circleci
 test_circleci:
@@ -22,6 +22,11 @@ test_circleci:
 	go run . db_migrate_up
 	go test -covermode=count -coverprofile=coverage.out ./...
 	goveralls -coverprofile=coverage.out -service=circle-ci -ignore=models/ -repotoken $(COVERALLS_TOKEN)
+
+.PHONY: test_circleci
+test_ghactions:
+	go test -covermode=count -coverprofile=coverage.out ./...
+    goveralls -coverprofile=coverage.out -service=circle-ci -ignore=models/ -repotoken ${{ secrets.COVERALLS_TOKEN }}
 
 release:
 	GO111MODULE=on goreleaser --rm-dist
