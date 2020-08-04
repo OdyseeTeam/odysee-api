@@ -27,6 +27,12 @@ func RouteInstaller(r *mux.Router, _ *env.Environment) {
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
 
 	v1Router.HandleFunc("/events/video", EventHandler).Methods(http.MethodPost)
+	v1Router.HandleFunc("/events/video", func(w http.ResponseWriter, r *http.Request) {
+		hs := w.Header()
+		hs.Set("Access-Control-Max-Age", "7200")
+		hs.Set("Access-Control-Allow-Origin", "*")
+		hs.Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
+	}).Methods(http.MethodOptions)
 }
 
 func EventHandler(w http.ResponseWriter, r *http.Request) {
