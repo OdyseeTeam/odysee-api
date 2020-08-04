@@ -23,12 +23,16 @@ jobs:
         id: go
 
       - name: Prepare for tests
-        run: |
-          make prepare_test
-          scripts/wait_for_wallet.sh
+        run: make prepare_test
+
+      - name: Wait for wallet init
+        run: scripts/wait_for_wallet.sh
 
       - name: Test
-        run: make test_ghactions
+        run: go test -covermode=count -coverprofile=coverage.out ./...
+
+      - name: Check coverage
+        run: goveralls -coverprofile=coverage.out -service=circle-ci -ignore=models/ -repotoken ${{ secrets.COVERALLS_TOKEN }}
 
   publish-image:
     name: Release Docker Image
