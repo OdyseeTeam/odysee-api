@@ -51,7 +51,7 @@ func TestHealthz(t *testing.T) {
 }
 
 func TestCORS(t *testing.T) {
-	app := app.New("127.0.0.1:11111")
+	app := app.New("127.0.0.1:11111", app.AllowOrigin("*"))
 	app.InstallRoutes(RouteInstaller)
 	app.Start()
 	defer app.Shutdown()
@@ -63,6 +63,20 @@ func TestCORS(t *testing.T) {
 	require.NoError(t, err)
 	h := r.Header
 	require.Equal(t, http.StatusOK, r.StatusCode)
+	assert.Equal(t, "7200", h.Get("Access-Control-Max-Age"))
+	assert.Equal(t, "*", h.Get("Access-Control-Allow-Origin"))
+	assert.Equal(
+		t,
+		"Origin, X-Requested-With, Content-Type, Accept",
+		h.Get("Access-Control-Allow-Headers"),
+	)
+
+	req, err = http.NewRequest(http.MethodPost, "http://127.0.0.1:11111/api/v1/events/video", nil)
+	require.NoError(t, err)
+	r, err = http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	h = r.Header
+	require.Equal(t, http.StatusBadRequest, r.StatusCode)
 	assert.Equal(t, "7200", h.Get("Access-Control-Max-Age"))
 	assert.Equal(t, "*", h.Get("Access-Control-Allow-Origin"))
 	assert.Equal(

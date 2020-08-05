@@ -55,10 +55,12 @@ func StopWait(t time.Duration) Option {
 	}
 }
 
-func AllowOrigin(o string) Option {
+func AllowOrigin(origin string) Option {
 	return func(args *Options) {
-		args.Headers["Access-Control-Allow-Origin"] = o
-		if o == "*" {
+		args.Headers["Access-Control-Allow-Origin"] = origin
+		args.Headers["Access-Control-Allow-Headers"] = "Origin, X-Requested-With, Content-Type, Accept"
+		args.Headers["Access-Control-Max-Age"] = "7200"
+		if origin == "*" {
 			args.Headers["Vary"] = "Origin"
 		}
 	}

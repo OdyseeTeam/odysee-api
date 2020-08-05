@@ -1,10 +1,14 @@
 name: Test & Integrate
 
-on: push
+on:
+  push:
+    branches:
+      - master
+      - dev
 
 jobs:
   test:
-    name: Run Tests
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -47,11 +51,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get service
+      - name: Get service name
         id: service
         run: echo "::set-output name=version::$(git describe --tags|sed -e 's/\-v.*//')"
 
-      - name: Get version
+      - name: Get service version
         id: version
         run: echo "::set-output name=version::$(git describe --tags|sed -e 's/.*\-v//')"
 
@@ -75,7 +79,7 @@ jobs:
           ./goreleaser --rm-dist --snapshot
 
       - name: Push lbrytv-api image
-        if: github.ref == 'refs/heads/master' && steps.service.outputs.service == 'api'
+        if: steps.service.outputs.service == 'api'
         uses: docker/build-push-action@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -84,7 +88,7 @@ jobs:
           tags: latest,${{ steps.version.outputs.version }}
 
       - name: Deploy lbrytv-api
-        if: (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master') && steps.service.outputs.service == 'api'
+        if: steps.service.outputs.service == 'api'
         uses: octokit/request-action@v2.x
         id: deploy
         env:
@@ -105,7 +109,7 @@ jobs:
         run: make collector
 
       - name: Push lbrytv-collector image
-        if: steps.service.outputs.service == 'collector' && github.ref == 'refs/heads/master'
+        if: steps.service.outputs.service == 'collector'
         uses: docker/build-push-action@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -114,7 +118,7 @@ jobs:
           tags: latest,${{ steps.version.outputs.version }}
 
       - name: Deploy lbrytv-collector
-        if: steps.service.outputs.service == 'collector' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master')
+        if: steps.service.outputs.service == 'collector'
         uses: octokit/request-action@v2.x
         id: deploy
         env:

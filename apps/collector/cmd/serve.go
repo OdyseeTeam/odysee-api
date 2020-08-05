@@ -21,7 +21,7 @@ var rootCmd = &cobra.Command{
 		collector.Migrator.MigrateUp(conn)
 		conn.SetDefaultConnection()
 
-		app := app.New(":8080")
+		app := app.New(":8080", app.AllowOrigin("*"))
 		app.InstallRoutes(collector.RouteInstaller)
 		app.Start()
 		app.ServeUntilShutdown()
