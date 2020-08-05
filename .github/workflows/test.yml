@@ -1,0 +1,39 @@
+name: Test
+
+on:
+  push:
+    branches-ignore:
+      - master
+      - dev
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up containers
+        run: docker-compose up -d lbrynet postgres postgres-collector
+
+      - name: Check running containers
+        run: docker ps -a
+
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.13
+        id: go
+
+      - name: Prepare for tests
+        run: make prepare_test
+
+      - name: Wait for wallet init
+        run: scripts/wait_for_wallet.sh
+
+      - name: Test
+        run: go test -covermode=count -coverprofile=coverage.out ./...
+
+      - name: Check coverage
+        run: goveralls -coverprofile=coverage.out -service=circle-ci -ignore=models/ -repotoken ${{ secrets.COVERALLS_TOKEN }}
