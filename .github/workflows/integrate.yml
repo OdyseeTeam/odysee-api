@@ -53,11 +53,13 @@ jobs:
 
       - name: Get service name
         id: service
-        run: echo "::set-output name=version::$(git describe --tags|sed -e 's/\-v.*//')"
+        run: echo "::set-output name=service::$(git describe --tags|sed -e 's/\-v.*//')"
 
       - name: Get service version
         id: version
         run: echo "::set-output name=version::$(git describe --tags|sed -e 's/.*\-v//')"
+
+      - run: echo "::warning ::Release ${{ steps.service.outputs.service }} v${{ steps.version.outputs.version }}"
 
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
