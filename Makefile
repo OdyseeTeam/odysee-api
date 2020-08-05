@@ -75,3 +75,4 @@ collector_models: get_sqlboiler
 GORELEASER_CURRENT_TAG := $(shell git describe --tags --match 'collector-v*'|sed -e 's/.*\-v//')
 collector:
 	goreleaser build -f apps/collector/.goreleaser.yml --snapshot --rm-dist
+	find . -name pkged.go -delete
