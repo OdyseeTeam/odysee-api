@@ -90,7 +90,7 @@ jobs:
       - name: Deploy lbrytv-api
         if: steps.service.outputs.service == 'api'
         uses: octokit/request-action@v2.x
-        id: deploy
+        id: deploy-lbrytv-api
         env:
           GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
         with:
@@ -120,7 +120,7 @@ jobs:
       - name: Deploy lbrytv-collector
         if: steps.service.outputs.service == 'collector'
         uses: octokit/request-action@v2.x
-        id: deploy
+        id: deploy-collector
         env:
           GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
         with:
