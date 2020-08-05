@@ -110,7 +110,9 @@ jobs:
 
       - name: Build lbrytv-collector
         if: steps.service.outputs.service == 'collector'
-        run: make collector
+        run: |
+          go get github.com/markbates/pkger/cmd/pkger
+          make collector
 
       - name: Push lbrytv-collector image
         if: steps.service.outputs.service == 'collector'
