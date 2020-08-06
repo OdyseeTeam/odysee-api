@@ -2,7 +2,6 @@ package query
 
 const (
 	cacheResolveLongerThan = 10
-	forbiddenParams        = []string{paramAccountID, paramLbrynext}
 
 	paramAccountID = "account_id"
 	paramWalletID  = "wallet_id"
@@ -23,6 +22,8 @@ const (
 	ParamStreamingUrl    = "streaming_url"
 	ParamPurchaseReceipt = "purchase_receipt"
 )
+
+var forbiddenParams = []string{paramAccountID, paramLbrynext}
 
 // relaxedMethods are methods which are allowed to be called without wallet_id.
 var relaxedMethods = []string{
