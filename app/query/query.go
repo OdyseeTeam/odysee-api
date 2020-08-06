@@ -34,8 +34,10 @@ func NewQuery(req *jsonrpc.RPCRequest, walletID string) (*Query, error) {
 	}
 
 	if q.ParamsAsMap() != nil {
-		if _, ok := q.ParamsAsMap()[forbiddenParam]; ok {
-			return nil, rpcerrors.NewInvalidParamsError(fmt.Errorf("forbidden parameter supplied: %v", forbiddenParam))
+		for _, p := range forbiddenParams {
+			if _, ok := q.ParamsAsMap()[p]; ok {
+				return nil, rpcerrors.NewInvalidParamsError(fmt.Errorf("forbidden parameter supplied: %v", p))
+			}
 		}
 	}
 

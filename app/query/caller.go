@@ -3,6 +3,7 @@ package query
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net"
 	"net/http"
 	"strings"
@@ -196,10 +197,25 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 	for i := 0; i < walletLoadRetries; i++ {
 		start := time.Now()
 
+		controlledMethod := methodInList(q.Method(), []string{MethodResolve, MethodClaimSearch})
+		callLbrynext := controlledMethod && rand.Intn(100) <= 20
+
+		if callLbrynext {
+			params := q.ParamsAsMap()
+			params[paramLbrynext] = config.GetExperimentalLbrynetServer()
+			q.Request.Params = params
+		}
+
 		r, err = c.client.CallRaw(q.Request)
 
 		c.Duration = time.Since(start).Seconds()
 		metrics.ProxyCallDurations.WithLabelValues(q.Method(), c.endpoint).Observe(c.Duration)
+
+		if callLbrynext {
+			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), config.GetExperimentalLbrynetServer(), metrics.GroupExperimental).Observe(c.Duration)
+		} else if controlledMethod {
+			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), c.endpoint, metrics.GroupControl).Observe(c.Duration)
+		}
 
 		// Generally a HTTP transport failure (connect error etc)
 		if err != nil {

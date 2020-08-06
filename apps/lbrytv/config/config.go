@@ -137,3 +137,7 @@ func Override(key string, value interface{}) {
 func RestoreOverridden() {
 	Config.RestoreOverridden()
 }
+
+func GetExperimentalLbrynetServer() string {
+	return Config.Viper.GetString("ExperimentalLbrynetServer")
+}

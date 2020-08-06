@@ -8,7 +8,7 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/lbryio/lbrytv/app/query"
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	propagationPct  = 10 //
+	propagationPct  = 10
 	resolveHookName = "lbrynext_resolve"
 	logger          = monitor.NewModuleLogger("lbrynext")
 	sentryURL       = "https://sentry.lbry.tech/organizations/lbry/projects/lbrytv/events/"

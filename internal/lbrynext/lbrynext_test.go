@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/lbryio/lbrytv/app/query"
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/test"
 
 	logrusTest "github.com/sirupsen/logrus/hooks/test"

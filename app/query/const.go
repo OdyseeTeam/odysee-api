@@ -2,11 +2,12 @@ package query
 
 const (
 	cacheResolveLongerThan = 10
-	forbiddenParam         = paramAccountID
+	forbiddenParams        = []string{paramAccountID, paramLbrynext}
 
 	paramAccountID = "account_id"
 	paramWalletID  = "wallet_id"
 	paramUrls      = "urls"
+	paramLbrynext  = "new_sdk_server"
 
 	MethodGet            = "get"
 	MethodFileList       = "file_list"
