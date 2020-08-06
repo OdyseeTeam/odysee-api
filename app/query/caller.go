@@ -12,7 +12,7 @@ import (
 	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
 	"github.com/lbryio/lbrytv/internal/metrics"
@@ -266,7 +266,7 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 		if config.ShouldLogResponses() {
 			logFields["response"] = r
 		}
-		logEntry.Debug("rpc call processed")
+		logEntry.Log(getLogLevel(q.Method()), "rpc call processed")
 	}
 
 	return r, err
@@ -285,6 +285,13 @@ func isCacheable(q *Query) bool {
 		return true
 	}
 	return false
+}
+
+func getLogLevel(m string) logrus.Level {
+	if methodInList(m, []string{MethodWalletBalance, MethodSyncApply}) {
+		return logrus.DebugLevel
+	}
+	return logrus.InfoLevel
 }
 
 func isMatchingHook(m string, hook hookEntry) bool {

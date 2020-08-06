@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/lbryio/lbry.go/v2/extras/crypto"
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

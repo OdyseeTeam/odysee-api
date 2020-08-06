@@ -1,13 +1,14 @@
 package query
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"regexp"
 	"time"
 
 	"github.com/lbryio/lbrytv-player/pkg/paid"
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
@@ -93,6 +94,7 @@ func preflightHookGet(caller *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, 
 	}
 	metrics.LbrytvStreamRequests.WithLabelValues(metricLabel).Inc()
 
+	sdHash := hex.EncodeToString(stream.GetSource().SdHash)[:6]
 	if isPaidStream {
 		size := stream.GetSource().GetSize()
 		if claim.PurchaseReceipt == nil {
@@ -105,13 +107,13 @@ func preflightHookGet(caller *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, 
 		if err != nil {
 			return nil, err
 		}
-		urlSuffix = fmt.Sprintf("paid/%s/%s/%s", claim.Name, claim.ClaimID, token)
+		urlSuffix = fmt.Sprintf("paid/%s/%s/%s/%s", claim.Name, claim.ClaimID, sdHash, token)
 		responseResult[ParamPurchaseReceipt] = claim.PurchaseReceipt
 	} else {
-		urlSuffix = fmt.Sprintf("free/%s/%s", claim.Name, claim.ClaimID)
+		urlSuffix = fmt.Sprintf("free/%s/%s/%s", claim.Name, claim.ClaimID, sdHash)
 	}
 
-	responseResult[ParamStreamingUrl] = config.GetConfig().Viper.GetString("BaseContentURL") + urlSuffix
+	responseResult[ParamStreamingUrl] = config.Config.Viper.GetString("BaseContentURL") + urlSuffix
 
 	response.Result = responseResult
 	return response, nil

@@ -28,7 +28,13 @@ func CreateTestConn(params ConnParams) (*Connection, func()) {
 	if err != nil {
 		panic(fmt.Sprintf("test DB connection failed: %v", err))
 	}
-	testConn.MigrateUp()
+
+	if params.MigrationsPath != "" {
+		migrator := NewMigrator(params.MigrationsPath)
+		migrator.MigrateUp(testConn)
+	} else {
+		testConn.MigrateUp()
+	}
 
 	return testConn, func() {
 		testConn.Close()

@@ -1,0 +1,140 @@
+name: Test & Release
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up containers
+        run: docker-compose up -d lbrynet postgres postgres-collector
+
+      - name: Check running containers
+        run: docker ps -a
+
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.13
+        id: go
+
+      - name: Prepare for tests
+        run: make prepare_test
+
+      - name: Wait for wallet init
+        run: scripts/wait_for_wallet.sh
+
+      - name: Test
+        run: go test -covermode=count -coverprofile=coverage.out ./...
+
+      - name: Check coverage
+        run: goveralls -coverprofile=coverage.out -service=circle-ci -ignore=models/ -repotoken ${{ secrets.COVERALLS_TOKEN }}
+
+  release:
+    name: Release and Deploy
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
+    env:
+      GOROOT: /usr/local/go
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Get service name
+        id: service
+        run: echo "::set-output name=service::$(git describe --tags|sed -e 's/\-v.*//')"
+
+      - name: Get service version
+        id: version
+        run: echo "::set-output name=version::$(git describe --tags|sed -e 's/.*\-v//')"
+
+      - run: echo "::warning ::Release ${{ steps.service.outputs.service }} v${{ steps.version.outputs.version }}"
+
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.13
+        id: go
+
+      - name: Get goreleaser
+        run: |
+          curl -sLO https://github.com/goreleaser/goreleaser/releases/download/v0.140.0/goreleaser_Linux_x86_64.tar.gz
+          tar xfz goreleaser_Linux_x86_64.tar.gz
+          chmod +x goreleaser
+          echo "::add-path::./"
+
+      # lbrytv-api specific section
+
+      - name: Build lbrytv-api
+        if: steps.service.outputs.service == 'api'
+        run: |
+          go get github.com/gobuffalo/packr/v2/packr2@v2.7.1
+          goreleaser --rm-dist --snapshot
+
+      - name: Build lbrytv-api docker image
+        if: steps.service.outputs.service == 'api'
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: lbry/lbrytv
+          tags: latest,${{ steps.version.outputs.version }}
+
+      - name: Deploy lbrytv-api
+        if: steps.service.outputs.service == 'api'
+        uses: octokit/request-action@v2.x
+        id: deploy-lbrytv-api
+        env:
+          GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
+        with:
+          route: POST /repos/:repository/dispatches
+          repository: lbryio/lbrytv-deployment
+          event_type: deploy-lbrytv
+          client_payload: |
+            tag: ${{ steps.version.outputs.version }}
+            ref: ${{ github.ref }}
+            service: lbrytv-api
+
+      # lbrytv-collector specific section
+
+      - name: Build lbrytv-collector
+        if: steps.service.outputs.service == 'collector'
+        run: |
+          go get github.com/markbates/pkger/cmd/pkger
+          make collector
+
+      - name: Build lbrytv-collector docker image
+        if: steps.service.outputs.service == 'collector'
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: lbry/lbrytv-${{ steps.service.outputs.service }}
+          tags: latest,${{ steps.version.outputs.version }}
+          dockerfile: apps/${{ steps.service.outputs.service }}/Dockerfile
+
+      - name: Deploy lbrytv-collector
+        if: steps.service.outputs.service == 'collector'
+        uses: octokit/request-action@v2.x
+        id: deploy-collector
+        env:
+          GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
+        with:
+          route: POST /repos/:repository/dispatches
+          repository: lbryio/lbrytv-deployment
+          event_type: deploy-lbrytv
+          client_payload: |
+            tag: ${{ steps.version.outputs.version }}
+            ref: ${{ github.ref }}
+            service: service-${{ steps.service.outputs.service }}

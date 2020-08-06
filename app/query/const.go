@@ -17,6 +17,7 @@ const (
 	MethodPurchaseCreate = "purchase_create"
 	MethodWalletBalance  = "wallet_balance"
 	MethodWalletSend     = "wallet_send"
+	MethodSyncApply      = "sync_apply"
 
 	ParamStreamingUrl    = "streaming_url"
 	ParamPurchaseReceipt = "purchase_receipt"
@@ -25,7 +26,7 @@ const (
 // relaxedMethods are methods which are allowed to be called without wallet_id.
 var relaxedMethods = []string{
 	"blob_announce",
-	"status",
+	MethodStatus,
 	MethodResolve,
 	MethodGet,
 	"transaction_show",
@@ -82,7 +83,7 @@ var walletSpecificMethods = []string{
 	"support_create",
 	"support_list",
 
-	"sync_apply",
+	MethodSyncApply,
 	"sync_hash",
 
 	"preference_get",

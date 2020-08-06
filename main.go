@@ -5,10 +5,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/cmd"
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/reflection"
 	"github.com/lbryio/lbrytv/internal/storage"
+	"github.com/lbryio/lbrytv/version"
 )
 
 func main() {
@@ -19,6 +21,8 @@ func main() {
 	http.DefaultClient.Timeout = 20 * time.Second
 
 	dbConfig := config.GetDatabase()
+	monitor.IsProduction = config.IsProduction()
+	monitor.ConfigureSentry(config.GetSentryDSN(), version.GetDevVersion(), monitor.LogMode())
 	conn := storage.InitConn(storage.ConnParams{
 		Connection: dbConfig.Connection,
 		DBName:     dbConfig.DBName,

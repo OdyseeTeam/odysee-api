@@ -79,6 +79,20 @@ services:
       PGDATA: /pgdata
       TZ: "UTC"
       PGTZ: "UTC"
+  postgres-collector:
+    image: postgres:11-alpine
+    ports:
+      - "5433:5432"
+    volumes:
+      - type: bind
+        source: pgdata-collector
+        target: /pgdata
+    environment:
+      POSTGRES_USER: collector
+      POSTGRES_PASSWORD: ZnPfJ!4vTb-nURv8M!JkkuAcjYLYbkiX
+      PGDATA: /pgdata
+      TZ: "UTC"
+      PGTZ: "UTC"
   watchtower:
     image: containrrr/watchtower
     command: --interval 30 --cleanup --label-enable --debug
@@ -102,6 +116,7 @@ services:
 
 volumes:
   pgdata:
+  pgdata-collector:
   storage:
   test_storage:
   wallet:

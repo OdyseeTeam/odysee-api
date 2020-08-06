@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/stretchr/testify/assert"
 )
 

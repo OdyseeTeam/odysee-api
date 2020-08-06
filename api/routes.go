@@ -13,7 +13,7 @@ import (
 	"github.com/lbryio/lbrytv/app/query/cache"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet/tracker"
-	"github.com/lbryio/lbrytv/config"
+	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/ip"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/middleware"

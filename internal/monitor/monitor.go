@@ -1,13 +1,13 @@
 package monitor
 
 import (
-	"github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/version"
 
 	"github.com/sirupsen/logrus"
 )
 
 var logger = NewModuleLogger("monitor")
+var IsProduction = false
 
 const (
 	// TokenF is a token field name that will be stripped from logs in production mode.
@@ -27,23 +27,25 @@ func init() {
 	l.WithFields(
 		version.BuildInfo(),
 	).WithFields(logrus.Fields{
-		"mode":     mode(),
+		"mode":     LogMode(),
 		"logLevel": l.Level,
 	}).Infof("standard logger configured")
-
-	configureSentry(version.GetDevVersion(), mode())
 }
 
-func mode() string {
-	if config.IsProduction() {
+func isProduction() bool {
+	// config.IsProduction()
+	return true
+}
+
+func LogMode() string {
+	if isProduction() {
 		return "production"
-	} else {
-		return "develop"
 	}
+	return "develop"
 }
 
 func configureLogLevelAndFormat(l *logrus.Logger) {
-	if config.IsProduction() {
+	if isProduction() {
 		l.SetLevel(logrus.InfoLevel)
 		l.SetFormatter(&jsonFormatter)
 	} else {
@@ -59,8 +61,8 @@ func LogSuccessfulQuery(method string, time float64, params interface{}, respons
 		"duration": time,
 		"params":   params,
 	}
-	if config.ShouldLogResponses() {
-		fields["response"] = response
-	}
+	// if config.ShouldLogResponses() {
+	// 	fields["response"] = response
+	// }
 	logger.WithFields(fields).Info("call processed")
 }
