@@ -728,17 +728,12 @@ func TestCaller_GetPaidPurchasedMissingPurchase(t *testing.T) {
 	assert.EqualValues(t, expectedRequest, receivedRequest.Body)
 
 	receivedRequest = <-reqChan
-	expectedRequest = test.ReqToStr(t, &jsonrpc.RPCRequest{
-		Method: MethodResolve,
-		Params: map[string]interface{}{
-			"wallet_id":                sdkrouter.WalletID(dummyUserID),
-			"urls":                     uri,
-			"include_purchase_receipt": true,
-			"include_protobuf":         true,
-		},
-		JSONRPC: "2.0",
-	})
-	assert.EqualValues(t, expectedRequest, receivedRequest.Body)
+	jsonRPCRequest = test.StrToReq(t, receivedRequest.Body)
+	expectedParams = jsonRPCRequest.Params.(map[string]interface{})
+	assert.EqualValues(t, sdkrouter.WalletID(dummyUserID), expectedParams["wallet_id"])
+	assert.EqualValues(t, uri, expectedParams["urls"])
+	assert.EqualValues(t, true, expectedParams["include_purchase_receipt"])
+	assert.EqualValues(t, true, expectedParams["include_protobuf"])
 
 	getResponse := &ljsonrpc.GetResponse{}
 	err = resp.GetObject(&getResponse)
