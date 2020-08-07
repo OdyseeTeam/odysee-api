@@ -26,4 +26,4 @@ RefractorTimeout: 120
 
 PaidTokenPrivKey: token_privkey.rsa
 
-ExperimentalLbrynetServer: http://localhost:5279/
+ExperimentalLbrynetServer: http://lbrynet-x-standalone.lbry.tv:5279/api
