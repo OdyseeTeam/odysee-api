@@ -27,4 +27,4 @@ RefractorTimeout: 120
 PaidTokenPrivKey: token_privkey.rsa
 
 LbrynetXServer: http://lbrynet-x-standalone.lbry.tv:5279/api
-LbrynetXPercentage: 20
+LbrynetXPercentage: 100
