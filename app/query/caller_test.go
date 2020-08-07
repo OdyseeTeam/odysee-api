@@ -69,6 +69,8 @@ func TestCaller_CallRelaxedMethods(t *testing.T) {
 }
 
 func TestCaller_CallAmbivalentMethodsWithoutWallet(t *testing.T) {
+	config.Override("LbrynetXPercentage", 0)
+	defer config.RestoreOverridden()
 	for _, m := range relaxedMethods {
 		if !methodInList(m, walletSpecificMethods) || m == MethodGet {
 			continue
