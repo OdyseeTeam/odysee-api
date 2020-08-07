@@ -226,7 +226,7 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 		}
 
 		// This checks if LbrynetServer responded with missing wallet error and tries to reload it,
-		// then repeats the request again.
+		// then repeats the request again
 		if isErrWalletNotLoaded(r) {
 			time.Sleep(walletLoadRetryWait)
 			// Using LBRY JSON-RPC client here for easier request/response processing
