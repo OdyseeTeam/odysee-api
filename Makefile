@@ -1,5 +1,3 @@
-VERSION := $(shell git describe --tags)
-
 .PHONY: test
 test:
 	go test -cover ./...
@@ -28,18 +26,6 @@ release:
 
 snapshot:
 	GO111MODULE=on goreleaser --snapshot --rm-dist
-
-.PHONY: image
-image:
-	docker build -t lbry/lbrytv:$(VERSION) -t lbry/lbrytv:latest .
-
-.PHONY: dev_image
-dev_image:
-	docker build -t lbry/lbrytv:$(VERSION) -t lbry/lbrytv:latest-dev .
-
-.PHONY: publish_image
-publish_image:
-	docker push lbry/lbrytv:$(VERSION)
 
 clean:
 	find . -name rice-box.go | xargs rm
