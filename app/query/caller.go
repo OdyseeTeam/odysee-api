@@ -199,7 +199,7 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 
 		// TODO: Remove when new_sdk_server is not used anymore
 		controlledMethod := methodInList(q.Method(), []string{MethodResolve, MethodClaimSearch})
-		callLbrynext := controlledMethod && rand.Intn(100) <= 20
+		callLbrynext := controlledMethod && rand.Intn(100) <= config.GetLbrynetXPercentage()
 
 		if callLbrynext {
 			params := q.ParamsAsMap()

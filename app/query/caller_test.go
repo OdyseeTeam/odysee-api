@@ -39,6 +39,8 @@ func TestCaller_CallBlankEndpoint(t *testing.T) {
 }
 
 func TestCaller_CallRelaxedMethods(t *testing.T) {
+	config.Override("LbrynetXPercentage", 0)
+	defer config.RestoreOverridden()
 	for _, m := range relaxedMethods {
 		if m == MethodStatus || m == MethodGet {
 			continue
