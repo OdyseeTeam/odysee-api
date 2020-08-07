@@ -132,7 +132,7 @@ func TestCaller_CallAmbivalentMethodsWithWallet(t *testing.T) {
 			})
 
 			if expectedRequest != receivedRequest.Body {
-				// // TODO: Remove when new_sdk_server is not used anymore
+				// TODO: Remove when new_sdk_server is not used anymore
 				assert.EqualValues(t, expectedRequestLbrynetX, receivedRequest.Body)
 			}
 		})
@@ -322,7 +322,7 @@ func TestCaller_AddPostflightHook_LogField(t *testing.T) {
 		return nil, nil
 	}, "")
 
-	res, err := c.Call(jsonrpc.NewRequest(MethodResolve))
+	res, err := c.Call(jsonrpc.NewRequest(MethodResolve, map[string]interface{}{"urls": "what:19b9c243bea0c45175e6a6027911abbad53e983e"}))
 	require.NoError(t, err)
 	assert.Contains(t, res.Result.(map[string]interface{}), "what:19b9c243bea0c45175e6a6027911abbad53e983e")
 	assert.Equal(t, "8.8.8.8", logHook.LastEntry().Data["remote_ip"])

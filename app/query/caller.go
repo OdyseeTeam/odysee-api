@@ -197,6 +197,7 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 	for i := 0; i < walletLoadRetries; i++ {
 		start := time.Now()
 
+		// TODO: Remove when new_sdk_server is not used anymore
 		controlledMethod := methodInList(q.Method(), []string{MethodResolve, MethodClaimSearch})
 		callLbrynext := controlledMethod && rand.Intn(100) <= 20
 
