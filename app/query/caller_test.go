@@ -378,7 +378,7 @@ func TestCaller_ClientJSONError(t *testing.T) {
 	ts.NextResponse <- `{"method":"version}` // note the missing close quote after "version
 
 	c := NewCaller(ts.URL, 0)
-	_, err := c.Call(&jsonrpc.RPCRequest{Method: "resolve"})
+	_, err := c.Call(&jsonrpc.RPCRequest{Method: "wallet_balance"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "could not decode body to rpc response")
 }
