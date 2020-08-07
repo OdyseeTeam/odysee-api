@@ -138,6 +138,6 @@ func RestoreOverridden() {
 	Config.RestoreOverridden()
 }
 
-func GetExperimentalLbrynetServer() string {
-	return Config.Viper.GetString("ExperimentalLbrynetServer")
+func GetLbrynetXServer() string {
+	return Config.Viper.GetString("LbrynetXServer")
 }

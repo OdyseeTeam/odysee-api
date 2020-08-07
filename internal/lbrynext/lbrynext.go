@@ -31,7 +31,7 @@ func InstallHooks(c *query.Caller) {
 		if !q.IsAuthenticated() && rand.Intn(100) <= propagationPct {
 			// Launch le Experiment
 			r := hctx.Response
-			cc := c.CloneWithoutHook(config.GetExperimentalLbrynetServer(), query.MethodResolve, resolveHookName)
+			cc := c.CloneWithoutHook(config.GetLbrynetXServer(), query.MethodResolve, resolveHookName)
 			xr, err := cc.Call(q.Request)
 
 			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupControl).Observe(c.Duration)

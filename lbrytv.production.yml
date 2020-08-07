@@ -22,4 +22,4 @@ ShouldLogResponses: false
 
 PaidTokenPrivKey: /secrets/token_privkey.rsa
 
-ExperimentalLbrynetServer: http://lbrynet-x-standalone.lbry.tv:5279/api
+LbrynetXServer: http://lbrynet-x-standalone.lbry.tv:5279/api

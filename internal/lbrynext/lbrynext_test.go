@@ -29,6 +29,9 @@ func Test_compareResponses_Match(t *testing.T) {
 }
 
 func TestInstallHooks_ResponseMatch(t *testing.T) {
+	// TODO: Remove when new_sdk_server is not used anymore
+	t.Skip("Skipping this test until new_sdk_server is in use")
+
 	hook := logrusTest.NewLocal(logger.Entry.Logger)
 
 	reqChan := test.ReqChan()
@@ -67,6 +70,9 @@ func TestInstallHooks_ResponseMatch(t *testing.T) {
 }
 
 func TestInstallHooks_DifferentResponse(t *testing.T) {
+	// TODO: Remove when new_sdk_server is not used anymore
+	t.Skip("Skipping this test until new_sdk_server is in use")
+
 	hook := logrusTest.NewLocal(logger.Entry.Logger)
 
 	reqChan := test.ReqChan()

@@ -202,7 +202,7 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 
 		if callLbrynext {
 			params := q.ParamsAsMap()
-			params[paramLbrynext] = config.GetExperimentalLbrynetServer()
+			params[paramLbrynext] = config.GetLbrynetXServer()
 			q.Request.Params = params
 		}
 
@@ -212,7 +212,7 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 		metrics.ProxyCallDurations.WithLabelValues(q.Method(), c.endpoint).Observe(c.Duration)
 
 		if callLbrynext {
-			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), config.GetExperimentalLbrynetServer(), metrics.GroupExperimental).Observe(c.Duration)
+			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), config.GetLbrynetXServer(), metrics.GroupExperimental).Observe(c.Duration)
 		} else if controlledMethod {
 			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), c.endpoint, metrics.GroupControl).Observe(c.Duration)
 		}
