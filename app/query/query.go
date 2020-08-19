@@ -44,10 +44,10 @@ func NewQuery(req *jsonrpc.RPCRequest, walletID string) (*Query, error) {
 	if MethodAcceptsWallet(q.Method()) {
 		if q.IsAuthenticated() {
 			if p := q.ParamsAsMap(); p != nil {
-				p[paramWalletID] = q.WalletID
+				p[ParamWalletID] = q.WalletID
 				q.Request.Params = p
 			} else {
-				q.Request.Params = map[string]interface{}{paramWalletID: q.WalletID}
+				q.Request.Params = map[string]interface{}{ParamWalletID: q.WalletID}
 			}
 		} else if MethodRequiresWallet(q.Method()) {
 			return nil, rpcerrors.NewAuthRequiredError()

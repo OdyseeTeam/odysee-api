@@ -3,7 +3,6 @@ package query
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net"
 	"net/http"
 	"strings"
@@ -197,26 +196,10 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 	for i := 0; i < walletLoadRetries; i++ {
 		start := time.Now()
 
-		// TODO: Remove when new_sdk_server is not used anymore
-		controlledMethod := methodInList(q.Method(), []string{MethodResolve, MethodClaimSearch})
-		callLbrynext := controlledMethod && rand.Intn(100) <= config.GetLbrynetXPercentage()
-
-		if callLbrynext {
-			params := q.ParamsAsMap()
-			params[paramLbrynext] = config.GetLbrynetXServer()
-			q.Request.Params = params
-		}
-
 		r, err = c.client.CallRaw(q.Request)
 
 		c.Duration = time.Since(start).Seconds()
 		metrics.ProxyCallDurations.WithLabelValues(q.Method(), c.endpoint).Observe(c.Duration)
-
-		if callLbrynext {
-			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), config.GetLbrynetXServer(), metrics.GroupExperimental).Observe(c.Duration)
-		} else if controlledMethod {
-			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), c.endpoint, metrics.GroupControl).Observe(c.Duration)
-		}
 
 		// Generally a HTTP transport failure (connect error etc)
 		if err != nil {
@@ -293,7 +276,7 @@ func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
 func isCacheable(q *Query) bool {
 	if q.Method() == MethodResolve && q.Params() != nil {
 		paramsMap := q.Params().(map[string]interface{})
-		if urls, ok := paramsMap[paramUrls].([]interface{}); ok {
+		if urls, ok := paramsMap[ParamUrls].([]interface{}); ok {
 			if len(urls) > cacheResolveLongerThan {
 				return true
 			}

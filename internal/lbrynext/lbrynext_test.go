@@ -47,9 +47,8 @@ func TestInstallHooks_ResponseMatch(t *testing.T) {
 
 	c := query.NewCaller(srv.URL, 0)
 	config.Override("ExperimentalLbrynetServer", srvX.URL)
+	config.Override("LbrynetXPercentage", 100)
 	defer config.RestoreOverridden()
-	propagationPct = 100
-	defer func() { propagationPct = 10 }()
 
 	InstallHooks(c)
 	request := jsonrpc.NewRequest(query.MethodResolve, map[string]interface{}{"urls": "what"})
@@ -89,9 +88,8 @@ func TestInstallHooks_DifferentResponse(t *testing.T) {
 
 	c := query.NewCaller(srv.URL, 0)
 	config.Override("ExperimentalLbrynetServer", srvX.URL)
+	config.Override("LbrynetXPercentage", 100)
 	defer config.RestoreOverridden()
-	propagationPct = 100
-	defer func() { propagationPct = 10 }()
 
 	InstallHooks(c)
 	request := jsonrpc.NewRequest(query.MethodResolve, map[string]interface{}{"urls": "what"})

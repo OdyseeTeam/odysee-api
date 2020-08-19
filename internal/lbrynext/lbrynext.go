@@ -18,7 +18,6 @@ import (
 )
 
 var (
-	propagationPct  = 10
 	resolveHookName = "lbrynext_resolve"
 	logger          = monitor.NewModuleLogger("lbrynext")
 	sentryURL       = "https://sentry.lbry.tech/organizations/lbry/projects/lbrytv/events/"
@@ -26,24 +25,31 @@ var (
 
 func InstallHooks(c *query.Caller) {
 	rand.Seed(time.Now().UnixNano())
-	c.AddPostflightHook(query.MethodResolve, func(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
-		q := hctx.Query
-		if !q.IsAuthenticated() && rand.Intn(100) <= propagationPct {
-			// Launch le Experiment
-			r := hctx.Response
-			cc := c.CloneWithoutHook(config.GetLbrynetXServer(), query.MethodResolve, resolveHookName)
-			xr, err := cc.Call(q.Request)
+	c.AddPostflightHook(query.MethodResolve, experimentNewSdkParam, resolveHookName)
+}
 
-			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupControl).Observe(c.Duration)
-			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), cc.Endpoint(), metrics.GroupExperimental).Observe(cc.Duration)
+func experimentNewSdkParam(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
+	q := hctx.Query
+	if rand.Intn(100) <= config.GetLbrynetXPercentage() {
+		go func() {
+			r := hctx.Response
+
+			ctrlDuration := c.Duration
+
+			params := q.ParamsAsMap()
+			params[query.ParamNewSDKServer] = config.GetLbrynetXServer()
+			q.Request.Params = params
+			xr, err := c.Call(q.Request)
+
+			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupControl).Observe(ctrlDuration)
+			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupExperimental).Observe(c.Duration)
 
 			log := logger.Log().WithField("method", query.MethodResolve)
 			if err != nil {
 				log.Error("experimental call errored:", err)
-				return nil, nil
+				return
 			}
 			rBody, xrBody, diff := compareResponses(r, xr)
-			fmt.Println(diff)
 			if diff != nil {
 				if config.IsProduction() {
 					msg := "experimental call result differs"
@@ -59,12 +65,51 @@ func InstallHooks(c *query.Caller) {
 					msg := "experimental call result differs"
 					log.Errorf("%v: %v", msg, diffPlainText(diff))
 				}
-				return nil, nil
+				return
 			}
 			log.Info("experimental call succeeded")
+		}()
+	}
+	return nil, nil
+}
+
+func experimentParallel(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
+	q := hctx.Query
+	if !q.IsAuthenticated() && rand.Intn(100) <= config.GetLbrynetXPercentage() {
+		r := hctx.Response
+		cc := c.CloneWithoutHook(config.GetLbrynetXServer(), query.MethodResolve, resolveHookName)
+		xr, err := cc.Call(q.Request)
+
+		metrics.LbrynextCallDurations.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupControl).Observe(c.Duration)
+		metrics.LbrynextCallDurations.WithLabelValues(q.Method(), cc.Endpoint(), metrics.GroupExperimental).Observe(cc.Duration)
+
+		log := logger.Log().WithField("method", query.MethodResolve)
+		if err != nil {
+			log.Error("experimental call errored:", err)
+			return nil, nil
 		}
-		return nil, nil
-	}, resolveHookName)
+		rBody, xrBody, diff := compareResponses(r, xr)
+		fmt.Println(diff)
+		if diff != nil {
+			if config.IsProduction() {
+				msg := "experimental call result differs"
+				extra := map[string]string{
+					"method":       query.MethodResolve,
+					"original":     rBody,
+					"experimental": xrBody,
+					"diff":         diffPlainText(diff),
+				}
+				eventID := monitor.MessageToSentry(msg, sentry.LevelWarning, extra)
+				log.Errorf("%v, see %v%v", msg, sentryURL, eventID)
+			} else {
+				msg := "experimental call result differs"
+				log.Errorf("%v: %v", msg, diffPlainText(diff))
+			}
+			return nil, nil
+		}
+		log.Info("experimental call succeeded")
+	}
+	return nil, nil
 }
 
 func compareResponses(r *jsonrpc.RPCResponse, xr *jsonrpc.RPCResponse) (string, string, []diffmatchpatch.Diff) {
