@@ -58,7 +58,7 @@ func ProjectRoot() string {
 
 // IsProduction is true if we are running in a production environment
 func IsProduction() bool {
-	return !Config.IsProduction()
+	return Config.IsProduction()
 }
 
 // GetInternalAPIHost returns the address of internal-api server
