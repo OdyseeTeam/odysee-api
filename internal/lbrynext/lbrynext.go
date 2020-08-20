@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"math/rand"
-	"time"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/lbryio/lbrytv/app/query"
@@ -24,7 +23,6 @@ var (
 )
 
 func InstallHooks(c *query.Caller) {
-	rand.Seed(time.Now().UnixNano())
 	c.AddPostflightHook(query.MethodResolve, experimentNewSdkParam, resolveHookName)
 }
 
@@ -34,15 +32,16 @@ func experimentNewSdkParam(c *query.Caller, hctx *query.HookContext) (*jsonrpc.R
 		go func() {
 			r := hctx.Response
 
-			ctrlDuration := c.Duration
+			// This is done so the hook will not fire in a loop on repeated call
+			cc := c.CloneWithoutHook(c.Endpoint(), query.MethodResolve, resolveHookName)
 
 			params := q.ParamsAsMap()
 			params[query.ParamNewSDKServer] = config.GetLbrynetXServer()
 			q.Request.Params = params
-			xr, err := c.Call(q.Request)
+			xr, err := cc.SendQuery(q)
 
-			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupControl).Observe(ctrlDuration)
-			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupExperimental).Observe(c.Duration)
+			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupControl).Observe(c.Duration)
+			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), cc.Endpoint(), metrics.GroupExperimental).Observe(cc.Duration)
 
 			log := logger.Log().WithField("method", query.MethodResolve)
 			if err != nil {

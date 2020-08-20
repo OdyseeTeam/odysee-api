@@ -174,7 +174,7 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 	}
 
 	if res == nil {
-		res, err = c.callQueryWithRetry(q)
+		res, err = c.SendQuery(q)
 		if err != nil {
 			return nil, rpcerrors.NewSDKError(err)
 		}
@@ -187,7 +187,7 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 	return res, nil
 }
 
-func (c *Caller) callQueryWithRetry(q *Query) (*jsonrpc.RPCResponse, error) {
+func (c *Caller) SendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 	var (
 		r   *jsonrpc.RPCResponse
 		err error

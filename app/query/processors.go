@@ -61,7 +61,7 @@ func preflightHookGet(caller *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, 
 		if err != nil {
 			return nil, err
 		}
-		purchaseRes, err := caller.callQueryWithRetry(purchaseQuery)
+		purchaseRes, err := caller.SendQuery(purchaseQuery)
 		if err != nil {
 			return nil, err
 		}
@@ -132,7 +132,7 @@ func resolve(c *Caller, q *Query, url string) (*ljsonrpc.Claim, error) {
 		return nil, err
 	}
 
-	rawResolveResponse, err := c.callQueryWithRetry(resolveQuery)
+	rawResolveResponse, err := c.SendQuery(resolveQuery)
 	if err != nil {
 		return nil, err
 	}

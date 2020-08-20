@@ -453,7 +453,7 @@ func TestCaller_CallQueryWithRetry(t *testing.T) {
 	// check that sdk loads the wallet and retries the query if the wallet was not initially loaded
 
 	c := NewCaller(addr, dummyUserID)
-	r, err := c.callQueryWithRetry(q)
+	r, err := c.SendQuery(q)
 	require.NoError(t, err)
 	require.Nil(t, r.Error)
 }
@@ -485,7 +485,7 @@ func TestCaller_DontReloadWalletAfterOtherErrors(t *testing.T) {
 		}),
 	)
 
-	r, err := c.callQueryWithRetry(q)
+	r, err := c.SendQuery(q)
 	require.NoError(t, err)
 	require.Equal(t, "Wallet at path // was not found", r.Error.Message)
 }
@@ -521,7 +521,7 @@ func TestCaller_DontReloadWalletIfAlreadyLoaded(t *testing.T) {
 		}),
 	)
 
-	r, err := c.callQueryWithRetry(q)
+	r, err := c.SendQuery(q)
 
 	require.NoError(t, err)
 	require.Nil(t, r.Error)

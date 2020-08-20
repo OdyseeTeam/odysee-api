@@ -3,6 +3,7 @@ package lbrynext
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/lbryio/lbrytv/app/query"
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"
@@ -28,10 +29,46 @@ func Test_compareResponses_Match(t *testing.T) {
 	assert.Nil(t, diff)
 }
 
-func TestInstallHooks_ResponseMatch(t *testing.T) {
-	// TODO: Remove when new_sdk_server is not used anymore
-	t.Skip("Skipping this test until new_sdk_server is in use")
+func Test_experimentNewSdkParam_ResponseMatch(t *testing.T) {
+	hook := logrusTest.NewLocal(logger.Entry.Logger)
 
+	reqChan := test.ReqChan()
+	srv := test.MockHTTPServer(reqChan)
+	defer srv.Close()
+
+	srv.QueueResponses(resolveResponse, resolveResponse)
+
+	c := query.NewCaller(srv.URL, 0)
+	config.Override("LbrynetXServer", "http://localhost")
+	config.Override("LbrynetXPercentage", 100)
+	defer config.RestoreOverridden()
+
+	c.AddPostflightHook(query.MethodResolve, experimentNewSdkParam, resolveHookName)
+
+	request := jsonrpc.NewRequest(query.MethodResolve, map[string]interface{}{"urls": "what"})
+	expectedRequest := test.ReqToStr(t, request)
+	resp, err := c.Call(request)
+	require.NoError(t, err)
+	require.Nil(t, resp.Error)
+
+	time.Sleep(200 * time.Millisecond)
+	entry := hook.LastEntry()
+	assert.NotContains(t, entry.Message, "experimental call errored")
+
+	receivedRequest := <-reqChan
+	assert.EqualValues(t, expectedRequest, receivedRequest.Body)
+
+	receivedRequestX := <-reqChan
+	expectedRequestX := test.ReqToStr(t, jsonrpc.NewRequest(query.MethodResolve, map[string]interface{}{"urls": "what", "new_sdk_server": "http://localhost"}))
+	assert.EqualValues(t, expectedRequestX, receivedRequestX.Body)
+
+	entry = hook.LastEntry()
+	require.NotNil(t, entry)
+	assert.Contains(t, entry.Message, "experimental call succeeded")
+	assert.Equal(t, query.MethodResolve, entry.Data["method"])
+}
+
+func Test_experimentParallel_ResponseMatch(t *testing.T) {
 	hook := logrusTest.NewLocal(logger.Entry.Logger)
 
 	reqChan := test.ReqChan()
@@ -46,16 +83,17 @@ func TestInstallHooks_ResponseMatch(t *testing.T) {
 	srvX.NextResponse <- resolveResponse
 
 	c := query.NewCaller(srv.URL, 0)
-	config.Override("ExperimentalLbrynetServer", srvX.URL)
+	config.Override("LbrynetXServer", srvX.URL)
 	config.Override("LbrynetXPercentage", 100)
 	defer config.RestoreOverridden()
 
-	InstallHooks(c)
+	c.AddPostflightHook(query.MethodResolve, experimentParallel, resolveHookName)
+
 	request := jsonrpc.NewRequest(query.MethodResolve, map[string]interface{}{"urls": "what"})
+	expectedRequest := test.ReqToStr(t, request)
 	c.Call(request)
 
 	receivedRequest := <-reqChan
-	expectedRequest := test.ReqToStr(t, request)
 	assert.EqualValues(t, expectedRequest, receivedRequest.Body)
 
 	receivedRequestX := <-reqChanX
@@ -68,10 +106,7 @@ func TestInstallHooks_ResponseMatch(t *testing.T) {
 	assert.Equal(t, query.MethodResolve, entry.Data["method"])
 }
 
-func TestInstallHooks_DifferentResponse(t *testing.T) {
-	// TODO: Remove when new_sdk_server is not used anymore
-	t.Skip("Skipping this test until new_sdk_server is in use")
-
+func Test_experimentParallel_DifferentResponse(t *testing.T) {
 	hook := logrusTest.NewLocal(logger.Entry.Logger)
 
 	reqChan := test.ReqChan()
@@ -87,11 +122,12 @@ func TestInstallHooks_DifferentResponse(t *testing.T) {
 	srvX.NextResponse <- strings.Replace(resolveResponse, "d66f8ba85c85ca48daba9183bd349307fe30cb43", "abcdef", 1)
 
 	c := query.NewCaller(srv.URL, 0)
-	config.Override("ExperimentalLbrynetServer", srvX.URL)
+	config.Override("LbrynetXServer", srvX.URL)
 	config.Override("LbrynetXPercentage", 100)
 	defer config.RestoreOverridden()
 
-	InstallHooks(c)
+	c.AddPostflightHook(query.MethodResolve, experimentParallel, resolveHookName)
+
 	request := jsonrpc.NewRequest(query.MethodResolve, map[string]interface{}{"urls": "what"})
 	_, err := c.Call(request)
 	require.NoError(t, err)
