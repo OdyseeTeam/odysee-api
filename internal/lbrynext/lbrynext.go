@@ -1,8 +1,7 @@
 package lbrynext
 
 import (
-	"bytes"
-	"fmt"
+	"encoding/json"
 	"math/rand"
 
 	"github.com/getsentry/sentry-go"
@@ -10,9 +9,8 @@ import (
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
-	"github.com/lbryio/lbrytv/internal/responses"
+	"github.com/lbryio/lbrytv/internal/test"
 
-	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -49,20 +47,20 @@ func experimentNewSdkParam(c *query.Caller, hctx *query.HookContext) (*jsonrpc.R
 				return
 			}
 			rBody, xrBody, diff := compareResponses(r, xr)
-			if diff != nil {
+			if diff != "" {
 				if config.IsProduction() {
 					msg := "experimental call result differs"
 					extra := map[string]string{
 						"method":       query.MethodResolve,
 						"original":     rBody,
 						"experimental": xrBody,
-						"diff":         diffPlainText(diff),
+						"diff":         diff,
 					}
 					eventID := monitor.MessageToSentry(msg, sentry.LevelWarning, extra)
 					log.Errorf("%v, see %v%v", msg, sentryURL, eventID)
 				} else {
 					msg := "experimental call result differs"
-					log.Errorf("%v: %v", msg, diffPlainText(diff))
+					log.Errorf("%v: %v", msg, diff)
 				}
 				return
 			}
@@ -88,21 +86,20 @@ func experimentParallel(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCR
 			return nil, nil
 		}
 		rBody, xrBody, diff := compareResponses(r, xr)
-		fmt.Println(diff)
-		if diff != nil {
+		if diff != "" {
 			if config.IsProduction() {
 				msg := "experimental call result differs"
 				extra := map[string]string{
 					"method":       query.MethodResolve,
 					"original":     rBody,
 					"experimental": xrBody,
-					"diff":         diffPlainText(diff),
+					"diff":         diff,
 				}
 				eventID := monitor.MessageToSentry(msg, sentry.LevelWarning, extra)
 				log.Errorf("%v, see %v%v", msg, sentryURL, eventID)
 			} else {
 				msg := "experimental call result differs"
-				log.Errorf("%v: %v", msg, diffPlainText(diff))
+				log.Errorf("%v: %v", msg, diff)
 			}
 			return nil, nil
 		}
@@ -111,46 +108,13 @@ func experimentParallel(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCR
 	return nil, nil
 }
 
-func compareResponses(r *jsonrpc.RPCResponse, xr *jsonrpc.RPCResponse) (string, string, []diffmatchpatch.Diff) {
-	rBody, err := responses.JSONRPCSerialize(r)
-	if err != nil {
-		logger.Log().Error("original call response serialization error:", err)
-		return "", "", nil
-	}
-	xrBody, err := responses.JSONRPCSerialize(xr)
-	if err != nil {
-		logger.Log().Error("experimental call response serialization error:", err)
-		return "", "", nil
-	}
-
-	srBody := string(rBody)
-	sxrBody := string(xrBody)
-
-	if srBody == sxrBody {
-		return srBody, sxrBody, nil
-	}
-
-	dmp := diffmatchpatch.New()
-	diff := dmp.DiffMain(srBody, sxrBody, true)
-	return srBody, sxrBody, diff
+func resToByte(res *jsonrpc.RPCResponse) []byte {
+	r, _ := json.Marshal(res)
+	return r
 }
 
-func diffPlainText(diffs []diffmatchpatch.Diff) string {
-	var buff bytes.Buffer
-	for _, diff := range diffs {
-		text := diff.Text
-		switch diff.Type {
-		case diffmatchpatch.DiffInsert:
-			buff.WriteString("+>>")
-			buff.WriteString(text)
-			buff.WriteString("<<+")
-		case diffmatchpatch.DiffDelete:
-			buff.WriteString("->>")
-			buff.WriteString(text)
-			buff.WriteString("<<-")
-		case diffmatchpatch.DiffEqual:
-			buff.WriteString(text)
-		}
-	}
-	return buff.String()
+func compareResponses(r, xr *jsonrpc.RPCResponse) (string, string, string) {
+	br, bxr := resToByte(r), resToByte(xr)
+	_, diffLog := test.GetJSONDiffLog(br, bxr)
+	return string(br), string(bxr), diffLog
 }

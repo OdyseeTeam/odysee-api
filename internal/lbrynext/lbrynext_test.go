@@ -15,18 +15,18 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func Test_compareResponses(t *testing.T) {
+func Test_compareResponsesMismatch(t *testing.T) {
 	r := &jsonrpc.RPCResponse{Result: map[string]string{"ok": "ok"}}
 	xr := &jsonrpc.RPCResponse{Result: map[string]string{"ok": "not ok"}}
 	_, _, diff := compareResponses(r, xr)
-	assert.Contains(t, diffPlainText(diff), `"ok": "+>>not <<+ok"`)
+	assert.Contains(t, diff, `"ok": [["ok" => "not ok"]]`)
 }
 
 func Test_compareResponses_Match(t *testing.T) {
 	r := &jsonrpc.RPCResponse{Result: map[string]string{"ok": "ok"}}
 	xr := &jsonrpc.RPCResponse{Result: map[string]string{"ok": "ok"}}
 	_, _, diff := compareResponses(r, xr)
-	assert.Nil(t, diff)
+	assert.Empty(t, diff)
 }
 
 func Test_experimentNewSdkParam_ResponseMatch(t *testing.T) {
