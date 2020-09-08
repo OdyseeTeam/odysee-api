@@ -21,8 +21,9 @@ const (
 	LabelValuePaid = "paid"
 	LabelValueFree = "free"
 
-	FailureKindNet = "net"
-	FailureKindRPC = "rpc"
+	FailureKindNet              = "net"
+	FailureKindRPC              = "rpc"
+	FailureKindLbrynetXMismatch = "xmismatch"
 
 	GroupControl      = "control"
 	GroupExperimental = "experimental"
@@ -142,7 +143,7 @@ var (
 		Help:      "Number of idle db connections in the Go connection pool",
 	})
 
-	LbrynextCallDurations = promauto.NewHistogramVec(
+	LbrynetXCallDurations = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: nsLbrynext,
 			Subsystem: "calls",
@@ -152,14 +153,14 @@ var (
 		},
 		[]string{"method", "endpoint", "group"},
 	)
-	// LbrynextCallFailedDurations = promauto.NewHistogramVec(
-	// 	prometheus.HistogramOpts{
-	// 		Namespace: nsLbrynext,
-	// 		Subsystem: "calls",
-	// 		Name:      "failed_seconds",
-	// 		Help:      "Failed method call latency distributions",
-	// 		Buckets:   callsSecondsBuckets,
-	// 	},
-	// 	[]string{"method", "endpoint", "kind"},
-	// )
+	LbrynetXCallFailedDurations = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: nsLbrynext,
+			Subsystem: "calls",
+			Name:      "failed_seconds",
+			Help:      "Failed method call latency distributions",
+			Buckets:   callsSecondsBuckets,
+		},
+		[]string{"method", "endpoint", "group", "kind"},
+	)
 )
