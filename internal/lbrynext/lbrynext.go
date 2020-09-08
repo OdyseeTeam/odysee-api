@@ -26,7 +26,7 @@ func InstallHooks(c *query.Caller) {
 
 func experimentNewSdkParam(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
 	q := hctx.Query
-	if rand.Intn(100) <= config.GetLbrynetXPercentage() {
+	if rand.Intn(100)+1 <= config.GetLbrynetXPercentage() {
 		go func() {
 			r := hctx.Response
 
@@ -38,8 +38,8 @@ func experimentNewSdkParam(c *query.Caller, hctx *query.HookContext) (*jsonrpc.R
 			q.Request.Params = params
 			xr, err := cc.SendQuery(q)
 
-			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupControl).Observe(c.Duration)
-			metrics.LbrynextCallDurations.WithLabelValues(q.Method(), cc.Endpoint(), metrics.GroupExperimental).Observe(cc.Duration)
+			metrics.LbrynetXCallDurations.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupControl).Observe(c.Duration)
+			metrics.LbrynetXCallDurations.WithLabelValues(q.Method(), cc.Endpoint(), metrics.GroupExperimental).Observe(cc.Duration)
 
 			log := logger.Log().WithField("method", query.MethodResolve)
 			if err != nil {
@@ -48,6 +48,10 @@ func experimentNewSdkParam(c *query.Caller, hctx *query.HookContext) (*jsonrpc.R
 			}
 			rBody, xrBody, diff := compareResponses(r, xr)
 			if diff != "" {
+				metrics.LbrynetXCallFailedDurations.WithLabelValues(
+					q.Method(), cc.Endpoint(), metrics.GroupExperimental, metrics.FailureKindLbrynetXMismatch,
+				).Observe(cc.Duration)
+
 				if config.IsProduction() {
 					msg := "experimental call result differs"
 					extra := map[string]string{
@@ -72,13 +76,13 @@ func experimentNewSdkParam(c *query.Caller, hctx *query.HookContext) (*jsonrpc.R
 
 func experimentParallel(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
 	q := hctx.Query
-	if !q.IsAuthenticated() && rand.Intn(100) <= config.GetLbrynetXPercentage() {
+	if !q.IsAuthenticated() && rand.Intn(100)+1 <= config.GetLbrynetXPercentage() {
 		r := hctx.Response
 		cc := c.CloneWithoutHook(config.GetLbrynetXServer(), query.MethodResolve, resolveHookName)
 		xr, err := cc.Call(q.Request)
 
-		metrics.LbrynextCallDurations.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupControl).Observe(c.Duration)
-		metrics.LbrynextCallDurations.WithLabelValues(q.Method(), cc.Endpoint(), metrics.GroupExperimental).Observe(cc.Duration)
+		metrics.LbrynetXCallDurations.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupControl).Observe(c.Duration)
+		metrics.LbrynetXCallDurations.WithLabelValues(q.Method(), cc.Endpoint(), metrics.GroupExperimental).Observe(cc.Duration)
 
 		log := logger.Log().WithField("method", query.MethodResolve)
 		if err != nil {
@@ -87,6 +91,10 @@ func experimentParallel(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCR
 		}
 		rBody, xrBody, diff := compareResponses(r, xr)
 		if diff != "" {
+			metrics.LbrynetXCallFailedDurations.WithLabelValues(
+				q.Method(), cc.Endpoint(), metrics.GroupExperimental, metrics.FailureKindLbrynetXMismatch,
+			).Observe(cc.Duration)
+
 			if config.IsProduction() {
 				msg := "experimental call result differs"
 				extra := map[string]string{
