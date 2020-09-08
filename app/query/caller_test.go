@@ -39,6 +39,8 @@ func TestCaller_CallBlankEndpoint(t *testing.T) {
 }
 
 func TestCaller_CallRelaxedMethods(t *testing.T) {
+	config.Override("LbrynetXPercentage", 0)
+	defer config.RestoreOverridden()
 	for _, m := range relaxedMethods {
 		if m == MethodStatus || m == MethodGet {
 			continue
@@ -67,6 +69,8 @@ func TestCaller_CallRelaxedMethods(t *testing.T) {
 }
 
 func TestCaller_CallAmbivalentMethodsWithoutWallet(t *testing.T) {
+	config.Override("LbrynetXPercentage", 0)
+	defer config.RestoreOverridden()
 	for _, m := range relaxedMethods {
 		if !methodInList(m, walletSpecificMethods) || m == MethodGet {
 			continue
@@ -122,7 +126,19 @@ func TestCaller_CallAmbivalentMethodsWithWallet(t *testing.T) {
 				},
 				JSONRPC: "2.0",
 			})
-			assert.EqualValues(t, expectedRequest, receivedRequest.Body)
+			expectedRequestLbrynetX := test.ReqToStr(t, &jsonrpc.RPCRequest{
+				Method: m,
+				Params: map[string]interface{}{
+					"wallet_id":      sdkrouter.WalletID(dummyUserID),
+					"new_sdk_server": config.GetLbrynetXServer(),
+				},
+				JSONRPC: "2.0",
+			})
+
+			if expectedRequest != receivedRequest.Body {
+				// TODO: Remove when new_sdk_server is not used anymore
+				assert.EqualValues(t, expectedRequestLbrynetX, receivedRequest.Body)
+			}
 		})
 	}
 
@@ -310,7 +326,7 @@ func TestCaller_AddPostflightHook_LogField(t *testing.T) {
 		return nil, nil
 	}, "")
 
-	res, err := c.Call(jsonrpc.NewRequest(MethodResolve))
+	res, err := c.Call(jsonrpc.NewRequest(MethodResolve, map[string]interface{}{"urls": "what:19b9c243bea0c45175e6a6027911abbad53e983e"}))
 	require.NoError(t, err)
 	assert.Contains(t, res.Result.(map[string]interface{}), "what:19b9c243bea0c45175e6a6027911abbad53e983e")
 	assert.Equal(t, "8.8.8.8", logHook.LastEntry().Data["remote_ip"])
@@ -362,7 +378,7 @@ func TestCaller_ClientJSONError(t *testing.T) {
 	ts.NextResponse <- `{"method":"version}` // note the missing close quote after "version
 
 	c := NewCaller(ts.URL, 0)
-	_, err := c.Call(&jsonrpc.RPCRequest{Method: "resolve"})
+	_, err := c.Call(jsonrpc.NewRequest(MethodResolve, map[string]interface{}{"urls": "what"}))
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "could not decode body to rpc response")
 }
@@ -437,7 +453,7 @@ func TestCaller_CallQueryWithRetry(t *testing.T) {
 	// check that sdk loads the wallet and retries the query if the wallet was not initially loaded
 
 	c := NewCaller(addr, dummyUserID)
-	r, err := c.callQueryWithRetry(q)
+	r, err := c.SendQuery(q)
 	require.NoError(t, err)
 	require.Nil(t, r.Error)
 }
@@ -469,7 +485,7 @@ func TestCaller_DontReloadWalletAfterOtherErrors(t *testing.T) {
 		}),
 	)
 
-	r, err := c.callQueryWithRetry(q)
+	r, err := c.SendQuery(q)
 	require.NoError(t, err)
 	require.Equal(t, "Wallet at path // was not found", r.Error.Message)
 }
@@ -505,7 +521,7 @@ func TestCaller_DontReloadWalletIfAlreadyLoaded(t *testing.T) {
 		}),
 	)
 
-	r, err := c.callQueryWithRetry(q)
+	r, err := c.SendQuery(q)
 
 	require.NoError(t, err)
 	require.Nil(t, r.Error)
@@ -696,20 +712,15 @@ func TestCaller_GetPaidPurchasedMissingPurchase(t *testing.T) {
 	require.NoError(t, err)
 
 	receivedRequest := <-reqChan
-	expectedRequest := test.ReqToStr(t, &jsonrpc.RPCRequest{
-		Method: MethodResolve,
-		Params: map[string]interface{}{
-			"wallet_id":                sdkrouter.WalletID(dummyUserID),
-			"urls":                     uri,
-			"include_purchase_receipt": true,
-			"include_protobuf":         true,
-		},
-		JSONRPC: "2.0",
-	})
-	assert.EqualValues(t, expectedRequest, receivedRequest.Body)
+	jsonRPCRequest := test.StrToReq(t, receivedRequest.Body)
+	expectedParams := jsonRPCRequest.Params.(map[string]interface{})
+	assert.EqualValues(t, sdkrouter.WalletID(dummyUserID), expectedParams["wallet_id"])
+	assert.EqualValues(t, uri, expectedParams["urls"])
+	assert.EqualValues(t, true, expectedParams["include_purchase_receipt"])
+	assert.EqualValues(t, true, expectedParams["include_protobuf"])
 
 	receivedRequest = <-reqChan
-	expectedRequest = test.ReqToStr(t, &jsonrpc.RPCRequest{
+	expectedRequest := test.ReqToStr(t, &jsonrpc.RPCRequest{
 		Method: MethodPurchaseCreate,
 		Params: map[string]interface{}{
 			"wallet_id": sdkrouter.WalletID(dummyUserID),
@@ -721,17 +732,12 @@ func TestCaller_GetPaidPurchasedMissingPurchase(t *testing.T) {
 	assert.EqualValues(t, expectedRequest, receivedRequest.Body)
 
 	receivedRequest = <-reqChan
-	expectedRequest = test.ReqToStr(t, &jsonrpc.RPCRequest{
-		Method: MethodResolve,
-		Params: map[string]interface{}{
-			"wallet_id":                sdkrouter.WalletID(dummyUserID),
-			"urls":                     uri,
-			"include_purchase_receipt": true,
-			"include_protobuf":         true,
-		},
-		JSONRPC: "2.0",
-	})
-	assert.EqualValues(t, expectedRequest, receivedRequest.Body)
+	jsonRPCRequest = test.StrToReq(t, receivedRequest.Body)
+	expectedParams = jsonRPCRequest.Params.(map[string]interface{})
+	assert.EqualValues(t, sdkrouter.WalletID(dummyUserID), expectedParams["wallet_id"])
+	assert.EqualValues(t, uri, expectedParams["urls"])
+	assert.EqualValues(t, true, expectedParams["include_purchase_receipt"])
+	assert.EqualValues(t, true, expectedParams["include_protobuf"])
 
 	getResponse := &ljsonrpc.GetResponse{}
 	err = resp.GetObject(&getResponse)

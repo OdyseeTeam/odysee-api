@@ -70,14 +70,14 @@ func TestUploadHandler(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
-	test.AssertJsonEqual(t, expectedStreamCreateResponse, respBody)
+	test.AssertEqualJSON(t, expectedStreamCreateResponse, respBody)
 
 	require.True(t, publisher.called)
 	expectedPath := path.Join(os.TempDir(), "20404", ".*_lbry_auto_test_file")
 	assert.Regexp(t, expectedPath, publisher.filePath)
 	assert.Equal(t, sdkrouter.WalletID(20404), publisher.walletID)
 	expectedReq := fmt.Sprintf(expectedStreamCreateRequest, sdkrouter.WalletID(20404), publisher.filePath)
-	test.AssertJsonEqual(t, expectedReq, publisher.rawQuery)
+	test.AssertEqualJSON(t, expectedReq, publisher.rawQuery)
 
 	_, err = os.Stat(publisher.filePath)
 	assert.True(t, os.IsNotExist(err))

@@ -19,9 +19,9 @@ type Query struct {
 	WalletID string
 }
 
-// NewQuery initializes Query object with JSON-RPC request supplied as bytes.
+// NewQuery initializes Query object with JSON-RPC request.
 // The object is immediately usable and returns an error in case request parsing fails.
-// If wallet_id is not empty, it will be added as a param to the query when the Caller calls it.
+// If walletID is not empty, it will be added as a param to the query when the Caller calls it.
 func NewQuery(req *jsonrpc.RPCRequest, walletID string) (*Query, error) {
 	if strings.TrimSpace(req.Method) == "" {
 		return nil, errors.Err("no method in request")
@@ -34,18 +34,20 @@ func NewQuery(req *jsonrpc.RPCRequest, walletID string) (*Query, error) {
 	}
 
 	if q.ParamsAsMap() != nil {
-		if _, ok := q.ParamsAsMap()[forbiddenParam]; ok {
-			return nil, rpcerrors.NewInvalidParamsError(fmt.Errorf("forbidden parameter supplied: %v", forbiddenParam))
+		for _, p := range forbiddenParams {
+			if _, ok := q.ParamsAsMap()[p]; ok {
+				return nil, rpcerrors.NewInvalidParamsError(fmt.Errorf("forbidden parameter supplied: %v", p))
+			}
 		}
 	}
 
 	if MethodAcceptsWallet(q.Method()) {
 		if q.IsAuthenticated() {
 			if p := q.ParamsAsMap(); p != nil {
-				p[paramWalletID] = q.WalletID
+				p[ParamWalletID] = q.WalletID
 				q.Request.Params = p
 			} else {
-				q.Request.Params = map[string]interface{}{paramWalletID: q.WalletID}
+				q.Request.Params = map[string]interface{}{ParamWalletID: q.WalletID}
 			}
 		} else if MethodRequiresWallet(q.Method()) {
 			return nil, rpcerrors.NewAuthRequiredError()

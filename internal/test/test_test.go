@@ -44,8 +44,7 @@ func TestMockHTTPServer(t *testing.T) {
 	assert.Equal(t, string(body), "ok")
 }
 
-func TestAssertJsonEqual(t *testing.T) {
-
+func TestAssertEqualJSON(t *testing.T) {
 	testCases := []struct {
 		a, b string
 		same bool
@@ -58,7 +57,7 @@ func TestAssertJsonEqual(t *testing.T) {
 
 	for i, tc := range testCases {
 		testT := &testing.T{}
-		same := AssertJsonEqual(testT, tc.a, tc.b)
+		same := AssertEqualJSON(testT, tc.a, tc.b)
 		if tc.same {
 			assert.True(t, same, "Case %d same", i)
 			assert.False(t, testT.Failed(), "Case %d failure", i)

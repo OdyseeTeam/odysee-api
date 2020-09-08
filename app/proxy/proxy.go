@@ -21,6 +21,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/audit"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/ip"
+	"github.com/lbryio/lbrytv/internal/lbrynext"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/models"
@@ -94,6 +95,8 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		audit.LogQuery(userID, remoteIP, query.MethodWalletSend, body)
 		return nil, nil
 	}, "")
+
+	lbrynext.InstallHooks(c)
 	c.Cache = qCache
 
 	rpcRes, err := c.Call(rpcReq)
