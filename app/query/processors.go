@@ -94,11 +94,17 @@ func preflightHookGet(caller *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, 
 	}
 	metrics.LbrytvStreamRequests.WithLabelValues(metricLabel).Inc()
 
-	sdHash := hex.EncodeToString(stream.GetSource().SdHash)[:6]
+	src := stream.GetSource()
+	if src == nil {
+		m := "stream doesn't have source data"
+		log.Error(m)
+		return nil, fmt.Errorf(m)
+	}
+	sdHash := hex.EncodeToString(src.SdHash)[:6]
 	if isPaidStream {
-		size := stream.GetSource().GetSize()
+		size := src.GetSize()
 		if claim.PurchaseReceipt == nil {
-			log.Errorf("stream was paid for but receipt not found in the resolve response")
+			log.Error("stream was paid for but receipt not found in the resolve response")
 			return nil, fmt.Errorf("couldn't find purchase receipt for paid stream")
 		}
 
