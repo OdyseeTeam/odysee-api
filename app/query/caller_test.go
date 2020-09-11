@@ -578,6 +578,21 @@ func TestCaller_GetFreeAuthenticated(t *testing.T) {
 	assert.Equal(t, "https://cdn.lbryplayer.xyz/api/v3/streams/free/what/19b9c243bea0c45175e6a6027911abbad53e983e/d51692", getResponse.StreamingURL)
 }
 
+func TestCaller_GetCouldntFindClaim(t *testing.T) {
+	uri := "lbry://@whatever#b/whatever#4"
+
+	dummyUserID := 123321
+	srv := test.MockHTTPServer(nil)
+
+	srv.QueueResponses(
+		resolveResponseCouldntFind,
+	)
+	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
+	resp, err := NewCaller(srv.URL, dummyUserID).Call(request)
+	assert.EqualError(t, err, "couldn't find claim")
+	assert.Nil(t, resp)
+}
+
 func TestCaller_GetInvalidURLAuthenticated(t *testing.T) {
 	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v3/streams/")
 	defer config.RestoreOverridden()

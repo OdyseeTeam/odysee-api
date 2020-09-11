@@ -461,5 +461,20 @@ var resolveResponseFree = `
 	  }
 	},
 	"id": 0
-  }
-  `
+}
+`
+
+var resolveResponseCouldntFind = `
+{
+	"jsonrpc": "2.0",
+	"result": {
+	  "lbry://@whatever#b/whatever#4": {
+		"error": {
+		  "name": "NOT_FOUND",
+		  "text": "Could not find claim at \"lbry://@whatever#b/whatever#4\"."
+		}
+	  }
+	},
+	"id": 0
+}
+`

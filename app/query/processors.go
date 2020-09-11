@@ -153,6 +153,10 @@ func resolve(c *Caller, q *Query, url string) (*ljsonrpc.Claim, error) {
 	if !ok {
 		return nil, fmt.Errorf("could not find a corresponding entry in the resolve response")
 	}
+	// Empty claim ID means that resolve error has been returned
+	if claim.ClaimID == "" {
+		return nil, fmt.Errorf("couldn't find claim")
+	}
 	return &claim, err
 }
 
