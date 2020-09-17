@@ -15,13 +15,15 @@ import (
 )
 
 var (
-	resolveHookName = "lbrynext_resolve"
-	logger          = monitor.NewModuleLogger("lbrynext")
-	sentryURL       = "https://sentry.lbry.tech/organizations/lbry/projects/lbrytv/events/"
+	resolveHookName     = "lbrynext_resolve"
+	claimSearchHookName = "lbrynext_claim_search"
+	logger              = monitor.NewModuleLogger("lbrynext")
+	sentryURL           = "https://sentry.lbry.tech/organizations/lbry/projects/lbrytv/events/"
 )
 
 func InstallHooks(c *query.Caller) {
 	c.AddPostflightHook(query.MethodResolve, experimentNewSdkParam, resolveHookName)
+	c.AddPostflightHook(query.MethodClaimSearch, experimentNewSdkParam, claimSearchHookName)
 }
 
 func experimentNewSdkParam(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
