@@ -99,8 +99,8 @@ func experimentParallel(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCR
 				q.Method(), cc.Endpoint(), metrics.GroupExperimental, metrics.FailureKindLbrynetXMismatch,
 			).Observe(cc.Duration)
 
+			msg := fmt.Sprintf("experimental `%v` call result differs", q.Method())
 			if config.IsProduction() {
-				msg := "experimental call result differs"
 				extra := map[string]string{
 					"method":       query.MethodResolve,
 					"original":     rBody,
@@ -110,7 +110,6 @@ func experimentParallel(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCR
 				eventID := monitor.MessageToSentry(msg, sentry.LevelWarning, extra)
 				log.Errorf("%v, see %v%v", msg, sentryURL, eventID)
 			} else {
-				msg := "experimental call result differs"
 				log.Errorf("%v: %v", msg, diff)
 			}
 			return nil, nil
