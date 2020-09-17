@@ -2,6 +2,7 @@ package lbrynext
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
 
 	"github.com/getsentry/sentry-go"
@@ -28,12 +29,16 @@ func InstallHooks(c *query.Caller) {
 
 func experimentNewSdkParam(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
 	q := hctx.Query
+	hookName := resolveHookName
+	if q.Method() == query.MethodClaimSearch {
+		hookName = claimSearchHookName
+	}
 	if rand.Intn(100)+1 <= config.GetLbrynetXPercentage() {
 		go func() {
 			r := hctx.Response
 
 			// This is done so the hook will not fire in a loop on repeated call
-			cc := c.CloneWithoutHook(c.Endpoint(), query.MethodResolve, resolveHookName)
+			cc := c.CloneWithoutHook(c.Endpoint(), q.Method(), hookName)
 
 			params := q.ParamsAsMap()
 			params[query.ParamNewSDKServer] = config.GetLbrynetXServer()
@@ -48,24 +53,21 @@ func experimentNewSdkParam(c *query.Caller, hctx *query.HookContext) (*jsonrpc.R
 				log.Error("experimental call errored:", err)
 				return
 			}
-			rBody, xrBody, diff := compareResponses(r, xr)
+			_, _, diff := compareResponses(r, xr)
 			if diff != "" {
 				metrics.LbrynetXCallFailedDurations.WithLabelValues(
 					q.Method(), cc.Endpoint(), metrics.GroupExperimental, metrics.FailureKindLbrynetXMismatch,
 				).Observe(cc.Duration)
 
+				msg := fmt.Sprintf("experimental `%v` call result differs", q.Method())
 				if config.IsProduction() {
-					msg := "experimental call result differs"
 					extra := map[string]string{
-						"method":       query.MethodResolve,
-						"original":     rBody,
-						"experimental": xrBody,
-						"diff":         diff,
+						"method": query.MethodResolve,
+						"diff":   diff,
 					}
 					eventID := monitor.MessageToSentry(msg, sentry.LevelWarning, extra)
 					log.Errorf("%v, see %v%v", msg, sentryURL, eventID)
 				} else {
-					msg := "experimental call result differs"
 					log.Errorf("%v: %v", msg, diff)
 				}
 				return
