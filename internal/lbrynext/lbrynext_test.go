@@ -142,7 +142,7 @@ func Test_experimentParallel_DifferentResponse(t *testing.T) {
 
 	entry := hook.LastEntry()
 	require.NotNil(t, entry)
-	assert.Contains(t, entry.Message, "experimental call result differs")
+	assert.Contains(t, entry.Message, "experimental `resolve` call result differs")
 	assert.Equal(t, query.MethodResolve, entry.Data["method"])
 }
 
