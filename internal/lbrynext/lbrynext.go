@@ -24,7 +24,6 @@ var (
 
 func InstallHooks(c *query.Caller) {
 	c.AddPostflightHook(query.MethodResolve, experimentNewSdkParam, resolveHookName)
-	c.AddPostflightHook(query.MethodClaimSearch, experimentNewSdkParam, claimSearchHookName)
 }
 
 func experimentNewSdkParam(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
