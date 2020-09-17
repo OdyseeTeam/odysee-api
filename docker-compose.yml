@@ -7,9 +7,7 @@ services:
       - "5581:5279"
       - "5279:5279"
     volumes:
-      - type: bind
-        source: storage
-        target: /storage
+      - storage:/storage
     environment:
       SDK_CONFIG: /daemon/daemon_settings.yml
       # SDK_LBRYUM_SERVERS: wallet:50001
@@ -21,9 +19,7 @@ services:
     ports:
       - 8080:8080
     volumes:
-      - type: bind
-        source: storage
-        target: /storage
+      - storage:/storage
     environment:
       LW_LBRYNET: http://lbrynet:5279/
       LW_DEBUG: 1
@@ -32,47 +28,12 @@ services:
       - postgres
     labels:
       com.centurylinklabs.watchtower.enable: true
-  wallet:
-    # image: lbry/wallet-server:master
-    image: lbry/wallet-server:lbrytv-latest
-    # command: lbry.wallet.server.coin.LBC
-    ports:
-      - "50001:50001"
-    volumes:
-      - type: bind
-        source: wallet
-        target: /wallet
-    environment:
-      # DAEMON_URL: http://lbry:lbry@127.0.0.1:9245
-      TCP_PORT: 50001
-      HOST: 0.0.0.0
-      DAEMON_URL: http://lbry:lbry@lbrycrd:9245
-      DB_DIRECTORY: /wallet
-      MAX_SUBS: 1000000000000
-      BANDWIDTH_LIMIT: 80000000000
-      SESSION_TIMEOUT: 10000000000000000000000000
-    depends_on:
-      - lbrycrd
-  lbrycrd:
-    image: lbry/lbrycrd:linux-x86_64-production
-    volumes:
-      - type: bind
-        source: lbrycrd
-        target: /data
-    environment:
-      RPC_USER: lbry
-      RPC_PASSWORD: lbry
-      RUN_MODE: default # Available options are testnet, regtest, chainquery, default, and reindex
-      RPC_ALLOW_IP: 0.0.0.0/0
-      TCP_PORT: 50001
   postgres:
     image: postgres:11-alpine
     ports:
       - "5432:5432"
     volumes:
-      - type: bind
-        source: pgdata
-        target: /pgdata
+      - pgdata:/pgdata
     environment:
       POSTGRES_USER: lbrytv
       POSTGRES_PASSWORD: lbrytv
@@ -84,9 +45,7 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - type: bind
-        source: pgdata-collector
-        target: /pgdata
+      - pgdata-collector:/pgdata
     environment:
       POSTGRES_USER: collector
       POSTGRES_PASSWORD: ZnPfJ!4vTb-nURv8M!JkkuAcjYLYbkiX
@@ -115,9 +74,7 @@ services:
     image: namshi/smtp:latest
 
 volumes:
-  pgdata:
-  pgdata-collector:
-  storage:
-  test_storage:
-  wallet:
-  lbrycrd:
+  pgdata: {}
+  pgdata-collector: {}
+  storage: {}
+  test_storage: {}
