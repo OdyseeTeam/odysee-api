@@ -7,6 +7,7 @@ import (
 
 const (
 	nsPlayer   = "player"
+	nsAPI      = "api"
 	nsIAPI     = "iapi"
 	nsProxy    = "proxy"
 	nsLbrynext = "lbrynext"
@@ -21,8 +22,13 @@ const (
 	LabelValuePaid = "paid"
 	LabelValueFree = "free"
 
-	FailureKindNet              = "net"
-	FailureKindRPC              = "rpc"
+	FailureKindNet = "net"
+	FailureKindRPC = "rpc"
+	// FailureKindRPCJSON is not called FailureKindJSONRPC because this is an error from RPC server, just pertinent to JSON serialization.
+	FailureKindRPCJSON          = "rpc_json"
+	FailureKindClientJSON       = "client_json"
+	FailureKindClient           = "client"
+	FailureKindAuth             = "auth"
 	FailureKindLbrynetXMismatch = "xmismatch"
 
 	GroupControl      = "control"
@@ -44,6 +50,27 @@ var (
 	})
 
 	callsSecondsBuckets = []float64{0.005, 0.025, 0.05, 0.1, 0.25, 0.4, 1, 2, 5, 10, 20, 60, 120, 300}
+
+	ProxyE2ECallDurations = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: nsProxy,
+			Subsystem: "e2e_calls",
+			Name:      "total",
+			Help:      "End-to-end method call latency distributions",
+			Buckets:   callsSecondsBuckets,
+		},
+		[]string{"method", "endpoint"},
+	)
+	ProxyE2ECallFailedDurations = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: nsProxy,
+			Subsystem: "e2e_calls",
+			Name:      "failed",
+			Help:      "Failed end-to-end method call latency distributions",
+			Buckets:   callsSecondsBuckets,
+		},
+		[]string{"method", "endpoint", "kind"},
+	)
 
 	ProxyCallDurations = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{

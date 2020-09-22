@@ -22,6 +22,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/ip"
 	"github.com/lbryio/lbrytv/internal/lbrynext"
+	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/models"
@@ -31,13 +32,36 @@ import (
 
 var logger = monitor.NewModuleLogger("proxy")
 
+type observer struct {
+	*metrics.Timer
+}
+
+func newObserver() *observer {
+	return &observer{metrics.TimerStart()}
+}
+
+func (o *observer) observeFailure(method, endpoint, kind string) {
+	o.Done()
+	metrics.ProxyE2ECallDurations.WithLabelValues(method, endpoint).Observe(o.Duration)
+	metrics.ProxyE2ECallFailedDurations.WithLabelValues(method, endpoint, kind).Observe(o.Duration)
+}
+
+func (o *observer) observeSuccess(method, endpoint string) {
+	o.Done()
+	metrics.ProxyE2ECallDurations.WithLabelValues(method, endpoint).Observe(o.Duration)
+}
+
 // Handle forwards client JSON-RPC request to proxy.
 func Handle(w http.ResponseWriter, r *http.Request) {
 	responses.AddJSONContentType(w)
 
+	o := newObserver()
+
 	if r.Body == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write(rpcerrors.NewJSONParseError(errors.Err("empty request body")).JSON())
+
+		o.observeFailure("", "", metrics.FailureKindClient)
 		logger.Log().Debugf("empty request body")
 		return
 	}
@@ -46,7 +70,10 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write(rpcerrors.NewJSONParseError(errors.Err("error reading request body")).JSON())
+
+		o.observeFailure("", "", metrics.FailureKindClient)
 		logger.Log().Debugf("error reading request body: %v", err.Error())
+
 		return
 	}
 
@@ -54,6 +81,10 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(body, &rpcReq)
 	if err != nil {
 		w.Write(rpcerrors.NewJSONParseError(err).JSON())
+
+		o.observeFailure("", "", metrics.FailureKindClientJSON)
+		logger.Log().Debugf("error unmarshaling request body: %v", err)
+
 		return
 	}
 
@@ -64,6 +95,8 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		authErr := GetAuthError(user, err)
 		if authErr != nil {
 			w.Write(rpcerrors.ErrorToJSON(authErr))
+			o.observeFailure(rpcReq.Method, "", metrics.FailureKindAuth)
+
 			return
 		}
 	}
@@ -103,17 +136,29 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		monitor.ErrorToSentry(err, map[string]string{"request": fmt.Sprintf("%+v", rpcReq), "response": fmt.Sprintf("%+v", rpcRes)})
-		logger.Log().Errorf("error calling lbrynet: %v, request: %+v", err, rpcReq)
 		w.Write(rpcerrors.ToJSON(err))
+
+		logger.Log().Errorf("error calling lbrynet: %v, request: %+v", err, rpcReq)
+		o.observeFailure(rpcReq.Method, sdkAddress, metrics.FailureKindNet)
+
 		return
 	}
-
 	serialized, err := responses.JSONRPCSerialize(rpcRes)
 	if err != nil {
 		monitor.ErrorToSentry(err)
-		logger.Log().Errorf("error marshaling response: %v", err)
+
 		w.Write(rpcerrors.NewInternalError(err).JSON())
+
+		logger.Log().Errorf("error marshaling response: %v", err)
+		o.observeFailure(rpcReq.Method, sdkAddress, metrics.FailureKindRPCJSON)
+
 		return
+	}
+
+	if rpcRes.Error != nil {
+		o.observeFailure(rpcReq.Method, sdkAddress, metrics.FailureKindRPC)
+	} else {
+		o.observeSuccess(rpcReq.Method, sdkAddress)
 	}
 
 	w.Write(serialized)
