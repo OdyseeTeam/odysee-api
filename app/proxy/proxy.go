@@ -26,6 +26,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/models"
+	"github.com/sirupsen/logrus"
 
 	"github.com/ybbus/jsonrpc"
 )
@@ -157,6 +158,11 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 
 	if rpcRes.Error != nil {
 		o.observeFailure(rpcReq.Method, sdkAddress, metrics.FailureKindRPC)
+		logger.WithFields(logrus.Fields{
+			"method":   rpcReq.Method,
+			"endpoint": sdkAddress,
+			"response": rpcRes.Error,
+		}).Errorf("proxy handler got rpc error: %v", rpcRes.Error)
 	} else {
 		o.observeSuccess(rpcReq.Method, sdkAddress)
 	}
