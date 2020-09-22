@@ -260,7 +260,7 @@ func (c *Caller) SendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 
 	if err != nil || (r != nil && r.Error != nil) {
 		logFields["response"] = r.Error
-		logEntry.Error("rpc call error")
+		logEntry.Errorf("rpc call error: %v", r.Error.Message)
 		metrics.ProxyCallFailedDurations.WithLabelValues(q.Method(), c.endpoint, metrics.FailureKindRPC).Observe(c.Duration)
 	} else {
 		if config.ShouldLogResponses() {
