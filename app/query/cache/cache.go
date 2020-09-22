@@ -31,7 +31,7 @@ type memoryCache struct {
 }
 
 func NewMemoryCache() memoryCache {
-	return memoryCache{c: cache.New(2*time.Minute, 10*time.Minute)}
+	return memoryCache{c: cache.New(5*time.Minute, 15*time.Minute)}
 }
 
 // Save puts a response object into cache, making it available for a later retrieval by method and query params
