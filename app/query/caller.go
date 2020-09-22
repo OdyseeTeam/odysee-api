@@ -306,11 +306,13 @@ func fromCache(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
 
 	cached := c.Cache.Retrieve(hctx.Query.Method(), hctx.Query.Params())
 	if cached == nil {
+		metrics.ProxyQueryCacheMissCount.WithLabelValues(hctx.Query.Method()).Inc()
 		return nil, nil
 	}
 
 	s, err := json.Marshal(cached)
 	if err != nil {
+		metrics.ProxyQueryCacheErrorCount.WithLabelValues(hctx.Query.Method()).Inc()
 		logger.Log().Errorf("error marshalling cached response")
 		return nil, nil
 	}
@@ -318,9 +320,12 @@ func fromCache(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
 	response := hctx.Query.newResponse()
 	err = json.Unmarshal(s, &response)
 	if err != nil {
+		metrics.ProxyQueryCacheErrorCount.WithLabelValues(hctx.Query.Method()).Inc()
+		logger.Log().Errorf("error unmarshalling cached response")
 		return nil, nil
 	}
 
+	metrics.ProxyQueryCacheHitCount.WithLabelValues(hctx.Query.Method()).Inc()
 	logger.WithFields(logrus.Fields{"method": hctx.Query.Method()}).Debug("cached query")
 	return response, nil
 }

@@ -66,6 +66,25 @@ var (
 		[]string{"method", "endpoint", "kind"},
 	)
 
+	ProxyQueryCacheHitCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: nsProxy,
+		Subsystem: "cache",
+		Name:      "hit_count",
+		Help:      "Total number of queries found in the local cache",
+	}, []string{"method"})
+	ProxyQueryCacheMissCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: nsProxy,
+		Subsystem: "cache",
+		Name:      "miss_count",
+		Help:      "Total number of queries that were not in the local cache",
+	}, []string{"method"})
+	ProxyQueryCacheErrorCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: nsProxy,
+		Subsystem: "cache",
+		Name:      "error_count",
+		Help:      "Total number of errors retrieving queries from the local cache",
+	}, []string{"method"})
+
 	LbrynetWalletsLoaded = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: nsLbrynet,
 		Subsystem: "wallets",
