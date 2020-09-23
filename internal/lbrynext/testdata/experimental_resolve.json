@@ -1,0 +1,59 @@
+    {
+      "jsonrpc": "2.0",
+      "result": {
+        "lbry://@FR3AKSH0W#0": {
+          "address": "bSGwJ9Qhwr1Ao2cbfKZyREy5H9sG93P6qg",
+          "amount": "0.01",
+          "canonical_url": "lbry://@fr3aksh0w#0",
+          "claim_id": "0c4e8757537d97ac47a6b93e226500dc59570aab",
+          "claim_op": "update",
+          "confirmations": 237519,
+          "has_signing_key": false,
+          "height": 597804,
+          "is_my_output": false,
+          "meta": {
+            "activation_height": 597804,
+            "claims_in_channel": 152,
+            "creation_height": 382581,
+            "creation_timestamp": 1528312497,
+            "effective_amount": "0.01",
+            "expiration_height": 0,
+            "is_controlling": false,
+            "reposted": 0,
+            "support_amount": "0.0",
+            "take_over_height": 0,
+            "trending_global": 0.0,
+            "trending_group": 0,
+            "trending_local": 0.0,
+            "trending_mixed": 0.0
+          },
+          "name": "@FR3AKSH0W",
+          "normalized_name": "@fr3aksh0w",
+          "nout": 0,
+          "permanent_url": "lbry://@FR3AKSH0W#0c4e8757537d97ac47a6b93e226500dc59570aab",
+          "short_url": "lbry://@fr3aksh0w#0",
+          "timestamp": 1562736922,
+          "txid": "b715482cf7f39e69bb782ab22e3fe9fadf18e7f6a3729efac3b2e45dcec7f89e",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbnails.lbry.com/banner-UCXOxSGfN1zvIcL2Nj5Gohew"
+            },
+            "description": "It's a meme, you dip!",
+            "locations": [
+              {
+                "country": "US"
+              }
+            ],
+            "public_key": "3056301006072a8648ce3d020106052b8104000a03420004af71dd56fe927228e7dd8967dd287d54e9d69550188b8988659f28546d46beb90503f4973ee0542c2a53a184151e3d29eb9e4585d652d1d95f2e74d9f53baff2",
+            "public_key_id": "bHLS3suE6Y6wnVu37CPSBBENX4xZ4D7mk1",
+            "thumbnail": {
+              "url": "https://thumbnails.lbry.com/UCXOxSGfN1zvIcL2Nj5Gohew"
+            },
+            "title": "FR3AKSH0W"
+          },
+          "value_type": "channel"
+        }
+      },
+      "id": 0
+    }

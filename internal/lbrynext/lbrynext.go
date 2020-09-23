@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"regexp"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/lbryio/lbrytv/app/query"
@@ -20,6 +21,7 @@ var (
 	claimSearchHookName = "lbrynext_claim_search"
 	logger              = monitor.NewModuleLogger("lbrynext")
 	sentryURL           = "https://sentry.lbry.tech/organizations/lbry/projects/lbrytv/events/"
+	fieldsToSkip        = []string{"activation_height", "expiration_height", "take_over_height"}
 )
 
 func InstallHooks(c *query.Caller) {
@@ -125,6 +127,12 @@ func resToByte(res *jsonrpc.RPCResponse) []byte {
 
 func compareResponses(r, xr *jsonrpc.RPCResponse) (string, string, string) {
 	br, bxr := resToByte(r), resToByte(xr)
+
+	for _, s := range fieldsToSkip {
+		r := regexp.MustCompile(fmt.Sprintf(`"%v":\s?.+?,?\s?\n?`, s))
+		br = r.ReplaceAllLiteral(br, []byte(``))
+		bxr = r.ReplaceAllLiteral(bxr, []byte(``))
+	}
 	_, diffLog := test.GetJSONDiffLog(br, bxr)
 	return string(br), string(bxr), diffLog
 }
