@@ -129,7 +129,7 @@ func compareResponses(r, xr *jsonrpc.RPCResponse) (string, string, string) {
 	br, bxr := resToByte(r), resToByte(xr)
 
 	for _, s := range fieldsToSkip {
-		r := regexp.MustCompile(fmt.Sprintf(`"%v":\s?.+?,?\s?\n?`, s))
+		r := regexp.MustCompile(fmt.Sprintf(`"%v":\s?\d+,?\s?\n?`, s))
 		br = r.ReplaceAllLiteral(br, []byte(``))
 		bxr = r.ReplaceAllLiteral(bxr, []byte(``))
 	}
