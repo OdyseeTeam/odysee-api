@@ -1,6 +1,9 @@
 package lbrynext
 
 import (
+	"encoding/json"
+	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +18,17 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
+func loadTestDataResponse(t *testing.T, filename string) *jsonrpc.RPCResponse {
+	response := &jsonrpc.RPCResponse{}
+	absPath, err := filepath.Abs(filepath.Join("./testdata", filename))
+	require.NoError(t, err)
+	rawResponse, err := ioutil.ReadFile(absPath)
+	require.NoError(t, err)
+	err = json.Unmarshal(rawResponse, response)
+	require.NoError(t, err)
+	return response
+}
+
 func Test_compareResponsesMismatch(t *testing.T) {
 	r := &jsonrpc.RPCResponse{Result: map[string]string{"ok": "ok"}}
 	xr := &jsonrpc.RPCResponse{Result: map[string]string{"ok": "not ok"}}
@@ -27,6 +41,16 @@ func Test_compareResponses_Match(t *testing.T) {
 	xr := &jsonrpc.RPCResponse{Result: map[string]string{"ok": "ok"}}
 	_, _, diff := compareResponses(r, xr)
 	assert.Empty(t, diff)
+}
+
+func Test_compareResponses_ExcludeFields(t *testing.T) {
+	orig := loadTestDataResponse(t, "original_resolve.json")
+	exp := loadTestDataResponse(t, "experimental_resolve.json")
+	_, _, diff := compareResponses(orig, exp)
+
+	for _, f := range fieldsToSkip {
+		assert.NotContains(t, diff, f)
+	}
 }
 
 func Test_experimentNewSdkParam_ResponseMatch(t *testing.T) {
