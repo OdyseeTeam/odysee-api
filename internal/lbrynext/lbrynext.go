@@ -159,11 +159,11 @@ func stripFieldsFromMap(m map[string]interface{}) map[string]interface{} {
 	return m
 }
 
-func stripFieldsFromResponse(rsp *jsonrpc.RPCResponse) *jsonrpc.RPCResponse {
+func stripFieldsFromResponse(rsp jsonrpc.RPCResponse) *jsonrpc.RPCResponse {
 	if resultMap, ok := rsp.Result.(map[string]interface{}); ok {
 		rsp.Result = stripFieldsFromMap(resultMap)
 	}
-	return rsp
+	return &rsp
 }
 
 func rspToByte(rsp *jsonrpc.RPCResponse) []byte {
@@ -172,8 +172,8 @@ func rspToByte(rsp *jsonrpc.RPCResponse) []byte {
 }
 
 func compareResponses(r, xr *jsonrpc.RPCResponse) (string, string, string) {
-	rStripped := stripFieldsFromResponse(r)
-	xrStripped := stripFieldsFromResponse(xr)
+	rStripped := stripFieldsFromResponse(*r)
+	xrStripped := stripFieldsFromResponse(*xr)
 	_, diffLog := test.GetJSONDiffLog(rspToByte(rStripped), rspToByte(xrStripped))
 	return string(rspToByte(r)), string(rspToByte(xr)), diffLog
 }
