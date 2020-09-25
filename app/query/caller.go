@@ -111,7 +111,7 @@ func (c *Caller) AddPreflightHook(method string, hf Hook, name string) {
 // allowing to amend the response before it gets sent back to the client
 // or to modify log entry fields.
 func (c *Caller) AddPostflightHook(method string, hf Hook, name string) {
-	c.postflightHooks = append(c.preflightHooks, hookEntry{method, hf, name})
+	c.postflightHooks = append(c.postflightHooks, hookEntry{method, hf, name})
 	logger.Log().Debugf("added a postflight hook for method %v", method)
 }
 
