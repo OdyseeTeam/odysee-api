@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"regexp"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/lbryio/lbrytv/app/query"
@@ -21,7 +20,15 @@ var (
 	claimSearchHookName = "lbrynext_claim_search"
 	logger              = monitor.NewModuleLogger("lbrynext")
 	sentryURL           = "https://sentry.lbry.tech/organizations/lbry/projects/lbrytv/events/"
-	fieldsToSkip        = []string{"activation_height", "expiration_height", "take_over_height"}
+	fieldsToSkip        = []string{
+		"activation_height",
+		"expiration_height",
+		"take_over_height",
+		"trending_global",
+		"trending_group",
+		"trending_local",
+		"trending_mixed",
+	}
 )
 
 func InstallHooks(c *query.Caller) {
@@ -54,22 +61,32 @@ func experimentNewSdkParam(c *query.Caller, hctx *query.HookContext) (*jsonrpc.R
 				log.Error("experimental call errored:", err)
 				return
 			}
-			_, _, diff := compareResponses(r, xr)
-			if diff != "" {
+			rBody, xrBody, diffLog := compareResponses(r, xr)
+			if diffLog != "" {
 				metrics.LbrynetXCallFailedDurations.WithLabelValues(
 					q.Method(), cc.Endpoint(), metrics.GroupExperimental, metrics.FailureKindLbrynetXMismatch,
 				).Observe(cc.Duration)
 
+				var requestStr string
+				request, err := json.Marshal(q.Request)
+				if err != nil {
+					requestStr = fmt.Sprintf("error marshaling params: %v", err)
+				} else {
+					requestStr = string(request)
+				}
 				msg := fmt.Sprintf("experimental `%v` call result differs", q.Method())
 				if config.IsProduction() {
 					extra := map[string]string{
-						"method": query.MethodResolve,
-						"diff":   diff,
+						"method":       query.MethodResolve,
+						"request":      requestStr,
+						"original":     rBody,
+						"experimental": xrBody,
+						"diff":         diffLog,
 					}
 					eventID := monitor.MessageToSentry(msg, sentry.LevelWarning, extra)
 					log.Errorf("%v, see %v%v", msg, sentryURL, eventID)
 				} else {
-					log.Errorf("%v: %v", msg, diff)
+					log.Errorf("%v: %v", msg, diffLog)
 				}
 				return
 			}
@@ -94,8 +111,8 @@ func experimentParallel(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCR
 			log.Error("experimental call errored:", err)
 			return nil, nil
 		}
-		rBody, xrBody, diff := compareResponses(r, xr)
-		if diff != "" {
+		rBody, xrBody, diffLog := compareResponses(r, xr)
+		if diffLog != "" {
 			metrics.LbrynetXCallFailedDurations.WithLabelValues(
 				q.Method(), cc.Endpoint(), metrics.GroupExperimental, metrics.FailureKindLbrynetXMismatch,
 			).Observe(cc.Duration)
@@ -106,12 +123,12 @@ func experimentParallel(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCR
 					"method":       query.MethodResolve,
 					"original":     rBody,
 					"experimental": xrBody,
-					"diff":         diff,
+					"diff":         diffLog,
 				}
 				eventID := monitor.MessageToSentry(msg, sentry.LevelWarning, extra)
 				log.Errorf("%v, see %v%v", msg, sentryURL, eventID)
 			} else {
-				log.Errorf("%v: %v", msg, diff)
+				log.Errorf("%v: %v", msg, diffLog)
 			}
 			return nil, nil
 		}
@@ -120,19 +137,43 @@ func experimentParallel(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCR
 	return nil, nil
 }
 
-func resToByte(res *jsonrpc.RPCResponse) []byte {
-	r, _ := json.Marshal(res)
+func skipField(f string) bool {
+	for _, sf := range fieldsToSkip {
+		if f == sf {
+			return true
+		}
+	}
+	return false
+}
+
+func stripFieldsFromMap(m map[string]interface{}) map[string]interface{} {
+	for k, v := range m {
+		if skipField(k) {
+			delete(m, k)
+			continue
+		}
+		if mm, ok := v.(map[string]interface{}); ok {
+			m[k] = stripFieldsFromMap(mm)
+		}
+	}
+	return m
+}
+
+func stripFieldsFromResponse(rsp *jsonrpc.RPCResponse) *jsonrpc.RPCResponse {
+	if resultMap, ok := rsp.Result.(map[string]interface{}); ok {
+		rsp.Result = stripFieldsFromMap(resultMap)
+	}
+	return rsp
+}
+
+func rspToByte(rsp *jsonrpc.RPCResponse) []byte {
+	r, _ := json.Marshal(rsp)
 	return r
 }
 
 func compareResponses(r, xr *jsonrpc.RPCResponse) (string, string, string) {
-	br, bxr := resToByte(r), resToByte(xr)
-
-	for _, s := range fieldsToSkip {
-		r := regexp.MustCompile(fmt.Sprintf(`"%v":\s?\d+,?\s?\n?`, s))
-		br = r.ReplaceAllLiteral(br, []byte(``))
-		bxr = r.ReplaceAllLiteral(bxr, []byte(``))
-	}
-	_, diffLog := test.GetJSONDiffLog(br, bxr)
-	return string(br), string(bxr), diffLog
+	rStripped := stripFieldsFromResponse(r)
+	xrStripped := stripFieldsFromResponse(xr)
+	_, diffLog := test.GetJSONDiffLog(rspToByte(rStripped), rspToByte(xrStripped))
+	return string(rspToByte(r)), string(rspToByte(xr)), diffLog
 }

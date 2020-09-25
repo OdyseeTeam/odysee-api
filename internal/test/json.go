@@ -31,26 +31,26 @@ func JSONCompact(jsonStr string) string {
 // GetJSONDiffLog compares two JSON strings or bytes and returns `false` if they match
 // or `true` if they don't, plus difference log in a text format suitable for console output.
 func GetJSONDiffLog(expected, actual interface{}) (bool, string) {
-	diff, diffLog := jsondiff.Compare(toBytes(expected), toBytes(actual), &testConsoleOptions)
-	differs := diff != jsondiff.FullMatch
+	result, diff := jsondiff.Compare(toBytes(expected), toBytes(actual), &testConsoleOptions)
+	differs := result != jsondiff.FullMatch
 
 	if !differs {
 		return false, ""
 	}
 
-	indent := "\t\t"
-	diffIndented := regexp.MustCompile("(?m)^").ReplaceAll([]byte(diffLog), []byte("\t"+indent))[len(indent)+1:]
-	return differs, fmt.Sprintf("\n\tError:"+indent+"JSON not equal\n\tDiff:"+indent+"%s", diffIndented)
+	return differs, diff
 }
 
 // AssertEqualJSON is assert.Equal equivalent for JSON with better comparison and diff output.
 func AssertEqualJSON(t *testing.T, expected, actual interface{}, msgAndArgs ...interface{}) bool {
 	t.Helper()
-	differs, diffLog := GetJSONDiffLog(expected, actual)
+	differs, diff := GetJSONDiffLog(expected, actual)
 	if !differs {
 		return true
 	}
 	indent := "\t\t"
+	diffIndented := regexp.MustCompile("(?m)^").ReplaceAll([]byte(diff), []byte("\t"+indent))[len(indent)+1:]
+	diffLog := fmt.Sprintf("\n\tError:"+indent+"JSON not equal\n\tDiff:"+indent+"%s", diffIndented)
 	msg := messageFromMsgAndArgs(msgAndArgs...)
 	if len(msg) > 0 {
 		t.Errorf(diffLog+"\n\tMessages:"+indent+"%s", msg)
