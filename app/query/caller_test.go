@@ -332,6 +332,37 @@ func TestCaller_AddPostflightHook_LogField(t *testing.T) {
 	assert.Equal(t, "8.8.8.8", logHook.LastEntry().Data["remote_ip"])
 }
 
+func TestCaller_CloneWithoutHook(t *testing.T) {
+	timesCalled := 0
+	call := func() {
+		timesCalled++
+	}
+
+	reqChan := test.ReqChan()
+	srv := test.MockHTTPServer(reqChan)
+	defer srv.Close()
+
+	c := NewCaller(srv.URL, 0)
+	srv.QueueResponses(resolveResponseWithoutPurchase, resolveResponseWithoutPurchase)
+
+	c.AddPostflightHook(MethodResolve, func(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
+		call()
+		return nil, nil
+	}, "")
+
+	c.AddPostflightHook(MethodResolve, func(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
+		// This will be cloned without the current hook but the previous one should increment `timesCalled` once again
+		cc := c.CloneWithoutHook(c.Endpoint(), MethodResolve, "lbrynext_resolve")
+		_, err := cc.SendQuery(hctx.Query)
+		assert.NoError(t, err)
+		return nil, nil
+	}, "lbrynext_resolve")
+
+	_, err := c.Call(jsonrpc.NewRequest(MethodResolve, map[string]interface{}{"urls": "what:19b9c243bea0c45175e6a6027911abbad53e983e"}))
+	require.NoError(t, err)
+	assert.Equal(t, timesCalled, 2)
+}
+
 func TestCaller_CallSDKError(t *testing.T) {
 	srv := test.MockHTTPServer(nil)
 	defer srv.Close()
