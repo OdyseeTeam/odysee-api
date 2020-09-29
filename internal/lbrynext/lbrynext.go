@@ -28,6 +28,7 @@ var (
 		"trending_group",
 		"trending_local",
 		"trending_mixed",
+		"reposted",
 	}
 )
 
