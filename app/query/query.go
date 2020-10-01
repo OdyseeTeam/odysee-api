@@ -90,7 +90,7 @@ func (q *Query) newResponse() *jsonrpc.RPCResponse {
 // MethodRequiresWallet returns true for methods that require wallet_id
 func MethodRequiresWallet(method string, params interface{}) bool {
 	if method == MethodCommentReactList && params != nil {
-		if paramsMap, ok := params.(map[string]string); ok && paramsMap[ParamChannelID] != "" {
+		if paramsMap, ok := params.(map[string]interface{}); ok && paramsMap[ParamChannelID] != nil {
 			return true
 		}
 	}
