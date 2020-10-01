@@ -92,7 +92,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	logger.Log().Tracef("call to method %s", rpcReq.Method)
 
 	user, err := auth.FromRequest(r)
-	if query.MethodRequiresWallet(rpcReq.Method) {
+	if query.MethodRequiresWallet(rpcReq.Method, rpcReq.Params) {
 		authErr := GetAuthError(user, err)
 		if authErr != nil {
 			w.Write(rpcerrors.ErrorToJSON(authErr))

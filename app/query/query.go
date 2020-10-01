@@ -49,7 +49,7 @@ func NewQuery(req *jsonrpc.RPCRequest, walletID string) (*Query, error) {
 			} else {
 				q.Request.Params = map[string]interface{}{ParamWalletID: q.WalletID}
 			}
-		} else if MethodRequiresWallet(q.Method()) {
+		} else if MethodRequiresWallet(q.Method(), q.Params()) {
 			return nil, rpcerrors.NewAuthRequiredError()
 		}
 	}
@@ -88,7 +88,12 @@ func (q *Query) newResponse() *jsonrpc.RPCResponse {
 }
 
 // MethodRequiresWallet returns true for methods that require wallet_id
-func MethodRequiresWallet(method string) bool {
+func MethodRequiresWallet(method string, params interface{}) bool {
+	if method == MethodCommentReactList && params != nil {
+		if paramsMap, ok := params.(map[string]string); ok && paramsMap[ParamChannelID] != "" {
+			return true
+		}
+	}
 	return !methodInList(method, relaxedMethods)
 }
 
