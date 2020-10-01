@@ -43,3 +43,22 @@ func TestQueryIsAuthenticated(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, q.IsAuthenticated())
 }
+
+func TestMethodRequiresWallet(t *testing.T) {
+	for _, m := range walletSpecificMethods {
+		if methodInList(m, relaxedMethods) {
+			assert.False(t, MethodRequiresWallet(m, nil), m)
+		} else {
+			assert.True(t, MethodRequiresWallet(m, nil), m)
+		}
+	}
+	assert.True(t, MethodRequiresWallet(MethodCommentReactList, map[string]string{
+		ParamChannelID: "f77ff625ccf2401d6f47f9bfd7d17b8bb370bda7"}))
+	assert.False(t, MethodRequiresWallet(MethodCommentReactList, nil))
+}
+
+func TestMethodAcceptsWallet(t *testing.T) {
+	for _, m := range walletSpecificMethods {
+		assert.True(t, MethodAcceptsWallet(m), m)
+	}
+}

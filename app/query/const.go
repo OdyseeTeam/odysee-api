@@ -3,16 +3,17 @@ package query
 const (
 	cacheResolveLongerThan = 10
 
-	MethodGet            = "get"
-	MethodFileList       = "file_list"
-	MethodAccountList    = "account_list"
-	MethodStatus         = "status"
-	MethodResolve        = "resolve"
-	MethodClaimSearch    = "claim_search"
-	MethodPurchaseCreate = "purchase_create"
-	MethodWalletBalance  = "wallet_balance"
-	MethodWalletSend     = "wallet_send"
-	MethodSyncApply      = "sync_apply"
+	MethodGet              = "get"
+	MethodFileList         = "file_list"
+	MethodAccountList      = "account_list"
+	MethodStatus           = "status"
+	MethodResolve          = "resolve"
+	MethodClaimSearch      = "claim_search"
+	MethodPurchaseCreate   = "purchase_create"
+	MethodWalletBalance    = "wallet_balance"
+	MethodWalletSend       = "wallet_send"
+	MethodSyncApply        = "sync_apply"
+	MethodCommentReactList = "comment_react_list"
 
 	ParamStreamingUrl    = "streaming_url"
 	ParamPurchaseReceipt = "purchase_receipt"
@@ -20,6 +21,7 @@ const (
 	ParamWalletID        = "wallet_id"
 	ParamUrls            = "urls"
 	ParamNewSDKServer    = "new_sdk_server"
+	ParamChannelID       = "channel_id"
 )
 
 var forbiddenParams = []string{ParamAccountID, ParamNewSDKServer}
@@ -34,7 +36,7 @@ var relaxedMethods = []string{
 	"stream_cost_estimate",
 	"claim_search",
 	"comment_list",
-	"comment_react_list",
+	MethodCommentReactList,
 	"version",
 	"routing_table_get",
 }
