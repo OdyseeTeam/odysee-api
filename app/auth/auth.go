@@ -21,9 +21,9 @@ var (
 	ErrNoAuthInfo = errors.Base("authentication token missing")
 )
 
-type ctxKey int
-
 const contextKey ctxKey = iota
+
+type ctxKey int
 
 type result struct {
 	user *models.User
