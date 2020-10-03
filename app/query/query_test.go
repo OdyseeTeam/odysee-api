@@ -52,9 +52,6 @@ func TestMethodRequiresWallet(t *testing.T) {
 			assert.True(t, MethodRequiresWallet(m, nil), m)
 		}
 	}
-	assert.True(t, MethodRequiresWallet(MethodCommentReactList, map[string]interface{}{
-		ParamChannelID: "f77ff625ccf2401d6f47f9bfd7d17b8bb370bda7"}))
-	assert.False(t, MethodRequiresWallet(MethodCommentReactList, nil))
 }
 
 func TestMethodAcceptsWallet(t *testing.T) {
