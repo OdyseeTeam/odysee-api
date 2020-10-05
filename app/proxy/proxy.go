@@ -38,17 +38,17 @@ type observer struct {
 }
 
 func newObserver() *observer {
-	return &observer{metrics.TimerStart()}
+	return &observer{metrics.StartTimer()}
 }
 
 func (o *observer) observeFailure(method, endpoint, kind string) {
-	o.Done()
+	o.Stop()
 	metrics.ProxyE2ECallDurations.WithLabelValues(method, endpoint).Observe(o.Duration)
 	metrics.ProxyE2ECallFailedDurations.WithLabelValues(method, endpoint, kind).Observe(o.Duration)
 }
 
 func (o *observer) observeSuccess(method, endpoint string) {
-	o.Done()
+	o.Stop()
 	metrics.ProxyE2ECallDurations.WithLabelValues(method, endpoint).Observe(o.Duration)
 }
 
