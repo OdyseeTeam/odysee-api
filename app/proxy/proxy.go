@@ -33,13 +33,13 @@ import (
 
 var logger = monitor.NewModuleLogger("proxy")
 
-// observeFailure requires metrics.Measure middleware to be present on the request
+// observeFailure requires metrics.MeasureMiddleware middleware to be present on the request
 func observeFailure(d float64, method, endpoint, kind string) {
 	metrics.ProxyE2ECallDurations.WithLabelValues(method, endpoint).Observe(d)
 	metrics.ProxyE2ECallFailedDurations.WithLabelValues(method, endpoint, kind).Observe(d)
 }
 
-// observeSuccess requires metrics.Measure middleware to be present on the request
+// observeSuccess requires metrics.MeasureMiddleware middleware to be present on the request
 func observeSuccess(d float64, method, endpoint string) {
 	metrics.ProxyE2ECallDurations.WithLabelValues(method, endpoint).Observe(d)
 }
