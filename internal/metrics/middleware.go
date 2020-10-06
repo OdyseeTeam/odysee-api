@@ -13,7 +13,9 @@ type key int
 
 const timerContextKey key = iota
 
-// Chain chains multiple middleware together
+// Measure middleware starts a timer whenever a request is performed.
+// Note that it doesn't catch any metrics by itself,
+// HTTP handlers are expected to add their own by calling AddObserver.
 func Measure() mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -27,6 +29,7 @@ func Measure() mux.MiddlewareFunc {
 	}
 }
 
+// AddObserver adds Prometheus metric to a chain of observers for a given HTTP request.
 func AddObserver(r *http.Request, o prometheus.Observer) error {
 	v := r.Context().Value(timerContextKey)
 	if v == nil {
