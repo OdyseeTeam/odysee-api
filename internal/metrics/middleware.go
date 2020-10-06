@@ -14,6 +14,7 @@ type key int
 const timerContextKey key = iota
 
 // Measure middleware starts a timer whenever a request is performed.
+// It should be added as first in the chain of middlewares.
 // Note that it doesn't catch any metrics by itself,
 // HTTP handlers are expected to add their own by calling AddObserver.
 func Measure() mux.MiddlewareFunc {
@@ -38,4 +39,15 @@ func AddObserver(r *http.Request, o prometheus.Observer) error {
 	t := v.(*Timer)
 	t.AddObserver(o)
 	return nil
+}
+
+// GetDuration returns current duration of the request in seconds.
+// Returns a negative value when Measure middleware is not present.
+func GetDuration(r *http.Request) float64 {
+	v := r.Context().Value(timerContextKey)
+	if v == nil {
+		return -1
+	}
+	t := v.(*Timer)
+	return t.GetDuration()
 }

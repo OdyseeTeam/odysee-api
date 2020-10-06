@@ -33,36 +33,26 @@ import (
 
 var logger = monitor.NewModuleLogger("proxy")
 
-type observer struct {
-	*metrics.Timer
+// observeFailure requires metrics.Measure middleware to be present on the request
+func observeFailure(d float64, method, endpoint, kind string) {
+	metrics.ProxyE2ECallDurations.WithLabelValues(method, endpoint).Observe(d)
+	metrics.ProxyE2ECallFailedDurations.WithLabelValues(method, endpoint, kind).Observe(d)
 }
 
-func newObserver() *observer {
-	return &observer{metrics.StartTimer()}
-}
-
-func (o *observer) observeFailure(method, endpoint, kind string) {
-	o.Stop()
-	metrics.ProxyE2ECallDurations.WithLabelValues(method, endpoint).Observe(o.Duration)
-	metrics.ProxyE2ECallFailedDurations.WithLabelValues(method, endpoint, kind).Observe(o.Duration)
-}
-
-func (o *observer) observeSuccess(method, endpoint string) {
-	o.Stop()
-	metrics.ProxyE2ECallDurations.WithLabelValues(method, endpoint).Observe(o.Duration)
+// observeSuccess requires metrics.Measure middleware to be present on the request
+func observeSuccess(d float64, method, endpoint string) {
+	metrics.ProxyE2ECallDurations.WithLabelValues(method, endpoint).Observe(d)
 }
 
 // Handle forwards client JSON-RPC request to proxy.
 func Handle(w http.ResponseWriter, r *http.Request) {
 	responses.AddJSONContentType(w)
 
-	o := newObserver()
-
 	if r.Body == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write(rpcerrors.NewJSONParseError(errors.Err("empty request body")).JSON())
 
-		o.observeFailure("", "", metrics.FailureKindClient)
+		observeFailure(metrics.GetDuration(r), "", "", metrics.FailureKindClient)
 		logger.Log().Debugf("empty request body")
 		return
 	}
@@ -72,7 +62,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write(rpcerrors.NewJSONParseError(errors.Err("error reading request body")).JSON())
 
-		o.observeFailure("", "", metrics.FailureKindClient)
+		observeFailure(metrics.GetDuration(r), "", "", metrics.FailureKindClient)
 		logger.Log().Debugf("error reading request body: %v", err.Error())
 
 		return
@@ -83,7 +73,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.Write(rpcerrors.NewJSONParseError(err).JSON())
 
-		o.observeFailure("", "", metrics.FailureKindClientJSON)
+		observeFailure(metrics.GetDuration(r), "", "", metrics.FailureKindClientJSON)
 		logger.Log().Debugf("error unmarshaling request body: %v", err)
 
 		return
@@ -96,7 +86,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		authErr := GetAuthError(user, err)
 		if authErr != nil {
 			w.Write(rpcerrors.ErrorToJSON(authErr))
-			o.observeFailure(rpcReq.Method, "", metrics.FailureKindAuth)
+			observeFailure(metrics.GetDuration(r), rpcReq.Method, "", metrics.FailureKindAuth)
 
 			return
 		}
@@ -140,7 +130,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		w.Write(rpcerrors.ToJSON(err))
 
 		logger.Log().Errorf("error calling lbrynet: %v, request: %+v", err, rpcReq)
-		o.observeFailure(rpcReq.Method, sdkAddress, metrics.FailureKindNet)
+		observeFailure(metrics.GetDuration(r), rpcReq.Method, sdkAddress, metrics.FailureKindNet)
 
 		return
 	}
@@ -151,20 +141,20 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		w.Write(rpcerrors.NewInternalError(err).JSON())
 
 		logger.Log().Errorf("error marshaling response: %v", err)
-		o.observeFailure(rpcReq.Method, sdkAddress, metrics.FailureKindRPCJSON)
+		observeFailure(metrics.GetDuration(r), rpcReq.Method, sdkAddress, metrics.FailureKindRPCJSON)
 
 		return
 	}
 
 	if rpcRes.Error != nil {
-		o.observeFailure(rpcReq.Method, sdkAddress, metrics.FailureKindRPC)
+		observeFailure(metrics.GetDuration(r), rpcReq.Method, sdkAddress, metrics.FailureKindRPC)
 		logger.WithFields(logrus.Fields{
 			"method":   rpcReq.Method,
 			"endpoint": sdkAddress,
 			"response": rpcRes.Error,
 		}).Errorf("proxy handler got rpc error: %v", rpcRes.Error)
 	} else {
-		o.observeSuccess(rpcReq.Method, sdkAddress)
+		observeSuccess(metrics.GetDuration(r), rpcReq.Method, sdkAddress)
 	}
 
 	w.Write(serialized)

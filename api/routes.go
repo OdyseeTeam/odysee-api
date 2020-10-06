@@ -61,6 +61,7 @@ func defaultMiddlewares(rt *sdkrouter.Router, internalAPIHost string) mux.Middle
 	authProvider := auth.NewIAPIProvider(rt, internalAPIHost)
 	memCache := cache.NewMemoryCache()
 	return middleware.Chain(
+		metrics.Measure(),
 		ip.Middleware,
 		sdkrouter.Middleware(rt),
 		auth.Middleware(authProvider),

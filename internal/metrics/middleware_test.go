@@ -88,3 +88,33 @@ func TestAddObserverMissingMiddleware(t *testing.T) {
 		middleware.Apply(waitingMiddleware(), handler).ServeHTTP(rr, r)
 	})
 }
+
+func TestGetDuration(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(10 * time.Millisecond)
+		d := GetDuration(r)
+		assert.Greater(t, d, float64(0.005))
+	}
+
+	r, err := http.NewRequest("POST", "/", nil)
+	require.NoError(t, err)
+	rr := httptest.NewRecorder()
+	assert.NotPanics(t, func() {
+		middleware.Apply(middleware.Chain(Measure(), waitingMiddleware()), handler).ServeHTTP(rr, r)
+	})
+}
+
+func TestGetDurationNoMiddleware(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(10 * time.Millisecond)
+		d := GetDuration(r)
+		assert.Less(t, d, float64(0))
+	}
+
+	r, err := http.NewRequest("POST", "/", nil)
+	require.NoError(t, err)
+	rr := httptest.NewRecorder()
+	assert.NotPanics(t, func() {
+		middleware.Apply(middleware.Chain(waitingMiddleware()), handler).ServeHTTP(rr, r)
+	})
+}

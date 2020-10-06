@@ -31,6 +31,13 @@ func (t *Timer) Stop() float64 {
 	return t.Duration
 }
 
+func (t *Timer) GetDuration() float64 {
+	if t.Duration == 0 {
+		return time.Since(t.Started).Seconds()
+	}
+	return t.Duration
+}
+
 func (t *Timer) String() string {
-	return fmt.Sprintf("%.2f", t.Duration)
+	return fmt.Sprintf("%.2f", t.GetDuration())
 }
