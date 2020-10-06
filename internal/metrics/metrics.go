@@ -59,7 +59,7 @@ var (
 			Help:      "End-to-end method call latency distributions",
 			Buckets:   callsSecondsBuckets,
 		},
-		[]string{"method", "endpoint"},
+		[]string{"method"},
 	)
 	ProxyE2ECallFailedDurations = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -69,7 +69,7 @@ var (
 			Help:      "Failed end-to-end method call latency distributions",
 			Buckets:   callsSecondsBuckets,
 		},
-		[]string{"method", "endpoint", "kind"},
+		[]string{"method", "kind"},
 	)
 	ProxyE2ECallCounter = promauto.NewCounterVec(
 		prometheus.CounterOpts{
@@ -78,7 +78,7 @@ var (
 			Name:      "total_count",
 			Help:      "End-to-end method call count",
 		},
-		[]string{"method", "endpoint"},
+		[]string{"method"},
 	)
 	ProxyE2ECallFailedCounter = promauto.NewCounterVec(
 		prometheus.CounterOpts{
@@ -87,7 +87,7 @@ var (
 			Name:      "failed_count",
 			Help:      "Failed end-to-end method call count",
 		},
-		[]string{"method", "endpoint", "kind"},
+		[]string{"method", "kind"},
 	)
 
 	ProxyCallDurations = promauto.NewHistogramVec(
