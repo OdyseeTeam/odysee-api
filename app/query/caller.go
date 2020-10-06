@@ -200,11 +200,13 @@ func (c *Caller) SendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 
 		c.Duration = time.Since(start).Seconds()
 		metrics.ProxyCallDurations.WithLabelValues(q.Method(), c.endpoint).Observe(c.Duration)
+		metrics.ProxyCallCounter.WithLabelValues(q.Method(), c.endpoint).Inc()
 
 		// Generally a HTTP transport failure (connect error etc)
 		if err != nil {
 			logger.Log().Errorf("error sending query to %v: %v", c.endpoint, err)
 			metrics.ProxyCallFailedDurations.WithLabelValues(q.Method(), c.endpoint, metrics.FailureKindNet).Observe(c.Duration)
+			metrics.ProxyCallFailedCounter.WithLabelValues(q.Method(), c.endpoint, metrics.FailureKindNet).Inc()
 			return nil, errors.Err(err)
 		}
 
@@ -262,6 +264,7 @@ func (c *Caller) SendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 		logFields["response"] = r.Error
 		logEntry.Errorf("rpc call error: %v", r.Error.Message)
 		metrics.ProxyCallFailedDurations.WithLabelValues(q.Method(), c.endpoint, metrics.FailureKindRPC).Observe(c.Duration)
+		metrics.ProxyCallFailedCounter.WithLabelValues(q.Method(), c.endpoint, metrics.FailureKindRPC).Inc()
 	} else {
 		if config.ShouldLogResponses() {
 			logFields["response"] = r

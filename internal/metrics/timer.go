@@ -8,30 +8,36 @@ import (
 )
 
 type Timer struct {
-	Started  time.Time
-	Duration float64
-	hist     prometheus.Histogram
+	Started   time.Time
+	Duration  float64
+	observers []prometheus.Observer
 }
 
-func TimerStart() *Timer {
+func StartTimer() *Timer {
 	return &Timer{Started: time.Now()}
 }
 
-func (t *Timer) Observe(hist prometheus.Histogram) *Timer {
-	t.hist = hist
-	return t
+func (t *Timer) AddObserver(o prometheus.Observer) {
+	t.observers = append(t.observers, o)
 }
 
-func (t *Timer) Done() float64 {
+func (t *Timer) Stop() float64 {
 	if t.Duration == 0 {
 		t.Duration = time.Since(t.Started).Seconds()
-		if t.hist != nil {
-			t.hist.Observe(t.Duration)
+		for _, o := range t.observers {
+			o.Observe(t.Duration)
 		}
 	}
 	return t.Duration
 }
 
+func (t *Timer) GetDuration() float64 {
+	if t.Duration == 0 {
+		return time.Since(t.Started).Seconds()
+	}
+	return t.Duration
+}
+
 func (t *Timer) String() string {
-	return fmt.Sprintf("%.2f", t.Duration)
+	return fmt.Sprintf("%.2f", t.GetDuration())
 }

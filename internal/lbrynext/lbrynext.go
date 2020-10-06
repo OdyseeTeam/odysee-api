@@ -56,6 +56,8 @@ func experimentNewSdkParam(c *query.Caller, hctx *query.HookContext) (*jsonrpc.R
 
 			metrics.LbrynetXCallDurations.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupControl).Observe(c.Duration)
 			metrics.LbrynetXCallDurations.WithLabelValues(q.Method(), cc.Endpoint(), metrics.GroupExperimental).Observe(cc.Duration)
+			metrics.LbrynetXCallCounter.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupControl).Inc()
+			metrics.LbrynetXCallCounter.WithLabelValues(q.Method(), cc.Endpoint(), metrics.GroupExperimental).Inc()
 
 			log := logger.Log().WithField("method", query.MethodResolve)
 			if err != nil {
@@ -67,6 +69,9 @@ func experimentNewSdkParam(c *query.Caller, hctx *query.HookContext) (*jsonrpc.R
 				metrics.LbrynetXCallFailedDurations.WithLabelValues(
 					q.Method(), cc.Endpoint(), metrics.GroupExperimental, metrics.FailureKindLbrynetXMismatch,
 				).Observe(cc.Duration)
+				metrics.LbrynetXCallFailedCounter.WithLabelValues(
+					q.Method(), cc.Endpoint(), metrics.GroupExperimental, metrics.FailureKindLbrynetXMismatch,
+				).Inc()
 
 				var requestStr string
 				request, err := json.Marshal(q.Request)
@@ -106,6 +111,8 @@ func experimentParallel(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCR
 
 		metrics.LbrynetXCallDurations.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupControl).Observe(c.Duration)
 		metrics.LbrynetXCallDurations.WithLabelValues(q.Method(), cc.Endpoint(), metrics.GroupExperimental).Observe(cc.Duration)
+		metrics.LbrynetXCallCounter.WithLabelValues(q.Method(), c.Endpoint(), metrics.GroupControl).Inc()
+		metrics.LbrynetXCallCounter.WithLabelValues(q.Method(), cc.Endpoint(), metrics.GroupExperimental).Inc()
 
 		log := logger.Log().WithField("method", query.MethodResolve)
 		if err != nil {
@@ -117,6 +124,9 @@ func experimentParallel(c *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCR
 			metrics.LbrynetXCallFailedDurations.WithLabelValues(
 				q.Method(), cc.Endpoint(), metrics.GroupExperimental, metrics.FailureKindLbrynetXMismatch,
 			).Observe(cc.Duration)
+			metrics.LbrynetXCallFailedCounter.WithLabelValues(
+				q.Method(), cc.Endpoint(), metrics.GroupExperimental, metrics.FailureKindLbrynetXMismatch,
+			).Inc()
 
 			msg := fmt.Sprintf("experimental `%v` call result differs", q.Method())
 			if config.IsProduction() {
