@@ -55,7 +55,7 @@ var (
 		prometheus.HistogramOpts{
 			Namespace: nsProxy,
 			Subsystem: "e2e_calls",
-			Name:      "total",
+			Name:      "total_seconds",
 			Help:      "End-to-end method call latency distributions",
 			Buckets:   callsSecondsBuckets,
 		},
@@ -65,9 +65,27 @@ var (
 		prometheus.HistogramOpts{
 			Namespace: nsProxy,
 			Subsystem: "e2e_calls",
-			Name:      "failed",
+			Name:      "failed_seconds",
 			Help:      "Failed end-to-end method call latency distributions",
 			Buckets:   callsSecondsBuckets,
+		},
+		[]string{"method", "endpoint", "kind"},
+	)
+	ProxyE2ECallCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: nsProxy,
+			Subsystem: "e2e_calls",
+			Name:      "total_count",
+			Help:      "End-to-end method call count",
+		},
+		[]string{"method", "endpoint"},
+	)
+	ProxyE2ECallFailedCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: nsProxy,
+			Subsystem: "e2e_calls",
+			Name:      "failed_count",
+			Help:      "Failed end-to-end method call count",
 		},
 		[]string{"method", "endpoint", "kind"},
 	)
@@ -89,6 +107,24 @@ var (
 			Name:      "failed_seconds",
 			Help:      "Failed method call latency distributions",
 			Buckets:   callsSecondsBuckets,
+		},
+		[]string{"method", "endpoint", "kind"},
+	)
+	ProxyCallCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: nsProxy,
+			Subsystem: "calls",
+			Name:      "total_count",
+			Help:      "Method call count",
+		},
+		[]string{"method", "endpoint"},
+	)
+	ProxyCallFailedCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: nsProxy,
+			Subsystem: "calls",
+			Name:      "failed_count",
+			Help:      "Failed method call count",
 		},
 		[]string{"method", "endpoint", "kind"},
 	)
@@ -206,6 +242,24 @@ var (
 			Name:      "failed_seconds",
 			Help:      "Failed method call latency distributions",
 			Buckets:   callsSecondsBuckets,
+		},
+		[]string{"method", "endpoint", "group", "kind"},
+	)
+	LbrynetXCallCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: nsLbrynext,
+			Subsystem: "calls",
+			Name:      "total_count",
+			Help:      "Method call count",
+		},
+		[]string{"method", "endpoint", "group"},
+	)
+	LbrynetXCallFailedCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: nsLbrynext,
+			Subsystem: "calls",
+			Name:      "failed_count",
+			Help:      "Failed method call count",
 		},
 		[]string{"method", "endpoint", "group", "kind"},
 	)

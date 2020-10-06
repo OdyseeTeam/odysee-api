@@ -37,11 +37,14 @@ var logger = monitor.NewModuleLogger("proxy")
 func observeFailure(d float64, method, endpoint, kind string) {
 	metrics.ProxyE2ECallDurations.WithLabelValues(method, endpoint).Observe(d)
 	metrics.ProxyE2ECallFailedDurations.WithLabelValues(method, endpoint, kind).Observe(d)
+	metrics.ProxyE2ECallCounter.WithLabelValues(method, endpoint).Inc()
+	metrics.ProxyE2ECallFailedCounter.WithLabelValues(method, endpoint, kind).Inc()
 }
 
 // observeSuccess requires metrics.MeasureMiddleware middleware to be present on the request
 func observeSuccess(d float64, method, endpoint string) {
 	metrics.ProxyE2ECallDurations.WithLabelValues(method, endpoint).Observe(d)
+	metrics.ProxyE2ECallCounter.WithLabelValues(method, endpoint).Inc()
 }
 
 // Handle forwards client JSON-RPC request to proxy.
