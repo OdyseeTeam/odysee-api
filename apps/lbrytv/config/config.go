@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	cfg "github.com/lbryio/lbrytv/config"
 	"github.com/lbryio/lbrytv/models"
@@ -144,4 +145,8 @@ func GetLbrynetXServer() string {
 
 func GetLbrynetXPercentage() int {
 	return Config.Viper.GetInt("LbrynetXPercentage")
+}
+
+func GetTokenCacheTimeout() time.Duration {
+	return Config.Viper.GetDuration("TokenCacheTimeout") * time.Second
 }

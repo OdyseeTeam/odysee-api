@@ -14,6 +14,7 @@ import (
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/lbrynet"
+	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/test"
@@ -167,6 +168,30 @@ func TestGetUserWithWallet_ExistingUser(t *testing.T) {
 	count, err := models.Users().CountG()
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, count)
+}
+
+func TestGetUserWithWallet_CachedUser(t *testing.T) {
+	srv := test.RandServerAddress(t)
+	rt := sdkrouter.New(map[string]string{"a": srv})
+	setupDBTables()
+	url, cleanup := dummyAPI(srv)
+	defer cleanup()
+
+	token := "abc"
+	metricValue := metrics.GetMetricValue(metrics.AuthTokenCacheHits)
+
+	u, err := GetUserWithSDKServer(rt, url, token, "")
+	assert.NoError(t, err)
+	assert.NotNil(t, u)
+	assert.EqualValues(t, dummyUserID, u.ID)
+
+	assert.Equal(t, metricValue, metrics.GetMetricValue(metrics.AuthTokenCacheHits))
+
+	u, err = GetUserWithSDKServer(rt, url, token, "")
+	assert.NoError(t, err)
+	assert.NotNil(t, u)
+	assert.EqualValues(t, dummyUserID, u.ID)
+	assert.Equal(t, metricValue+1, metrics.GetMetricValue(metrics.AuthTokenCacheHits))
 }
 
 func TestGetUserWithWallet_ExistingUserWithoutSDKGetsAssignedOneOnRetrieve(t *testing.T) {

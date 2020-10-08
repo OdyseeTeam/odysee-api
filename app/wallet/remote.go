@@ -10,11 +10,16 @@ import (
 
 // remoteUser encapsulates internal-apis user data
 type remoteUser struct {
-	ID               int
-	HasVerifiedEmail bool
+	ID               int  `json:"user_id"`
+	HasVerifiedEmail bool `json:"has_verified_email"`
+	Cached           bool
 }
 
 func getRemoteUser(url, token string, remoteIP string) (remoteUser, error) {
+	if uid := currentCache.get(token); uid != 0 {
+		return remoteUser{ID: uid, HasVerifiedEmail: true, Cached: true}, nil
+	}
+
 	c := lbryinc.NewClient(token, &lbryinc.ClientOpts{
 		ServerAddress: url,
 		RemoteIP:      remoteIP,
@@ -32,8 +37,11 @@ func getRemoteUser(url, token string, remoteIP string) (remoteUser, error) {
 
 	metrics.IAPIAuthSuccessDurations.Observe(duration)
 
-	return remoteUser{
+	ru := remoteUser{
 		ID:               int(r["user_id"].(float64)),
 		HasVerifiedEmail: r["has_verified_email"].(bool),
-	}, nil
+	}
+	currentCache.set(token, ru.ID)
+
+	return ru, nil
 }

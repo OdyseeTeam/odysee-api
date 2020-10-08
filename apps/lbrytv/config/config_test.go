@@ -2,6 +2,7 @@ package config
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -25,4 +26,10 @@ func TestGetLbrynetServersNoDB(t *testing.T) {
 		len(Config.Viper.GetStringMapString(lbrynetServers)) > 0 {
 		t.Fatalf("Both %s and %s are set. This is a highlander situation...there can be only one.", deprecatedLbrynet, lbrynetServers)
 	}
+}
+
+func TestGetTokenCacheTimeout(t *testing.T) {
+	Config.Override("TokenCacheTimeout", 325)
+	defer Config.RestoreOverridden()
+	assert.Equal(t, 325*time.Second, GetTokenCacheTimeout())
 }
