@@ -10,6 +10,7 @@ import (
 
 	"github.com/lbryio/lbrytv-player/pkg/paid"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
+	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/server"
 
@@ -38,6 +39,8 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
+		c := wallet.NewTokenCache(config.GetTokenCacheTimeout())
+		wallet.SetTokenCache(c)
 
 		// ServeUntilShutdown is blocking, should be last
 		s.ServeUntilShutdown()

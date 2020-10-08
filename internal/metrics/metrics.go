@@ -3,12 +3,14 @@ package metrics
 import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	dto "github.com/prometheus/client_model/go"
 )
 
 const (
 	nsPlayer   = "player"
 	nsAPI      = "api"
 	nsIAPI     = "iapi"
+	nsAuth     = "auth"
 	nsProxy    = "proxy"
 	nsLbrynext = "lbrynext"
 	nsLbrynet  = "lbrynet"
@@ -47,6 +49,17 @@ var (
 		Subsystem: "auth",
 		Name:      "failed_seconds",
 		Help:      "Time to failed authentication response",
+	})
+
+	AuthTokenCacheHits = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: nsAuth,
+		Subsystem: "cache",
+		Name:      "hits",
+	})
+	AuthTokenCacheMisses = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: nsAuth,
+		Subsystem: "cache",
+		Name:      "misses",
 	})
 
 	callsSecondsBuckets = []float64{0.005, 0.025, 0.05, 0.1, 0.25, 0.4, 1, 2, 5, 10, 20, 60, 120, 300}
@@ -264,3 +277,11 @@ var (
 		[]string{"method", "endpoint", "group", "kind"},
 	)
 )
+
+func GetMetricValue(col prometheus.Collector) float64 {
+	c := make(chan prometheus.Metric, 1) // 1 for metric with no vector
+	col.Collect(c)                       // collect current metric value into the channel
+	m := dto.Metric{}
+	_ = (<-c).Write(&m) // read metric value from the channel
+	return *m.Counter.Value
+}
