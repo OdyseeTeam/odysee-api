@@ -54,7 +54,7 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 	log.Data["has_email"] = remoteUser.HasVerifiedEmail
 	log.Debugf("user authenticated")
 
-	ctx, cancelFn := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelFn()
 
 	var localUser *models.User
