@@ -44,3 +44,7 @@ func (c *tokenCache) get(token string) int {
 	metrics.AuthTokenCacheHits.Inc()
 	return uid.(int)
 }
+
+func (c *tokenCache) flush() {
+	c.cache.Flush()
+}

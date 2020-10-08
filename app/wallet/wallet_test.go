@@ -46,8 +46,9 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func setupDBTables() {
+func setupTest() {
 	storage.Conn.Truncate([]string{"users"})
+	currentCache.flush()
 }
 
 func dummyAPI(sdkAddress string) (string, func()) {
@@ -75,7 +76,7 @@ func dummyAPI(sdkAddress string) (string, func()) {
 }
 
 func TestGetUserWithWallet_NewUser(t *testing.T) {
-	setupDBTables()
+	setupTest()
 	srv := test.RandServerAddress(t)
 	rt := sdkrouter.New(map[string]string{"a": srv})
 	url, cleanup := dummyAPI(srv)
@@ -115,7 +116,7 @@ func TestGetUserWithWallet_NewUser(t *testing.T) {
 }
 
 func TestGetUserWithWallet_NewUserSDKError(t *testing.T) {
-	setupDBTables()
+	setupTest()
 	srv := test.RandServerAddress(t)
 	sdk := &models.LbrynetServer{
 		Name:    "failing",
@@ -136,7 +137,7 @@ func TestGetUserWithWallet_NewUserSDKError(t *testing.T) {
 }
 
 func TestGetUserWithWallet_NonexistentUser(t *testing.T) {
-	setupDBTables()
+	setupTest()
 
 	ts := test.MockHTTPServer(nil)
 	defer ts.Close()
@@ -154,9 +155,9 @@ func TestGetUserWithWallet_NonexistentUser(t *testing.T) {
 }
 
 func TestGetUserWithWallet_ExistingUser(t *testing.T) {
+	setupTest()
 	srv := test.RandServerAddress(t)
 	rt := sdkrouter.New(map[string]string{"a": srv})
-	setupDBTables()
 	url, cleanup := dummyAPI(srv)
 	defer cleanup()
 
@@ -171,9 +172,9 @@ func TestGetUserWithWallet_ExistingUser(t *testing.T) {
 }
 
 func TestGetUserWithWallet_CachedUser(t *testing.T) {
+	setupTest()
 	srv := test.RandServerAddress(t)
 	rt := sdkrouter.New(map[string]string{"a": srv})
-	setupDBTables()
 	url, cleanup := dummyAPI(srv)
 	defer cleanup()
 
@@ -195,7 +196,7 @@ func TestGetUserWithWallet_CachedUser(t *testing.T) {
 }
 
 func TestGetUserWithWallet_ExistingUserWithoutSDKGetsAssignedOneOnRetrieve(t *testing.T) {
-	setupDBTables()
+	setupTest()
 	userID := rand.Intn(999999)
 
 	reqChan := test.ReqChan()
@@ -231,7 +232,7 @@ func TestGetUserWithWallet_ExistingUserWithoutSDKGetsAssignedOneOnRetrieve(t *te
 }
 
 func TestGetUserWithWallet_NotVerifiedEmail(t *testing.T) {
-	setupDBTables()
+	setupTest()
 
 	ts := test.MockHTTPServer(nil)
 	defer ts.Close()
@@ -251,7 +252,7 @@ func TestGetUserWithWallet_NotVerifiedEmail(t *testing.T) {
 }
 
 func TestAssignSDKServerToUser_SDKAlreadyAssigned(t *testing.T) {
-	setupDBTables()
+	setupTest()
 	u := &models.User{ID: 4}
 	u.LbrynetServerID.SetValid(55)
 	rt := sdkrouter.New(config.GetLbrynetServers())
@@ -261,7 +262,7 @@ func TestAssignSDKServerToUser_SDKAlreadyAssigned(t *testing.T) {
 }
 
 func TestAssignSDKServerToUser_ConcurrentUpdates(t *testing.T) {
-	setupDBTables()
+	setupTest()
 	ts := test.MockHTTPServer(nil)
 	ts.NextResponse <- `{"id":1,"result":{"id":99,"name":"x.99.wallet"}}`
 
@@ -301,7 +302,7 @@ func TestAssignSDKServerToUser_ConcurrentUpdates(t *testing.T) {
 }
 
 func BenchmarkWalletCommands(b *testing.B) {
-	setupDBTables()
+	setupTest()
 
 	reqChan := test.ReqChan()
 	ts := test.MockHTTPServer(reqChan)
