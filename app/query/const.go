@@ -75,6 +75,7 @@ var walletSpecificMethods = []string{
 	"comment_hide",
 	"comment_update",
 	"comment_react",
+	"comment_pin",
 	MethodCommentReactList,
 
 	"claim_list",
