@@ -20,11 +20,11 @@ type tokenCache struct {
 }
 
 func init() {
-	SetTokenCache(NewTokenCache(5 * time.Minute))
+	SetTokenCache(NewTokenCache(10 * time.Minute))
 }
 
 func NewTokenCache(timeout time.Duration) *tokenCache {
-	return &tokenCache{cache: gocache.New(timeout, 10*time.Minute)}
+	return &tokenCache{cache: gocache.New(timeout, 45*time.Minute)}
 }
 
 func SetTokenCache(c *tokenCache) {
