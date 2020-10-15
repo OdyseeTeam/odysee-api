@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/getsentry/sentry-go"
+
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/cmd"
 	"github.com/lbryio/lbrytv/internal/monitor"
@@ -19,6 +21,11 @@ func main() {
 	// this is a *client-side* timeout (for when we make http requests, not when we serve them)
 	//https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
 	http.DefaultClient.Timeout = 20 * time.Second
+
+	defer func() {
+		sentry.Flush(3 * time.Second)
+		sentry.Recover()
+	}()
 
 	dbConfig := config.GetDatabase()
 	monitor.IsProduction = config.IsProduction()

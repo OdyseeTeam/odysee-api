@@ -50,7 +50,7 @@ func observeSuccess(d float64, method string) {
 func writeResponse(w http.ResponseWriter, b []byte) {
 	op := metrics.StartOperation("net")
 	op.AddTag("outgoing")
-	writeResponse(w, b)
+	w.Write(b)
 	op.End()
 }
 
