@@ -7,15 +7,16 @@ import (
 )
 
 const (
-	nsPlayer   = "player"
-	nsAPI      = "api"
-	nsIAPI     = "iapi"
-	nsAuth     = "auth"
-	nsProxy    = "proxy"
-	nsLbrynext = "lbrynext"
-	nsLbrynet  = "lbrynet"
-	nsUI       = "ui"
-	nsLbrytv   = "lbrytv"
+	nsPlayer     = "player"
+	nsAPI        = "api"
+	nsIAPI       = "iapi"
+	nsAuth       = "auth"
+	nsProxy      = "proxy"
+	nsLbrynext   = "lbrynext"
+	nsLbrynet    = "lbrynet"
+	nsUI         = "ui"
+	nsLbrytv     = "lbrytv"
+	nsOperations = "op"
 
 	LabelSource   = "source"
 	LabelInstance = "instance"
@@ -38,6 +39,8 @@ const (
 )
 
 var (
+	callsSecondsBuckets = []float64{0.005, 0.025, 0.05, 0.1, 0.25, 0.4, 1, 2, 5, 10, 20, 60, 120, 300}
+
 	IAPIAuthSuccessDurations = promauto.NewHistogram(prometheus.HistogramOpts{
 		Namespace: nsIAPI,
 		Subsystem: "auth",
@@ -61,8 +64,6 @@ var (
 		Subsystem: "cache",
 		Name:      "misses",
 	})
-
-	callsSecondsBuckets = []float64{0.005, 0.025, 0.05, 0.1, 0.25, 0.4, 1, 2, 5, 10, 20, 60, 120, 300}
 
 	ProxyE2ECallDurations = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -276,12 +277,27 @@ var (
 		},
 		[]string{"method", "endpoint", "group", "kind"},
 	)
+
+	operations = promauto.NewSummaryVec(
+		prometheus.SummaryOpts{
+			Namespace: nsOperations,
+			// Subsystem: "successful",
+			Name: "latency_seconds",
+			Help: "System operations latency seconds",
+		},
+		[]string{"name", "tag"},
+	)
 )
 
-func GetMetricValue(col prometheus.Collector) float64 {
+func GetMetric(col prometheus.Collector) dto.Metric {
 	c := make(chan prometheus.Metric, 1) // 1 for metric with no vector
 	col.Collect(c)                       // collect current metric value into the channel
 	m := dto.Metric{}
 	_ = (<-c).Write(&m) // read metric value from the channel
+	return m
+}
+
+func GetCounterValue(col prometheus.Collector) float64 {
+	m := GetMetric(col)
 	return *m.Counter.Value
 }

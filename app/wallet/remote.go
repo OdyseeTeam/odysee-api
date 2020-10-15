@@ -16,6 +16,10 @@ type remoteUser struct {
 }
 
 func getRemoteUser(url, token string, remoteIP string) (remoteUser, error) {
+	op := metrics.StartOperation(opName)
+	op.AddTag("get_remote_user")
+	defer op.End()
+
 	if uid := currentCache.get(token); uid != 0 {
 		return remoteUser{ID: uid, HasVerifiedEmail: true, Cached: true}, nil
 	}

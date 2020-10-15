@@ -16,6 +16,7 @@ import (
 	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/internal/errors"
+	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
 
@@ -33,6 +34,8 @@ const (
 	jsonRPCFieldName = "json_payload"
 
 	fileNameParam = "file_path"
+
+	opName = "publish"
 )
 
 // Handler has path to save uploads to
@@ -63,6 +66,10 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() {
+		op := metrics.StartOperation(opName)
+		op.AddTag("remove_file")
+		defer op.End()
+
 		if err := os.Remove(f.Name()); err != nil {
 			monitor.ErrorToSentry(err, map[string]string{"file_path": f.Name()})
 		}
@@ -74,23 +81,38 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var rpcReq *jsonrpc.RPCRequest
+	op := metrics.StartOperation("jsonrpc")
+	op.AddTag("unmarshal")
 	err = json.Unmarshal([]byte(r.FormValue(jsonRPCFieldName)), &rpcReq)
 	if err != nil {
 		w.Write(rpcerrors.NewJSONParseError(err).JSON())
 		return
 	}
+	op.End()
 
 	c := getCaller(sdkrouter.GetSDKAddress(user), f.Name(), user.ID, qCache)
 
+	op = metrics.StartOperation("sdk")
+	op.AddTag("call_publish")
 	rpcRes, err := c.Call(rpcReq)
+	op.End()
 	if err != nil {
-		monitor.ErrorToSentry(err, map[string]string{"request": fmt.Sprintf("%+v", rpcReq), "response": fmt.Sprintf("%+v", rpcRes)})
-		logger.Log().Errorf("error calling lbrynet: %v, request: %+v", err, rpcReq)
+		monitor.ErrorToSentry(
+			fmt.Errorf("error calling publish: %v", err),
+			map[string]string{
+				"request":  fmt.Sprintf("%+v", rpcReq),
+				"response": fmt.Sprintf("%+v", rpcRes),
+			},
+		)
+		logger.Log().Errorf("error calling publish: %v, request: %+v", err, rpcReq)
 		w.Write(rpcerrors.ToJSON(err))
 		return
 	}
 
+	op = metrics.StartOperation("jsonrpc")
+	op.AddTag("marshal")
 	serialized, err := responses.JSONRPCSerialize(rpcRes)
+	op.End()
 	if err != nil {
 		monitor.ErrorToSentry(err)
 		logger.Log().Errorf("error marshaling response: %v", err)
@@ -121,6 +143,10 @@ func (h Handler) CanHandle(r *http.Request, _ *mux.RouteMatch) bool {
 }
 
 func (h Handler) saveFile(r *http.Request, userID int) (*os.File, error) {
+	op := metrics.StartOperation(opName)
+	op.AddTag("save_file")
+	defer op.End()
+
 	log := logger.WithFields(logrus.Fields{"user_id": userID})
 
 	file, header, err := r.FormFile(fileFieldName)

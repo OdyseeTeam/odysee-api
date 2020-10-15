@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -17,5 +18,16 @@ func AddJSONContentType(w http.ResponseWriter) {
 }
 
 func JSONRPCSerialize(r *jsonrpc.RPCResponse) ([]byte, error) {
-	return json.MarshalIndent(r, "", "  ")
+	var (
+		b []byte
+		e error
+	)
+	defer errors.Recover(&e)
+	b, err := json.MarshalIndent(r, "", "  ")
+	if e != nil {
+		return b, e
+	} else if err != nil {
+		return b, err
+	}
+	return b, nil
 }

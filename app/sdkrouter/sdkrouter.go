@@ -67,6 +67,10 @@ func (r *Router) RandomServer() *models.LbrynetServer {
 }
 
 func (r *Router) reloadServersFromDB() {
+	op := metrics.StartOperation("db")
+	op.AddTag("get_servers")
+	defer op.End()
+
 	if !r.useDB || time.Since(r.lastLoaded) < 30*time.Second {
 		// don't hammer the DB
 		return
