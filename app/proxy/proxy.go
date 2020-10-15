@@ -47,23 +47,33 @@ func observeSuccess(d float64, method string) {
 	metrics.ProxyE2ECallCounter.WithLabelValues(method).Inc()
 }
 
+func writeResponse(w http.ResponseWriter, b []byte) {
+	op := metrics.StartOperation("net")
+	op.AddTag("outgoing")
+	writeResponse(b)
+	op.End()
+}
+
 // Handle forwards client JSON-RPC request to proxy.
 func Handle(w http.ResponseWriter, r *http.Request) {
 	responses.AddJSONContentType(w)
 
 	if r.Body == nil {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write(rpcerrors.NewJSONParseError(errors.Err("empty request body")).JSON())
+		writeResponse(rpcerrors.NewJSONParseError(errors.Err("empty request body")).JSON())
 
 		observeFailure(metrics.GetDuration(r), "", metrics.FailureKindClient)
 		logger.Log().Debugf("empty request body")
 		return
 	}
 
+	op := metrics.StartOperation("net")
+	op.AddTag("incoming")
 	body, err := ioutil.ReadAll(r.Body)
+	op.End()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write(rpcerrors.NewJSONParseError(errors.Err("error reading request body")).JSON())
+		writeResponse(rpcerrors.NewJSONParseError(errors.Err("error reading request body")).JSON())
 
 		observeFailure(metrics.GetDuration(r), "", metrics.FailureKindClient)
 		logger.Log().Debugf("error reading request body: %v", err.Error())
@@ -77,7 +87,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(body, &rpcReq)
 	op.End()
 	if err != nil {
-		w.Write(rpcerrors.NewJSONParseError(err).JSON())
+		writeResponse(rpcerrors.NewJSONParseError(err).JSON())
 
 		observeFailure(metrics.GetDuration(r), "", metrics.FailureKindClientJSON)
 		logger.Log().Debugf("error unmarshaling request body: %v", err)
@@ -91,7 +101,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	if query.MethodRequiresWallet(rpcReq.Method, rpcReq.Params) {
 		authErr := GetAuthError(user, err)
 		if authErr != nil {
-			w.Write(rpcerrors.ErrorToJSON(authErr))
+			writeResponse(rpcerrors.ErrorToJSON(authErr))
 			observeFailure(metrics.GetDuration(r), rpcReq.Method, metrics.FailureKindAuth)
 
 			return
@@ -136,7 +146,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		monitor.ErrorToSentry(err, map[string]string{"request": fmt.Sprintf("%+v", rpcReq), "response": fmt.Sprintf("%+v", rpcRes)})
-		w.Write(rpcerrors.ToJSON(err))
+		writeResponse(rpcerrors.ToJSON(err))
 
 		logger.Log().Errorf("error calling lbrynet: %v, request: %+v", err, rpcReq)
 		observeFailure(metrics.GetDuration(r), rpcReq.Method, metrics.FailureKindNet)
@@ -151,7 +161,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		monitor.ErrorToSentry(err)
 
-		w.Write(rpcerrors.NewInternalError(err).JSON())
+		writeResponse(rpcerrors.NewInternalError(err).JSON())
 
 		logger.Log().Errorf("error marshaling response: %v", err)
 		observeFailure(metrics.GetDuration(r), rpcReq.Method, metrics.FailureKindRPCJSON)
@@ -170,7 +180,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		observeSuccess(metrics.GetDuration(r), rpcReq.Method)
 	}
 
-	w.Write(serialized)
+	writeResponse(serialized)
 }
 
 // HandleCORS returns necessary CORS headers for pre-flight requests to proxy API
