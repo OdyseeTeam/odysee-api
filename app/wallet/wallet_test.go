@@ -179,20 +179,20 @@ func TestGetUserWithWallet_CachedUser(t *testing.T) {
 	defer cleanup()
 
 	token := "abc"
-	metricValue := metrics.GetMetricValue(metrics.AuthTokenCacheHits)
+	metricValue := metrics.GetCounterValue(metrics.AuthTokenCacheHits)
 
 	u, err := GetUserWithSDKServer(rt, url, token, "")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
 	assert.EqualValues(t, dummyUserID, u.ID)
 
-	assert.Equal(t, metricValue, metrics.GetMetricValue(metrics.AuthTokenCacheHits))
+	assert.Equal(t, metricValue, metrics.GetCounterValue(metrics.AuthTokenCacheHits))
 
 	u, err = GetUserWithSDKServer(rt, url, token, "")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
 	assert.EqualValues(t, dummyUserID, u.ID)
-	assert.Equal(t, metricValue+1, metrics.GetMetricValue(metrics.AuthTokenCacheHits))
+	assert.Equal(t, metricValue+1, metrics.GetCounterValue(metrics.AuthTokenCacheHits))
 }
 
 func TestGetUserWithWallet_ExistingUserWithoutSDKGetsAssignedOneOnRetrieve(t *testing.T) {

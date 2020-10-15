@@ -313,7 +313,10 @@ func fromCache(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
 		return nil, nil
 	}
 
+	op := metrics.StartOperation("jsonrpc")
+	op.AddTag("marshal")
 	s, err := json.Marshal(cached)
+	op.End()
 	if err != nil {
 		metrics.ProxyQueryCacheErrorCount.WithLabelValues(hctx.Query.Method()).Inc()
 		logger.Log().Errorf("error marshalling cached response")
@@ -321,7 +324,11 @@ func fromCache(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
 	}
 
 	response := hctx.Query.newResponse()
+
+	op = metrics.StartOperation("jsonrpc")
+	op.AddTag("unmarshal")
 	err = json.Unmarshal(s, &response)
+	op.End()
 	if err != nil {
 		metrics.ProxyQueryCacheErrorCount.WithLabelValues(hctx.Query.Method()).Inc()
 		logger.Log().Errorf("error unmarshalling cached response")
