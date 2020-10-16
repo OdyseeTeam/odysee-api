@@ -32,6 +32,7 @@ const (
 	FailureKindClientJSON       = "client_json"
 	FailureKindClient           = "client"
 	FailureKindAuth             = "auth"
+	FailureKindInternal         = "internal"
 	FailureKindLbrynetXMismatch = "xmismatch"
 
 	GroupControl      = "control"

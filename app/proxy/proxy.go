@@ -56,6 +56,8 @@ func writeResponse(w http.ResponseWriter, b []byte) {
 
 // Handle forwards client JSON-RPC request to proxy.
 func Handle(w http.ResponseWriter, r *http.Request) {
+	logger.Log().Infof("time spent before entering proxy handler: %.3fs", metrics.GetDuration(r))
+
 	responses.AddJSONContentType(w)
 
 	if r.Body == nil {
