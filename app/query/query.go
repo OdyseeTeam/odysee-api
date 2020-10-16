@@ -72,10 +72,23 @@ func (q *Query) IsAuthenticated() bool {
 	return q.WalletID != ""
 }
 
-// ParamsAsMap returns query params converted to plain map.
+// ParamsAsMap returns query params converted to a plain map.
+// Warning: will not copy the map so not concurrency-friendly.
 func (q *Query) ParamsAsMap() map[string]interface{} {
 	if paramsMap, ok := q.Params().(map[string]interface{}); ok {
 		return paramsMap
+	}
+	return nil
+}
+
+// CopyParamsAsMap returns a shallow copy of query params converted to a plain map.
+func (q *Query) CopyParamsAsMap() map[string]interface{} {
+	if paramsMap, ok := q.Params().(map[string]interface{}); ok {
+		paramsCopy := map[string]interface{}{}
+		for k, v := range paramsMap {
+			paramsCopy[k] = v
+		}
+		return paramsCopy
 	}
 	return nil
 }

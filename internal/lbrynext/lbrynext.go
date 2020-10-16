@@ -49,7 +49,7 @@ func experimentNewSdkParam(c *query.Caller, hctx *query.HookContext) (*jsonrpc.R
 			// This is done so the hook will not fire in a loop on repeated call
 			cc := c.CloneWithoutHook(c.Endpoint(), q.Method(), hookName)
 
-			params := q.ParamsAsMap()
+			params := q.CopyParamsAsMap()
 			params[query.ParamNewSDKServer] = config.GetLbrynetXServer()
 			q.Request.Params = params
 			xr, err := cc.SendQuery(q)

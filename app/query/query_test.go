@@ -32,6 +32,20 @@ func TestQueryParamsAsMap(t *testing.T) {
 	q, err = NewQuery(jsonrpc.NewRequest("claim_search", searchParams), "")
 	require.NoError(t, err)
 	assert.Equal(t, searchParams, q.ParamsAsMap())
+
+	q, err = NewQuery(jsonrpc.NewRequest("account_balance"), "123")
+	require.NoError(t, err, errors.Unwrap(err))
+	params := q.ParamsAsMap()
+	params["new_param"] = "new_param_value"
+	assert.Equal(t, params, q.ParamsAsMap())
+}
+
+func TestQueryCopyParamsAsMap(t *testing.T) {
+	q, err := NewQuery(jsonrpc.NewRequest("account_balance"), "123")
+	require.NoError(t, err, errors.Unwrap(err))
+	params := q.CopyParamsAsMap()
+	params["new_param"] = "new_param_value"
+	assert.NotEqual(t, params, q.ParamsAsMap())
 }
 
 func TestQueryIsAuthenticated(t *testing.T) {
