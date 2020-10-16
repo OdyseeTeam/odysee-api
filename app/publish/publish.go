@@ -43,6 +43,22 @@ type Handler struct {
 	UploadPath string
 }
 
+var method = "publish"
+
+// observeFailure requires metrics.MeasureMiddleware middleware to be present on the request
+func observeFailure(d float64, kind string) {
+	metrics.ProxyE2ECallDurations.WithLabelValues(method).Observe(d)
+	metrics.ProxyE2ECallFailedDurations.WithLabelValues(method, kind).Observe(d)
+	metrics.ProxyE2ECallCounter.WithLabelValues(method).Inc()
+	metrics.ProxyE2ECallFailedCounter.WithLabelValues(method, kind).Inc()
+}
+
+// observeSuccess requires metrics.MeasureMiddleware middleware to be present on the request
+func observeSuccess(d float64) {
+	metrics.ProxyE2ECallDurations.WithLabelValues(method).Observe(d)
+	metrics.ProxyE2ECallCounter.WithLabelValues(method).Inc()
+}
+
 // Handle is where HTTP upload is handled and passed on to Publisher.
 // It should be wrapped with users.Authenticator.Wrap before it can be used
 // in a mux.Router.
@@ -50,19 +66,24 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 	user, err := auth.FromRequest(r)
 	if authErr := proxy.GetAuthError(user, err); authErr != nil {
 		w.Write(rpcerrors.ErrorToJSON(authErr))
+		observeFailure(metrics.GetDuration(r), metrics.FailureKindAuth)
 		return
 	}
 	if sdkrouter.GetSDKAddress(user) == "" {
 		w.Write(rpcerrors.NewInternalError(errors.Err("user does not have sdk address assigned")).JSON())
 		logger.Log().Errorf("user %d does not have sdk address assigned", user.ID)
+		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
 		return
 	}
 
+	log := logger.WithFields(logrus.Fields{"user_id": user.ID, "method_handler": method})
+
 	f, err := h.saveFile(r, user.ID)
 	if err != nil {
-		logger.Log().Error(err)
+		log.Error(err)
 		monitor.ErrorToSentry(err)
 		w.Write(rpcerrors.NewInternalError(err).JSON())
+		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
 		return
 	}
 	defer func() {
@@ -86,6 +107,7 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal([]byte(r.FormValue(jsonRPCFieldName)), &rpcReq)
 	if err != nil {
 		w.Write(rpcerrors.NewJSONParseError(err).JSON())
+		observeFailure(metrics.GetDuration(r), metrics.FailureKindClientJSON)
 		return
 	}
 	op.End()
@@ -106,6 +128,7 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		)
 		logger.Log().Errorf("error calling publish: %v, request: %+v", err, rpcReq)
 		w.Write(rpcerrors.ToJSON(err))
+		observeFailure(metrics.GetDuration(r), metrics.FailureKindRPC)
 		return
 	}
 
@@ -117,10 +140,12 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		monitor.ErrorToSentry(err)
 		logger.Log().Errorf("error marshaling response: %v", err)
 		w.Write(rpcerrors.NewInternalError(err).JSON())
+		observeFailure(metrics.GetDuration(r), metrics.FailureKindRPCJSON)
 		return
 	}
 
 	w.Write(serialized)
+	observeSuccess(metrics.GetDuration(r))
 }
 
 func getCaller(sdkAddress, filename string, userID int, qCache cache.QueryCache) *query.Caller {
@@ -147,7 +172,7 @@ func (h Handler) saveFile(r *http.Request, userID int) (*os.File, error) {
 	op.AddTag("save_file")
 	defer op.End()
 
-	log := logger.WithFields(logrus.Fields{"user_id": userID})
+	log := logger.WithFields(logrus.Fields{"user_id": userID, "method_handler": method})
 
 	file, header, err := r.FormFile(fileFieldName)
 	if err != nil {
