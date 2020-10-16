@@ -63,7 +63,6 @@ func observeSuccess(d float64) {
 // It should be wrapped with users.Authenticator.Wrap before it can be used
 // in a mux.Router.
 func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
-
 	user, err := auth.FromRequest(r)
 	if authErr := proxy.GetAuthError(user, err); authErr != nil {
 		w.Write(rpcerrors.ErrorToJSON(authErr))
@@ -77,9 +76,11 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log := logger.WithFields(logrus.Fields{"user_id": user.ID, "method_handler": method})
+
 	f, err := h.saveFile(r, user.ID)
 	if err != nil {
-		logger.Log().Error(err)
+		log.Error(err)
 		monitor.ErrorToSentry(err)
 		w.Write(rpcerrors.NewInternalError(err).JSON())
 		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
@@ -171,7 +172,7 @@ func (h Handler) saveFile(r *http.Request, userID int) (*os.File, error) {
 	op.AddTag("save_file")
 	defer op.End()
 
-	log := logger.WithFields(logrus.Fields{"user_id": userID})
+	log := logger.WithFields(logrus.Fields{"user_id": userID, "method_handler": method})
 
 	file, header, err := r.FormFile(fileFieldName)
 	if err != nil {
