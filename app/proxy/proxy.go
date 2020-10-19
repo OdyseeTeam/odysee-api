@@ -48,10 +48,7 @@ func observeSuccess(d float64, method string) {
 }
 
 func writeResponse(w http.ResponseWriter, b []byte) {
-	op := metrics.StartOperation("net")
-	op.AddTag("outgoing")
 	w.Write(b)
-	op.End()
 }
 
 // Handle forwards client JSON-RPC request to proxy.
@@ -67,10 +64,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	op := metrics.StartOperation("net")
-	op.AddTag("incoming")
 	body, err := ioutil.ReadAll(r.Body)
-	op.End()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		writeResponse(w, rpcerrors.NewJSONParseError(errors.Err("error reading request body")).JSON())
@@ -82,10 +76,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var rpcReq *jsonrpc.RPCRequest
-	op = metrics.StartOperation("jsonrpc")
-	op.AddTag("unmarshal")
 	err = json.Unmarshal(body, &rpcReq)
-	op.End()
 	if err != nil {
 		writeResponse(w, rpcerrors.NewJSONParseError(err).JSON())
 
@@ -139,10 +130,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	lbrynext.InstallHooks(c)
 	c.Cache = qCache
 
-	op = metrics.StartOperation("sdk")
-	op.AddTag("call")
 	rpcRes, err := c.Call(rpcReq)
-	op.End()
 
 	if err != nil {
 		monitor.ErrorToSentry(err, map[string]string{"request": fmt.Sprintf("%+v", rpcReq), "response": fmt.Sprintf("%+v", rpcRes)})
@@ -154,10 +142,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	op = metrics.StartOperation("jsonrpc")
-	op.AddTag("marshal")
 	serialized, err := responses.JSONRPCSerialize(rpcRes)
-	op.End()
 	if err != nil {
 		monitor.ErrorToSentry(err)
 

@@ -153,8 +153,7 @@ func getOrCreateLocalUser(exec boil.Executor, remoteUserID int, log *logrus.Entr
 }
 
 func getDBUser(exec boil.Executor, id int) (*models.User, error) {
-	op := metrics.StartOperation("db")
-	op.AddTag("get_user")
+	op := metrics.StartOperation("db", "get_user")
 	defer op.End()
 
 	user, err := models.Users(
@@ -166,8 +165,7 @@ func getDBUser(exec boil.Executor, id int) (*models.User, error) {
 
 // GetDBUserG returns a database user with LbrynetServer selected, using the global executor.
 func GetDBUserG(id int) (*models.User, error) {
-	op := metrics.StartOperation("db")
-	op.AddTag("get_user")
+	op := metrics.StartOperation("db", "get_user")
 	defer op.End()
 
 	return models.Users(
@@ -179,8 +177,7 @@ func GetDBUserG(id int) (*models.User, error) {
 // assignSDKServerToUser permanently assigns an sdk to a user, and creates a wallet on that sdk for that user.
 // it ensures that the assigned sdk is set on user.R.LbrynetServer, so it can be accessed externally.
 func assignSDKServerToUser(exec boil.Executor, user *models.User, server *models.LbrynetServer, log *logrus.Entry) error {
-	op := metrics.StartOperation("db")
-	op.AddTag("update_user")
+	op := metrics.StartOperation("db", "update_user")
 	defer op.End()
 
 	if user.ID == 0 {
@@ -252,8 +249,7 @@ func assignSDKServerToUser(exec boil.Executor, user *models.User, server *models
 // It can recover from errors like existing wallets, but if a wallet is known to exist
 // (eg. a wallet ID stored in the database already), loadWallet() should be called instead.
 func Create(serverAddress string, userID int) error {
-	op := metrics.StartOperation(opName)
-	op.AddTag("create_or_load")
+	op := metrics.StartOperation(opName, "create_or_load")
 	defer op.End()
 
 	err := createWallet(serverAddress, userID)

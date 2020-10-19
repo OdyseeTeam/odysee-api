@@ -87,8 +87,7 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() {
-		op := metrics.StartOperation(opName)
-		op.AddTag("remove_file")
+		op := metrics.StartOperation(opName, "remove_file")
 		defer op.End()
 
 		if err := os.Remove(f.Name()); err != nil {
@@ -102,20 +101,16 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var rpcReq *jsonrpc.RPCRequest
-	op := metrics.StartOperation("jsonrpc")
-	op.AddTag("unmarshal")
 	err = json.Unmarshal([]byte(r.FormValue(jsonRPCFieldName)), &rpcReq)
 	if err != nil {
 		w.Write(rpcerrors.NewJSONParseError(err).JSON())
 		observeFailure(metrics.GetDuration(r), metrics.FailureKindClientJSON)
 		return
 	}
-	op.End()
 
 	c := getCaller(sdkrouter.GetSDKAddress(user), f.Name(), user.ID, qCache)
 
-	op = metrics.StartOperation("sdk")
-	op.AddTag("call_publish")
+	op := metrics.StartOperation("sdk", "call_publish")
 	rpcRes, err := c.Call(rpcReq)
 	op.End()
 	if err != nil {
@@ -132,10 +127,7 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	op = metrics.StartOperation("jsonrpc")
-	op.AddTag("marshal")
 	serialized, err := responses.JSONRPCSerialize(rpcRes)
-	op.End()
 	if err != nil {
 		monitor.ErrorToSentry(err)
 		logger.Log().Errorf("error marshaling response: %v", err)
@@ -168,8 +160,7 @@ func (h Handler) CanHandle(r *http.Request, _ *mux.RouteMatch) bool {
 }
 
 func (h Handler) saveFile(r *http.Request, userID int) (*os.File, error) {
-	op := metrics.StartOperation(opName)
-	op.AddTag("save_file")
+	op := metrics.StartOperation(opName, "save_file")
 	defer op.End()
 
 	log := logger.WithFields(logrus.Fields{"user_id": userID, "method_handler": method})

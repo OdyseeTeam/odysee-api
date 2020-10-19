@@ -16,13 +16,14 @@ type remoteUser struct {
 }
 
 func getRemoteUser(url, token string, remoteIP string) (remoteUser, error) {
-	op := metrics.StartOperation(opName)
-	op.AddTag("get_remote_user")
-	defer op.End()
-
+	op := metrics.StartOperation(opName, "get_cached_user")
 	if uid := currentCache.get(token); uid != 0 {
+		op.End()
 		return remoteUser{ID: uid, HasVerifiedEmail: true, Cached: true}, nil
 	}
+
+	op = metrics.StartOperation(opName, "get_remote_user")
+	defer op.End()
 
 	c := lbryinc.NewClient(token, &lbryinc.ClientOpts{
 		ServerAddress: url,

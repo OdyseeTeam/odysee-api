@@ -9,8 +9,7 @@ import (
 )
 
 func TestOperation(t *testing.T) {
-	op := StartOperation("db")
-	op.AddTag("wallet")
+	op := StartOperation("db", "wallet")
 
 	time.Sleep(20 * time.Millisecond)
 
