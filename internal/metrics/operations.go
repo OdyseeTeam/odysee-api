@@ -13,12 +13,12 @@ type Operation struct {
 	labels   prometheus.Labels
 }
 
-func StartOperation(name string) Operation {
-	return Operation{started: time.Now(), name: name, labels: prometheus.Labels{"name": name}}
+func StartOperation(name, tag string) Operation {
+	return Operation{started: time.Now(), name: name, labels: prometheus.Labels{"name": name, "tag": tag}}
 }
 
-func (o *Operation) AddTag(value string) {
-	o.labels["tag"] = value
+func (o Operation) DurationSeconds() float64 {
+	return time.Since(o.started).Seconds()
 }
 
 func (o Operation) End() {

@@ -34,10 +34,10 @@ git clone git@github.com:lbryio/lbry-desktop.git
 **4. Launch UI in lbry-desktop repo folder**
 
 ```
-LBRY_WEB_API=http://localhost:8080/api/v1/proxy yarn dev:web
+LBRY_WEB_API=http://localhost:8080 yarn dev:web
 ```
 
-**5. Open http://localhost:8081/ in Chrome**
+**5. Open http://localhost:9090/ in Chrome or Firefox for best experience**
 
 ## Running off the source (if you want to modify things)
 
