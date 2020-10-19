@@ -174,9 +174,7 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 	}
 
 	if res == nil {
-		t := time.Now()
 		res, err = c.SendQuery(q)
-		logger.Log().Infof("time spent sending query: %.4f", time.Since(t).Seconds())
 		if err != nil {
 			return nil, rpcerrors.NewSDKError(err)
 		}

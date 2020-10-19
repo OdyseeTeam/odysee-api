@@ -133,12 +133,14 @@ func getOrCreateLocalUser(exec boil.Executor, remoteUserID int, log *logrus.Entr
 
 	log.Infof("user not found in the database, creating")
 
+	op := metrics.StartOperation("db", "create_user")
 	u := &models.User{ID: remoteUserID}
 	err = u.Insert(exec, boil.Infer())
 	if err == nil {
 		metrics.LbrytvNewUsers.Inc()
 		return u, nil
 	}
+	op.End()
 
 	// Check if we encountered a primary key violation, it would mean another routine fired another
 	// request managed to create a user before us and we should retrieve that user record.
@@ -249,9 +251,6 @@ func assignSDKServerToUser(exec boil.Executor, user *models.User, server *models
 // It can recover from errors like existing wallets, but if a wallet is known to exist
 // (eg. a wallet ID stored in the database already), loadWallet() should be called instead.
 func Create(serverAddress string, userID int) error {
-	op := metrics.StartOperation(opName, "create_or_load")
-	defer op.End()
-
 	err := createWallet(serverAddress, userID)
 	if err == nil {
 		return nil
@@ -292,6 +291,9 @@ func Create(serverAddress string, userID int) error {
 // 	 // loadWallet() needs to be called before the wallet can be used
 //  }
 func createWallet(addr string, userID int) error {
+	op := metrics.StartOperation(opName, "create")
+	defer op.End()
+
 	_, err := ljsonrpc.NewClient(addr).WalletCreate(sdkrouter.WalletID(userID), &ljsonrpc.WalletCreateOpts{
 		SkipOnStartup: true, CreateAccount: true, SingleKey: true})
 	if err != nil {
@@ -306,6 +308,9 @@ func createWallet(addr string, userID int) error {
 //  WalletAlreadyLoaded - wallet is already loaded and operational
 //  WalletNotFound - wallet file does not exist and won't be loaded.
 func LoadWallet(addr string, userID int) error {
+	op := metrics.StartOperation(opName, "load")
+	defer op.End()
+
 	_, err := ljsonrpc.NewClient(addr).WalletAdd(sdkrouter.WalletID(userID))
 	if err != nil {
 		return lbrynet.NewWalletError(userID, err)
