@@ -2,7 +2,7 @@ version: "3.2"
 
 services:
   lbrynet:
-    image: lbry/lbrynet-tv:0.80.0
+    image: lbry/lbrynet-tv:0.83.0
     ports:
       - "5581:5279"
       - "5279:5279"
@@ -30,6 +30,10 @@ services:
       com.centurylinklabs.watchtower.enable: true
   postgres:
     image: postgres:11-alpine
+    command:
+      - -clogging_collector=on
+      - -clog_statement=all
+      - -clog_destination=stderr
     ports:
       - "5432:5432"
     volumes:
