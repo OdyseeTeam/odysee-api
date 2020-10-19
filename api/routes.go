@@ -12,7 +12,6 @@ import (
 	"github.com/lbryio/lbrytv/app/publish"
 	"github.com/lbryio/lbrytv/app/query/cache"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/app/wallet/tracker"
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/ip"
 	"github.com/lbryio/lbrytv/internal/metrics"
@@ -20,7 +19,6 @@ import (
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/status"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/volatiletech/sqlboiler/boil"
 )
 
 var logger = monitor.NewModuleLogger("api")
@@ -65,7 +63,6 @@ func defaultMiddlewares(rt *sdkrouter.Router, internalAPIHost string) mux.Middle
 		ip.Middleware,
 		sdkrouter.Middleware(rt),
 		auth.Middleware(authProvider),
-		tracker.Middleware(boil.GetDB()),
 		cache.Middleware(memCache),
 	)
 }
