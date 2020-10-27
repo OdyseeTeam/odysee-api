@@ -64,8 +64,7 @@ func (c *Connection) Connect() error {
 	dsn := MakeDSN(c.params)
 	c.logger.WithFields(logrus.Fields{"dsn": dsn}).Info("connecting to the DB")
 	var err error
-	var db *sqlx.DB
-
+	db, err := sqlx.Connect(c.dialect, dsn)
 	if err != nil {
 		c.logger.WithFields(logrus.Fields{"dsn": dsn}).Info("DB connection failed")
 		return err
