@@ -37,10 +37,16 @@ const (
 	txMaxRetries                  = 2
 )
 
-// GetUserWithWallet gets user by internal-apis auth token. If the user does not have a
+// GetUserWithSDKServer gets user by internal-apis auth token. If the user does not have a
 // wallet yet, they are assigned an SDK and a wallet is created for them on that SDK.
 func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemoteIP string) (*models.User, error) {
+	var localUser *models.User
 	log := logger.WithFields(logrus.Fields{monitor.TokenF: token, "ip": metaRemoteIP})
+
+	if cachedUser := currentCache.get(token); cachedUser != nil {
+		log.Debugf("user found in cache")
+		return cachedUser, nil
+	}
 
 	remoteUser, err := getRemoteUser(internalAPIHost, token, metaRemoteIP)
 	if err != nil {
@@ -59,7 +65,6 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelFn()
 
-	var localUser *models.User
 	err = inTx(ctx, storage.Conn.DB.DB, func(tx *sql.Tx) error {
 		localUser, err = getOrCreateLocalUser(tx, remoteUser.ID, log)
 		if err != nil {
@@ -74,6 +79,10 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 		}
 		return nil
 	})
+
+	if err == nil && localUser != nil {
+		currentCache.set(token, localUser)
+	}
 
 	return localUser, err
 }
