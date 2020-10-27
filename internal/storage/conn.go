@@ -13,8 +13,6 @@ import (
 	"github.com/volatiletech/sqlboiler/boil"
 )
 
-const maxDBConnectAttempts = 7
-
 // Handler implements the app database handler.
 type Handler interface {
 	MigrateUp()
@@ -66,17 +64,7 @@ func (c *Connection) Connect() error {
 	dsn := MakeDSN(c.params)
 	c.logger.WithFields(logrus.Fields{"dsn": dsn}).Info("connecting to the DB")
 	var err error
-	var db *sqlx.DB
-	for i := 0; i < maxDBConnectAttempts; i++ {
-		db, err = sqlx.Connect(c.dialect, dsn)
-		if err == nil {
-			break
-		}
-		secondsToWait := i + 1
-		c.logger.Log().Warningf("Attempt %d - could not connect to database...retry in %d seconds: %s", i, secondsToWait, err)
-		time.Sleep(time.Duration(secondsToWait) * time.Second)
-	}
-
+	db, err := sqlx.Connect(c.dialect, dsn)
 	if err != nil {
 		c.logger.WithFields(logrus.Fields{"dsn": dsn}).Info("DB connection failed")
 		return err

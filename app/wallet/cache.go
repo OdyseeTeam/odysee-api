@@ -5,6 +5,7 @@ import (
 
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/lbryio/lbrytv/models"
 
 	gocache "github.com/patrickmn/go-cache"
 )
@@ -31,18 +32,19 @@ func SetTokenCache(c *tokenCache) {
 	currentCache = c
 }
 
-func (c *tokenCache) set(token string, userID int) {
-	c.cache.Set(token, userID, gocache.DefaultExpiration)
+func (c *tokenCache) set(token string, user *models.User) {
+	c.cache.Set(token, *user, gocache.DefaultExpiration)
 }
 
-func (c *tokenCache) get(token string) int {
-	uid, ok := c.cache.Get(token)
+func (c *tokenCache) get(token string) *models.User {
+	obj, ok := c.cache.Get(token)
 	if !ok {
 		metrics.AuthTokenCacheMisses.Inc()
-		return 0
+		return nil
 	}
 	metrics.AuthTokenCacheHits.Inc()
-	return uid.(int)
+	user := obj.(models.User)
+	return &user
 }
 
 func (c *tokenCache) flush() {
