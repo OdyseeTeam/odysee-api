@@ -51,6 +51,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	internalRouter.Handle("/metrics", promhttp.Handler())
 
 	v2Router := r.PathPrefix("/api/v2").Subrouter()
+	v2Router.Use(defaultMiddlewares(sdkRouter, config.GetInternalAPIHost()))
 	v2Router.HandleFunc("/status", status.GetStatusV2).Methods(http.MethodGet)
 	v2Router.HandleFunc("/status", proxy.HandleCORS).Methods(http.MethodOptions)
 }
