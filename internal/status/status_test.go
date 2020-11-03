@@ -112,13 +112,13 @@ func TestGetStatusV2_Authenticated(t *testing.T) {
 	ts := test.MockHTTPServer(nil)
 	defer ts.Close()
 	ts.NextResponse <- `{
-	"success": true,
-	"error": null,
-	"data": {
-		"user_id": 123,
-		"has_verified_email": true
-  	}
-}`
+		"success": true,
+		"error": null,
+		"data": {
+			"user_id": 123,
+			"has_verified_email": true
+		}
+	}`
 
 	rr := httptest.NewRecorder()
 	r, _ := http.NewRequest("GET", "", nil)
