@@ -50,3 +50,10 @@ func makeCacheKey(cols boil.Columns, nzDefaults []string) string {
 	strmangle.PutBuffer(buf)
 	return str
 }
+
+// Enum values for buffer_event_device
+const (
+	BufferEventDeviceUnknown = "unknown"
+	BufferEventDeviceWeb     = "web"
+	BufferEventDeviceAndroid = "android"
+)

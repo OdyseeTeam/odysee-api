@@ -4,9 +4,9 @@
 package models
 
 var TableNames = struct {
-	Events         string
+	BufferEvent    string
 	GorpMigrations string
 }{
-	Events:         "events",
+	BufferEvent:    "buffer_event",
 	GorpMigrations: "gorp_migrations",
 }

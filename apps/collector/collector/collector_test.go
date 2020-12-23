@@ -17,7 +17,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/volatiletech/null"
 )
 
 func TestMain(m *testing.M) {
@@ -93,51 +92,42 @@ func TestEventHandler(t *testing.T) {
 		expectedStatus int
 		expectedBody   []byte
 	}
-	tests := []testData{}
+	var tests []testData
 
-	data := EventBuffering{
-		URL:      "lbry://one",
-		Position: 11654,
-	}
-	event := models.Event{
+	data := BufferingPost{
 		Client: "aaa",
 		Type:   "buffering",
-		Data:   null.JSON{},
+		Data: BufferingPostData{
+			URL:      "lbry://one",
+			Position: 11654,
+		},
 	}
-	err := event.Data.Marshal(data)
-	require.NoError(t, err)
-	serialized, err := json.Marshal(event)
+	serialized, err := json.Marshal(data)
 	require.NoError(t, err)
 	tests = append(tests, testData{"buffering event", serialized, http.StatusOK, []byte(``)})
 
-	data = EventBuffering{
-		URL:      "lbry://one",
-		Position: 11654,
-	}
-	event = models.Event{
+	data = BufferingPost{
 		Client: "aaa",
 		Type:   "buffering",
-		Device: null.StringFrom("android"),
-		Data:   null.JSON{},
+		Device: "android",
+		Data: BufferingPostData{
+			URL:      "lbry://one",
+			Position: 11654,
+		},
 	}
-	err = event.Data.Marshal(data)
-	require.NoError(t, err)
-	serialized, err = json.Marshal(event)
+	serialized, err = json.Marshal(data)
 	require.NoError(t, err)
 	tests = append(tests, testData{"buffering event with device", serialized, http.StatusOK, []byte(``)})
 
-	data = EventBuffering{
-		Position: 11654,
-	}
-	event = models.Event{
+	data = BufferingPost{
 		Client: "aaa",
 		Type:   "buffering",
-		Device: null.StringFrom("android"),
-		Data:   null.JSON{},
+		Device: "android",
+		Data: BufferingPostData{
+			Position: 11654,
+		},
 	}
-	err = event.Data.Marshal(data)
-	require.NoError(t, err)
-	serialized, err = json.Marshal(event)
+	serialized, err = json.Marshal(data)
 	require.NoError(t, err)
 	tests = append(tests, testData{"buffering event with missing fields", serialized, http.StatusBadRequest, []byte(`Error at "/data":Doesn't match schema "oneOf"`)})
 
@@ -158,15 +148,12 @@ func TestEventHandler(t *testing.T) {
 		})
 	}
 
-	count, err := models.Events().CountG()
+	count, err := models.BufferEvents().CountG()
 	require.NoError(t, err)
 	assert.EqualValues(t, 2, count)
-	e, err := models.Events(models.EventWhere.ID.EQ(1)).OneG()
+	e, err := models.BufferEvents(models.BufferEventWhere.ID.EQ(1)).OneG()
 	require.NoError(t, err)
 	assert.Equal(t, "aaa", e.Client)
-	eData := EventBuffering{}
-	err = e.Data.Unmarshal(&eData)
-	require.NoError(t, err)
-	assert.Equal(t, 11654, eData.Position)
-	assert.Equal(t, "lbry://one", eData.URL)
+	assert.Equal(t, 11654, e.Position)
+	assert.Equal(t, "lbry://one", e.URL)
 }
