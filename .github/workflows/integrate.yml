@@ -72,7 +72,6 @@ jobs:
           curl -sLO https://github.com/goreleaser/goreleaser/releases/download/v0.140.0/goreleaser_Linux_x86_64.tar.gz
           tar xfz goreleaser_Linux_x86_64.tar.gz
           chmod +x goreleaser
-          echo "::add-path::./"
 
       # lbrytv-api specific section
 
@@ -80,7 +79,7 @@ jobs:
         if: steps.service.outputs.service == 'api'
         run: |
           go get github.com/gobuffalo/packr/v2/packr2@v2.7.1
-          goreleaser --rm-dist --snapshot
+          ./goreleaser --rm-dist --snapshot
 
       - name: Build lbrytv-api docker image
         if: steps.service.outputs.service == 'api'
