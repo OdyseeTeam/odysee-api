@@ -101,6 +101,7 @@ var walletSpecificMethods = []string{
 	"transaction_list",
 
 	"txo_list",
+	"txo_spend",
 	"txo_sum",
 	"txo_plot",
 
