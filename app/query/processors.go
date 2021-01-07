@@ -113,10 +113,10 @@ func preflightHookGet(caller *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, 
 		if err != nil {
 			return nil, err
 		}
-		urlSuffix = fmt.Sprintf("paid/%s/%s/%s/%s", claim.Name, claim.ClaimID, sdHash, token)
+		urlSuffix = fmt.Sprintf("/v3/streams/paid/%s/%s/%s/%s", claim.Name, claim.ClaimID, sdHash, token)
 		responseResult[ParamPurchaseReceipt] = claim.PurchaseReceipt
 	} else {
-		urlSuffix = fmt.Sprintf("free/%s/%s/%s", claim.Name, claim.ClaimID, sdHash)
+		urlSuffix = fmt.Sprintf("/v4/streams/free/%s/%s/%s", claim.Name, claim.ClaimID, sdHash)
 	}
 
 	responseResult[ParamStreamingUrl] = config.Config.Viper.GetString("BaseContentURL") + urlSuffix

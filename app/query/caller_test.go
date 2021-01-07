@@ -569,7 +569,7 @@ func TestCaller_Status(t *testing.T) {
 }
 
 func TestCaller_GetFreeUnauthenticated(t *testing.T) {
-	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v3/streams/")
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api")
 	defer config.RestoreOverridden()
 
 	srvAddress := test.RandServerAddress(t)
@@ -587,7 +587,7 @@ func TestCaller_GetFreeUnauthenticated(t *testing.T) {
 }
 
 func TestCaller_GetFreeAuthenticated(t *testing.T) {
-	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v3/streams/")
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api")
 	defer config.RestoreOverridden()
 
 	uri := "what"
@@ -625,7 +625,7 @@ func TestCaller_GetCouldntFindClaim(t *testing.T) {
 }
 
 func TestCaller_GetInvalidURLAuthenticated(t *testing.T) {
-	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v3/streams/")
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api")
 	defer config.RestoreOverridden()
 
 	uri := "what#@1||||"
@@ -666,7 +666,7 @@ func TestCaller_GetPaidUnauthenticated(t *testing.T) {
 }
 
 func TestCaller_GetPaidPurchased(t *testing.T) {
-	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v3/streams/")
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api")
 	defer config.RestoreOverridden()
 
 	uri := "Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis#d66f8ba85c85ca48daba9183bd349307fe30cb43"
@@ -704,7 +704,7 @@ func TestCaller_GetPaidPurchased(t *testing.T) {
 }
 
 func TestCaller_GetPaidResolveLag(t *testing.T) {
-	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v3/streams/")
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api")
 	defer config.RestoreOverridden()
 
 	uri := "Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis#d66f8ba85c85ca48daba9183bd349307fe30cb43"
@@ -725,7 +725,7 @@ func TestCaller_GetPaidResolveLag(t *testing.T) {
 }
 
 func TestCaller_GetPaidPurchasedMissingPurchase(t *testing.T) {
-	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v3/streams/")
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api")
 	defer config.RestoreOverridden()
 
 	uri := "Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis#d66f8ba85c85ca48daba9183bd349307fe30cb43"
@@ -794,7 +794,7 @@ func TestCaller_GetPaidPurchasedMissingPurchase(t *testing.T) {
 }
 
 func TestCaller_GetPaidPurchasedMissingEverything(t *testing.T) {
-	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api/v3/streams/")
+	config.Override("BaseContentURL", "https://cdn.lbryplayer.xyz/api")
 	defer config.RestoreOverridden()
 
 	uri := "Body-Language---Robert-F.-Kennedy-Assassination---Hypnosis#d66f8ba85c85ca48daba9183bd349307fe30cb43"
