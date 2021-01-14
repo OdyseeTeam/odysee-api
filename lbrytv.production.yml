@@ -1,4 +1,6 @@
-BaseContentURL: https://cdn.lbryplayer.xyz/api
+FreeContentURL: https://cdn.lbryplayer.xyz/api/v4/streams/free/
+PaidContentURL: https://cdn.lbryplayer.xyz/api/v3/streams/paid/
+
 InternalAPIHost: https://api.lbry.com
 ProjectURL: https://lbry.tv
 

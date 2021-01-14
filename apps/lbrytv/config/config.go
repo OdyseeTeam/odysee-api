@@ -41,7 +41,7 @@ func init() {
 
 	c.Viper.SetDefault("Address", ":8080")
 	c.Viper.SetDefault("Host", "http://localhost:8080")
-	c.Viper.SetDefault("BaseContentURL", "http://localhost:8080/content/")
+	c.Viper.SetDefault("FreeContentURL", "http://localhost:8080/content/")
 	c.Viper.SetDefault("ReflectorTimeout", int64(10))
 	c.Viper.SetDefault("RefractorTimeout", int64(10))
 
