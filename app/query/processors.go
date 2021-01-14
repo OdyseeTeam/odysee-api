@@ -24,8 +24,8 @@ var rePurchaseFree = regexp.MustCompile(`(?i)does not have a purchase price`)
 // Only `ParamStreamingUrl` will be returned, plus `purchase_receipt` if stream has been paid for.
 func preflightHookGet(caller *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
 	var (
-		urlSuffix, metricLabel string
-		isPaidStream           bool
+		contentURL, metricLabel string
+		isPaidStream            bool
 	)
 	query := hctx.Query
 
@@ -113,13 +113,17 @@ func preflightHookGet(caller *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, 
 		if err != nil {
 			return nil, err
 		}
-		urlSuffix = fmt.Sprintf("/v3/streams/paid/%s/%s/%s/%s", claim.Name, claim.ClaimID, sdHash, token)
+		contentURL = fmt.Sprintf(
+			"%v%s/%s/%s/%s",
+			config.Config.Viper.GetString("PaidContentURL"), claim.Name, claim.ClaimID, sdHash, token)
 		responseResult[ParamPurchaseReceipt] = claim.PurchaseReceipt
 	} else {
-		urlSuffix = fmt.Sprintf("/v3/streams/free/%s/%s/%s", claim.Name, claim.ClaimID, sdHash)
+		contentURL = fmt.Sprintf(
+			"%v%s/%s/%s",
+			config.Config.Viper.GetString("FreeContentURL"), claim.Name, claim.ClaimID, sdHash)
 	}
 
-	responseResult[ParamStreamingUrl] = config.Config.Viper.GetString("BaseContentURL") + urlSuffix
+	responseResult[ParamStreamingUrl] = contentURL
 
 	response.Result = responseResult
 	return response, nil
