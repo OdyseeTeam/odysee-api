@@ -36,6 +36,7 @@ var relaxedMethods = []string{
 	"stream_cost_estimate",
 	"claim_search",
 	"comment_list",
+	"collection_resolve",
 	MethodCommentReactList,
 	"version",
 	"routing_table_get",
