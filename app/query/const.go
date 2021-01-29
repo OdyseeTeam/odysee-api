@@ -36,6 +36,7 @@ var relaxedMethods = []string{
 	"stream_cost_estimate",
 	"claim_search",
 	"comment_list",
+	"collection_resolve",
 	MethodCommentReactList,
 	"version",
 	"routing_table_get",
@@ -69,6 +70,7 @@ var walletSpecificMethods = []string{
 	"channel_update",
 	"channel_export",
 	"channel_import",
+	"channel_sign",
 
 	"comment_abandon",
 	"comment_create",
