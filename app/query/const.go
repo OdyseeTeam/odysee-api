@@ -70,6 +70,7 @@ var walletSpecificMethods = []string{
 	"channel_update",
 	"channel_export",
 	"channel_import",
+	"channel_sign",
 
 	"comment_abandon",
 	"comment_create",
