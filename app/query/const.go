@@ -71,6 +71,8 @@ var walletSpecificMethods = []string{
 	"channel_export",
 	"channel_import",
 	"channel_sign",
+	
+	"collection_list",
 
 	"comment_abandon",
 	"comment_create",
