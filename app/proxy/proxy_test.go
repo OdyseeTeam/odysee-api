@@ -89,3 +89,23 @@ func TestProxyDontAuthRelaxedMethods(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 0, apiCalls)
 }
+
+func Test_getOrigin(t *testing.T) {
+	var r *http.Request
+
+	r, _ = http.NewRequest(http.MethodGet, "", nil)
+	r.Header.Add("Referer", "https://odysee.com/")
+	assert.Equal(t, orgOdysee, getOrigin(r))
+
+	r, _ = http.NewRequest(http.MethodGet, "", nil)
+	r.Header.Add("Referer", "https://lbry.tv/")
+	assert.Equal(t, orgLbrytv, getOrigin(r))
+
+	r, _ = http.NewRequest(http.MethodGet, "", nil)
+	r.Header.Add("User-Agent", "okhttp/3.12.1")
+	assert.Equal(t, orgAndroid, getOrigin(r))
+
+	r, _ = http.NewRequest(http.MethodGet, "", nil)
+	r.Header.Add("User-Agent", "Odysee")
+	assert.Equal(t, orgiOS, getOrigin(r))
+}

@@ -52,5 +52,5 @@ func GetDuration(r *http.Request) float64 {
 		return -1
 	}
 	t := v.(*Timer)
-	return t.GetDuration()
+	return t.Duration()
 }

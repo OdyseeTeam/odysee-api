@@ -113,7 +113,7 @@ var (
 			Help:      "Method call latency distributions",
 			Buckets:   callsSecondsBuckets,
 		},
-		[]string{"method", "endpoint"},
+		[]string{"method", "endpoint", "origin"},
 	)
 	ProxyCallFailedDurations = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -123,7 +123,7 @@ var (
 			Help:      "Failed method call latency distributions",
 			Buckets:   callsSecondsBuckets,
 		},
-		[]string{"method", "endpoint", "kind"},
+		[]string{"method", "endpoint", "origin", "kind"},
 	)
 	ProxyCallCounter = promauto.NewCounterVec(
 		prometheus.CounterOpts{
@@ -132,7 +132,7 @@ var (
 			Name:      "total_count",
 			Help:      "Method call count",
 		},
-		[]string{"method", "endpoint"},
+		[]string{"method", "endpoint", "origin"},
 	)
 	ProxyCallFailedCounter = promauto.NewCounterVec(
 		prometheus.CounterOpts{
@@ -141,7 +141,7 @@ var (
 			Name:      "failed_count",
 			Help:      "Failed method call count",
 		},
-		[]string{"method", "endpoint", "kind"},
+		[]string{"method", "endpoint", "origin", "kind"},
 	)
 
 	ProxyQueryCacheHitCount = promauto.NewCounterVec(prometheus.CounterOpts{

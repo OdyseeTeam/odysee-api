@@ -31,6 +31,10 @@ const (
 	AllMethodsHook = ""
 )
 
+type HTTPRequester interface {
+	Do(req *http.Request) (res *http.Response, err error)
+}
+
 // Hook is a function that can be applied to certain methods during preflight or postflight phase
 // using context data about the client query being performed.
 // Hooks can modify both query and response, as well as perform additional queries via supplied Caller.
@@ -197,18 +201,12 @@ func (c *Caller) SendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 
 	for i := 0; i < walletLoadRetries; i++ {
 		start := time.Now()
-
 		r, err = c.client.CallRaw(q.Request)
-
 		c.Duration = time.Since(start).Seconds()
-		metrics.ProxyCallDurations.WithLabelValues(q.Method(), c.endpoint).Observe(c.Duration)
-		metrics.ProxyCallCounter.WithLabelValues(q.Method(), c.endpoint).Inc()
 
 		// Generally a HTTP transport failure (connect error etc)
 		if err != nil {
 			logger.Log().Errorf("error sending query to %v: %v", c.endpoint, err)
-			metrics.ProxyCallFailedDurations.WithLabelValues(q.Method(), c.endpoint, metrics.FailureKindNet).Observe(c.Duration)
-			metrics.ProxyCallFailedCounter.WithLabelValues(q.Method(), c.endpoint, metrics.FailureKindNet).Inc()
 			return nil, errors.Err(err)
 		}
 
@@ -265,8 +263,6 @@ func (c *Caller) SendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 	if err != nil || (r != nil && r.Error != nil) {
 		logFields["response"] = r.Error
 		logEntry.Errorf("rpc call error: %v", r.Error.Message)
-		metrics.ProxyCallFailedDurations.WithLabelValues(q.Method(), c.endpoint, metrics.FailureKindRPC).Observe(c.Duration)
-		metrics.ProxyCallFailedCounter.WithLabelValues(q.Method(), c.endpoint, metrics.FailureKindRPC).Inc()
 	} else {
 		if config.ShouldLogResponses() {
 			logFields["response"] = r
