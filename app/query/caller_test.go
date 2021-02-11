@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv-player/pkg/paid"
+	"github.com/lbryio/lbrytv/app/query/cache"
 	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
@@ -361,6 +362,59 @@ func TestCaller_CloneWithoutHook(t *testing.T) {
 	_, err := c.Call(jsonrpc.NewRequest(MethodResolve, map[string]interface{}{"urls": "what:19b9c243bea0c45175e6a6027911abbad53e983e"}))
 	require.NoError(t, err)
 	assert.Equal(t, timesCalled, 2)
+}
+
+func TestCaller_CallCachingResponses(t *testing.T) {
+	srv := test.MockHTTPServer(nil)
+	defer srv.Close()
+	srv.NextResponse <- `
+	{
+		"jsonrpc": "2.0",
+		"result": {
+		  "blocked": {
+			"channels": [],
+			"total": 0
+		  },
+		  "items": [
+			{
+			  "address": "bHz3LpVcuadmbK8g6VVUszF9jjH4pxG2Ct",
+			  "amount": "0.5",
+			  "canonical_url": "lbry://@lbry#3f/youtube-is-over-lbry-odysee-are-here#4"
+			}
+		  ]
+		},
+		"id": 0
+	}
+	`
+
+	c := NewCaller(srv.URL, 0)
+	c.Cache = cache.NewMemoryCache()
+	rpcResponse, err := c.Call(jsonrpc.NewRequest("claim_search", map[string]interface{}{"urls": "what"}))
+	require.NoError(t, err)
+	assert.Nil(t, rpcResponse.Error)
+	cResp := c.Cache.Retrieve("claim_search", map[string]interface{}{"urls": "what"}).(*jsonrpc.RPCResponse)
+	assert.NotNil(t, cResp.Result)
+}
+
+func TestCaller_CallNotCachingErrors(t *testing.T) {
+	srv := test.MockHTTPServer(nil)
+	defer srv.Close()
+	srv.NextResponse <- `
+		{
+			"jsonrpc": "2.0",
+			"error": {
+			  "code": -32000,
+			  "message": "sqlite query timed out"
+			},
+			"id": 0
+		}`
+
+	c := NewCaller(srv.URL, 0)
+	c.Cache = cache.NewMemoryCache()
+	rpcResponse, err := c.Call(jsonrpc.NewRequest("claim_search", map[string]interface{}{"urls": "what"}))
+	require.NoError(t, err)
+	assert.Equal(t, rpcResponse.Error.Code, -32000)
+	assert.Nil(t, c.Cache.Retrieve("claim_search", map[string]interface{}{"urls": "what"}))
 }
 
 func TestCaller_CallSDKError(t *testing.T) {

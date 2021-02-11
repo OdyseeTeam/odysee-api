@@ -184,7 +184,7 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 		}
 	}
 
-	if isCacheable(q) {
+	if isCacheable(q, res) {
 		c.Cache.Save(q.Method(), q.Params(), res)
 	}
 
@@ -274,7 +274,10 @@ func (c *Caller) SendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 }
 
 // isCacheable returns true if this query can be cached
-func isCacheable(q *Query) bool {
+func isCacheable(q *Query, res *jsonrpc.RPCResponse) bool {
+	if res.Error != nil {
+		return false
+	}
 	if q.Method() == MethodResolve && q.Params() != nil {
 		paramsMap := q.Params().(map[string]interface{})
 		if urls, ok := paramsMap[ParamUrls].([]interface{}); ok {
@@ -301,7 +304,7 @@ func isMatchingHook(m string, hook hookEntry) bool {
 
 // fromCache returns cached response or nil in case it's a miss
 func fromCache(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
-	if c.Cache == nil || !isCacheable(hctx.Query) {
+	if c.Cache == nil {
 		return nil, nil
 	}
 
