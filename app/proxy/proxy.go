@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/query"
@@ -33,6 +34,13 @@ import (
 
 var logger = monitor.NewModuleLogger("proxy")
 
+const (
+	orgOdysee  = "odysee"
+	orgLbrytv  = "lbrytv"
+	orgAndroid = "android"
+	orgiOS     = "ios"
+)
+
 // observeFailure requires metrics.MeasureMiddleware middleware to be present on the request
 func observeFailure(d float64, method, kind string) {
 	metrics.ProxyE2ECallDurations.WithLabelValues(method).Observe(d)
@@ -54,6 +62,7 @@ func writeResponse(w http.ResponseWriter, b []byte) {
 // Handle forwards client JSON-RPC request to proxy.
 func Handle(w http.ResponseWriter, r *http.Request) {
 	responses.AddJSONContentType(w)
+	origin := getOrigin(r)
 
 	if r.Body == nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -131,6 +140,8 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	c.Cache = qCache
 
 	rpcRes, err := c.Call(rpcReq)
+	metrics.ProxyCallDurations.WithLabelValues(rpcReq.Method, c.Endpoint(), origin).Observe(c.Duration)
+	metrics.ProxyCallCounter.WithLabelValues(rpcReq.Method, c.Endpoint(), origin).Inc()
 
 	if err != nil {
 		monitor.ErrorToSentry(err, map[string]string{"request": fmt.Sprintf("%+v", rpcReq), "response": fmt.Sprintf("%+v", rpcRes)})
@@ -138,7 +149,8 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 
 		logger.Log().Errorf("error calling lbrynet: %v, request: %+v", err, rpcReq)
 		observeFailure(metrics.GetDuration(r), rpcReq.Method, metrics.FailureKindNet)
-
+		metrics.ProxyCallFailedDurations.WithLabelValues(rpcReq.Method, c.Endpoint(), origin, metrics.FailureKindNet).Observe(c.Duration)
+		metrics.ProxyCallFailedCounter.WithLabelValues(rpcReq.Method, c.Endpoint(), origin, metrics.FailureKindNet).Inc()
 		return
 	}
 
@@ -156,6 +168,9 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 
 	if rpcRes.Error != nil {
 		observeFailure(metrics.GetDuration(r), rpcReq.Method, metrics.FailureKindRPC)
+		metrics.ProxyCallFailedDurations.WithLabelValues(rpcReq.Method, c.Endpoint(), origin, metrics.FailureKindRPC).Observe(c.Duration)
+		metrics.ProxyCallFailedCounter.WithLabelValues(rpcReq.Method, c.Endpoint(), origin, metrics.FailureKindRPC).Inc()
+
 		logger.WithFields(logrus.Fields{
 			"method":   rpcReq.Method,
 			"endpoint": sdkAddress,
@@ -191,4 +206,22 @@ func GetAuthError(user *models.User, err error) error {
 	}
 
 	return errors.Err("unknown auth error")
+}
+
+func getOrigin(r *http.Request) string {
+	rf := r.Header.Get("referer")
+	ua := r.Header.Get("user-agent")
+	if strings.HasSuffix(rf, "odysee.com/") {
+		return orgOdysee
+	}
+	if strings.HasSuffix(rf, "lbry.tv/") {
+		return orgLbrytv
+	}
+	if strings.Contains(ua, "okhttp") {
+		return orgAndroid
+	}
+	if strings.Contains(strings.ToLower(ua), "odysee") {
+		return orgiOS
+	}
+	return ""
 }
