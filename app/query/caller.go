@@ -51,7 +51,6 @@ type hookEntry struct {
 type HookContext struct {
 	Query    *Query
 	Response *jsonrpc.RPCResponse
-	Error    error
 	logEntry *logrus.Entry
 }
 

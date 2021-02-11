@@ -301,23 +301,6 @@ func TestCaller_AddPostflightHook_Response(t *testing.T) {
 	assert.Equal(t, "0.0", res.Result)
 }
 
-func TestCaller_AddPostflightHook_Error(t *testing.T) {
-	var errorsSeen int
-	dummyUserID := rand.Intn(100)
-	c := NewCaller("http://nonexistent/", dummyUserID)
-
-	c.AddPostflightHook("wallet_", func(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
-		if hctx.Error != nil {
-			errorsSeen++
-		}
-		return hctx.Response, nil
-	}, "")
-
-	res, err := c.Call(jsonrpc.NewRequest(MethodWalletBalance))
-	require.NoError(t, err)
-	assert.Equal(t, "0.0", res.Result)
-}
-
 func TestCaller_AddPostflightHook_LogField(t *testing.T) {
 	logHook := logrusTest.NewLocal(logger.Entry.Logger)
 	logger.Entry.Logger.SetLevel(logrus.TraceLevel)
