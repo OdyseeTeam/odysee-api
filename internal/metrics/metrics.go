@@ -58,7 +58,7 @@ var (
 		Namespace: nsIAPI,
 		Subsystem: "auth",
 		Name:      "error_seconds",
-		Help:      "Time to failed authentication response",
+		Help:      "Time to auth API communication error",
 	})
 
 	AuthTokenCacheHits = promauto.NewCounter(prometheus.CounterOpts{
