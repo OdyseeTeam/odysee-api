@@ -1,6 +1,6 @@
 module github.com/lbryio/lbrytv
 
-go 1.14
+go 1.15
 
 require (
 	github.com/getkin/kin-openapi v0.15.0
