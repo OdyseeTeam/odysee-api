@@ -80,7 +80,7 @@ func TestWithWrongAuthToken(t *testing.T) {
 	var response jsonrpc.RPCResponse
 	err = json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
-	assert.Equal(t, "authentication error: could not authenticate user", response.Error.Message)
+	assert.Equal(t, "api error: could not authenticate user", response.Error.Message)
 }
 
 func TestAuthEmailNotVerified(t *testing.T) {

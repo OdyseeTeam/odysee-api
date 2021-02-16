@@ -151,7 +151,7 @@ func TestGetUserWithWallet_NonexistentUser(t *testing.T) {
 	u, err := GetUserWithSDKServer(rt, ts.URL, "non-existent-token", "")
 	require.Error(t, err)
 	require.Nil(t, u)
-	assert.Equal(t, "authentication error: could not authenticate user", err.Error())
+	assert.EqualError(t, err, "api error: could not authenticate user")
 }
 
 func TestGetUserWithWallet_ExistingUser(t *testing.T) {

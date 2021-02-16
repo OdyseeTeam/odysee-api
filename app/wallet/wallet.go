@@ -50,9 +50,8 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 
 	remoteUser, err := getRemoteUser(internalAPIHost, token, metaRemoteIP)
 	if err != nil {
-		msg := "authentication error: %v"
-		log.Errorf(msg, err)
-		return nil, fmt.Errorf(msg, err)
+		log.Error(err)
+		return nil, err
 	}
 	if !remoteUser.HasVerifiedEmail {
 		return nil, nil
