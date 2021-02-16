@@ -11,7 +11,7 @@ require (
 	github.com/jinzhu/gorm v1.9.9
 	github.com/jmoiron/sqlx v0.0.0-20170430194603-d9bd385d68c0
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
-	github.com/lbryio/lbry.go/v2 v2.7.0
+	github.com/lbryio/lbry.go/v2 v2.7.1
 	github.com/lbryio/lbrytv-player v0.7.12
 	github.com/lib/pq v1.9.0
 	github.com/magiconair/properties v1.8.4 // indirect
