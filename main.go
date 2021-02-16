@@ -10,7 +10,6 @@ import (
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/cmd"
 	"github.com/lbryio/lbrytv/internal/monitor"
-	"github.com/lbryio/lbrytv/internal/reflection"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/version"
 )
@@ -43,10 +42,6 @@ func main() {
 	defer conn.Close()
 	conn.SetDefaultConnection()
 	go conn.WatchMetrics(10 * time.Second)
-
-	rMgr := reflection.NewManager("/nonexistent", config.GetReflectorAddress())
-	rMgr.Initialize()
-	rMgr.Start(time.Minute * 1)
 
 	cmd.Execute()
 }
