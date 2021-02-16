@@ -54,6 +54,12 @@ var (
 		Name:      "failed_seconds",
 		Help:      "Time to failed authentication response",
 	})
+	IAPIAuthErrorDurations = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: nsIAPI,
+		Subsystem: "auth",
+		Name:      "error_seconds",
+		Help:      "Time to auth API communication error",
+	})
 
 	AuthTokenCacheHits = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: nsAuth,

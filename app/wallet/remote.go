@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"errors"
 	"time"
 
 	"github.com/lbryio/lbrytv/internal/metrics"
@@ -29,8 +30,11 @@ func getRemoteUser(url, token string, remoteIP string) (remoteUser, error) {
 	duration := time.Now().Sub(start).Seconds()
 
 	if err != nil {
-		// No user found in internal-apis database, give up at this point
-		metrics.IAPIAuthFailedDurations.Observe(duration)
+		if errors.As(err, &lbryinc.APIError{}) {
+			metrics.IAPIAuthFailedDurations.Observe(duration)
+		} else {
+			metrics.IAPIAuthErrorDurations.Observe(duration)
+		}
 		return remoteUser{}, err
 	}
 
