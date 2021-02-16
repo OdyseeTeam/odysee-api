@@ -78,7 +78,7 @@ Make sure you have `lbrynet` and `postgres` containers running and run `make tes
 
 ## Modifying and building a Docker image
 
-First, make sure you have Go 1.11+
+First, make sure you have Go 1.15+
 
 - Ubuntu: https://launchpad.net/~longsleep/+archive/ubuntu/golang-backports or https://github.com/golang/go/wiki/Ubuntu
 - OSX: `brew install go`
@@ -88,6 +88,10 @@ Then build the binary, create a docker image locally and run off it:
 ```
 make image && docker-compose up app
 ```
+
+## Versioning
+
+This project is using [CalVer](https://calver.org) YY.MM.MINOR[.MICRO], with MICRO set by CI/CD system, since February 2021 (SemVer prior to that).
 
 ## Contributing
 
