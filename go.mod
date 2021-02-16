@@ -3,18 +3,16 @@ module github.com/lbryio/lbrytv
 go 1.14
 
 require (
-	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/getkin/kin-openapi v0.15.0
 	github.com/getsentry/sentry-go v0.6.1
 	github.com/gobuffalo/packr/v2 v2.8.0
-	github.com/gorilla/mux v1.7.3
+	github.com/gorilla/mux v1.7.4
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a
 	github.com/jinzhu/gorm v1.9.9
 	github.com/jmoiron/sqlx v0.0.0-20170430194603-d9bd385d68c0
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
-	github.com/lbryio/lbry.go/v2 v2.6.1-0.20200520171819-ccef4d8e4d76
-	github.com/lbryio/lbrytv-player v0.3.0
-	github.com/lbryio/reflector.go v1.1.3-0.20200403124949-9c1b023de685
+	github.com/lbryio/lbry.go/v2 v2.7.0
+	github.com/lbryio/lbrytv-player v0.7.12
 	github.com/lib/pq v1.9.0
 	github.com/magiconair/properties v1.8.4 // indirect
 	github.com/markbates/pkger v0.17.0
@@ -31,8 +29,9 @@ require (
 	github.com/spf13/afero v1.5.1 // indirect
 	github.com/spf13/cast v1.3.1
 	github.com/spf13/cobra v1.1.1
+	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.7.1
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.7.0
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/null v8.0.0+incompatible
 	github.com/volatiletech/sqlboiler v3.4.0+incompatible

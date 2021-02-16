@@ -290,15 +290,6 @@ func Create(serverAddress string, userID int) error {
 }
 
 // createWallet creates a new wallet on the LbrynetServer.
-// Returned error doesn't necessarily mean that the wallet is not operational:
-//
-// 	if errors.Is(err, lbrynet.WalletExists) {
-// 	 // Okay to proceed with the account
-//  }
-//
-// 	if errors.Is(err, lbrynet.WalletNeedsLoading) {
-// 	 // loadWallet() needs to be called before the wallet can be used
-//  }
 func createWallet(addr string, userID int) error {
 	op := metrics.StartOperation(opName, "create")
 	defer op.End()
@@ -312,7 +303,7 @@ func createWallet(addr string, userID int) error {
 	return nil
 }
 
-// loadWallet loads an existing wallet in the LbrynetServer.
+// LoadWallet loads an existing wallet in the LbrynetServer.
 // May return errors:
 //  WalletAlreadyLoaded - wallet is already loaded and operational
 //  WalletNotFound - wallet file does not exist and won't be loaded.
