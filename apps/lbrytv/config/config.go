@@ -150,3 +150,7 @@ func GetLbrynetXPercentage() int {
 func GetTokenCacheTimeout() time.Duration {
 	return Config.Viper.GetDuration("TokenCacheTimeout") * time.Second
 }
+
+func GetCORSDomains() []string {
+	return Config.Viper.GetStringSlice("CORSDomains")
+}

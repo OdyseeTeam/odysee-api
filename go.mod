@@ -3,9 +3,12 @@ module github.com/lbryio/lbrytv
 go 1.15
 
 require (
-	github.com/getkin/kin-openapi v0.15.0
+	github.com/getkin/kin-openapi v0.33.0
 	github.com/getsentry/sentry-go v0.6.1
-	github.com/gobuffalo/packr/v2 v2.8.0
+	github.com/gobuffalo/logger v1.0.3 // indirect
+	github.com/gobuffalo/packd v1.0.0 // indirect
+	github.com/gobuffalo/packr/v2 v2.7.1
+	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/gorilla/mux v1.7.4
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a
 	github.com/jinzhu/gorm v1.9.9
@@ -23,8 +26,9 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
 	github.com/prometheus/client_model v0.2.0
+	github.com/rogpeppe/go-internal v1.6.2 // indirect
+	github.com/rs/cors v1.7.0
 	github.com/rubenv/sql-migrate v0.0.0-20200429072036-ae26b214fa43
-	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/afero v1.5.1 // indirect
 	github.com/spf13/cast v1.3.1
@@ -36,8 +40,10 @@ require (
 	github.com/volatiletech/null v8.0.0+incompatible
 	github.com/volatiletech/sqlboiler v3.4.0+incompatible
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
-	golang.org/x/sys v0.0.0-20201223074533-0d417f636930 // indirect
-	golang.org/x/text v0.3.4 // indirect
+	goa.design/goa/v3 v3.2.6
+	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110 // indirect
+	golang.org/x/sys v0.0.0-20210309074719-68d13333faf2 // indirect
+	golang.org/x/text v0.3.5 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

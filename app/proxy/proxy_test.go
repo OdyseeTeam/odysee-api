@@ -18,17 +18,6 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func TestProxyOptions(t *testing.T) {
-	r, err := http.NewRequest("OPTIONS", "/api/proxy", nil)
-	require.NoError(t, err)
-
-	rr := httptest.NewRecorder()
-	HandleCORS(rr, r)
-
-	response := rr.Result()
-	assert.Equal(t, http.StatusOK, response.StatusCode)
-}
-
 func TestProxyNilQuery(t *testing.T) {
 	r, err := http.NewRequest("POST", "", nil)
 	require.NoError(t, err)
@@ -90,22 +79,22 @@ func TestProxyDontAuthRelaxedMethods(t *testing.T) {
 	assert.Equal(t, 0, apiCalls)
 }
 
-func Test_getOrigin(t *testing.T) {
+func Test_getDevice(t *testing.T) {
 	var r *http.Request
 
 	r, _ = http.NewRequest(http.MethodGet, "", nil)
 	r.Header.Add("Referer", "https://odysee.com/")
-	assert.Equal(t, orgOdysee, getOrigin(r))
+	assert.Equal(t, orgOdysee, getDevice(r))
 
 	r, _ = http.NewRequest(http.MethodGet, "", nil)
 	r.Header.Add("Referer", "https://lbry.tv/")
-	assert.Equal(t, orgLbrytv, getOrigin(r))
+	assert.Equal(t, orgLbrytv, getDevice(r))
 
 	r, _ = http.NewRequest(http.MethodGet, "", nil)
 	r.Header.Add("User-Agent", "okhttp/3.12.1")
-	assert.Equal(t, orgAndroid, getOrigin(r))
+	assert.Equal(t, orgAndroid, getDevice(r))
 
 	r, _ = http.NewRequest(http.MethodGet, "", nil)
 	r.Header.Add("User-Agent", "Odysee")
-	assert.Equal(t, orgiOS, getOrigin(r))
+	assert.Equal(t, orgiOS, getDevice(r))
 }

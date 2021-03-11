@@ -18,7 +18,6 @@ import (
 	"github.com/lbryio/lbrytv/app/query/cache"
 	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/internal/audit"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/ip"
@@ -62,7 +61,7 @@ func writeResponse(w http.ResponseWriter, b []byte) {
 // Handle forwards client JSON-RPC request to proxy.
 func Handle(w http.ResponseWriter, r *http.Request) {
 	responses.AddJSONContentType(w)
-	origin := getOrigin(r)
+	origin := getDevice(r)
 
 	if r.Body == nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -183,15 +182,6 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	writeResponse(w, serialized)
 }
 
-// HandleCORS returns necessary CORS headers for pre-flight requests to proxy API
-func HandleCORS(w http.ResponseWriter, r *http.Request) {
-	hs := w.Header()
-	hs.Set("Access-Control-Max-Age", "7200")
-	hs.Set("Access-Control-Allow-Origin", "*")
-	hs.Set("Access-Control-Allow-Headers", wallet.TokenHeader+", Origin, X-Requested-With, Content-Type, Accept")
-	w.WriteHeader(http.StatusOK)
-}
-
 func GetAuthError(user *models.User, err error) error {
 	if err == nil && user != nil {
 		return nil
@@ -208,7 +198,7 @@ func GetAuthError(user *models.User, err error) error {
 	return errors.Err("unknown auth error")
 }
 
-func getOrigin(r *http.Request) string {
+func getDevice(r *http.Request) string {
 	rf := r.Header.Get("referer")
 	ua := r.Header.Get("user-agent")
 	if strings.HasSuffix(rf, "odysee.com/") {

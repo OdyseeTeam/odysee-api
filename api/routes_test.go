@@ -48,28 +48,51 @@ func TestRoutesPublish(t *testing.T) {
 	assert.Contains(t, rr.Body.String(), `"code": -32084`)
 }
 
-func TestRoutesOptions(t *testing.T) {
+func TestCORS(t *testing.T) {
 	r := mux.NewRouter()
 	rt := sdkrouter.New(config.GetLbrynetServers())
+
+	allowedDomains := []string{
+		"https://odysee.com",
+		"https://somedomain.com",
+	}
+	config.Override("CORSDomains", allowedDomains)
+
 	InstallRoutes(r, rt)
 
-	for _, url := range []string{"/api/v1/proxy", "/api/v2/status"} {
-		t.Run(url, func(t *testing.T) {
-			req, err := http.NewRequest("OPTIONS", url, nil)
-			require.NoError(t, err)
-			rr := httptest.NewRecorder()
+	cases := map[string]string{
+		"https://odysee.com":          "https://odysee.com",
+		"https://somedomain.com":      "https://somedomain.com",
+		"https://someotherdomain.com": "",
+		"https://lbry.tv":             "",
+	}
 
-			r.ServeHTTP(rr, req)
-			h := rr.Result().Header
-			assert.Equal(t, http.StatusOK, rr.Code)
-			assert.Equal(t, "7200", h.Get("Access-Control-Max-Age"))
-			assert.Equal(t, "*", h.Get("Access-Control-Allow-Origin"))
-			assert.Equal(
-				t,
-				"X-Lbry-Auth-Token, Origin, X-Requested-With, Content-Type, Accept",
-				h.Get("Access-Control-Allow-Headers"),
-			)
-		})
+	for _, url := range []string{"/api/v1/proxy", "/api/v2/status"} {
+		for orig, chost := range cases {
+			t.Run(fmt.Sprintf("%v @ %v", url, orig), func(t *testing.T) {
+				req, err := http.NewRequest(http.MethodOptions, url, nil)
+				require.NoError(t, err)
+
+				req.Header.Set("origin", orig)
+				req.Header.Set("Access-Control-Request-Headers", "content-type,x-lbry-auth-token")
+				req.Header.Set("Access-Control-Request-Method", http.MethodPost)
+
+				rr := httptest.NewRecorder()
+
+				r.ServeHTTP(rr, req)
+				h := rr.Result().Header
+				require.Equal(t, http.StatusOK, rr.Code)
+
+				assert.Equal(t, chost, h.Get("Access-Control-Allow-Origin"))
+				if chost != "" {
+					assert.Equal(
+						t,
+						"Content-Type, X-Lbry-Auth-Token",
+						h.Get("Access-Control-Allow-Headers"),
+					)
+				}
+			})
+		}
 	}
 }
 

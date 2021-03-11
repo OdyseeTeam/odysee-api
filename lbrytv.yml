@@ -31,3 +31,7 @@ LbrynetXPercentage: 50
 
 FreeContentURL: https://cdn.lbryplayer.xyz/api/v4/streams/free/
 PaidContentURL: https://cdn.lbryplayer.xyz/api/v3/streams/paid/
+
+CORSDomains:
+  - https://odysee.com
+  - https://lbry.tv
