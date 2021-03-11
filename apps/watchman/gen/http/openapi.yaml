@@ -1,0 +1,146 @@
+swagger: "2.0"
+info:
+  title: Watchman service
+  description: "Watchman collects playback metrics.\n\t\tPlayback time along with
+    buffering count and duration is collected\n\t\tvia playback events, which should
+    be sent from the client each n sec\n\t\t(with n being something reasonable between
+    5 and 30s)\n\t"
+  version: ""
+host: watchman.api.lbry.tv
+consumes:
+- application/json
+- application/xml
+- application/gob
+produces:
+- application/json
+- application/xml
+- application/gob
+paths:
+  /openapi.json:
+    get:
+      tags:
+      - playback
+      summary: Download ./gen/http/openapi.json
+      operationId: playback#/openapi.json
+      responses:
+        "200":
+          description: File downloaded
+          schema:
+            type: file
+      schemes:
+      - https
+  /playback:
+    post:
+      tags:
+      - playback
+      summary: add playback
+      operationId: playback#add
+      parameters:
+      - name: AddRequestBody
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/PlaybackAddRequestBody'
+          required:
+          - url
+          - pos
+          - dur
+          - bfc
+          - bfd
+          - fmt
+          - pid
+          - cid
+          - cdv
+      responses:
+        "201":
+          description: Created response.
+      schemes:
+      - https
+definitions:
+  PlaybackAddRequestBody:
+    title: PlaybackAddRequestBody
+    type: object
+    properties:
+      bfc:
+        type: integer
+        description: Buffering events count
+        example: 27904123
+        format: int32
+      bfd:
+        type: integer
+        description: Buffering events total duration, ms
+        example: 14790540588414443933
+        format: int64
+      car:
+        type: string
+        description: Client area
+        example: eu
+        maxLength: 3
+      cdv:
+        type: string
+        description: Client device
+        example: web
+        enum:
+        - ios
+        - and
+        - web
+      cid:
+        type: string
+        description: Unique client ID
+        example: b026324c6904b2a9cb4b88d6d61c81d1
+        maxLength: 64
+      crt:
+        type: integer
+        description: Client download rate, bits/s
+        example: 16237811690851852686
+        format: int64
+      dur:
+        type: integer
+        description: Playback event duration, ms
+        example: 325212
+        minimum: 1000
+        maximum: 3.6e+06
+      fmt:
+        type: string
+        description: Video format
+        example: def
+        enum:
+        - def
+        - hls
+      pid:
+        type: string
+        description: Player server name
+        example: player16
+        maxLength: 32
+      pos:
+        type: integer
+        description: Playback event stream position, ms
+        example: 10754580032902697233
+        format: int64
+      url:
+        type: string
+        description: LBRY URL
+        example: lbry://what
+        maxLength: 512
+    example:
+      bfc: 3051949731
+      bfd: 7946137683010387659
+      car: eu
+      cdv: web
+      cid: b026324c6904b2a9cb4b88d6d61c81d1
+      crt: 7191103579666822187
+      dur: 3317504
+      fmt: hls
+      pid: player16
+      pos: 14933669324066421013
+      url: lbry://what
+    required:
+    - url
+    - pos
+    - dur
+    - bfc
+    - bfd
+    - fmt
+    - pid
+    - cid
+    - cdv
