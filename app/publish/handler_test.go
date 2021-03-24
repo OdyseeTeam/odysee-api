@@ -9,7 +9,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"path"
 	"testing"
@@ -201,20 +200,17 @@ func Test_fetchFileInvalidInput(t *testing.T) {
 		{"http://ovh.net/files/nonexistant1Mb.dat", "remote server returned non-OK status 404"},
 		{"/etc/passwd", `Get "/etc/passwd": unsupported protocol scheme ""`},
 		{"https://odysee.tv/../../../etc/passwd", "remote server returned non-OK status 400"},
-		{"http://nonexistenthost/some_file.mp4", `Get "http://nonexistenthost/some_file.mp4": dial tcp: lookup nonexistenthost: no such host`},
+		{"http://nonexistenthost/some_file.mp4", `dial tcp: lookup nonexistenthost:`},
 		{"http://nonexistenthost/", "couldn't determine remote file name"},
 		{"/", "couldn't determine remote file name"},
 	}
 
 	for _, c := range cases {
 		t.Run(c.url, func(t *testing.T) {
-			data := url.Values{}
-			data.Add(remoteURLParam, "http://odysee.tv/just/some_file.mp4")
-
 			r := CreatePublishRequest(t, nil, FormParam{remoteURLParam, c.url})
 
 			_, err := h.fetchFile(r, 20404)
-			require.EqualError(t, err, c.errMsg)
+			assert.Regexp(t, fmt.Sprintf(".*%v.*", c.errMsg), err.Error())
 		})
 	}
 }
