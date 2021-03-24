@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path"
 	"testing"
@@ -188,4 +189,44 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "unexpected EOF", rpcResponse.Error.Message)
 	require.False(t, publisher.called)
+}
+
+func Test_fetchFileInvalidInput(t *testing.T) {
+	h := &Handler{UploadPath: os.TempDir()}
+
+	cases := []struct {
+		url, errMsg string
+	}{
+		{"", ErrEmptyRemoteURL.Error()},
+		{"http://ovh.net/files/nonexistant1Mb.dat", "remote server returned non-OK status 404"},
+		{"/etc/passwd", `Get "/etc/passwd": unsupported protocol scheme ""`},
+		{"https://odysee.tv/../../../etc/passwd", "remote server returned non-OK status 400"},
+		{"http://nonexistenthost/some_file.mp4", `Get "http://nonexistenthost/some_file.mp4": dial tcp: lookup nonexistenthost: no such host`},
+		{"http://nonexistenthost/", "couldn't determine remote file name"},
+		{"/", "couldn't determine remote file name"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.url, func(t *testing.T) {
+			data := url.Values{}
+			data.Add(remoteURLParam, "http://odysee.tv/just/some_file.mp4")
+
+			r := CreatePublishRequest(t, nil, FormParam{remoteURLParam, c.url})
+
+			_, err := h.fetchFile(r, 20404)
+			require.EqualError(t, err, c.errMsg)
+		})
+	}
+}
+
+func Test_fetchFile(t *testing.T) {
+	h := &Handler{UploadPath: os.TempDir()}
+	r := CreatePublishRequest(t, nil, FormParam{remoteURLParam, "http://ovh.net/files/1Mb.dat"})
+
+	f, err := h.fetchFile(r, 20404)
+	require.NoError(t, err)
+	assert.Regexp(t, "20404/.+_1Mb.dat$", f.Name())
+	s, err := os.Stat(f.Name())
+	require.NoError(t, err)
+	require.EqualValues(t, 125000, s.Size())
 }
