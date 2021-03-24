@@ -227,12 +227,17 @@ func (h Handler) createFile(userID int, origFilename string) (*os.File, error) {
 func (h Handler) fetchFile(r *http.Request, userID int) (*os.File, error) {
 	log := logger.WithFields(logrus.Fields{"user_id": userID, "method_handler": method})
 
+	err := r.ParseMultipartForm(32 << 20)
+	if err != nil {
+		return nil, err
+	}
+
 	url := r.Form.Get(remoteURLParam)
 	if url == "" {
 		return nil, ErrEmptyRemoteURL
 	}
 
-	r, err := http.NewRequest(http.MethodGet, url, nil)
+	r, err = http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, werrors.Wrap(err, "error creating request")
 	}
