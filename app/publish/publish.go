@@ -172,8 +172,12 @@ func getCaller(sdkAddress, filename string, userID int, qCache cache.QueryCache)
 // CanHandle checks if http.Request contains POSTed data in an accepted format.
 // Supposed to be used in gorilla mux router MatcherFunc.
 func (h Handler) CanHandle(r *http.Request, _ *mux.RouteMatch) bool {
-	_, _, err := r.FormFile(fileFieldName)
-	return !errors.Is(err, http.ErrMissingFile) && r.FormValue(jsonRPCFieldName) != ""
+	err := r.ParseMultipartForm(32 << 20)
+	if err != nil {
+		return false
+	}
+
+	return r.FormValue(jsonRPCFieldName) != ""
 }
 
 func (h Handler) saveFile(r *http.Request, userID int) (*os.File, error) {
@@ -223,17 +227,12 @@ func (h Handler) createFile(userID int, origFilename string) (*os.File, error) {
 func (h Handler) fetchFile(r *http.Request, userID int) (*os.File, error) {
 	log := logger.WithFields(logrus.Fields{"user_id": userID, "method_handler": method})
 
-	err := r.ParseMultipartForm(32 << 20)
-	if err != nil {
-		return nil, err
-	}
-
 	url := r.Form.Get(remoteURLParam)
 	if url == "" {
 		return nil, ErrEmptyRemoteURL
 	}
 
-	r, err = http.NewRequest(http.MethodGet, url, nil)
+	r, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, werrors.Wrap(err, "error creating request")
 	}
