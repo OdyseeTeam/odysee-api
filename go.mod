@@ -1,8 +1,9 @@
 module github.com/lbryio/lbrytv
 
-go 1.15
+go 1.16
 
 require (
+	github.com/alecthomas/kong v0.2.16
 	github.com/getkin/kin-openapi v0.33.0
 	github.com/getsentry/sentry-go v0.6.1
 	github.com/gobuffalo/logger v1.0.3 // indirect
@@ -28,7 +29,7 @@ require (
 	github.com/prometheus/client_model v0.2.0
 	github.com/rogpeppe/go-internal v1.6.2 // indirect
 	github.com/rs/cors v1.7.0
-	github.com/rubenv/sql-migrate v0.0.0-20200429072036-ae26b214fa43
+	github.com/rubenv/sql-migrate v0.0.0-20210215143335-f84234893558
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/afero v1.5.1 // indirect
 	github.com/spf13/cast v1.3.1

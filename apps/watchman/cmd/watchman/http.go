@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	playbacksvr "github.com/lbryio/lbrytv/apps/watchman/gen/http/playback/server"
-	playback "github.com/lbryio/lbrytv/apps/watchman/gen/playback"
+	reportersvr "github.com/lbryio/lbrytv/apps/watchman/gen/http/reporter/server"
+	reporter "github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
 	goahttp "goa.design/goa/v3/http"
 	httpmdlwr "goa.design/goa/v3/http/middleware"
 	"goa.design/goa/v3/middleware"
@@ -18,7 +18,7 @@ import (
 
 // handleHTTPServer starts configures and starts a HTTP server on the given
 // URL. It shuts down the server if any error is received in the error channel.
-func handleHTTPServer(ctx context.Context, u *url.URL, playbackEndpoints *playback.Endpoints, wg *sync.WaitGroup, errc chan error, logger *log.Logger, debug bool) {
+func handleHTTPServer(ctx context.Context, u *url.URL, reporterEndpoints *reporter.Endpoints, wg *sync.WaitGroup, errc chan error, logger *log.Logger, debug bool) {
 
 	// Setup goa log adapter.
 	var (
@@ -49,20 +49,20 @@ func handleHTTPServer(ctx context.Context, u *url.URL, playbackEndpoints *playba
 	// the service input and output data structures to HTTP requests and
 	// responses.
 	var (
-		playbackServer *playbacksvr.Server
+		reporterServer *reportersvr.Server
 	)
 	{
 		eh := errorHandler(logger)
-		playbackServer = playbacksvr.New(playbackEndpoints, mux, dec, enc, eh, nil)
+		reporterServer = reportersvr.New(reporterEndpoints, mux, dec, enc, eh, nil)
 		if debug {
 			servers := goahttp.Servers{
-				playbackServer,
+				reporterServer,
 			}
 			servers.Use(httpmdlwr.Debug(mux, os.Stdout))
 		}
 	}
 	// Configure the mux.
-	playbacksvr.Mount(mux, playbackServer)
+	reportersvr.Mount(mux, reporterServer)
 
 	// Wrap the multiplexer with additional middlewares. Middlewares mounted
 	// here apply to all the service endpoints.
@@ -75,7 +75,7 @@ func handleHTTPServer(ctx context.Context, u *url.URL, playbackEndpoints *playba
 	// Start HTTP server using default configuration, change the code to
 	// configure the server as required by your service.
 	srv := &http.Server{Addr: u.Host, Handler: handler}
-	for _, m := range playbackServer.Mounts {
+	for _, m := range reporterServer.Mounts {
 		logger.Printf("HTTP %q mounted on %s %s", m.Method, m.Verb, m.Pattern)
 	}
 

@@ -14,7 +14,7 @@ import (
 	"syscall"
 
 	watchman "github.com/lbryio/lbrytv/apps/watchman"
-	playback "github.com/lbryio/lbrytv/apps/watchman/gen/playback"
+	reporter "github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
 )
 
 func main() {
@@ -40,19 +40,19 @@ func main() {
 
 	// Initialize the services.
 	var (
-		playbackSvc playback.Service
+		reporterSvc reporter.Service
 	)
 	{
-		playbackSvc = watchman.NewPlayback(logger)
+		reporterSvc = watchman.NewReporter(nil, logger)
 	}
 
 	// Wrap the services in endpoints that can be invoked from other services
 	// potentially running in different processes.
 	var (
-		playbackEndpoints *playback.Endpoints
+		reporterEndpoints *reporter.Endpoints
 	)
 	{
-		playbackEndpoints = playback.NewEndpoints(playbackSvc)
+		reporterEndpoints = reporter.NewEndpoints(reporterSvc)
 	}
 
 	// Create channel used by both the signal handler and server goroutines
@@ -97,7 +97,7 @@ func main() {
 			} else if u.Port() == "" {
 				u.Host = net.JoinHostPort(u.Host, ":443")
 			}
-			handleHTTPServer(ctx, u, playbackEndpoints, &wg, errc, logger, *dbgF)
+			handleHTTPServer(ctx, u, reporterEndpoints, &wg, errc, logger, *dbgF)
 		}
 
 		{
@@ -124,7 +124,7 @@ func main() {
 			} else if u.Port() == "" {
 				u.Host = net.JoinHostPort(u.Host, ":443")
 			}
-			handleHTTPServer(ctx, u, playbackEndpoints, &wg, errc, logger, *dbgF)
+			handleHTTPServer(ctx, u, reporterEndpoints, &wg, errc, logger, *dbgF)
 		}
 
 	case "dev":
@@ -151,7 +151,7 @@ func main() {
 			} else if u.Port() == "" {
 				u.Host = net.JoinHostPort(u.Host, ":443")
 			}
-			handleHTTPServer(ctx, u, playbackEndpoints, &wg, errc, logger, *dbgF)
+			handleHTTPServer(ctx, u, reporterEndpoints, &wg, errc, logger, *dbgF)
 		}
 
 	default:

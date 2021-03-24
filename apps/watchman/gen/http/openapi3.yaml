@@ -1,10 +1,10 @@
 openapi: 3.0.3
 info:
   title: Watchman service
-  description: "Watchman collects playback metrics.\n\t\tPlayback time along with
-    buffering count and duration is collected\n\t\tvia playback events, which should
-    be sent from the client each n sec\n\t\t(with n being something reasonable between
-    5 and 30s)\n\t"
+  description: "Watchman collects media playback reports.\n\t\tPlayback time along
+    with buffering count and duration is collected\n\t\tvia playback reports, which
+    should be sent from the client each n sec\n\t\t(with n being something reasonable
+    between 5 and 30s)\n\t"
   version: "1.0"
 servers:
 - url: https://watchman.api.lbry.tv/v1
@@ -18,18 +18,18 @@ paths:
   /openapi.json:
     get:
       tags:
-      - playback
+      - reporter
       summary: Download ./gen/http/openapi.json
-      operationId: playback#/openapi.json
+      operationId: reporter#/openapi.json
       responses:
         "200":
           description: File downloaded
-  /playback:
+  /reports/playback:
     post:
       tags:
-      - playback
-      summary: add playback
-      operationId: playback#add
+      - reporter
+      summary: add reporter
+      operationId: reporter#add
       requestBody:
         required: true
         content:
@@ -37,16 +37,17 @@ paths:
             schema:
               $ref: '#/components/schemas/AddRequestBody'
             example:
-              bfc: 2090117172
-              bfd: 17251565766128185860
+              bfc: 2095695930
+              bfd: 746498439
               car: eu
               cdv: web
               cid: b026324c6904b2a9cb4b88d6d61c81d1
-              crt: 12429558419691439090
-              dur: 679116
+              crt: 356512143
+              dur: 1329513
               fmt: hls
               pid: player16
-              pos: 5772200059818313417
+              por: 8586
+              pos: 615768058
               url: lbry://what
       responses:
         "201":
@@ -59,11 +60,13 @@ components:
         bfc:
           type: integer
           description: Buffering events count
-          example: 863015944
+          example: 2027100662
+          minimum: 0
         bfd:
           type: integer
           description: Buffering events total duration, ms
-          example: 1722420251317621226
+          example: 1479834203
+          format: int32
         car:
           type: string
           description: Client area
@@ -72,7 +75,7 @@ components:
         cdv:
           type: string
           description: Client device
-          example: and
+          example: ios
           enum:
           - ios
           - and
@@ -85,11 +88,12 @@ components:
         crt:
           type: integer
           description: Client download rate, bits/s
-          example: 14051988778240681527
+          example: 938401497
+          format: int32
         dur:
           type: integer
-          description: Playback event duration, ms
-          example: 2003251
+          description: Current playback report duration, ms
+          example: 350135
           minimum: 1000
           maximum: 3.6e+06
         fmt:
@@ -97,37 +101,46 @@ components:
           description: Video format
           example: hls
           enum:
-          - def
+          - std
           - hls
         pid:
           type: string
           description: Player server name
           example: player16
           maxLength: 32
+        por:
+          type: integer
+          description: Relative stream position, 0 — 10000 (0% — 100%)
+          example: 9943
+          minimum: 0
+          maximum: 10000
         pos:
           type: integer
-          description: Playback event stream position, ms
-          example: 14775216478884507872
+          description: Current playback report stream position, ms
+          example: 1259307073
+          minimum: 0
         url:
           type: string
           description: LBRY URL
           example: lbry://what
           maxLength: 512
       example:
-        bfc: 3086919497
-        bfd: 13253775777269933896
+        bfc: 1028310977
+        bfd: 1477881050
         car: eu
         cdv: ios
         cid: b026324c6904b2a9cb4b88d6d61c81d1
-        crt: 667828399954248136
-        dur: 1291407
-        fmt: hls
+        crt: 1770612318
+        dur: 1576543
+        fmt: std
         pid: player16
-        pos: 17929703087538498459
+        por: 3378
+        pos: 155490916
         url: lbry://what
       required:
       - url
       - pos
+      - por
       - dur
       - bfc
       - bfd

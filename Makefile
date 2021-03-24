@@ -62,3 +62,12 @@ GORELEASER_CURRENT_TAG := $(shell git describe --tags --match 'collector-v*'|sed
 collector:
 	goreleaser build -f apps/collector/.goreleaser.yml --snapshot --rm-dist
 	find . -name pkged.go -delete
+
+watchman_models:
+	sqlc -f apps/watchman/sqlc.yaml generate
+
+watchman_api:
+	goa gen github.com/lbryio/lbrytv/apps/watchman/design -o apps/watchman
+
+watchman_example:
+	goa example github.com/lbryio/lbrytv/apps/watchman/design -o apps/watchman

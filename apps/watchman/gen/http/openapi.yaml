@@ -1,10 +1,10 @@
 swagger: "2.0"
 info:
   title: Watchman service
-  description: "Watchman collects playback metrics.\n\t\tPlayback time along with
-    buffering count and duration is collected\n\t\tvia playback events, which should
-    be sent from the client each n sec\n\t\t(with n being something reasonable between
-    5 and 30s)\n\t"
+  description: "Watchman collects media playback reports.\n\t\tPlayback time along
+    with buffering count and duration is collected\n\t\tvia playback reports, which
+    should be sent from the client each n sec\n\t\t(with n being something reasonable
+    between 5 and 30s)\n\t"
   version: ""
 host: watchman.api.lbry.tv
 consumes:
@@ -19,9 +19,9 @@ paths:
   /openapi.json:
     get:
       tags:
-      - playback
+      - reporter
       summary: Download ./gen/http/openapi.json
-      operationId: playback#/openapi.json
+      operationId: reporter#/openapi.json
       responses:
         "200":
           description: File downloaded
@@ -29,21 +29,22 @@ paths:
             type: file
       schemes:
       - https
-  /playback:
+  /reports/playback:
     post:
       tags:
-      - playback
-      summary: add playback
-      operationId: playback#add
+      - reporter
+      summary: add reporter
+      operationId: reporter#add
       parameters:
       - name: AddRequestBody
         in: body
         required: true
         schema:
-          $ref: '#/definitions/PlaybackAddRequestBody'
+          $ref: '#/definitions/ReporterAddRequestBody'
           required:
           - url
           - pos
+          - por
           - dur
           - bfc
           - bfd
@@ -57,20 +58,20 @@ paths:
       schemes:
       - https
 definitions:
-  PlaybackAddRequestBody:
-    title: PlaybackAddRequestBody
+  ReporterAddRequestBody:
+    title: ReporterAddRequestBody
     type: object
     properties:
       bfc:
         type: integer
         description: Buffering events count
-        example: 27904123
-        format: int32
+        example: 1633176499
+        minimum: 0
       bfd:
         type: integer
         description: Buffering events total duration, ms
-        example: 14790540588414443933
-        format: int64
+        example: 108657605
+        format: int32
       car:
         type: string
         description: Client area
@@ -79,7 +80,7 @@ definitions:
       cdv:
         type: string
         description: Client device
-        example: web
+        example: ios
         enum:
         - ios
         - and
@@ -92,51 +93,59 @@ definitions:
       crt:
         type: integer
         description: Client download rate, bits/s
-        example: 16237811690851852686
-        format: int64
+        example: 1997303752
+        format: int32
       dur:
         type: integer
-        description: Playback event duration, ms
-        example: 325212
+        description: Current playback report duration, ms
+        example: 2639011
         minimum: 1000
         maximum: 3.6e+06
       fmt:
         type: string
         description: Video format
-        example: def
+        example: hls
         enum:
-        - def
+        - std
         - hls
       pid:
         type: string
         description: Player server name
         example: player16
         maxLength: 32
+      por:
+        type: integer
+        description: Relative stream position, 0 — 10000 (0% — 100%)
+        example: 7437
+        minimum: 0
+        maximum: 10000
       pos:
         type: integer
-        description: Playback event stream position, ms
-        example: 10754580032902697233
-        format: int64
+        description: Current playback report stream position, ms
+        example: 13952061
+        minimum: 0
       url:
         type: string
         description: LBRY URL
         example: lbry://what
         maxLength: 512
     example:
-      bfc: 3051949731
-      bfd: 7946137683010387659
+      bfc: 1501556176
+      bfd: 1292639514
       car: eu
       cdv: web
       cid: b026324c6904b2a9cb4b88d6d61c81d1
-      crt: 7191103579666822187
-      dur: 3317504
+      crt: 431507972
+      dur: 775275
       fmt: hls
       pid: player16
-      pos: 14933669324066421013
+      por: 6208
+      pos: 1850104351
       url: lbry://what
     required:
     - url
     - pos
+    - por
     - dur
     - bfc
     - bfd

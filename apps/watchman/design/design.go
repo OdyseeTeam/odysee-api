@@ -4,16 +4,16 @@ import . "goa.design/goa/v3/dsl"
 
 var _ = API("watchman", func() {
 	Title("Watchman service")
-	Description(`Watchman collects playback metrics.
+	Description(`Watchman collects media playback reports.
 		Playback time along with buffering count and duration is collected
-		via playback events, which should be sent from the client each n sec
+		via playback reports, which should be sent from the client each n sec
 		(with n being something reasonable between 5 and 30s)
 	`)
 
 	Server("watchman", func() {
 		Description("watchman hosts the Watchman service")
 
-		Services("playback")
+		Services("reporter")
 
 		Host("production", func() {
 			Description("Production host")
@@ -31,35 +31,43 @@ var _ = API("watchman", func() {
 	})
 })
 
-var _ = Service("playback", func() {
-	Description("Video playback events receptacle")
+var _ = Service("reporter", func() {
+	Description("Media playback reports")
 	Method("add", func() {
-		Payload(Playback)
+		Payload(PlaybackReport)
 		Result(Empty)
 		HTTP(func() {
-			POST("/playback")
+			POST("/reports/playback")
 			Response(StatusCreated)
 		})
 	})
 	Files("/openapi.json", "./gen/http/openapi.json")
 })
 
-var Playback = Type("Playback", func() {
+var PlaybackReport = Type("PlaybackReport", func() {
 	Attribute("url", String, "LBRY URL", func() {
 		Example("lbry://what")
 		MaxLength(512)
 	})
-	Attribute("pos", UInt64, "Playback event stream position, ms")
-	Attribute("dur", UInt32, "Playback event duration, ms", func() {
+	Attribute("pos", Int32, "Current playback report stream position, ms", func() {
+		Minimum(0)
+	})
+	Attribute("por", Int32, "Relative stream position, 0 — 10000 (0% — 100%)", func() {
+		Minimum(0)
+		Maximum(10000)
+	})
+	Attribute("dur", Int32, "Current playback report duration, ms", func() {
 		Minimum(1000)
-		Maximum(3600_000)
+		Maximum(3_600_000)
 	})
 
-	Attribute("bfc", UInt32, "Buffering events count")
-	Attribute("bfd", UInt64, "Buffering events total duration, ms")
+	Attribute("bfc", Int32, "Buffering events count", func() {
+		Minimum(0)
+	})
+	Attribute("bfd", Int32, "Buffering events total duration, ms")
 
 	Attribute("fmt", String, "Video format", func() {
-		Enum("def", "hls")
+		Enum("std", "hls")
 	})
 
 	Attribute("pid", String, "Player server name", func() {
@@ -67,7 +75,7 @@ var Playback = Type("Playback", func() {
 		MaxLength(32)
 	})
 
-	Attribute("crt", UInt64, "Client download rate, bits/s")
+	Attribute("crt", Int32, "Client download rate, bits/s")
 	Attribute("car", String, "Client area", func() {
 		Example("Europe", "eu")
 		MaxLength(3)
@@ -80,5 +88,5 @@ var Playback = Type("Playback", func() {
 		Enum("ios", "and", "web")
 	})
 
-	Required("url", "pos", "dur", "bfc", "bfd", "fmt", "pid", "cid", "cdv")
+	Required("url", "pos", "por", "dur", "bfc", "bfd", "fmt", "pid", "cid", "cdv")
 })

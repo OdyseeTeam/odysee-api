@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"os"
 
-	playbackc "github.com/lbryio/lbrytv/apps/watchman/gen/http/playback/client"
+	reporterc "github.com/lbryio/lbrytv/apps/watchman/gen/http/reporter/client"
 	goahttp "goa.design/goa/v3/http"
 	goa "goa.design/goa/v3/pkg"
 )
@@ -23,23 +23,24 @@ import (
 //    command (subcommand1|subcommand2|...)
 //
 func UsageCommands() string {
-	return `playback add
+	return `reporter add
 `
 }
 
 // UsageExamples produces an example of a valid invocation of the CLI tool.
 func UsageExamples() string {
-	return os.Args[0] + ` playback add --body '{
-      "bfc": 2090117172,
-      "bfd": 17251565766128185860,
+	return os.Args[0] + ` reporter add --body '{
+      "bfc": 2095695930,
+      "bfd": 746498439,
       "car": "eu",
       "cdv": "web",
       "cid": "b026324c6904b2a9cb4b88d6d61c81d1",
-      "crt": 12429558419691439090,
-      "dur": 679116,
+      "crt": 356512143,
+      "dur": 1329513,
       "fmt": "hls",
       "pid": "player16",
-      "pos": 5772200059818313417,
+      "por": 8586,
+      "pos": 615768058,
       "url": "lbry://what"
    }'` + "\n" +
 		""
@@ -55,13 +56,13 @@ func ParseEndpoint(
 	restore bool,
 ) (goa.Endpoint, interface{}, error) {
 	var (
-		playbackFlags = flag.NewFlagSet("playback", flag.ContinueOnError)
+		reporterFlags = flag.NewFlagSet("reporter", flag.ContinueOnError)
 
-		playbackAddFlags    = flag.NewFlagSet("add", flag.ExitOnError)
-		playbackAddBodyFlag = playbackAddFlags.String("body", "REQUIRED", "")
+		reporterAddFlags    = flag.NewFlagSet("add", flag.ExitOnError)
+		reporterAddBodyFlag = reporterAddFlags.String("body", "REQUIRED", "")
 	)
-	playbackFlags.Usage = playbackUsage
-	playbackAddFlags.Usage = playbackAddUsage
+	reporterFlags.Usage = reporterUsage
+	reporterAddFlags.Usage = reporterAddUsage
 
 	if err := flag.CommandLine.Parse(os.Args[1:]); err != nil {
 		return nil, nil, err
@@ -78,8 +79,8 @@ func ParseEndpoint(
 	{
 		svcn = flag.Arg(0)
 		switch svcn {
-		case "playback":
-			svcf = playbackFlags
+		case "reporter":
+			svcf = reporterFlags
 		default:
 			return nil, nil, fmt.Errorf("unknown service %q", svcn)
 		}
@@ -95,10 +96,10 @@ func ParseEndpoint(
 	{
 		epn = svcf.Arg(0)
 		switch svcn {
-		case "playback":
+		case "reporter":
 			switch epn {
 			case "add":
-				epf = playbackAddFlags
+				epf = reporterAddFlags
 
 			}
 
@@ -122,12 +123,12 @@ func ParseEndpoint(
 	)
 	{
 		switch svcn {
-		case "playback":
-			c := playbackc.NewClient(scheme, host, doer, enc, dec, restore)
+		case "reporter":
+			c := reporterc.NewClient(scheme, host, doer, enc, dec, restore)
 			switch epn {
 			case "add":
 				endpoint = c.Add()
-				data, err = playbackc.BuildAddPayload(*playbackAddBodyFlag)
+				data, err = reporterc.BuildAddPayload(*reporterAddBodyFlag)
 			}
 		}
 	}
@@ -138,37 +139,38 @@ func ParseEndpoint(
 	return endpoint, data, nil
 }
 
-// playbackUsage displays the usage of the playback command and its subcommands.
-func playbackUsage() {
-	fmt.Fprintf(os.Stderr, `Video playback events receptacle
+// reporterUsage displays the usage of the reporter command and its subcommands.
+func reporterUsage() {
+	fmt.Fprintf(os.Stderr, `Media playback reports
 Usage:
-    %s [globalflags] playback COMMAND [flags]
+    %s [globalflags] reporter COMMAND [flags]
 
 COMMAND:
     add: Add implements add.
 
 Additional help:
-    %s playback COMMAND --help
+    %s reporter COMMAND --help
 `, os.Args[0], os.Args[0])
 }
-func playbackAddUsage() {
-	fmt.Fprintf(os.Stderr, `%s [flags] playback add -body JSON
+func reporterAddUsage() {
+	fmt.Fprintf(os.Stderr, `%s [flags] reporter add -body JSON
 
 Add implements add.
     -body JSON: 
 
 Example:
-    `+os.Args[0]+` playback add --body '{
-      "bfc": 2090117172,
-      "bfd": 17251565766128185860,
+    `+os.Args[0]+` reporter add --body '{
+      "bfc": 2095695930,
+      "bfd": 746498439,
       "car": "eu",
       "cdv": "web",
       "cid": "b026324c6904b2a9cb4b88d6d61c81d1",
-      "crt": 12429558419691439090,
-      "dur": 679116,
+      "crt": 356512143,
+      "dur": 1329513,
       "fmt": "hls",
       "pid": "player16",
-      "pos": 5772200059818313417,
+      "por": 8586,
+      "pos": 615768058,
       "url": "lbry://what"
    }'
 `, os.Args[0])
