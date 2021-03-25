@@ -189,3 +189,67 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	assert.Equal(t, "unexpected EOF", rpcResponse.Error.Message)
 	require.False(t, publisher.called)
 }
+
+func Test_fetchFileInvalidInput(t *testing.T) {
+	h := &Handler{UploadPath: os.TempDir()}
+
+	cases := []struct {
+		url, errMsg string
+	}{
+		{"", ErrEmptyRemoteURL.Error()},
+		{"http://ovh.net/files/nonexistant1Mb.dat", "remote server returned non-OK status 404"},
+		{"/etc/passwd", `Get "/etc/passwd": unsupported protocol scheme ""`},
+		{"https://odysee.tv/../../../etc/passwd", "remote server returned non-OK status 400"},
+		{"http://nonexistenthost/some_file.mp4", `dial tcp: lookup nonexistenthost:`},
+		{"http://nonexistenthost/", "couldn't determine remote file name"},
+		{"/", "couldn't determine remote file name"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.url, func(t *testing.T) {
+			r := CreatePublishRequest(t, nil, FormParam{remoteURLParam, c.url})
+
+			_, err := h.fetchFile(r, 20404)
+			assert.Regexp(t, fmt.Sprintf(".*%v.*", c.errMsg), err.Error())
+		})
+	}
+}
+
+func Test_fetchFile(t *testing.T) {
+	h := &Handler{UploadPath: os.TempDir()}
+	r := CreatePublishRequest(t, nil, FormParam{remoteURLParam, "http://ovh.net/files/1Mb.dat"})
+
+	f, err := h.fetchFile(r, 20404)
+	require.NoError(t, err)
+	assert.Regexp(t, "20404/.+_1Mb.dat$", f.Name())
+	s, err := os.Stat(f.Name())
+	require.NoError(t, err)
+	require.EqualValues(t, 125000, s.Size())
+}
+
+func Test_fetchFileEmptyRemoteFile(t *testing.T) {
+	ts := test.MockHTTPServer(nil)
+	defer ts.Close()
+	ts.NextResponse <- ""
+
+	h := &Handler{UploadPath: os.TempDir()}
+	r := CreatePublishRequest(t, nil, FormParam{remoteURLParam, fmt.Sprintf("%v/file.mp4", ts.URL)})
+
+	f, err := h.fetchFile(r, 20404)
+	require.EqualError(t, err, "remote file is empty")
+	assert.Nil(t, f)
+}
+
+func Test_fetchFileRemoteFileTooLarge(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Length", fmt.Sprintf("%v", MaxRemoteFileSize+1))
+	}))
+	defer ts.Close()
+
+	h := &Handler{UploadPath: os.TempDir()}
+	r := CreatePublishRequest(t, nil, FormParam{remoteURLParam, fmt.Sprintf("%v/file.mp4", ts.URL)})
+
+	f, err := h.fetchFile(r, 20404)
+	require.EqualError(t, err, fmt.Sprintf("remote file is too large at %v bytes", MaxRemoteFileSize+1))
+	assert.Nil(t, f)
+}

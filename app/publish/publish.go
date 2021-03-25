@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
+	"time"
 
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/proxy"
@@ -21,29 +23,34 @@ import (
 	"github.com/lbryio/lbrytv/internal/responses"
 
 	"github.com/gorilla/mux"
+	werrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
 )
 
 var logger = monitor.NewModuleLogger("publish")
 
+var method = "publish"
+
 const (
+	MaxRemoteFileSize = 4 << 30 // 4GB
+
 	// fileFieldName refers to the POST field containing file upload
 	fileFieldName = "file"
 	// jsonRPCFieldName is a name of the POST field containing JSONRPC request accompanying the uploaded file
 	jsonRPCFieldName = "json_payload"
+	opName           = "publish"
 
-	fileNameParam = "file_path"
-
-	opName = "publish"
+	fileNameParam  = "file_path"
+	remoteURLParam = "remote_url"
 )
+
+var ErrEmptyRemoteURL = werrors.New("empty remote url")
 
 // Handler has path to save uploads to
 type Handler struct {
 	UploadPath string
 }
-
-var method = "publish"
 
 // observeFailure requires metrics.MeasureMiddleware middleware to be present on the request
 func observeFailure(d float64, kind string) {
@@ -78,14 +85,24 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	log := logger.WithFields(logrus.Fields{"user_id": user.ID, "method_handler": method})
 
-	f, err := h.saveFile(r, user.ID)
+	f, err := h.fetchFile(r, user.ID)
 	if err != nil {
-		log.Error(err)
-		monitor.ErrorToSentry(err)
-		w.Write(rpcerrors.NewInternalError(err).JSON())
-		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
-		return
+		if err == ErrEmptyRemoteURL {
+			f, err = h.saveFile(r, user.ID)
+			if err != nil {
+				log.Error(err)
+				monitor.ErrorToSentry(err)
+				w.Write(rpcerrors.NewInternalError(err).JSON())
+				observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+				return
+			}
+		} else {
+			w.Write(rpcerrors.NewInternalError(err).JSON())
+			observeFailure(metrics.GetDuration(r), metrics.FailureKindClient)
+			return
+		}
 	}
+
 	defer func() {
 		op := metrics.StartOperation(opName, "remove_file")
 		defer op.End()
@@ -155,8 +172,12 @@ func getCaller(sdkAddress, filename string, userID int, qCache cache.QueryCache)
 // CanHandle checks if http.Request contains POSTed data in an accepted format.
 // Supposed to be used in gorilla mux router MatcherFunc.
 func (h Handler) CanHandle(r *http.Request, _ *mux.RouteMatch) bool {
-	_, _, err := r.FormFile(fileFieldName)
-	return !errors.Is(err, http.ErrMissingFile) && r.FormValue(jsonRPCFieldName) != ""
+	err := r.ParseMultipartForm(32 << 20)
+	if err != nil {
+		return false
+	}
+
+	return r.FormValue(jsonRPCFieldName) != ""
 }
 
 func (h Handler) saveFile(r *http.Request, userID int) (*os.File, error) {
@@ -199,4 +220,78 @@ func (h Handler) createFile(userID int, origFilename string) (*os.File, error) {
 		return nil, err
 	}
 	return ioutil.TempFile(path, fmt.Sprintf("*_%s", origFilename))
+}
+
+// fetchFile downloads remote file from the URL provided by client.
+// ErrEmptyRemoteURL is a standard error when no URL has been provided.
+func (h Handler) fetchFile(r *http.Request, userID int) (*os.File, error) {
+	log := logger.WithFields(logrus.Fields{"user_id": userID, "method_handler": method})
+
+	err := r.ParseMultipartForm(32 << 20)
+	if err != nil {
+		return nil, err
+	}
+
+	url := r.Form.Get(remoteURLParam)
+	if url == "" {
+		return nil, ErrEmptyRemoteURL
+	}
+
+	r, err = http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, werrors.Wrap(err, "error creating request")
+	}
+	fname := path.Base(r.URL.Path)
+	if fname == "/" || fname == "." {
+		return nil, fmt.Errorf("couldn't determine remote file name")
+	}
+
+	timeout := sdkrouter.RPCTimeout - (120 * time.Second)
+	c := &http.Client{
+		Timeout: timeout,
+	}
+	resp, err := c.Do(r)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("remote server returned non-OK status %v", resp.StatusCode)
+	}
+
+	defer resp.Body.Close()
+
+	clh := resp.Header.Get("Content-Length")
+	cl, err := strconv.Atoi(clh)
+	if err != nil {
+		return nil, werrors.Wrap(err, "cannot determine remote file size")
+	}
+	if cl >= MaxRemoteFileSize {
+		return nil, fmt.Errorf("remote file is too large at %v bytes", cl)
+	}
+	if cl == 0 {
+		return nil, werrors.New("remote file is empty")
+	}
+
+	f, err := h.createFile(userID, fname)
+	if err != nil {
+		return nil, err
+	}
+	log.Infof("processing remote file %v", fname)
+
+	numWritten, err := io.Copy(f, resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if numWritten == 0 {
+		f.Close()
+		os.Remove(f.Name())
+		return f, werrors.New("remote file is empty")
+	}
+	log.Infof("saved uploaded file %v (%v bytes written)", f.Name(), numWritten)
+
+	if err := f.Close(); err != nil {
+		return f, err
+	}
+
+	return f, nil
 }

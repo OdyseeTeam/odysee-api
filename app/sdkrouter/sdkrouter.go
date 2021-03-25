@@ -13,7 +13,7 @@ import (
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 )
 
-const RPCTimeout = 300 * time.Second
+const RPCTimeout = 420 * time.Second
 
 var logger = monitor.NewModuleLogger("sdkrouter")
 
