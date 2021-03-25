@@ -33,7 +33,7 @@ var logger = monitor.NewModuleLogger("publish")
 var method = "publish"
 
 const (
-	RemotePublishLimit = 4 << 30 // 4GB
+	MaxRemoteFileSize = 4 << 30 // 4GB
 
 	// fileFieldName refers to the POST field containing file upload
 	fileFieldName = "file"
@@ -265,8 +265,11 @@ func (h Handler) fetchFile(r *http.Request, userID int) (*os.File, error) {
 	if err != nil {
 		return nil, werrors.Wrap(err, "cannot determine remote file size")
 	}
-	if cl >= RemotePublishLimit {
-		return nil, fmt.Errorf("remote file is too big at %v bytes", cl)
+	if cl >= MaxRemoteFileSize {
+		return nil, fmt.Errorf("remote file is too large at %v bytes", cl)
+	}
+	if cl == 0 {
+		return nil, werrors.New("remote file is empty")
 	}
 
 	f, err := h.createFile(userID, fname)
@@ -279,7 +282,16 @@ func (h Handler) fetchFile(r *http.Request, userID int) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
+	if numWritten == 0 {
+		f.Close()
+		os.Remove(f.Name())
+		return f, werrors.New("remote file is empty")
+	}
 	log.Infof("saved uploaded file %v (%v bytes written)", f.Name(), numWritten)
+
+	if err := f.Close(); err != nil {
+		return f, err
+	}
 
 	return f, nil
 }
