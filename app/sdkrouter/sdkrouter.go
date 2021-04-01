@@ -131,7 +131,7 @@ func (r *Router) updateLoadAndMetrics() {
 
 		numWallets := walletList.TotalPages
 		logger.Log().Debugf("load update: considering %s with load %d", server.Address, numWallets)
-		if best == nil || numWallets < min {
+		if (best == nil || numWallets < min) && !server.Private {
 			logger.Log().Debugf("load update: %s has least with %d", server.Address, numWallets)
 			best = server
 			min = numWallets

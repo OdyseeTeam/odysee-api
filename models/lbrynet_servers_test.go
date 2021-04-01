@@ -877,7 +877,7 @@ func testLbrynetServersSelect(t *testing.T) {
 }
 
 var (
-	lbrynetServerDBTypes = map[string]string{`ID`: `integer`, `Name`: `character varying`, `Address`: `character varying`, `Weight`: `integer`, `CreatedAt`: `timestamp without time zone`, `UpdatedAt`: `timestamp without time zone`}
+	lbrynetServerDBTypes = map[string]string{`ID`: `integer`, `Name`: `character varying`, `Address`: `character varying`, `Weight`: `integer`, `CreatedAt`: `timestamp without time zone`, `UpdatedAt`: `timestamp without time zone`, `Private`: `boolean`}
 	_                    = bytes.MinRead
 )
 
