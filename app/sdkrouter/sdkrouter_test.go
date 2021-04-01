@@ -7,6 +7,7 @@ import (
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/test"
+	"github.com/lbryio/lbrytv/models"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -60,25 +61,30 @@ func TestLeastLoaded(t *testing.T) {
 	defer rpcServer2.Close()
 	rpcServer3 := test.MockHTTPServer(nil)
 	defer rpcServer3.Close()
+	rpcServerPvt := test.MockHTTPServer(nil)
+	defer rpcServerPvt.Close()
 
-	servers := map[string]string{
-		"srv1": rpcServer1.URL,
-		"srv2": rpcServer2.URL,
-		"srv3": rpcServer3.URL,
+	servers := []*models.LbrynetServer{
+		{Name: "srv1", Address: rpcServer1.URL},
+		{Name: "srv2", Address: rpcServer2.URL},
+		{Name: "srv3", Address: rpcServer3.URL},
+		{Name: "srv-pvt", Address: rpcServerPvt.URL, Private: true},
 	}
-	r := New(servers)
+	r := NewWithServers(servers...)
 
 	// try doing the load in increasing order
-	rpcServer1.NextResponse <- `{"result":{"total_pages":1}}`
-	rpcServer2.NextResponse <- `{"result":{"total_pages":2}}`
-	rpcServer3.NextResponse <- `{"result":{"total_pages":3}}`
+	rpcServerPvt.NextResponse <- `{"result":{"total_pages":5}}`
+	rpcServer1.NextResponse <- `{"result":{"total_pages":10}}`
+	rpcServer2.NextResponse <- `{"result":{"total_pages":20}}`
+	rpcServer3.NextResponse <- `{"result":{"total_pages":30}}`
 	r.updateLoadAndMetrics()
 	assert.Equal(t, "srv1", r.LeastLoaded().Name)
 
 	// now do the load in decreasing order
-	rpcServer1.NextResponse <- `{"result":{"total_pages":3}}`
-	rpcServer2.NextResponse <- `{"result":{"total_pages":2}}`
-	rpcServer3.NextResponse <- `{"result":{"total_pages":1}}`
+	rpcServer1.NextResponse <- `{"result":{"total_pages":30}}`
+	rpcServer2.NextResponse <- `{"result":{"total_pages":20}}`
+	rpcServer3.NextResponse <- `{"result":{"total_pages":10}}`
+	rpcServerPvt.NextResponse <- `{"result":{"total_pages":5}}`
 	r.updateLoadAndMetrics()
 	assert.Equal(t, "srv3", r.LeastLoaded().Name)
 

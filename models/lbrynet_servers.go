@@ -28,6 +28,7 @@ type LbrynetServer struct {
 	Weight    int       `boil:"weight" json:"weight" toml:"weight" yaml:"weight"`
 	CreatedAt time.Time `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt time.Time `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	Private   bool      `boil:"private" json:"private" toml:"private" yaml:"private"`
 
 	R *lbrynetServerR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L lbrynetServerL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -40,6 +41,7 @@ var LbrynetServerColumns = struct {
 	Weight    string
 	CreatedAt string
 	UpdatedAt string
+	Private   string
 }{
 	ID:        "id",
 	Name:      "name",
@@ -47,6 +49,7 @@ var LbrynetServerColumns = struct {
 	Weight:    "weight",
 	CreatedAt: "created_at",
 	UpdatedAt: "updated_at",
+	Private:   "private",
 }
 
 // Generated where
@@ -81,6 +84,15 @@ func (w whereHelpertime_Time) GTE(x time.Time) qm.QueryMod {
 	return qmhelper.Where(w.field, qmhelper.GTE, x)
 }
 
+type whereHelperbool struct{ field string }
+
+func (w whereHelperbool) EQ(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
+func (w whereHelperbool) NEQ(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
+func (w whereHelperbool) LT(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
+func (w whereHelperbool) LTE(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
+func (w whereHelperbool) GT(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
+func (w whereHelperbool) GTE(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
+
 var LbrynetServerWhere = struct {
 	ID        whereHelperint
 	Name      whereHelperstring
@@ -88,6 +100,7 @@ var LbrynetServerWhere = struct {
 	Weight    whereHelperint
 	CreatedAt whereHelpertime_Time
 	UpdatedAt whereHelpertime_Time
+	Private   whereHelperbool
 }{
 	ID:        whereHelperint{field: "\"lbrynet_servers\".\"id\""},
 	Name:      whereHelperstring{field: "\"lbrynet_servers\".\"name\""},
@@ -95,6 +108,7 @@ var LbrynetServerWhere = struct {
 	Weight:    whereHelperint{field: "\"lbrynet_servers\".\"weight\""},
 	CreatedAt: whereHelpertime_Time{field: "\"lbrynet_servers\".\"created_at\""},
 	UpdatedAt: whereHelpertime_Time{field: "\"lbrynet_servers\".\"updated_at\""},
+	Private:   whereHelperbool{field: "\"lbrynet_servers\".\"private\""},
 }
 
 // LbrynetServerRels is where relationship names are stored.
@@ -118,9 +132,9 @@ func (*lbrynetServerR) NewStruct() *lbrynetServerR {
 type lbrynetServerL struct{}
 
 var (
-	lbrynetServerAllColumns            = []string{"id", "name", "address", "weight", "created_at", "updated_at"}
+	lbrynetServerAllColumns            = []string{"id", "name", "address", "weight", "created_at", "updated_at", "private"}
 	lbrynetServerColumnsWithoutDefault = []string{"name", "address"}
-	lbrynetServerColumnsWithDefault    = []string{"id", "weight", "created_at", "updated_at"}
+	lbrynetServerColumnsWithDefault    = []string{"id", "weight", "created_at", "updated_at", "private"}
 	lbrynetServerPrimaryKeyColumns     = []string{"id"}
 )
 
