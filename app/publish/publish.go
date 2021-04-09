@@ -33,7 +33,7 @@ var logger = monitor.NewModuleLogger("publish")
 var method = "publish"
 
 const (
-	MaxRemoteFileSize = 4 << 30 // 4GB
+	MaxRemoteFileSize = 5 << 30 // 4GB
 
 	// fileFieldName refers to the POST field containing file upload
 	fileFieldName = "file"
