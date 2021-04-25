@@ -74,32 +74,58 @@ type Caller struct {
 
 	Duration float64
 
-	client   jsonrpc.RPCClient
 	userID   int
 	endpoint string
 }
 
 func NewCaller(endpoint string, userID int) *Caller {
 	c := &Caller{
-		client: jsonrpc.NewClientWithOpts(endpoint, &jsonrpc.RPCClientOpts{
-			HTTPClient: &http.Client{
-				Timeout: sdkrouter.RPCTimeout,
-				Transport: &http.Transport{
-					Dial: (&net.Dialer{
-						Timeout:   120 * time.Second,
-						KeepAlive: 120 * time.Second,
-					}).Dial,
-					TLSHandshakeTimeout:   30 * time.Second,
-					ResponseHeaderTimeout: 600 * time.Second,
-					ExpectContinueTimeout: 1 * time.Second,
-				},
-			},
-		}),
 		endpoint: endpoint,
 		userID:   userID,
 	}
 	c.addDefaultHooks()
 	return c
+}
+
+func (c *Caller) NewRPCClient(timeInSecondstimeOut time.Duration) *jsonrpc.RPCClient {
+	client := jsonrpc.NewClientWithOpts(c.endpoint, &jsonrpc.RPCClientOpts{
+		HTTPClient: &http.Client{
+			Timeout: sdkrouter.RPCTimeout,
+			Transport: &http.Transport{
+				Dial: (&net.Dialer{
+					Timeout:   timeInSecondstimeOut,
+					KeepAlive: timeInSecondstimeOut,
+				}).Dial,
+				TLSHandshakeTimeout:   30 * time.Second,
+				ResponseHeaderTimeout: 600 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+			},
+		},
+	})
+	return &client
+}
+
+func (c *Caller) GetTimeSpanForJSONRPCMethod(method string) time.Duration {
+	var retVal time.Duration
+	switch method {
+	case "txo_spend":
+		retVal = time.Hour * 3
+		break
+	case "txo_list":
+		retVal = time.Minute * 10
+		break
+	case "transaction_list":
+		retVal = time.Minute * 10
+		break
+	default:
+		retVal = time.Minute * 2
+	}
+	return retVal
+}
+
+func (c *Caller) GetRPCClientForMethod(method string) *jsonrpc.RPCClient {
+	var client *jsonrpc.RPCClient = c.NewRPCClient(c.GetTimeSpanForJSONRPCMethod(method))
+	return client
 }
 
 // AddPreflightHook adds query preflight hook function,
@@ -201,7 +227,8 @@ func (c *Caller) SendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 
 	for i := 0; i < walletLoadRetries; i++ {
 		start := time.Now()
-		r, err = c.client.CallRaw(q.Request)
+		client := *c.GetRPCClientForMethod(q.Method())
+		r, err = client.CallRaw(q.Request)
 		c.Duration = time.Since(start).Seconds()
 
 		// Generally a HTTP transport failure (connect error etc)

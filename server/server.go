@@ -31,8 +31,9 @@ func NewServer(address string, sdkRouter *sdkrouter.Router) *Server {
 	api.InstallRoutes(r, sdkRouter)
 	r.Use(monitor.ErrorLoggingMiddleware)
 	r.Use(defaultHeadersMiddleware(map[string]string{
-		"Server":                      "api.lbry.tv",
-		"Access-Control-Allow-Origin": "*",
+		"Server":                       "api.lbry.tv",
+		"Access-Control-Allow-Origin":  "*",
+		"Access-Control-Allow-Headers": "content-type", // Needed this to get any request to work
 	}))
 
 	return &Server{

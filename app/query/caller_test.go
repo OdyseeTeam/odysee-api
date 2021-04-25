@@ -543,6 +543,25 @@ func TestCaller_CallQueryWithRetry(t *testing.T) {
 	require.Nil(t, r.Error)
 }
 
+func TestGetTimeSpanForJSONRPCMethod(t *testing.T) {
+	addr := test.RandServerAddress(t)
+	c := NewCaller(addr, 1)
+	threeHours := time.Hour * 3
+	tenMinutes := time.Minute * 10
+	twoMinutes := time.Minute * 2
+	duration := c.GetTimeSpanForJSONRPCMethod("txo_spend")
+	require.Equal(t, threeHours, duration)
+
+	duration = c.GetTimeSpanForJSONRPCMethod("txo_list")
+	require.Equal(t, tenMinutes, duration)
+
+	duration = c.GetTimeSpanForJSONRPCMethod("transaction_list")
+	require.Equal(t, tenMinutes, duration)
+
+	duration = c.GetTimeSpanForJSONRPCMethod("Any_other_method")
+	require.Equal(t, twoMinutes, duration)
+}
+
 func TestCaller_DontReloadWalletAfterOtherErrors(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	walletID := sdkrouter.WalletID(rand.Intn(100))
