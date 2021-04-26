@@ -105,7 +105,7 @@ func (c *Caller) newRPCClient(timeInSecondstimeOut time.Duration) jsonrpc.RPCCli
 	return client
 }
 
-func (c *Caller) GetTimeSpanForJSONRPCMethod(method string) time.Duration {
+func (c *Caller) getTimeSpanForJSONRPCMethod(method string) time.Duration {
 	timeSpanMap := map[string]time.Duration{
 		"txo_spend":        time.Hour * 3,
 		"txo_list":         time.Minute * 10,
@@ -119,8 +119,8 @@ func (c *Caller) GetTimeSpanForJSONRPCMethod(method string) time.Duration {
 	return time.Minute * 2
 }
 
-func (c *Caller) GetRPCClientForMethod(method string) jsonrpc.RPCClient {
-	var client jsonrpc.RPCClient = c.newRPCClient(c.GetTimeSpanForJSONRPCMethod(method))
+func (c *Caller) getRPCClientForMethod(method string) jsonrpc.RPCClient {
+	var client jsonrpc.RPCClient = c.newRPCClient(c.getTimeSpanForJSONRPCMethod(method))
 	return client
 }
 
@@ -223,7 +223,7 @@ func (c *Caller) SendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 
 	for i := 0; i < walletLoadRetries; i++ {
 		start := time.Now()
-		client := c.GetRPCClientForMethod(q.Method())
+		client := c.getRPCClientForMethod(q.Method())
 		r, err = client.CallRaw(q.Request)
 		c.Duration = time.Since(start).Seconds()
 

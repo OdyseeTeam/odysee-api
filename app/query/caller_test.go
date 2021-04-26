@@ -549,16 +549,16 @@ func TestGetTimeSpanForJSONRPCMethod(t *testing.T) {
 	threeHours := time.Hour * 3
 	tenMinutes := time.Minute * 10
 	twoMinutes := time.Minute * 2
-	duration := c.GetTimeSpanForJSONRPCMethod("txo_spend")
+	duration := c.getTimeSpanForJSONRPCMethod("txo_spend")
 	require.Equal(t, threeHours, duration)
 
-	duration = c.GetTimeSpanForJSONRPCMethod("txo_list")
+	duration = c.getTimeSpanForJSONRPCMethod("txo_list")
 	require.Equal(t, tenMinutes, duration)
 
-	duration = c.GetTimeSpanForJSONRPCMethod("transaction_list")
+	duration = c.getTimeSpanForJSONRPCMethod("transaction_list")
 	require.Equal(t, tenMinutes, duration)
 
-	duration = c.GetTimeSpanForJSONRPCMethod("Any_other_method")
+	duration = c.getTimeSpanForJSONRPCMethod("Any_other_method")
 	require.Equal(t, twoMinutes, duration)
 }
 
