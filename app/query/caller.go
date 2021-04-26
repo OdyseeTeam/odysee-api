@@ -87,7 +87,7 @@ func NewCaller(endpoint string, userID int) *Caller {
 	return c
 }
 
-func (c *Caller) NewRPCClient(timeInSecondstimeOut time.Duration) *jsonrpc.RPCClient {
+func (c *Caller) newRPCClient(timeInSecondstimeOut time.Duration) jsonrpc.RPCClient {
 	client := jsonrpc.NewClientWithOpts(c.endpoint, &jsonrpc.RPCClientOpts{
 		HTTPClient: &http.Client{
 			Timeout: sdkrouter.RPCTimeout,
@@ -102,29 +102,25 @@ func (c *Caller) NewRPCClient(timeInSecondstimeOut time.Duration) *jsonrpc.RPCCl
 			},
 		},
 	})
-	return &client
+	return client
 }
 
 func (c *Caller) GetTimeSpanForJSONRPCMethod(method string) time.Duration {
-	var retVal time.Duration
-	switch method {
-	case "txo_spend":
-		retVal = time.Hour * 3
-		break
-	case "txo_list":
-		retVal = time.Minute * 10
-		break
-	case "transaction_list":
-		retVal = time.Minute * 10
-		break
-	default:
-		retVal = time.Minute * 2
+	timeSpanMap := map[string]time.Duration{
+		"txo_spend":        time.Hour * 3,
+		"txo_list":         time.Minute * 10,
+		"transaction_list": time.Minute * 10,
 	}
-	return retVal
+
+	if timeSpan, ok := timeSpanMap[method]; ok {
+		return timeSpan
+	}
+
+	return time.Minute * 2
 }
 
-func (c *Caller) GetRPCClientForMethod(method string) *jsonrpc.RPCClient {
-	var client *jsonrpc.RPCClient = c.NewRPCClient(c.GetTimeSpanForJSONRPCMethod(method))
+func (c *Caller) GetRPCClientForMethod(method string) jsonrpc.RPCClient {
+	var client jsonrpc.RPCClient = c.newRPCClient(c.GetTimeSpanForJSONRPCMethod(method))
 	return client
 }
 
@@ -227,7 +223,7 @@ func (c *Caller) SendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 
 	for i := 0; i < walletLoadRetries; i++ {
 		start := time.Now()
-		client := *c.GetRPCClientForMethod(q.Method())
+		client := c.GetRPCClientForMethod(q.Method())
 		r, err = client.CallRaw(q.Request)
 		c.Duration = time.Since(start).Seconds()
 
