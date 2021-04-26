@@ -53,24 +53,28 @@ You still might want to use `docker` and `docker-compose` for running SDK and DB
 
 `go run . db_migrate_up`
 
-**3. Start lbrytv API server**
+**3. Generate .rsa file**
+
+`ssh-keygen -t rsa -f token_privkey.rsa -m pem`
+
+**4. Start lbrytv API server**
 
 `go run .`
 
-**4. Clone [lbry-desktop](https://github.com/lbryio/lbry-desktop/) repo, if you don't have it**
+**5. Clone [lbry-desktop](https://github.com/lbryio/lbry-desktop/) repo, if you don't have it**
 
 ```
 cd ..
 git clone git@github.com:lbryio/lbry-desktop.git
 ```
 
-**5. Launch UI in lbry-desktop repo folder**
+**6. Launch UI in lbry-desktop repo folder**
 
 ```
 SDK_API_URL=http://localhost:8080 yarn dev:web
 ```
 
-**6. Open http://localhost:8081/ in Chrome**
+**7. Open http://localhost:8081/ in Chrome**
 
 ## Testing
 
