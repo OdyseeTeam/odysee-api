@@ -68,10 +68,6 @@ cd ..
 git clone git@github.com:lbryio/lbry-desktop.git
 ```
 
-**5. Install npm dependencies**
-
-`npm install`
-
 **6. Launch UI in lbry-desktop repo folder**
 
 ```
