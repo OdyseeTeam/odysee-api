@@ -33,3 +33,15 @@ func TestGetTokenCacheTimeout(t *testing.T) {
 	defer Config.RestoreOverridden()
 	assert.Equal(t, 325*time.Second, GetTokenCacheTimeout())
 }
+
+func TestGetRPCTimeout(t *testing.T) {
+	Config.Override("RPCTimeouts", map[string]string{
+		"txo_list": "12s",
+		"resolve":  "200ms",
+	})
+	defer Config.RestoreOverridden()
+
+	assert.Equal(t, 12*time.Second, *GetRPCTimeout("txo_list"))
+	assert.Equal(t, 200*time.Millisecond, *GetRPCTimeout("resolve"))
+	assert.Nil(t, GetRPCTimeout("random_method"))
+}

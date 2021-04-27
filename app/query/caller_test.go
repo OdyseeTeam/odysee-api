@@ -543,23 +543,35 @@ func TestCaller_CallQueryWithRetry(t *testing.T) {
 	require.Nil(t, r.Error)
 }
 
-func TestGetTimeSpanForJSONRPCMethod(t *testing.T) {
-	addr := test.RandServerAddress(t)
-	c := NewCaller(addr, 1)
-	threeHours := time.Hour * 3
-	tenMinutes := time.Minute * 10
-	twoMinutes := time.Minute * 2
-	duration := c.getTimeSpanForJSONRPCMethod("txo_spend")
-	require.Equal(t, threeHours, duration)
+func TestCaller_timeouts(t *testing.T) {
+	srv := test.MockHTTPServer(nil)
+	defer srv.Close()
 
-	duration = c.getTimeSpanForJSONRPCMethod("txo_list")
-	require.Equal(t, tenMinutes, duration)
+	config.Override("RPCTimeouts", map[string]string{
+		"resolve": "300ms",
+	})
 
-	duration = c.getTimeSpanForJSONRPCMethod("transaction_list")
-	require.Equal(t, tenMinutes, duration)
+	c := NewCaller(srv.URL, 0)
+	q, err := NewQuery(jsonrpc.NewRequest("resolve"), "")
+	require.NoError(t, err)
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		srv.NextResponse <- test.ResToStr(t, &jsonrpc.RPCResponse{
+			JSONRPC: "2.0",
+			Result:  `""`,
+		})
+		time.Sleep(500 * time.Millisecond)
+		srv.NextResponse <- test.ResToStr(t, &jsonrpc.RPCResponse{
+			JSONRPC: "2.0",
+			Result:  `""`,
+		})
+	}()
 
-	duration = c.getTimeSpanForJSONRPCMethod("Any_other_method")
-	require.Equal(t, twoMinutes, duration)
+	_, err = c.SendQuery(q)
+	require.NoError(t, err)
+
+	_, err = c.SendQuery(q)
+	require.Regexp(t, `timeout awaiting response headers`, err.Error())
 }
 
 func TestCaller_DontReloadWalletAfterOtherErrors(t *testing.T) {

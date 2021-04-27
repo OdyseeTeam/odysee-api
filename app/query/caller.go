@@ -26,6 +26,7 @@ const (
 	walletLoadRetries   = 3
 	walletLoadRetryWait = 100 * time.Millisecond
 	builtinHookName     = "builtin"
+	defaultRPCTimeout   = 120 * time.Second
 
 	// AllMethodsHook is used as the first argument to Add*Hook to make it apply to all methods
 	AllMethodsHook = ""
@@ -87,17 +88,16 @@ func NewCaller(endpoint string, userID int) *Caller {
 	return c
 }
 
-func (c *Caller) newRPCClient(timeInSecondstimeOut time.Duration) jsonrpc.RPCClient {
+func (c *Caller) newRPCClient(timeout time.Duration) jsonrpc.RPCClient {
 	client := jsonrpc.NewClientWithOpts(c.endpoint, &jsonrpc.RPCClientOpts{
 		HTTPClient: &http.Client{
 			Timeout: sdkrouter.RPCTimeout,
 			Transport: &http.Transport{
 				Dial: (&net.Dialer{
-					Timeout:   timeInSecondstimeOut,
-					KeepAlive: timeInSecondstimeOut,
+					Timeout:   15 * time.Second,
+					KeepAlive: 120 * time.Second,
 				}).Dial,
-				TLSHandshakeTimeout:   30 * time.Second,
-				ResponseHeaderTimeout: 600 * time.Second,
+				ResponseHeaderTimeout: timeout,
 				ExpectContinueTimeout: 1 * time.Second,
 			},
 		},
@@ -105,22 +105,16 @@ func (c *Caller) newRPCClient(timeInSecondstimeOut time.Duration) jsonrpc.RPCCli
 	return client
 }
 
-func (c *Caller) getTimeSpanForJSONRPCMethod(method string) time.Duration {
-	timeSpanMap := map[string]time.Duration{
-		"txo_spend":        time.Hour * 3,
-		"txo_list":         time.Minute * 10,
-		"transaction_list": time.Minute * 10,
+func (c *Caller) getRPCTimeout(method string) time.Duration {
+	t := config.GetRPCTimeout(method)
+	if t != nil {
+		return *t
 	}
-
-	if timeSpan, ok := timeSpanMap[method]; ok {
-		return timeSpan
-	}
-
-	return time.Minute * 2
+	return defaultRPCTimeout
 }
 
-func (c *Caller) getRPCClientForMethod(method string) jsonrpc.RPCClient {
-	var client jsonrpc.RPCClient = c.newRPCClient(c.getTimeSpanForJSONRPCMethod(method))
+func (c *Caller) getRPCClient(method string) jsonrpc.RPCClient {
+	var client jsonrpc.RPCClient = c.newRPCClient(c.getRPCTimeout(method))
 	return client
 }
 
@@ -223,7 +217,7 @@ func (c *Caller) SendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 
 	for i := 0; i < walletLoadRetries; i++ {
 		start := time.Now()
-		client := c.getRPCClientForMethod(q.Method())
+		client := c.getRPCClient(q.Method())
 		r, err = client.CallRaw(q.Request)
 		c.Duration = time.Since(start).Seconds()
 

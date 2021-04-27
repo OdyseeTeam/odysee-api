@@ -35,3 +35,9 @@ PaidContentURL: https://cdn.lbryplayer.xyz/api/v3/streams/paid/
 CORSDomains:
   - https://odysee.com
   - https://lbry.tv
+
+RPCTimeouts:
+  txo_spend: 1m
+  txo_list: 1m
+  transaction_list: 1m
+  publish: 1m
