@@ -10,6 +10,7 @@ import (
 	"github.com/lbryio/lbrytv/models"
 
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/cast"
 )
 
 const (
@@ -153,4 +154,16 @@ func GetTokenCacheTimeout() time.Duration {
 
 func GetCORSDomains() []string {
 	return Config.Viper.GetStringSlice("CORSDomains")
+}
+
+func GetRPCTimeout(method string) *time.Duration {
+	ts := Config.Viper.GetStringMapString("RPCTimeouts")
+	if ts != nil {
+		if t, ok := ts[method]; ok {
+			d := cast.ToDuration(t)
+			return &d
+
+		}
+	}
+	return nil
 }
