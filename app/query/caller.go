@@ -91,7 +91,7 @@ func NewCaller(endpoint string, userID int) *Caller {
 func (c *Caller) newRPCClient(timeout time.Duration) jsonrpc.RPCClient {
 	client := jsonrpc.NewClientWithOpts(c.endpoint, &jsonrpc.RPCClientOpts{
 		HTTPClient: &http.Client{
-			Timeout: sdkrouter.RPCTimeout,
+			Timeout: sdkrouter.RPCTimeout + timeout,
 			Transport: &http.Transport{
 				Dial: (&net.Dialer{
 					Timeout:   15 * time.Second,

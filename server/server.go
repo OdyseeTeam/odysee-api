@@ -45,7 +45,8 @@ func NewServer(address string, sdkRouter *sdkrouter.Router) *Server {
 			Handler: r,
 			// We need this for long uploads
 			WriteTimeout: 0,
-			// prev WriteTimeout was (sdkrouter.RPCTimeout + (1 * time.Second)). it must be longer than rpc timeout to allow those timeouts to be handled
+			// prev WriteTimeout was (sdkrouter.RPCTimeout + (1 * time.Second)).
+			// It must be longer than rpc timeout to allow those timeouts to be handled
 			IdleTimeout:       0,
 			ReadHeaderTimeout: 10 * time.Second,
 		},
