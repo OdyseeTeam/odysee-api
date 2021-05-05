@@ -242,7 +242,7 @@ func (h Handler) fetchFile(r *http.Request, userID int) (*os.File, error) {
 		return nil, werrors.Wrap(err, "error creating request")
 	}
 	fname := path.Base(r.URL.Path)
-	if fname == "/" || fname == "." {
+	if fname == "/" || fname == "." || fname == "" {
 		return nil, fmt.Errorf("couldn't determine remote file name")
 	}
 
