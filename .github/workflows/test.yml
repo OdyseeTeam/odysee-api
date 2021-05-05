@@ -32,6 +32,5 @@ jobs:
 
       - name: Test
         run: go test -covermode=count -coverprofile=coverage.out ./...
-
-      - name: Check coverage
-        run: goveralls -coverprofile=coverage.out -service=circle-ci -ignore=models/ -repotoken ${{ secrets.COVERALLS_TOKEN }}
+      # - name: Check coverage
+      #   run: goveralls -coverprofile=coverage.out -service=circle-ci -ignore=models/ -repotoken ${{ secrets.COVERALLS_TOKEN }}
