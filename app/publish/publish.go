@@ -219,7 +219,7 @@ func (h Handler) createFile(userID int, origFilename string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ioutil.TempFile(path, fmt.Sprintf("*_%s", origFilename))
+	return ioutil.TempFile(path, fmt.Sprintf(origFilename, "_*%s"))
 }
 
 // fetchFile downloads remote file from the URL provided by client.
