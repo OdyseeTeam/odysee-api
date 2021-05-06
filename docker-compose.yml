@@ -56,26 +56,6 @@ services:
       PGDATA: /pgdata
       TZ: "UTC"
       PGTZ: "UTC"
-  watchtower:
-    image: containrrr/watchtower
-    command: --interval 30 --cleanup --label-enable --debug
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - 9080:9090
-    volumes:
-      - ${PWD}/deployments/docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ${PWD}/deployments/docker/prometheus/rules.yml:/etc/prometheus/rules.yml
-  alertmanager:
-    image: prom/alertmanager:latest
-    ports:
-      - 9093:9093
-    volumes:
-      - ${PWD}/deployments/docker/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
-  smtp:
-    image: namshi/smtp:latest
 
 volumes:
   pgdata: {}
