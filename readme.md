@@ -74,11 +74,9 @@ git clone git@github.com:lbryio/lbry-desktop.git
 SDK_API_URL=http://localhost:8080 yarn dev:web
 ```
 
-**7. Open http://localhost:8081/ in Chrome**
-
 ## Testing
 
-Make sure you have `lbrynet` and `postgres` containers running and run `make test`.
+Make sure you have `lbrynet`, `postgres` and `postgres-collector` containers running and run `make test`.
 
 ## Modifying and building a Docker image
 
