@@ -16,6 +16,19 @@ produces:
 - application/xml
 - application/gob
 paths:
+  /healthz:
+    get:
+      tags:
+      - reporter
+      summary: healthz reporter
+      operationId: reporter#healthz
+      responses:
+        "200":
+          description: OK response.
+          schema:
+            type: string
+      schemes:
+      - https
   /openapi.json:
     get:
       tags:
@@ -65,12 +78,12 @@ definitions:
       bfc:
         type: integer
         description: Buffering events count
-        example: 1633176499
+        example: 1543459748
         minimum: 0
       bfd:
         type: integer
         description: Buffering events total duration, ms
-        example: 108657605
+        example: 938401497
         format: int32
       car:
         type: string
@@ -93,12 +106,12 @@ definitions:
       crt:
         type: integer
         description: Client download rate, bits/s
-        example: 1997303752
+        example: 155490916
         format: int32
       dur:
         type: integer
         description: Current playback report duration, ms
-        example: 2639011
+        example: 646203
         minimum: 1000
         maximum: 3.6e+06
       fmt:
@@ -116,32 +129,32 @@ definitions:
       por:
         type: integer
         description: Relative stream position, 0 — 10000 (0% — 100%)
-        example: 7437
+        example: 662
         minimum: 0
         maximum: 10000
       pos:
         type: integer
         description: Current playback report stream position, ms
-        example: 13952061
+        example: 1825042135
         minimum: 0
       url:
         type: string
         description: LBRY URL
-        example: lbry://what
+        example: what
         maxLength: 512
     example:
-      bfc: 1501556176
-      bfd: 1292639514
+      bfc: 1517669849
+      bfd: 1770612318
       car: eu
       cdv: web
       cid: b026324c6904b2a9cb4b88d6d61c81d1
-      crt: 431507972
-      dur: 775275
-      fmt: hls
+      crt: 263225764
+      dur: 2292050
+      fmt: std
       pid: player16
-      por: 6208
-      pos: 1850104351
-      url: lbry://what
+      por: 977
+      pos: 1390789543
+      url: what
     required:
     - url
     - pos

@@ -24,7 +24,7 @@ func BuildAddPayload(reporterAddBody string) (*reporter.PlaybackReport, error) {
 	{
 		err = json.Unmarshal([]byte(reporterAddBody), &body)
 		if err != nil {
-			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"bfc\": 2095695930,\n      \"bfd\": 746498439,\n      \"car\": \"eu\",\n      \"cdv\": \"web\",\n      \"cid\": \"b026324c6904b2a9cb4b88d6d61c81d1\",\n      \"crt\": 356512143,\n      \"dur\": 1329513,\n      \"fmt\": \"hls\",\n      \"pid\": \"player16\",\n      \"por\": 8586,\n      \"pos\": 615768058,\n      \"url\": \"lbry://what\"\n   }'")
+			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"bfc\": 2068464011,\n      \"bfd\": 1633176499,\n      \"car\": \"eu\",\n      \"cdv\": \"ios\",\n      \"cid\": \"b026324c6904b2a9cb4b88d6d61c81d1\",\n      \"crt\": 1329532192,\n      \"dur\": 568437,\n      \"fmt\": \"hls\",\n      \"pid\": \"player16\",\n      \"por\": 2061,\n      \"pos\": 64944106,\n      \"url\": \"what\"\n   }'")
 		}
 		if utf8.RuneCountInString(body.URL) > 512 {
 			err = goa.MergeErrors(err, goa.InvalidLengthError("body.url", body.URL, utf8.RuneCountInString(body.URL), 512, false))

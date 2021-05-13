@@ -15,19 +15,22 @@ import (
 
 // Endpoints wraps the "reporter" service endpoints.
 type Endpoints struct {
-	Add goa.Endpoint
+	Add     goa.Endpoint
+	Healthz goa.Endpoint
 }
 
 // NewEndpoints wraps the methods of the "reporter" service with endpoints.
 func NewEndpoints(s Service) *Endpoints {
 	return &Endpoints{
-		Add: NewAddEndpoint(s),
+		Add:     NewAddEndpoint(s),
+		Healthz: NewHealthzEndpoint(s),
 	}
 }
 
 // Use applies the given middleware to all the "reporter" service endpoints.
 func (e *Endpoints) Use(m func(goa.Endpoint) goa.Endpoint) {
 	e.Add = m(e.Add)
+	e.Healthz = m(e.Healthz)
 }
 
 // NewAddEndpoint returns an endpoint function that calls the method "add" of
@@ -36,5 +39,13 @@ func NewAddEndpoint(s Service) goa.Endpoint {
 	return func(ctx context.Context, req interface{}) (interface{}, error) {
 		p := req.(*PlaybackReport)
 		return nil, s.Add(ctx, p)
+	}
+}
+
+// NewHealthzEndpoint returns an endpoint function that calls the method
+// "healthz" of service "reporter".
+func NewHealthzEndpoint(s Service) goa.Endpoint {
+	return func(ctx context.Context, req interface{}) (interface{}, error) {
+		return s.Healthz(ctx)
 	}
 }

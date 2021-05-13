@@ -18,8 +18,9 @@ import (
 
 // Server lists the reporter service endpoint HTTP handlers.
 type Server struct {
-	Mounts []*MountPoint
-	Add    http.Handler
+	Mounts  []*MountPoint
+	Add     http.Handler
+	Healthz http.Handler
 }
 
 // ErrorNamer is an interface implemented by generated error structs that
@@ -56,9 +57,11 @@ func New(
 	return &Server{
 		Mounts: []*MountPoint{
 			{"Add", "POST", "/reports/playback"},
+			{"Healthz", "GET", "/healthz"},
 			{"./gen/http/openapi.json", "GET", "/openapi.json"},
 		},
-		Add: NewAddHandler(e.Add, mux, decoder, encoder, errhandler, formatter),
+		Add:     NewAddHandler(e.Add, mux, decoder, encoder, errhandler, formatter),
+		Healthz: NewHealthzHandler(e.Healthz, mux, decoder, encoder, errhandler, formatter),
 	}
 }
 
@@ -68,11 +71,13 @@ func (s *Server) Service() string { return "reporter" }
 // Use wraps the server handlers with the given middleware.
 func (s *Server) Use(m func(http.Handler) http.Handler) {
 	s.Add = m(s.Add)
+	s.Healthz = m(s.Healthz)
 }
 
 // Mount configures the mux to serve the reporter endpoints.
 func Mount(mux goahttp.Muxer, h *Server) {
 	MountAddHandler(mux, h.Add)
+	MountHealthzHandler(mux, h.Healthz)
 	MountGenHTTPOpenapiJSON(mux, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./gen/http/openapi.json")
 	}))
@@ -117,6 +122,50 @@ func NewAddHandler(
 			return
 		}
 		res, err := endpoint(ctx, payload)
+		if err != nil {
+			if err := encodeError(ctx, w, err); err != nil {
+				errhandler(ctx, w, err)
+			}
+			return
+		}
+		if err := encodeResponse(ctx, w, res); err != nil {
+			errhandler(ctx, w, err)
+		}
+	})
+}
+
+// MountHealthzHandler configures the mux to serve the "reporter" service
+// "healthz" endpoint.
+func MountHealthzHandler(mux goahttp.Muxer, h http.Handler) {
+	f, ok := h.(http.HandlerFunc)
+	if !ok {
+		f = func(w http.ResponseWriter, r *http.Request) {
+			h.ServeHTTP(w, r)
+		}
+	}
+	mux.Handle("GET", "/healthz", f)
+}
+
+// NewHealthzHandler creates a HTTP handler which loads the HTTP request and
+// calls the "reporter" service "healthz" endpoint.
+func NewHealthzHandler(
+	endpoint goa.Endpoint,
+	mux goahttp.Muxer,
+	decoder func(*http.Request) goahttp.Decoder,
+	encoder func(context.Context, http.ResponseWriter) goahttp.Encoder,
+	errhandler func(context.Context, http.ResponseWriter, error),
+	formatter func(err error) goahttp.Statuser,
+) http.Handler {
+	var (
+		encodeResponse = EncodeHealthzResponse(encoder)
+		encodeError    = goahttp.ErrorEncoder(encoder, formatter)
+	)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))
+		ctx = context.WithValue(ctx, goa.MethodKey, "healthz")
+		ctx = context.WithValue(ctx, goa.ServiceKey, "reporter")
+		var err error
+		res, err := endpoint(ctx, nil)
 		if err != nil {
 			if err := encodeError(ctx, w, err); err != nil {
 				errhandler(ctx, w, err)

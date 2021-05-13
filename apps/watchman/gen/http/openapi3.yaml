@@ -7,17 +7,32 @@ info:
     between 5 and 30s)\n\t"
   version: "1.0"
 servers:
-- url: https://watchman.na-backend.odysee.com/v1
+- url: https://watchman.na-backend.odysee.com
   description: watchman hosts the Watchman service
   variables:
     version:
       default: v1
-- url: https://watchman.na-backend.odysee.com/v1
+- url: https://watchman.dev.na-backend.odysee.com
   description: watchman hosts the Watchman service
   variables:
     version:
       default: v1
 paths:
+  /healthz:
+    get:
+      tags:
+      - reporter
+      summary: healthz reporter
+      operationId: reporter#healthz
+      responses:
+        "200":
+          description: OK response.
+          content:
+            application/json:
+              schema:
+                type: string
+                example: Et ipsam.
+              example: Nihil ullam sit laborum qui aut.
   /openapi.json:
     get:
       tags:
@@ -40,18 +55,18 @@ paths:
             schema:
               $ref: '#/components/schemas/AddRequestBody'
             example:
-              bfc: 2095695930
-              bfd: 746498439
+              bfc: 2068464011
+              bfd: 1633176499
               car: eu
-              cdv: web
+              cdv: ios
               cid: b026324c6904b2a9cb4b88d6d61c81d1
-              crt: 356512143
-              dur: 1329513
+              crt: 1329532192
+              dur: 568437
               fmt: hls
               pid: player16
-              por: 8586
-              pos: 615768058
-              url: lbry://what
+              por: 2061
+              pos: 64944106
+              url: what
       responses:
         "201":
           description: Created response.
@@ -63,12 +78,12 @@ components:
         bfc:
           type: integer
           description: Buffering events count
-          example: 2027100662
+          example: 822159650
           minimum: 0
         bfd:
           type: integer
           description: Buffering events total duration, ms
-          example: 1479834203
+          example: 1422240286
           format: int32
         car:
           type: string
@@ -78,7 +93,7 @@ components:
         cdv:
           type: string
           description: Client device
-          example: ios
+          example: and
           enum:
           - ios
           - and
@@ -91,12 +106,12 @@ components:
         crt:
           type: integer
           description: Client download rate, bits/s
-          example: 938401497
+          example: 219268455
           format: int32
         dur:
           type: integer
           description: Current playback report duration, ms
-          example: 350135
+          example: 3178610
           minimum: 1000
           maximum: 3.6e+06
         fmt:
@@ -114,32 +129,32 @@ components:
         por:
           type: integer
           description: Relative stream position, 0 — 10000 (0% — 100%)
-          example: 9943
+          example: 2264
           minimum: 0
           maximum: 10000
         pos:
           type: integer
           description: Current playback report stream position, ms
-          example: 1259307073
+          example: 1223292224
           minimum: 0
         url:
           type: string
           description: LBRY URL
-          example: lbry://what
+          example: what
           maxLength: 512
       example:
-        bfc: 1028310977
-        bfd: 1477881050
+        bfc: 268663686
+        bfd: 2114200307
         car: eu
-        cdv: ios
+        cdv: web
         cid: b026324c6904b2a9cb4b88d6d61c81d1
-        crt: 1770612318
-        dur: 1576543
-        fmt: std
+        crt: 1143315912
+        dur: 958199
+        fmt: hls
         pid: player16
-        por: 3378
-        pos: 155490916
-        url: lbry://what
+        por: 1017
+        pos: 1364094906
+        url: what
       required:
       - url
       - pos

@@ -23,25 +23,25 @@ import (
 //    command (subcommand1|subcommand2|...)
 //
 func UsageCommands() string {
-	return `reporter add
+	return `reporter (add|healthz)
 `
 }
 
 // UsageExamples produces an example of a valid invocation of the CLI tool.
 func UsageExamples() string {
 	return os.Args[0] + ` reporter add --body '{
-      "bfc": 2095695930,
-      "bfd": 746498439,
+      "bfc": 2068464011,
+      "bfd": 1633176499,
       "car": "eu",
-      "cdv": "web",
+      "cdv": "ios",
       "cid": "b026324c6904b2a9cb4b88d6d61c81d1",
-      "crt": 356512143,
-      "dur": 1329513,
+      "crt": 1329532192,
+      "dur": 568437,
       "fmt": "hls",
       "pid": "player16",
-      "por": 8586,
-      "pos": 615768058,
-      "url": "lbry://what"
+      "por": 2061,
+      "pos": 64944106,
+      "url": "what"
    }'` + "\n" +
 		""
 }
@@ -60,9 +60,12 @@ func ParseEndpoint(
 
 		reporterAddFlags    = flag.NewFlagSet("add", flag.ExitOnError)
 		reporterAddBodyFlag = reporterAddFlags.String("body", "REQUIRED", "")
+
+		reporterHealthzFlags = flag.NewFlagSet("healthz", flag.ExitOnError)
 	)
 	reporterFlags.Usage = reporterUsage
 	reporterAddFlags.Usage = reporterAddUsage
+	reporterHealthzFlags.Usage = reporterHealthzUsage
 
 	if err := flag.CommandLine.Parse(os.Args[1:]); err != nil {
 		return nil, nil, err
@@ -101,6 +104,9 @@ func ParseEndpoint(
 			case "add":
 				epf = reporterAddFlags
 
+			case "healthz":
+				epf = reporterHealthzFlags
+
 			}
 
 		}
@@ -129,6 +135,9 @@ func ParseEndpoint(
 			case "add":
 				endpoint = c.Add()
 				data, err = reporterc.BuildAddPayload(*reporterAddBodyFlag)
+			case "healthz":
+				endpoint = c.Healthz()
+				data = nil
 			}
 		}
 	}
@@ -147,6 +156,7 @@ Usage:
 
 COMMAND:
     add: Add implements add.
+    healthz: Healthz implements healthz.
 
 Additional help:
     %s reporter COMMAND --help
@@ -160,18 +170,28 @@ Add implements add.
 
 Example:
     `+os.Args[0]+` reporter add --body '{
-      "bfc": 2095695930,
-      "bfd": 746498439,
+      "bfc": 2068464011,
+      "bfd": 1633176499,
       "car": "eu",
-      "cdv": "web",
+      "cdv": "ios",
       "cid": "b026324c6904b2a9cb4b88d6d61c81d1",
-      "crt": 356512143,
-      "dur": 1329513,
+      "crt": 1329532192,
+      "dur": 568437,
       "fmt": "hls",
       "pid": "player16",
-      "por": 8586,
-      "pos": 615768058,
-      "url": "lbry://what"
+      "por": 2061,
+      "pos": 64944106,
+      "url": "what"
    }'
+`, os.Args[0])
+}
+
+func reporterHealthzUsage() {
+	fmt.Fprintf(os.Stderr, `%s [flags] reporter healthz
+
+Healthz implements healthz.
+
+Example:
+    `+os.Args[0]+` reporter healthz
 `, os.Args[0])
 }

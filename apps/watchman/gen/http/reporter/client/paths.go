@@ -11,3 +11,8 @@ package client
 func AddReporterPath() string {
 	return "/reports/playback"
 }
+
+// HealthzReporterPath returns the URL path to the reporter service healthz HTTP endpoint.
+func HealthzReporterPath() string {
+	return "/healthz"
+}

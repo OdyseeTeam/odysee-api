@@ -17,7 +17,7 @@ var _ = API("watchman", func() {
 
 		Host("production", func() {
 			Description("Production host")
-			URI("https://watchman.na-backend.odysee.com/{version}")
+			URI("https://watchman.na-backend.odysee.com")
 
 			Variable("version", String, "API version", func() {
 				Default("v1")
@@ -25,7 +25,7 @@ var _ = API("watchman", func() {
 		})
 		Host("dev", func() {
 			Description("Development host")
-			URI("https://watchman.dev.na-backend.odysee.com/{version}")
+			URI("https://watchman.dev.na-backend.odysee.com")
 
 			Variable("version", String, "API version", func() {
 				Default("v1")
@@ -44,12 +44,19 @@ var _ = Service("reporter", func() {
 			Response(StatusCreated)
 		})
 	})
+	Method("healthz", func() {
+		Result(String)
+		HTTP(func() {
+			GET("/healthz")
+			Response(StatusOK)
+		})
+	})
 	Files("/openapi.json", "./gen/http/openapi.json")
 })
 
 var PlaybackReport = Type("PlaybackReport", func() {
 	Attribute("url", String, "LBRY URL", func() {
-		Example("lbry://what")
+		Example("what")
 		MaxLength(512)
 	})
 	Attribute("pos", Int32, "Current playback report stream position, ms", func() {

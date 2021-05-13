@@ -36,6 +36,7 @@ func main() {
 		reporterSvc reporter.Service
 	)
 	{
+		// TODO: provide DB connection as the first argument
 		reporterSvc = watchman.NewReporter(nil, logger)
 	}
 

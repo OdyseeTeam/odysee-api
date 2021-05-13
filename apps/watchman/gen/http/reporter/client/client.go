@@ -20,6 +20,10 @@ type Client struct {
 	// Add Doer is the HTTP client used to make requests to the add endpoint.
 	AddDoer goahttp.Doer
 
+	// Healthz Doer is the HTTP client used to make requests to the healthz
+	// endpoint.
+	HealthzDoer goahttp.Doer
+
 	// RestoreResponseBody controls whether the response bodies are reset after
 	// decoding so they can be read again.
 	RestoreResponseBody bool
@@ -41,6 +45,7 @@ func NewClient(
 ) *Client {
 	return &Client{
 		AddDoer:             doer,
+		HealthzDoer:         doer,
 		RestoreResponseBody: restoreBody,
 		scheme:              scheme,
 		host:                host,
@@ -68,6 +73,25 @@ func (c *Client) Add() goa.Endpoint {
 		resp, err := c.AddDoer.Do(req)
 		if err != nil {
 			return nil, goahttp.ErrRequestError("reporter", "add", err)
+		}
+		return decodeResponse(resp)
+	}
+}
+
+// Healthz returns an endpoint that makes HTTP requests to the reporter service
+// healthz server.
+func (c *Client) Healthz() goa.Endpoint {
+	var (
+		decodeResponse = DecodeHealthzResponse(c.decoder, c.RestoreResponseBody)
+	)
+	return func(ctx context.Context, v interface{}) (interface{}, error) {
+		req, err := c.BuildHealthzRequest(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := c.HealthzDoer.Do(req)
+		if err != nil {
+			return nil, goahttp.ErrRequestError("reporter", "healthz", err)
 		}
 		return decodeResponse(resp)
 	}

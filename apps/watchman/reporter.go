@@ -25,7 +25,7 @@ func NewReporter(db *sql.DB, logger *log.Logger) reporter.Service {
 }
 
 // Add implements add.
-func (s *reportersrvc) Add(ctx context.Context, p *reporter.PlaybackReport) (err error) {
+func (s *reportersrvc) Add(ctx context.Context, p *reporter.PlaybackReport) error {
 	s.logger.Print("reporter.add")
 	db.New(s.db).CreatePlaybackReport(context.Background(), db.CreatePlaybackReportParams{
 		URL: p.URL,
@@ -42,5 +42,9 @@ func (s *reportersrvc) Add(ctx context.Context, p *reporter.PlaybackReport) (err
 		Car: *p.Car,
 	})
 
-	return
+	return nil
+}
+
+func (s *reportersrvc) Healthz(ctx context.Context) (string, error) {
+	return "OK", nil
 }

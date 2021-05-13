@@ -15,6 +15,8 @@ import (
 type Service interface {
 	// Add implements add.
 	Add(context.Context, *PlaybackReport) (err error)
+	// Healthz implements healthz.
+	Healthz(context.Context) (res string, err error)
 }
 
 // ServiceName is the name of the service as defined in the design. This is the
@@ -25,7 +27,7 @@ const ServiceName = "reporter"
 // MethodNames lists the service method names as defined in the design. These
 // are the same values that are set in the endpoint request contexts under the
 // MethodKey key.
-var MethodNames = [1]string{"add"}
+var MethodNames = [2]string{"add", "healthz"}
 
 // PlaybackReport is the payload type of the reporter service add method.
 type PlaybackReport struct {
