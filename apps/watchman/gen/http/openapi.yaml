@@ -6,7 +6,7 @@ info:
     should be sent from the client each n sec\n\t\t(with n being something reasonable
     between 5 and 30s)\n\t"
   version: ""
-host: watchman.api.lbry.tv
+host: watchman.na-backend.odysee.com
 consumes:
 - application/json
 - application/xml

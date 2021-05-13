@@ -17,8 +17,7 @@ var _ = API("watchman", func() {
 
 		Host("production", func() {
 			Description("Production host")
-			URI("https://watchman.api.lbry.tv/{version}")
-			URI("https://watchman.api.odysee.tv/{version}")
+			URI("https://watchman.na-backend.odysee.com/{version}")
 
 			Variable("version", String, "API version", func() {
 				Default("v1")
@@ -26,7 +25,11 @@ var _ = API("watchman", func() {
 		})
 		Host("dev", func() {
 			Description("Development host")
-			URI("https://watchman-service.api.dev.lbry.tv")
+			URI("https://watchman.dev.na-backend.odysee.com/{version}")
+
+			Variable("version", String, "API version", func() {
+				Default("v1")
+			})
 		})
 	})
 })

@@ -14,7 +14,7 @@ import (
 
 func main() {
 	var (
-		hostF = flag.String("host", "production", "Server host (valid values: production, dev)")
+		bindF = flag.String("host", "production", "Server host (valid values: production, dev)")
 		addrF = flag.String("url", "", "URL to service host")
 
 		versionF = flag.String("version", "v1", "API version")
@@ -32,14 +32,15 @@ func main() {
 	{
 		addr = *addrF
 		if addr == "" {
-			switch *hostF {
+			switch *bindF {
 			case "production":
-				addr = "https://watchman.api.lbry.tv/{version}"
+				addr = "https://watchman.na-backend.odysee.com/{version}"
 				addr = strings.Replace(addr, "{version}", *versionF, -1)
 			case "dev":
-				addr = "https://watchman-service.api.dev.lbry.tv"
+				addr = "https://watchman.dev.na-backend.odysee.com/{version}"
+				addr = strings.Replace(addr, "{version}", *versionF, -1)
 			default:
-				fmt.Fprintf(os.Stderr, "invalid host argument: %q (valid hosts: production|dev)\n", *hostF)
+				fmt.Fprintf(os.Stderr, "invalid host argument: %q (valid hosts: production|dev)\n", *bindF)
 				os.Exit(1)
 			}
 		}

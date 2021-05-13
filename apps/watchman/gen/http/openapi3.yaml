@@ -7,13 +7,16 @@ info:
     between 5 and 30s)\n\t"
   version: "1.0"
 servers:
-- url: https://watchman.api.lbry.tv/v1
+- url: https://watchman.na-backend.odysee.com/v1
   description: watchman hosts the Watchman service
   variables:
     version:
       default: v1
-- url: https://watchman-service.api.dev.lbry.tv
+- url: https://watchman.na-backend.odysee.com/v1
   description: watchman hosts the Watchman service
+  variables:
+    version:
+      default: v1
 paths:
   /openapi.json:
     get:

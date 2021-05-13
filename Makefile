@@ -71,7 +71,7 @@ watchman:
 	GOARCH=amd64 GOOS=linux go build \
 		-o apps/watchman/dist/linux_amd64/watchman \
 		-ldflags "-X github.com/lbryio/lbrytv/version.version=$(watchman_version) -X github.com/lbryio/lbrytv/version.commit=$(git_hash) -X github.com/lbryio/lbrytv/apps/version.buildDate=$(date)" \
-		./apps/watchman/cmd/main.go
+		./apps/watchman/cmd/watchman/
 
 watchman_image:
 	docker build -t lbry/odysee-watchman:$(watchman_version) ./apps/watchman

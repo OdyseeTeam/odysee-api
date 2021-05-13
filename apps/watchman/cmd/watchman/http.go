@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -18,7 +17,7 @@ import (
 
 // handleHTTPServer starts configures and starts a HTTP server on the given
 // URL. It shuts down the server if any error is received in the error channel.
-func handleHTTPServer(ctx context.Context, u *url.URL, reporterEndpoints *reporter.Endpoints, wg *sync.WaitGroup, errc chan error, logger *log.Logger, debug bool) {
+func handleHTTPServer(ctx context.Context, addr string, reporterEndpoints *reporter.Endpoints, wg *sync.WaitGroup, errc chan error, logger *log.Logger, debug bool) {
 
 	// Setup goa log adapter.
 	var (
@@ -74,7 +73,7 @@ func handleHTTPServer(ctx context.Context, u *url.URL, reporterEndpoints *report
 
 	// Start HTTP server using default configuration, change the code to
 	// configure the server as required by your service.
-	srv := &http.Server{Addr: u.Host, Handler: handler}
+	srv := &http.Server{Addr: addr, Handler: handler}
 	for _, m := range reporterServer.Mounts {
 		logger.Printf("HTTP %q mounted on %s %s", m.Method, m.Verb, m.Pattern)
 	}
@@ -85,12 +84,12 @@ func handleHTTPServer(ctx context.Context, u *url.URL, reporterEndpoints *report
 
 		// Start HTTP server in a separate goroutine.
 		go func() {
-			logger.Printf("HTTP server listening on %q", u.Host)
+			logger.Printf("HTTP server listening on %q", addr)
 			errc <- srv.ListenAndServe()
 		}()
 
 		<-ctx.Done()
-		logger.Printf("shutting down HTTP server at %q", u.Host)
+		logger.Printf("shutting down HTTP server at %q", addr)
 
 		// Shutdown gracefully with a 30s timeout.
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
