@@ -1,3 +1,7 @@
+date := $(shell date "+%Y-%m-%d_%H:%M")
+watchman_version := $(shell git describe --tags --match 'watchman-v*'|sed -e 's/.*\-v//')
+git_hash := $(shell git rev-parse --short HEAD)
+
 .PHONY: test
 test:
 	go test -cover ./...
@@ -62,6 +66,15 @@ GORELEASER_CURRENT_TAG := $(shell git describe --tags --match 'collector-v*'|sed
 collector:
 	goreleaser build -f apps/collector/.goreleaser.yml --snapshot --rm-dist
 	find . -name pkged.go -delete
+
+watchman:
+	GOARCH=amd64 GOOS=linux go build \
+		-o apps/watchman/dist/linux_amd64/watchman \
+		-ldflags "-X github.com/lbryio/lbrytv/version.version=$(watchman_version) -X github.com/lbryio/lbrytv/version.commit=$(git_hash) -X github.com/lbryio/lbrytv/apps/version.buildDate=$(date)" \
+		./apps/watchman/cmd/main.go
+
+watchman_image:
+	docker build -t lbry/odysee-watchman:$(watchman_version) ./apps/watchman
 
 watchman_models:
 	sqlc -f apps/watchman/sqlc.yaml generate
