@@ -74,7 +74,7 @@ func TestUploadHandler(t *testing.T) {
 	test.AssertEqualJSON(t, expectedStreamCreateResponse, respBody)
 
 	require.True(t, publisher.called)
-	expectedPath := path.Join(os.TempDir(), "20404", ".+_lbry_auto_test_file")
+	expectedPath := path.Join(os.TempDir(), "20404", ".+", "lbry_auto_test_file")
 	assert.Regexp(t, expectedPath, publisher.filePath)
 	assert.Equal(t, sdkrouter.WalletID(20404), publisher.walletID)
 	expectedReq := fmt.Sprintf(expectedStreamCreateRequest, sdkrouter.WalletID(20404), publisher.filePath)
@@ -248,8 +248,8 @@ func Test_fetchFile(t *testing.T) {
 		url, nameRe string
 		size        int64
 	}{
-		{fmt.Sprintf("%v/1Mb.dat", ts.URL), ".+/20404/.+_1Mb.dat$", 125000},
-		{fmt.Sprintf("%v/../../../../../etc/passwd", ts.URL), ".+/20404/.+_passwd$", 1},
+		{fmt.Sprintf("%v/1Mb.dat", ts.URL), ".+/20404/.+", 125000},
+		{fmt.Sprintf("%v/../../../../../etc/passwd", ts.URL), ".+/20404/.+/passwd$", 1},
 	}
 
 	for _, c := range cases {
