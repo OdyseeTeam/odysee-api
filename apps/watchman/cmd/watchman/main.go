@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -11,19 +10,45 @@ import (
 	"syscall"
 
 	watchman "github.com/lbryio/lbrytv/apps/watchman"
+	"github.com/lbryio/lbrytv/apps/watchman/config"
 	reporter "github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
+	"github.com/lbryio/lbrytv/apps/watchman/tsdb"
+
+	"github.com/alecthomas/kong"
 )
 
-func main() {
-	// Define command line flags, add any other flag required to configure the
-	// service.
-	var (
-		bindF = flag.String("bind", ":8080", "Server listening address")
-		dbgF  = flag.Bool("debug", false, "Log request and response bodies")
-	)
-	flag.Parse()
+var CLI struct {
+	Serve struct {
+		Bind  string `optional name:"bind" help:"Server listening address" default:":8080"`
+		Debug bool   `optional name:"debug" help:"Log request and response bodies"`
+	} `cmd help:"Start watchman service"`
+	Generate struct {
+		Number int `optional name:"number" help:"Number of records to generate"`
+	} `cmd help:"Generate test data"`
+}
 
-	// Setup logger. Replace logger with your own log package of choice.
+func main() {
+	cfg, err := config.Read()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ifCfg := cfg.GetStringMapString("influxdb")
+	tsdb.Connect(ifCfg["url"], ifCfg["token"])
+	tsdb.ConfigBucket(ifCfg["org"], ifCfg["bucket"])
+
+	ctx := kong.Parse(&CLI)
+	switch ctx.Command() {
+	case "serve":
+		serve(CLI.Serve.Bind, CLI.Serve.Debug)
+	case "generate":
+		generate(CLI.Generate.Number)
+	default:
+		log.Fatal(ctx.Command())
+	}
+}
+
+func serve(bindF string, dbgF bool) {
 	var (
 		logger *log.Logger
 	)
@@ -65,7 +90,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Start the servers and send errors (if any) to the error channel.
-	handleHTTPServer(ctx, *bindF, reporterEndpoints, &wg, errc, logger, *dbgF)
+	handleHTTPServer(ctx, bindF, reporterEndpoints, &wg, errc, logger, dbgF)
 
 	// Wait for signal.
 	logger.Printf("exiting (%v)", <-errc)
@@ -75,4 +100,8 @@ func main() {
 
 	wg.Wait()
 	logger.Println("exited")
+}
+
+func generate(cnt int) {
+	tsdb.Generate(cnt)
 }

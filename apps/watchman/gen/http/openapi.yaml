@@ -56,15 +56,14 @@ paths:
           $ref: '#/definitions/ReporterAddRequestBody'
           required:
           - url
-          - pos
-          - por
-          - dur
-          - bfc
-          - bfd
-          - fmt
-          - pid
-          - cid
-          - cdv
+          - position
+          - rel_position
+          - buf_count
+          - buf_duration
+          - format
+          - player
+          - client
+          - device
       responses:
         "201":
           description: Created response.
@@ -75,94 +74,86 @@ definitions:
     title: ReporterAddRequestBody
     type: object
     properties:
-      bfc:
+      buf_count:
         type: integer
         description: Buffering events count
-        example: 1543459748
+        example: 77025329
         minimum: 0
-      bfd:
+      buf_duration:
         type: integer
         description: Buffering events total duration, ms
-        example: 938401497
+        example: 1945487361
         format: int32
-      car:
+      client:
         type: string
-        description: Client area
-        example: eu
-        maxLength: 3
-      cdv:
+        description: Unique client ID
+        example: b026324c6904b2a9cb4b88d6d61c81d1
+        maxLength: 64
+      client_rate:
+        type: integer
+        description: Client download rate, bit/s
+        example: 1337957022
+        format: int32
+      device:
         type: string
         description: Client device
         example: ios
         enum:
         - ios
-        - and
+        - adr
         - web
-      cid:
-        type: string
-        description: Unique client ID
-        example: b026324c6904b2a9cb4b88d6d61c81d1
-        maxLength: 64
-      crt:
-        type: integer
-        description: Client download rate, bits/s
-        example: 155490916
-        format: int32
-      dur:
-        type: integer
-        description: Current playback report duration, ms
-        example: 646203
-        minimum: 1000
-        maximum: 3.6e+06
-      fmt:
+      format:
         type: string
         description: Video format
         example: hls
         enum:
         - std
         - hls
-      pid:
+      player:
         type: string
         description: Player server name
-        example: player16
-        maxLength: 32
-      por:
-        type: integer
-        description: Relative stream position, 0 — 10000 (0% — 100%)
-        example: 662
-        minimum: 0
-        maximum: 10000
-      pos:
+        example: sg-p2
+        maxLength: 64
+      position:
         type: integer
         description: Current playback report stream position, ms
-        example: 1825042135
+        example: 1383905872
         minimum: 0
+      rel_position:
+        type: integer
+        description: Relative stream position, pct, 0—100
+        example: 31
+        minimum: 0
+        maximum: 100
+      t:
+        type: string
+        description: Timestamp
+        example: Mon, 06 Feb 1995 21:56:00 UTC
+        format: rfc1123
       url:
         type: string
         description: LBRY URL
         example: what
         maxLength: 512
     example:
-      bfc: 1517669849
-      bfd: 1770612318
-      car: eu
-      cdv: web
-      cid: b026324c6904b2a9cb4b88d6d61c81d1
-      crt: 263225764
-      dur: 2292050
-      fmt: std
-      pid: player16
-      por: 977
-      pos: 1390789543
+      buf_count: 110545557
+      buf_duration: 603924334
+      client: b026324c6904b2a9cb4b88d6d61c81d1
+      client_rate: 1696645470
+      device: ios
+      format: std
+      player: sg-p2
+      position: 444882615
+      rel_position: 5
+      t: Tue, 29 Sep 1981 13:24:26 UTC
       url: what
     required:
     - url
-    - pos
-    - por
-    - dur
-    - bfc
-    - bfd
-    - fmt
-    - pid
-    - cid
-    - cdv
+    - position
+    - rel_position
+    - buf_count
+    - buf_duration
+    - format
+    - player
+    - client
+    - device

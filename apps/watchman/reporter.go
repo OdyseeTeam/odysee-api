@@ -5,8 +5,10 @@ import (
 	"database/sql"
 	"log"
 
-	"github.com/lbryio/lbrytv/apps/watchman/db"
 	reporter "github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
+	"github.com/lbryio/lbrytv/apps/watchman/tsdb"
+
+	"goa.design/goa/v3/http/middleware"
 )
 
 // reporter service example implementation.
@@ -27,21 +29,22 @@ func NewReporter(db *sql.DB, logger *log.Logger) reporter.Service {
 // Add implements add.
 func (s *reportersrvc) Add(ctx context.Context, p *reporter.PlaybackReport) error {
 	s.logger.Print("reporter.add")
-	db.New(s.db).CreatePlaybackReport(context.Background(), db.CreatePlaybackReportParams{
-		URL: p.URL,
-		Pos: p.Pos,
-		Por: p.Por,
-		Dur: p.Dur,
-		Bfc: p.Bfc,
-		Bfd: p.Bfd,
-		Fmt: p.Fmt,
-		Pid: p.Pid,
-		Cid: p.Cid,
-		Cdv: p.Cdv,
-		Crt: *p.Crt,
-		Car: *p.Car,
-	})
-
+	// db.New(s.db).CreatePlaybackReport(context.Background(), db.CreatePlaybackReportParams{
+	// 	URL: p.URL,
+	// 	Pos: p.Pos,
+	// 	Por: p.Por,
+	// 	Dur: p.Dur,
+	// 	Bfc: p.Bfc,
+	// 	Bfd: p.Bfd,
+	// 	Fmt: p.Fmt,
+	// 	Pid: p.Pid,
+	// 	Cid: p.Cid,
+	// 	Cdv: p.Cdv,
+	// 	Crt: *p.Crt,
+	// 	Car: *p.Car,
+	// })
+	addr := ctx.Value(middleware.RequestRemoteAddrKey).(string)
+	tsdb.Write(p, addr)
 	return nil
 }
 

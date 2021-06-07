@@ -52,7 +52,7 @@ func handleHTTPServer(ctx context.Context, addr string, reporterEndpoints *repor
 	)
 	{
 		eh := errorHandler(logger)
-		reporterServer = reportersvr.New(reporterEndpoints, mux, dec, enc, eh, nil)
+		reporterServer = reportersvr.New(reporterEndpoints, mux, dec, enc, eh, nil, nil)
 		if debug {
 			servers := goahttp.Servers{
 				reporterServer,

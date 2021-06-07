@@ -3,14 +3,16 @@ module github.com/lbryio/lbrytv
 go 1.16
 
 require (
+	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/alecthomas/kong v0.2.16
-	github.com/getkin/kin-openapi v0.33.0
+	github.com/bluele/factory-go v0.0.1
+	github.com/getkin/kin-openapi v0.61.0
 	github.com/getsentry/sentry-go v0.6.1
 	github.com/gobuffalo/logger v1.0.3 // indirect
 	github.com/gobuffalo/packd v1.0.0 // indirect
 	github.com/gobuffalo/packr/v2 v2.7.1
-	github.com/google/go-cmp v0.5.4 // indirect
-	github.com/gorilla/mux v1.7.4
+	github.com/gorilla/mux v1.8.0
+	github.com/influxdata/influxdb-client-go/v2 v2.3.0
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a
 	github.com/jinzhu/gorm v1.9.9
 	github.com/jmoiron/sqlx v0.0.0-20170430194603-d9bd385d68c0
@@ -20,7 +22,6 @@ require (
 	github.com/lib/pq v1.9.0
 	github.com/magiconair/properties v1.8.4 // indirect
 	github.com/markbates/pkger v0.17.0
-	github.com/mitchellh/mapstructure v1.4.0 // indirect
 	github.com/nsf/jsondiff v0.0.0-20190712045011-8443391ee9b6
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pelletier/go-toml v1.8.1 // indirect
@@ -41,11 +42,11 @@ require (
 	github.com/volatiletech/null v8.0.0+incompatible
 	github.com/volatiletech/sqlboiler v3.4.0+incompatible
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
-	goa.design/goa/v3 v3.2.6
-	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110 // indirect
-	golang.org/x/sys v0.0.0-20210309074719-68d13333faf2 // indirect
-	golang.org/x/text v0.3.5 // indirect
+	go.uber.org/multierr v1.7.0 // indirect
+	go.uber.org/zap v1.17.0
+	goa.design/goa/v3 v3.4.2
+	golang.org/x/net v0.0.0-20210525063256-abc453219eb5 // indirect
+	golang.org/x/sys v0.0.0-20210601080250-7ecdf8ef093b // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

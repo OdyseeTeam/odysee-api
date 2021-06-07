@@ -58,7 +58,7 @@ func (s *playbackSuite) SetupSuite() {
 		enc = goahttp.ResponseEncoder
 	)
 	mux := goahttp.NewMuxer()
-	reporterServer := reportersvr.New(reporterEndpoints, mux, dec, enc, nil, nil)
+	reporterServer := reportersvr.New(reporterEndpoints, mux, dec, enc, nil, nil, nil)
 	reportersvr.Mount(mux, reporterServer)
 	s.ts = httptest.NewServer(mux)
 }
