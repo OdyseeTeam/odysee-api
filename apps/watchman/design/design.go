@@ -59,44 +59,39 @@ var PlaybackReport = Type("PlaybackReport", func() {
 		Example("what")
 		MaxLength(512)
 	})
-	Attribute("pos", Int32, "Current playback report stream position, ms", func() {
+	Attribute("position", Int32, "Current playback report stream position, ms", func() {
 		Minimum(0)
 	})
-	Attribute("por", Int32, "Relative stream position, 0 — 10000 (0% — 100%)", func() {
+	Attribute("rel_position", Int32, "Relative stream position, pct, 0—100", func() {
 		Minimum(0)
-		Maximum(10000)
-	})
-	Attribute("dur", Int32, "Current playback report duration, ms", func() {
-		Minimum(1000)
-		Maximum(3_600_000)
+		Maximum(100)
 	})
 
-	Attribute("bfc", Int32, "Buffering events count", func() {
+	Attribute("buf_count", Int32, "Buffering events count", func() {
 		Minimum(0)
 	})
-	Attribute("bfd", Int32, "Buffering events total duration, ms")
+	Attribute("buf_duration", Int32, "Buffering events total duration, ms")
 
-	Attribute("fmt", String, "Video format", func() {
+	Attribute("format", String, "Video format", func() {
 		Enum("std", "hls")
 	})
 
-	Attribute("pid", String, "Player server name", func() {
-		Example("player16")
-		MaxLength(32)
+	Attribute("player", String, "Player server name", func() {
+		Example("sg-p2")
+		MaxLength(64)
 	})
 
-	Attribute("crt", Int32, "Client download rate, bits/s")
-	Attribute("car", String, "Client area", func() {
-		Example("Europe", "eu")
-		MaxLength(3)
-	})
-	Attribute("cid", String, "Unique client ID", func() {
+	Attribute("client", String, "Unique client ID", func() {
 		Example("b026324c6904b2a9cb4b88d6d61c81d1")
 		MaxLength(64)
 	})
-	Attribute("cdv", String, "Client device", func() {
-		Enum("ios", "and", "web")
+	Attribute("client_rate", Int32, "Client download rate, bit/s")
+	Attribute("device", String, "Client device", func() {
+		Enum("ios", "adr", "web")
+	})
+	Attribute("t", String, "Timestamp", func() {
+		Format(FormatRFC1123)
 	})
 
-	Required("url", "pos", "por", "dur", "bfc", "bfd", "fmt", "pid", "cid", "cdv")
+	Required("url", "position", "rel_position", "buf_count", "buf_duration", "format", "player", "client", "device")
 })
