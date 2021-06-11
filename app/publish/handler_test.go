@@ -281,7 +281,7 @@ func Test_fetchFileEmptyRemoteFile(t *testing.T) {
 
 func Test_fetchFileRemoteFileTooLarge(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Length", fmt.Sprintf("%v", MaxRemoteFileSize+1))
+		w.Header().Add("Content-Length", fmt.Sprintf("%v", FetchSizeLimit+1))
 	}))
 	defer ts.Close()
 
@@ -289,6 +289,6 @@ func Test_fetchFileRemoteFileTooLarge(t *testing.T) {
 	r := CreatePublishRequest(t, nil, FormParam{remoteURLParam, fmt.Sprintf("%v/file.mp4", ts.URL)})
 
 	f, err := h.fetchFile(r, 20404)
-	require.EqualError(t, err, fmt.Sprintf("remote file is too large at %v bytes", MaxRemoteFileSize+1))
+	require.EqualError(t, err, fmt.Sprintf("remote file is too large at %v bytes", FetchSizeLimit+1))
 	assert.Nil(t, f)
 }
