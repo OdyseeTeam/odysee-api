@@ -33,7 +33,8 @@ var logger = monitor.NewModuleLogger("publish")
 var method = "publish"
 
 const (
-	MaxRemoteFileSize = 5 << 30 // 4GB
+	FetchSizeLimit = 6000000000
+	fetchTimeout   = 600 * time.Second
 
 	// fileFieldName refers to the POST field containing file upload
 	fileFieldName = "file"
@@ -232,7 +233,7 @@ func (h Handler) createFile(userID int, origFilename string) (*os.File, error) {
 func (h Handler) fetchFile(r *http.Request, userID int) (*os.File, error) {
 	log := logger.WithFields(logrus.Fields{"user_id": userID, "method_handler": method})
 
-	err := r.ParseMultipartForm(32 << 20)
+	err := r.ParseMultipartForm(32 << 20) // 32MB
 	if err != nil {
 		return nil, err
 	}
@@ -251,9 +252,8 @@ func (h Handler) fetchFile(r *http.Request, userID int) (*os.File, error) {
 		return nil, fmt.Errorf("couldn't determine remote file name")
 	}
 
-	timeout := sdkrouter.RPCTimeout - (120 * time.Second)
 	c := &http.Client{
-		Timeout: timeout,
+		Timeout: fetchTimeout,
 	}
 	resp, err := c.Do(r)
 	if err != nil {
@@ -270,7 +270,7 @@ func (h Handler) fetchFile(r *http.Request, userID int) (*os.File, error) {
 	if err != nil {
 		return nil, werrors.Wrap(err, "cannot determine remote file size")
 	}
-	if cl >= MaxRemoteFileSize {
+	if cl >= FetchSizeLimit {
 		return nil, fmt.Errorf("remote file is too large at %v bytes", cl)
 	}
 	if cl == 0 {
