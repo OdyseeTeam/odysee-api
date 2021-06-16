@@ -24,10 +24,16 @@ func BuildAddPayload(reporterAddBody string) (*reporter.PlaybackReport, error) {
 	{
 		err = json.Unmarshal([]byte(reporterAddBody), &body)
 		if err != nil {
-			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"buf_count\": 219268455,\n      \"buf_duration\": 1686071524,\n      \"client\": \"b026324c6904b2a9cb4b88d6d61c81d1\",\n      \"client_rate\": 1152411017,\n      \"device\": \"ios\",\n      \"format\": \"std\",\n      \"player\": \"sg-p2\",\n      \"position\": 1422240286,\n      \"rel_position\": 15,\n      \"t\": \"Thu, 07 Feb 1980 09:19:11 UTC\",\n      \"url\": \"what\"\n   }'")
+			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"client\": \"b026324c6904b2a9cb4b88d6d61c81d1\",\n      \"client_rate\": 1143315912,\n      \"device\": \"web\",\n      \"dur\": 54906,\n      \"format\": \"hls\",\n      \"player\": \"sg-p2\",\n      \"position\": 1152411017,\n      \"rebuf_count\": 268663686,\n      \"rebuf_duration\": 40307,\n      \"rel_position\": 99,\n      \"t\": \"Fri, 23 Dec 1983 15:20:34 UTC\",\n      \"url\": \"what\"\n   }'")
 		}
 		if utf8.RuneCountInString(body.URL) > 512 {
 			err = goa.MergeErrors(err, goa.InvalidLengthError("body.url", body.URL, utf8.RuneCountInString(body.URL), 512, false))
+		}
+		if body.Dur < 0 {
+			err = goa.MergeErrors(err, goa.InvalidRangeError("body.dur", body.Dur, 0, true))
+		}
+		if body.Dur > 60000 {
+			err = goa.MergeErrors(err, goa.InvalidRangeError("body.dur", body.Dur, 60000, false))
 		}
 		if body.Position < 0 {
 			err = goa.MergeErrors(err, goa.InvalidRangeError("body.position", body.Position, 0, true))
@@ -38,11 +44,17 @@ func BuildAddPayload(reporterAddBody string) (*reporter.PlaybackReport, error) {
 		if body.RelPosition > 100 {
 			err = goa.MergeErrors(err, goa.InvalidRangeError("body.rel_position", body.RelPosition, 100, false))
 		}
-		if body.BufCount < 0 {
-			err = goa.MergeErrors(err, goa.InvalidRangeError("body.buf_count", body.BufCount, 0, true))
+		if body.RebufCount < 0 {
+			err = goa.MergeErrors(err, goa.InvalidRangeError("body.rebuf_count", body.RebufCount, 0, true))
 		}
-		if !(body.Format == "std" || body.Format == "hls") {
-			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.format", body.Format, []interface{}{"std", "hls"}))
+		if body.RebufDuration < 0 {
+			err = goa.MergeErrors(err, goa.InvalidRangeError("body.rebuf_duration", body.RebufDuration, 0, true))
+		}
+		if body.RebufDuration > 60000 {
+			err = goa.MergeErrors(err, goa.InvalidRangeError("body.rebuf_duration", body.RebufDuration, 60000, false))
+		}
+		if !(body.Format == "stb" || body.Format == "hls") {
+			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.format", body.Format, []interface{}{"stb", "hls"}))
 		}
 		if utf8.RuneCountInString(body.Player) > 64 {
 			err = goa.MergeErrors(err, goa.InvalidLengthError("body.player", body.Player, utf8.RuneCountInString(body.Player), 64, false))
@@ -53,25 +65,25 @@ func BuildAddPayload(reporterAddBody string) (*reporter.PlaybackReport, error) {
 		if !(body.Device == "ios" || body.Device == "adr" || body.Device == "web") {
 			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.device", body.Device, []interface{}{"ios", "adr", "web"}))
 		}
-		if body.T != nil {
-			err = goa.MergeErrors(err, goa.ValidateFormat("body.t", *body.T, goa.FormatRFC1123))
-		}
+		err = goa.MergeErrors(err, goa.ValidateFormat("body.t", body.T, goa.FormatRFC1123))
+
 		if err != nil {
 			return nil, err
 		}
 	}
 	v := &reporter.PlaybackReport{
-		URL:         body.URL,
-		Position:    body.Position,
-		RelPosition: body.RelPosition,
-		BufCount:    body.BufCount,
-		BufDuration: body.BufDuration,
-		Format:      body.Format,
-		Player:      body.Player,
-		Client:      body.Client,
-		ClientRate:  body.ClientRate,
-		Device:      body.Device,
-		T:           body.T,
+		URL:           body.URL,
+		Dur:           body.Dur,
+		Position:      body.Position,
+		RelPosition:   body.RelPosition,
+		RebufCount:    body.RebufCount,
+		RebufDuration: body.RebufDuration,
+		Format:        body.Format,
+		Player:        body.Player,
+		Client:        body.Client,
+		ClientRate:    body.ClientRate,
+		Device:        body.Device,
+		T:             body.T,
 	}
 
 	return v, nil

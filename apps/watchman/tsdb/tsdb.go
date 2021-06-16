@@ -43,7 +43,7 @@ func ConfigBucket(cfgOrg, cfgBucket string) {
 
 func Write(r *reporter.PlaybackReport, addr string) {
 	area := getClientArea(addr)
-	t, err := time.Parse(time.RFC1123Z, *r.T)
+	t, err := time.Parse(time.RFC1123Z, *&r.Ts)
 	if err != nil {
 		t = time.Now()
 	}
@@ -59,8 +59,8 @@ func Write(r *reporter.PlaybackReport, addr string) {
 		},
 		map[string]interface{}{
 			"client_rate":  *r.ClientRate,
-			"buf_count":    r.BufCount,
-			"buf_duration": r.BufDuration,
+			"buf_count":    r.RebufCount,
+			"buf_duration": r.RebufDuration,
 		},
 		t)
 	wapi.WritePoint(ip)

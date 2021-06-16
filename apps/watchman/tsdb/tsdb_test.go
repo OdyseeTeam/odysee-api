@@ -99,9 +99,9 @@ func TestWrite(t *testing.T) {
 	}
 	assert.Equal(t,
 		map[string]int64{
-			"buf_count":    int64(rep.BufCount),
-			"buf_duration": int64(rep.BufDuration),
-			"client_rate":  int64(*rep.ClientRate),
+			"rebuf_count":    int64(rep.RebufCount),
+			"rebuf_duration": int64(rep.RebufDuration),
+			"client_rate":    int64(*rep.ClientRate),
 		},
 		recMap,
 	)

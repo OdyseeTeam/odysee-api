@@ -31,8 +31,8 @@ paths:
             application/json:
               schema:
                 type: string
-                example: Cumque ut.
-              example: Est corporis.
+                example: Ratione placeat.
+              example: Rem et eius.
   /openapi.json:
     get:
       tags:
@@ -55,16 +55,17 @@ paths:
             schema:
               $ref: '#/components/schemas/AddRequestBody'
             example:
-              buf_count: 219268455
-              buf_duration: 1686071524
               client: b026324c6904b2a9cb4b88d6d61c81d1
-              client_rate: 1152411017
-              device: ios
-              format: std
+              client_rate: 1143315912
+              device: web
+              dur: 54906
+              format: hls
               player: sg-p2
-              position: 1422240286
-              rel_position: 15
-              t: Thu, 07 Feb 1980 09:19:11 UTC
+              position: 1152411017
+              rebuf_count: 268663686
+              rebuf_duration: 40307
+              rel_position: 99
+              t: Fri, 23 Dec 1983 15:20:34 UTC
               url: what
       responses:
         "201":
@@ -74,16 +75,6 @@ components:
     AddRequestBody:
       type: object
       properties:
-        buf_count:
-          type: integer
-          description: Buffering events count
-          example: 1243539192
-          minimum: 0
-        buf_duration:
-          type: integer
-          description: Buffering events total duration, ms
-          example: 532268115
-          format: int32
         client:
           type: string
           description: Unique client ID
@@ -92,22 +83,28 @@ components:
         client_rate:
           type: integer
           description: Client download rate, bit/s
-          example: 1619920407
+          example: 1232409536
           format: int32
         device:
           type: string
           description: Client device
-          example: ios
+          example: web
           enum:
           - ios
           - adr
           - web
+        dur:
+          type: integer
+          description: Event duration, ms
+          example: 53329
+          minimum: 0
+          maximum: 60000
         format:
           type: string
-          description: Video format
-          example: std
+          description: Video format, stb (binary stream) or HLS
+          example: stb
           enum:
-          - std
+          - stb
           - hls
         player:
           type: string
@@ -117,18 +114,29 @@ components:
         position:
           type: integer
           description: Current playback report stream position, ms
-          example: 228568973
+          example: 467347253
           minimum: 0
+        rebuf_count:
+          type: integer
+          description: Rebuffering events count
+          example: 150088011
+          minimum: 0
+        rebuf_duration:
+          type: integer
+          description: Rebuffering events total duration, ms
+          example: 45075
+          minimum: 0
+          maximum: 60000
         rel_position:
           type: integer
           description: Relative stream position, pct, 0—100
-          example: 74
+          example: 37
           minimum: 0
           maximum: 100
         t:
           type: string
           description: Timestamp
-          example: Wed, 19 Sep 1973 15:06:26 UTC
+          example: Fri, 25 Feb 2011 03:56:25 UTC
           format: rfc1123
         url:
           type: string
@@ -136,27 +144,30 @@ components:
           example: what
           maxLength: 512
       example:
-        buf_count: 1394907451
-        buf_duration: 263914743
         client: b026324c6904b2a9cb4b88d6d61c81d1
-        client_rate: 1240536155
-        device: adr
+        client_rate: 1588752272
+        device: web
+        dur: 12992
         format: hls
         player: sg-p2
-        position: 295826153
-        rel_position: 55
-        t: Thu, 09 Feb 1978 21:06:48 UTC
+        position: 508151569
+        rebuf_count: 1909766876
+        rebuf_duration: 48793
+        rel_position: 47
+        t: Sun, 07 Aug 2005 02:16:07 UTC
         url: what
       required:
       - url
+      - dur
       - position
       - rel_position
-      - buf_count
-      - buf_duration
+      - rebuf_count
+      - rebuf_duration
       - format
       - player
       - client
       - device
+      - t
 tags:
 - name: reporter
   description: Media playback reports

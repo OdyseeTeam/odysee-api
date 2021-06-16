@@ -22,14 +22,17 @@ var playbackReportFactory = factory.NewFactory(
 	), nil
 }).Attr("Position", func(args factory.Args) (interface{}, error) {
 	return int32(randomdata.Number(0, 1000000)), nil
+}).Attr("Dur", func(args factory.Args) (interface{}, error) {
+	// return int32(randomdata.Number(0, 60000)), nil
+	return 20000, nil
 }).Attr("RelPosition", func(args factory.Args) (interface{}, error) {
 	return int32(randomdata.Number(0, 100)), nil
-}).Attr("BufCount", func(args factory.Args) (interface{}, error) {
+}).Attr("RebufCount", func(args factory.Args) (interface{}, error) {
 	return int32(randomdata.Number(0, 25)), nil
-}).Attr("BufDuration", func(args factory.Args) (interface{}, error) {
-	return int32(randomdata.Number(0, 10000)), nil
+}).Attr("RebufDuration", func(args factory.Args) (interface{}, error) {
+	return int32(randomdata.Number(0, 15000)), nil
 }).Attr("Format", func(args factory.Args) (interface{}, error) {
-	return randomdata.StringSample("hls", "std"), nil
+	return randomdata.StringSample("hls", "stb"), nil
 }).Attr("Player", func(args factory.Args) (interface{}, error) {
 	return randomdata.StringSample("use-p1", "use-p2", "sg-p1", "sg-p2"), nil
 }).Attr("Client", func(args factory.Args) (interface{}, error) {

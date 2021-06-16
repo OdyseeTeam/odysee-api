@@ -30,16 +30,17 @@ func UsageCommands() string {
 // UsageExamples produces an example of a valid invocation of the CLI tool.
 func UsageExamples() string {
 	return os.Args[0] + ` reporter add --body '{
-      "buf_count": 219268455,
-      "buf_duration": 1686071524,
       "client": "b026324c6904b2a9cb4b88d6d61c81d1",
-      "client_rate": 1152411017,
-      "device": "ios",
-      "format": "std",
+      "client_rate": 1143315912,
+      "device": "web",
+      "dur": 54906,
+      "format": "hls",
       "player": "sg-p2",
-      "position": 1422240286,
-      "rel_position": 15,
-      "t": "Thu, 07 Feb 1980 09:19:11 UTC",
+      "position": 1152411017,
+      "rebuf_count": 268663686,
+      "rebuf_duration": 40307,
+      "rel_position": 99,
+      "t": "Fri, 23 Dec 1983 15:20:34 UTC",
       "url": "what"
    }'` + "\n" +
 		""
@@ -169,16 +170,17 @@ Add implements add.
 
 Example:
     `+os.Args[0]+` reporter add --body '{
-      "buf_count": 219268455,
-      "buf_duration": 1686071524,
       "client": "b026324c6904b2a9cb4b88d6d61c81d1",
-      "client_rate": 1152411017,
-      "device": "ios",
-      "format": "std",
+      "client_rate": 1143315912,
+      "device": "web",
+      "dur": 54906,
+      "format": "hls",
       "player": "sg-p2",
-      "position": 1422240286,
-      "rel_position": 15,
-      "t": "Thu, 07 Feb 1980 09:19:11 UTC",
+      "position": 1152411017,
+      "rebuf_count": 268663686,
+      "rebuf_duration": 40307,
+      "rel_position": 99,
+      "t": "Fri, 23 Dec 1983 15:20:34 UTC",
       "url": "what"
    }'
 `, os.Args[0])

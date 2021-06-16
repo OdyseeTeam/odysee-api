@@ -56,14 +56,16 @@ paths:
           $ref: '#/definitions/ReporterAddRequestBody'
           required:
           - url
+          - dur
           - position
           - rel_position
-          - buf_count
-          - buf_duration
+          - rebuf_count
+          - rebuf_duration
           - format
           - player
           - client
           - device
+          - t
       responses:
         "201":
           description: Created response.
@@ -74,16 +76,6 @@ definitions:
     title: ReporterAddRequestBody
     type: object
     properties:
-      buf_count:
-        type: integer
-        description: Buffering events count
-        example: 77025329
-        minimum: 0
-      buf_duration:
-        type: integer
-        description: Buffering events total duration, ms
-        example: 1945487361
-        format: int32
       client:
         type: string
         description: Unique client ID
@@ -92,22 +84,28 @@ definitions:
       client_rate:
         type: integer
         description: Client download rate, bit/s
-        example: 1337957022
+        example: 1747405196
         format: int32
       device:
         type: string
         description: Client device
-        example: ios
+        example: adr
         enum:
         - ios
         - adr
         - web
+      dur:
+        type: integer
+        description: Event duration, ms
+        example: 21402
+        minimum: 0
+        maximum: 60000
       format:
         type: string
-        description: Video format
+        description: Video format, stb (binary stream) or HLS
         example: hls
         enum:
-        - std
+        - stb
         - hls
       player:
         type: string
@@ -117,18 +115,29 @@ definitions:
       position:
         type: integer
         description: Current playback report stream position, ms
-        example: 1383905872
+        example: 579973706
         minimum: 0
+      rebuf_count:
+        type: integer
+        description: Rebuffering events count
+        example: 1253491737
+        minimum: 0
+      rebuf_duration:
+        type: integer
+        description: Rebuffering events total duration, ms
+        example: 14130
+        minimum: 0
+        maximum: 60000
       rel_position:
         type: integer
         description: Relative stream position, pct, 0—100
-        example: 31
+        example: 87
         minimum: 0
         maximum: 100
       t:
         type: string
         description: Timestamp
-        example: Mon, 06 Feb 1995 21:56:00 UTC
+        example: Thu, 05 Jan 1995 10:51:43 UTC
         format: rfc1123
       url:
         type: string
@@ -136,24 +145,27 @@ definitions:
         example: what
         maxLength: 512
     example:
-      buf_count: 110545557
-      buf_duration: 603924334
       client: b026324c6904b2a9cb4b88d6d61c81d1
-      client_rate: 1696645470
+      client_rate: 972752239
       device: ios
-      format: std
+      dur: 15487
+      format: hls
       player: sg-p2
-      position: 444882615
-      rel_position: 5
-      t: Tue, 29 Sep 1981 13:24:26 UTC
+      position: 1277572968
+      rebuf_count: 586784507
+      rebuf_duration: 45168
+      rel_position: 42
+      t: Wed, 16 Aug 1972 19:30:12 UTC
       url: what
     required:
     - url
+    - dur
     - position
     - rel_position
-    - buf_count
-    - buf_duration
+    - rebuf_count
+    - rebuf_duration
     - format
     - player
     - client
     - device
+    - t

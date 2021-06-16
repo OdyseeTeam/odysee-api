@@ -33,15 +33,17 @@ var MethodNames = [2]string{"add", "healthz"}
 type PlaybackReport struct {
 	// LBRY URL
 	URL string
+	// Event duration, ms
+	Dur int32
 	// Current playback report stream position, ms
 	Position int32
 	// Relative stream position, pct, 0—100
 	RelPosition int32
-	// Buffering events count
-	BufCount int32
-	// Buffering events total duration, ms
-	BufDuration int32
-	// Video format
+	// Rebuffering events count
+	RebufCount int32
+	// Rebuffering events total duration, ms
+	RebufDuration int32
+	// Video format, stb (binary stream) or HLS
 	Format string
 	// Player server name
 	Player string
@@ -52,5 +54,5 @@ type PlaybackReport struct {
 	// Client device
 	Device string
 	// Timestamp
-	T *string
+	T string
 }

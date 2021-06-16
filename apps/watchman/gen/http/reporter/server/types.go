@@ -19,15 +19,17 @@ import (
 type AddRequestBody struct {
 	// LBRY URL
 	URL *string `form:"url,omitempty" json:"url,omitempty" xml:"url,omitempty"`
+	// Event duration, ms
+	Dur *int32 `form:"dur,omitempty" json:"dur,omitempty" xml:"dur,omitempty"`
 	// Current playback report stream position, ms
 	Position *int32 `form:"position,omitempty" json:"position,omitempty" xml:"position,omitempty"`
 	// Relative stream position, pct, 0—100
 	RelPosition *int32 `form:"rel_position,omitempty" json:"rel_position,omitempty" xml:"rel_position,omitempty"`
-	// Buffering events count
-	BufCount *int32 `form:"buf_count,omitempty" json:"buf_count,omitempty" xml:"buf_count,omitempty"`
-	// Buffering events total duration, ms
-	BufDuration *int32 `form:"buf_duration,omitempty" json:"buf_duration,omitempty" xml:"buf_duration,omitempty"`
-	// Video format
+	// Rebuffering events count
+	RebufCount *int32 `form:"rebuf_count,omitempty" json:"rebuf_count,omitempty" xml:"rebuf_count,omitempty"`
+	// Rebuffering events total duration, ms
+	RebufDuration *int32 `form:"rebuf_duration,omitempty" json:"rebuf_duration,omitempty" xml:"rebuf_duration,omitempty"`
+	// Video format, stb (binary stream) or HLS
 	Format *string `form:"format,omitempty" json:"format,omitempty" xml:"format,omitempty"`
 	// Player server name
 	Player *string `form:"player,omitempty" json:"player,omitempty" xml:"player,omitempty"`
@@ -44,17 +46,18 @@ type AddRequestBody struct {
 // NewAddPlaybackReport builds a reporter service add endpoint payload.
 func NewAddPlaybackReport(body *AddRequestBody) *reporter.PlaybackReport {
 	v := &reporter.PlaybackReport{
-		URL:         *body.URL,
-		Position:    *body.Position,
-		RelPosition: *body.RelPosition,
-		BufCount:    *body.BufCount,
-		BufDuration: *body.BufDuration,
-		Format:      *body.Format,
-		Player:      *body.Player,
-		Client:      *body.Client,
-		ClientRate:  body.ClientRate,
-		Device:      *body.Device,
-		T:           body.T,
+		URL:           *body.URL,
+		Dur:           *body.Dur,
+		Position:      *body.Position,
+		RelPosition:   *body.RelPosition,
+		RebufCount:    *body.RebufCount,
+		RebufDuration: *body.RebufDuration,
+		Format:        *body.Format,
+		Player:        *body.Player,
+		Client:        *body.Client,
+		ClientRate:    body.ClientRate,
+		Device:        *body.Device,
+		T:             *body.T,
 	}
 
 	return v
@@ -65,17 +68,20 @@ func ValidateAddRequestBody(body *AddRequestBody) (err error) {
 	if body.URL == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("url", "body"))
 	}
+	if body.Dur == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("dur", "body"))
+	}
 	if body.Position == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("position", "body"))
 	}
 	if body.RelPosition == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("rel_position", "body"))
 	}
-	if body.BufCount == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("buf_count", "body"))
+	if body.RebufCount == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("rebuf_count", "body"))
 	}
-	if body.BufDuration == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("buf_duration", "body"))
+	if body.RebufDuration == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("rebuf_duration", "body"))
 	}
 	if body.Format == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("format", "body"))
@@ -89,9 +95,22 @@ func ValidateAddRequestBody(body *AddRequestBody) (err error) {
 	if body.Device == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("device", "body"))
 	}
+	if body.T == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("t", "body"))
+	}
 	if body.URL != nil {
 		if utf8.RuneCountInString(*body.URL) > 512 {
 			err = goa.MergeErrors(err, goa.InvalidLengthError("body.url", *body.URL, utf8.RuneCountInString(*body.URL), 512, false))
+		}
+	}
+	if body.Dur != nil {
+		if *body.Dur < 0 {
+			err = goa.MergeErrors(err, goa.InvalidRangeError("body.dur", *body.Dur, 0, true))
+		}
+	}
+	if body.Dur != nil {
+		if *body.Dur > 60000 {
+			err = goa.MergeErrors(err, goa.InvalidRangeError("body.dur", *body.Dur, 60000, false))
 		}
 	}
 	if body.Position != nil {
@@ -109,14 +128,24 @@ func ValidateAddRequestBody(body *AddRequestBody) (err error) {
 			err = goa.MergeErrors(err, goa.InvalidRangeError("body.rel_position", *body.RelPosition, 100, false))
 		}
 	}
-	if body.BufCount != nil {
-		if *body.BufCount < 0 {
-			err = goa.MergeErrors(err, goa.InvalidRangeError("body.buf_count", *body.BufCount, 0, true))
+	if body.RebufCount != nil {
+		if *body.RebufCount < 0 {
+			err = goa.MergeErrors(err, goa.InvalidRangeError("body.rebuf_count", *body.RebufCount, 0, true))
+		}
+	}
+	if body.RebufDuration != nil {
+		if *body.RebufDuration < 0 {
+			err = goa.MergeErrors(err, goa.InvalidRangeError("body.rebuf_duration", *body.RebufDuration, 0, true))
+		}
+	}
+	if body.RebufDuration != nil {
+		if *body.RebufDuration > 60000 {
+			err = goa.MergeErrors(err, goa.InvalidRangeError("body.rebuf_duration", *body.RebufDuration, 60000, false))
 		}
 	}
 	if body.Format != nil {
-		if !(*body.Format == "std" || *body.Format == "hls") {
-			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.format", *body.Format, []interface{}{"std", "hls"}))
+		if !(*body.Format == "stb" || *body.Format == "hls") {
+			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.format", *body.Format, []interface{}{"stb", "hls"}))
 		}
 	}
 	if body.Player != nil {

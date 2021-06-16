@@ -6,7 +6,6 @@ require (
 	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/alecthomas/kong v0.2.16
 	github.com/bluele/factory-go v0.0.1
-	github.com/getkin/kin-openapi v0.61.0
 	github.com/getsentry/sentry-go v0.6.1
 	github.com/gobuffalo/logger v1.0.3 // indirect
 	github.com/gobuffalo/packd v1.0.0 // indirect

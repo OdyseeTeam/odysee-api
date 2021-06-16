@@ -16,15 +16,17 @@ import (
 type AddRequestBody struct {
 	// LBRY URL
 	URL string `form:"url" json:"url" xml:"url"`
+	// Event duration, ms
+	Dur int32 `form:"dur" json:"dur" xml:"dur"`
 	// Current playback report stream position, ms
 	Position int32 `form:"position" json:"position" xml:"position"`
 	// Relative stream position, pct, 0—100
 	RelPosition int32 `form:"rel_position" json:"rel_position" xml:"rel_position"`
-	// Buffering events count
-	BufCount int32 `form:"buf_count" json:"buf_count" xml:"buf_count"`
-	// Buffering events total duration, ms
-	BufDuration int32 `form:"buf_duration" json:"buf_duration" xml:"buf_duration"`
-	// Video format
+	// Rebuffering events count
+	RebufCount int32 `form:"rebuf_count" json:"rebuf_count" xml:"rebuf_count"`
+	// Rebuffering events total duration, ms
+	RebufDuration int32 `form:"rebuf_duration" json:"rebuf_duration" xml:"rebuf_duration"`
+	// Video format, stb (binary stream) or HLS
 	Format string `form:"format" json:"format" xml:"format"`
 	// Player server name
 	Player string `form:"player" json:"player" xml:"player"`
@@ -35,24 +37,25 @@ type AddRequestBody struct {
 	// Client device
 	Device string `form:"device" json:"device" xml:"device"`
 	// Timestamp
-	T *string `form:"t,omitempty" json:"t,omitempty" xml:"t,omitempty"`
+	T string `form:"t" json:"t" xml:"t"`
 }
 
 // NewAddRequestBody builds the HTTP request body from the payload of the "add"
 // endpoint of the "reporter" service.
 func NewAddRequestBody(p *reporter.PlaybackReport) *AddRequestBody {
 	body := &AddRequestBody{
-		URL:         p.URL,
-		Position:    p.Position,
-		RelPosition: p.RelPosition,
-		BufCount:    p.BufCount,
-		BufDuration: p.BufDuration,
-		Format:      p.Format,
-		Player:      p.Player,
-		Client:      p.Client,
-		ClientRate:  p.ClientRate,
-		Device:      p.Device,
-		T:           p.T,
+		URL:           p.URL,
+		Dur:           p.Dur,
+		Position:      p.Position,
+		RelPosition:   p.RelPosition,
+		RebufCount:    p.RebufCount,
+		RebufDuration: p.RebufDuration,
+		Format:        p.Format,
+		Player:        p.Player,
+		Client:        p.Client,
+		ClientRate:    p.ClientRate,
+		Device:        p.Device,
+		T:             p.T,
 	}
 	return body
 }

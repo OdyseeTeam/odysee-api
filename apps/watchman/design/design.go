@@ -59,6 +59,10 @@ var PlaybackReport = Type("PlaybackReport", func() {
 		Example("what")
 		MaxLength(512)
 	})
+	Attribute("dur", Int32, "Event duration, ms", func() {
+		Minimum(0)
+		Maximum(60000)
+	})
 	Attribute("position", Int32, "Current playback report stream position, ms", func() {
 		Minimum(0)
 	})
@@ -67,13 +71,16 @@ var PlaybackReport = Type("PlaybackReport", func() {
 		Maximum(100)
 	})
 
-	Attribute("buf_count", Int32, "Buffering events count", func() {
+	Attribute("rebuf_count", Int32, "Rebuffering events count", func() {
 		Minimum(0)
 	})
-	Attribute("buf_duration", Int32, "Buffering events total duration, ms")
+	Attribute("rebuf_duration", Int32, "Rebuffering events total duration, ms", func() {
+		Minimum(0)
+		Maximum(60000)
+	})
 
-	Attribute("format", String, "Video format", func() {
-		Enum("std", "hls")
+	Attribute("format", String, "Video format, stb (binary stream) or HLS", func() {
+		Enum("stb", "hls")
 	})
 
 	Attribute("player", String, "Player server name", func() {
@@ -86,12 +93,16 @@ var PlaybackReport = Type("PlaybackReport", func() {
 		MaxLength(64)
 	})
 	Attribute("client_rate", Int32, "Client download rate, bit/s")
+
 	Attribute("device", String, "Client device", func() {
 		Enum("ios", "adr", "web")
 	})
+
 	Attribute("t", String, "Timestamp", func() {
 		Format(FormatRFC1123)
 	})
 
-	Required("url", "position", "rel_position", "buf_count", "buf_duration", "format", "player", "client", "device")
+	Required(
+		"url", "dur", "position", "rel_position", "rebuf_count", "rebuf_duration", "format",
+		"player", "client", "device", "t")
 })
