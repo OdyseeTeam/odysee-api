@@ -236,10 +236,7 @@ func (c *Caller) SendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 			// Alert sentry on the last failed wallet load attempt
 			if err != nil && i >= walletLoadRetries-1 {
 				e := errors.Prefix("gave up manually adding wallet", err)
-				logger.WithFields(logrus.Fields{
-					"user_id":  c.userID,
-					"endpoint": c.endpoint,
-				}).Error(e)
+				logger.Log().Error(e)
 				monitor.ErrorToSentry(e, map[string]string{
 					"user_id":  fmt.Sprintf("%d", c.userID),
 					"endpoint": c.endpoint,
