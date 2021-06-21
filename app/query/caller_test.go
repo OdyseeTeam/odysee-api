@@ -922,17 +922,20 @@ func TestCaller_LogLevels(t *testing.T) {
 	require.NoError(t, err)
 	e := hook.LastEntry()
 	assert.Equal(t, "resolve", hook.LastEntry().Data["method"])
+	assert.NotNil(t, hook.LastEntry().Data["params"])
 	assert.Equal(t, logrus.InfoLevel, e.Level)
 
 	_, err = c.Call(jsonrpc.NewRequest("wallet_balance"))
 	require.NoError(t, err)
 	e = hook.LastEntry()
 	assert.Equal(t, "wallet_balance", hook.LastEntry().Data["method"])
+	assert.NotNil(t, hook.LastEntry().Data["params"])
 	assert.Equal(t, logrus.DebugLevel, e.Level)
 
 	_, err = c.Call(jsonrpc.NewRequest("sync_apply"))
 	require.NoError(t, err)
 	e = hook.LastEntry()
 	assert.Equal(t, "sync_apply", hook.LastEntry().Data["method"])
+	assert.Nil(t, hook.LastEntry().Data["params"])
 	assert.Equal(t, logrus.DebugLevel, e.Level)
 }
