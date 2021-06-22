@@ -255,10 +255,13 @@ func (c *Caller) SendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 
 	logFields := logrus.Fields{
 		"method":   q.Method(),
-		"params":   q.Params(),
 		"endpoint": c.endpoint,
 		"user_id":  c.userID,
 		"duration": c.Duration,
+	}
+	// Don't log query params for "sync_apply" method
+	if q.Method() != MethodSyncApply {
+		logFields["params"] = q.Params()
 	}
 	logEntry := logger.WithFields(logFields)
 
