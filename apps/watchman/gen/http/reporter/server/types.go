@@ -33,8 +33,8 @@ type AddRequestBody struct {
 	Format *string `form:"format,omitempty" json:"format,omitempty" xml:"format,omitempty"`
 	// Player server name
 	Player *string `form:"player,omitempty" json:"player,omitempty" xml:"player,omitempty"`
-	// Unique client ID
-	Client *string `form:"client,omitempty" json:"client,omitempty" xml:"client,omitempty"`
+	// User ID
+	UserID *int32 `form:"user_id,omitempty" json:"user_id,omitempty" xml:"user_id,omitempty"`
 	// Client download rate, bit/s
 	ClientRate *int32 `form:"client_rate,omitempty" json:"client_rate,omitempty" xml:"client_rate,omitempty"`
 	// Client device
@@ -54,7 +54,7 @@ func NewAddPlaybackReport(body *AddRequestBody) *reporter.PlaybackReport {
 		RebufDuration: *body.RebufDuration,
 		Format:        *body.Format,
 		Player:        *body.Player,
-		Client:        *body.Client,
+		UserID:        *body.UserID,
 		ClientRate:    body.ClientRate,
 		Device:        *body.Device,
 		T:             *body.T,
@@ -89,8 +89,8 @@ func ValidateAddRequestBody(body *AddRequestBody) (err error) {
 	if body.Player == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("player", "body"))
 	}
-	if body.Client == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("client", "body"))
+	if body.UserID == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("user_id", "body"))
 	}
 	if body.Device == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("device", "body"))
@@ -151,11 +151,6 @@ func ValidateAddRequestBody(body *AddRequestBody) (err error) {
 	if body.Player != nil {
 		if utf8.RuneCountInString(*body.Player) > 64 {
 			err = goa.MergeErrors(err, goa.InvalidLengthError("body.player", *body.Player, utf8.RuneCountInString(*body.Player), 64, false))
-		}
-	}
-	if body.Client != nil {
-		if utf8.RuneCountInString(*body.Client) > 64 {
-			err = goa.MergeErrors(err, goa.InvalidLengthError("body.client", *body.Client, utf8.RuneCountInString(*body.Client), 64, false))
 		}
 	}
 	if body.Device != nil {

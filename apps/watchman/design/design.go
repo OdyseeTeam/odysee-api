@@ -88,10 +88,7 @@ var PlaybackReport = Type("PlaybackReport", func() {
 		MaxLength(64)
 	})
 
-	Attribute("client", String, "Unique client ID", func() {
-		Example("b026324c6904b2a9cb4b88d6d61c81d1")
-		MaxLength(64)
-	})
+	Attribute("user_id", Int32, "User ID")
 	Attribute("client_rate", Int32, "Client download rate, bit/s")
 
 	Attribute("device", String, "Client device", func() {
@@ -104,5 +101,5 @@ var PlaybackReport = Type("PlaybackReport", func() {
 
 	Required(
 		"url", "dur", "position", "rel_position", "rebuf_count", "rebuf_duration", "format",
-		"player", "client", "device", "t")
+		"player", "user_id", "device", "t")
 })

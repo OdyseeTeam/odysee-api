@@ -24,7 +24,7 @@ func BuildAddPayload(reporterAddBody string) (*reporter.PlaybackReport, error) {
 	{
 		err = json.Unmarshal([]byte(reporterAddBody), &body)
 		if err != nil {
-			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"client\": \"b026324c6904b2a9cb4b88d6d61c81d1\",\n      \"client_rate\": 1143315912,\n      \"device\": \"web\",\n      \"dur\": 54906,\n      \"format\": \"hls\",\n      \"player\": \"sg-p2\",\n      \"position\": 1152411017,\n      \"rebuf_count\": 268663686,\n      \"rebuf_duration\": 40307,\n      \"rel_position\": 99,\n      \"t\": \"Fri, 23 Dec 1983 15:20:34 UTC\",\n      \"url\": \"what\"\n   }'")
+			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"client_rate\": 1906586091,\n      \"device\": \"adr\",\n      \"dur\": 54906,\n      \"format\": \"hls\",\n      \"player\": \"sg-p2\",\n      \"position\": 1152411017,\n      \"rebuf_count\": 268663686,\n      \"rebuf_duration\": 40307,\n      \"rel_position\": 99,\n      \"t\": \"Fri, 23 Dec 1983 15:20:34 UTC\",\n      \"url\": \"what\",\n      \"user_id\": 1143315912\n   }'")
 		}
 		if utf8.RuneCountInString(body.URL) > 512 {
 			err = goa.MergeErrors(err, goa.InvalidLengthError("body.url", body.URL, utf8.RuneCountInString(body.URL), 512, false))
@@ -59,9 +59,6 @@ func BuildAddPayload(reporterAddBody string) (*reporter.PlaybackReport, error) {
 		if utf8.RuneCountInString(body.Player) > 64 {
 			err = goa.MergeErrors(err, goa.InvalidLengthError("body.player", body.Player, utf8.RuneCountInString(body.Player), 64, false))
 		}
-		if utf8.RuneCountInString(body.Client) > 64 {
-			err = goa.MergeErrors(err, goa.InvalidLengthError("body.client", body.Client, utf8.RuneCountInString(body.Client), 64, false))
-		}
 		if !(body.Device == "ios" || body.Device == "adr" || body.Device == "web") {
 			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.device", body.Device, []interface{}{"ios", "adr", "web"}))
 		}
@@ -80,7 +77,7 @@ func BuildAddPayload(reporterAddBody string) (*reporter.PlaybackReport, error) {
 		RebufDuration: body.RebufDuration,
 		Format:        body.Format,
 		Player:        body.Player,
-		Client:        body.Client,
+		UserID:        body.UserID,
 		ClientRate:    body.ClientRate,
 		Device:        body.Device,
 		T:             body.T,

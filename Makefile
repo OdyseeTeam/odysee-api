@@ -1,4 +1,4 @@
-date := $(shell date "+%Y-%m-%d_%H:%M")
+date := $(shell date "+%Y-%m-%d-%H-%M")
 watchman_version := $(shell git describe --tags --match 'watchman-v*'|sed -e 's/.*\-v//')
 git_hash := $(shell git rev-parse --short HEAD)
 

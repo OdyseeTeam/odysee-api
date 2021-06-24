@@ -15,6 +15,7 @@ func Read() (*viper.Viper, error) {
 	cfg.AddConfigPath(ProjectRoot())
 	cfg.AddConfigPath(".")
 	cfg.AddConfigPath("../")
+	cfg.AddConfigPath("./config")
 
 	return cfg, cfg.ReadInConfig()
 }

@@ -12,7 +12,7 @@ import (
 	watchman "github.com/lbryio/lbrytv/apps/watchman"
 	"github.com/lbryio/lbrytv/apps/watchman/config"
 	reporter "github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
-	"github.com/lbryio/lbrytv/apps/watchman/tsdb"
+	"github.com/lbryio/lbrytv/apps/watchman/olapdb"
 
 	"github.com/alecthomas/kong"
 )
@@ -23,7 +23,7 @@ var CLI struct {
 		Debug bool   `optional name:"debug" help:"Log request and response bodies"`
 	} `cmd help:"Start watchman service"`
 	Generate struct {
-		Number int `optional name:"number" help:"Number of records to generate"`
+		Number int `required name:"number" help:"Number of records to generate"`
 	} `cmd help:"Generate test data"`
 }
 
@@ -33,9 +33,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ifCfg := cfg.GetStringMapString("influxdb")
-	tsdb.Connect(ifCfg["url"], ifCfg["token"])
-	tsdb.ConfigBucket(ifCfg["org"], ifCfg["bucket"])
+	dbCfg := cfg.GetStringMapString("clickhouse")
+	olapdb.Connect(dbCfg["url"])
 
 	ctx := kong.Parse(&CLI)
 	switch ctx.Command() {
@@ -103,5 +102,5 @@ func serve(bindF string, dbgF bool) {
 }
 
 func generate(cnt int) {
-	tsdb.Generate(cnt)
+	olapdb.Generate(cnt)
 }

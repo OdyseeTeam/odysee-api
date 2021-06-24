@@ -31,8 +31,8 @@ paths:
             application/json:
               schema:
                 type: string
-                example: Ratione placeat.
-              example: Rem et eius.
+                example: Et ut distinctio iure odit.
+              example: Hic rerum error accusantium sit minus id.
   /openapi.json:
     get:
       tags:
@@ -55,9 +55,8 @@ paths:
             schema:
               $ref: '#/components/schemas/AddRequestBody'
             example:
-              client: b026324c6904b2a9cb4b88d6d61c81d1
-              client_rate: 1143315912
-              device: web
+              client_rate: 1906586091
+              device: adr
               dur: 54906
               format: hls
               player: sg-p2
@@ -67,6 +66,7 @@ paths:
               rel_position: 99
               t: Fri, 23 Dec 1983 15:20:34 UTC
               url: what
+              user_id: 1143315912
       responses:
         "201":
           description: Created response.
@@ -75,20 +75,15 @@ components:
     AddRequestBody:
       type: object
       properties:
-        client:
-          type: string
-          description: Unique client ID
-          example: b026324c6904b2a9cb4b88d6d61c81d1
-          maxLength: 64
         client_rate:
           type: integer
           description: Client download rate, bit/s
-          example: 1232409536
+          example: 547130514
           format: int32
         device:
           type: string
           description: Client device
-          example: web
+          example: adr
           enum:
           - ios
           - adr
@@ -96,7 +91,7 @@ components:
         dur:
           type: integer
           description: Event duration, ms
-          example: 53329
+          example: 9937
           minimum: 0
           maximum: 60000
         format:
@@ -114,48 +109,53 @@ components:
         position:
           type: integer
           description: Current playback report stream position, ms
-          example: 467347253
+          example: 150088011
           minimum: 0
         rebuf_count:
           type: integer
           description: Rebuffering events count
-          example: 150088011
+          example: 528520956
           minimum: 0
         rebuf_duration:
           type: integer
           description: Rebuffering events total duration, ms
-          example: 45075
+          example: 9536
           minimum: 0
           maximum: 60000
         rel_position:
           type: integer
           description: Relative stream position, pct, 0—100
-          example: 37
+          example: 75
           minimum: 0
           maximum: 100
         t:
           type: string
           description: Timestamp
-          example: Fri, 25 Feb 2011 03:56:25 UTC
+          example: Fri, 18 May 2001 02:28:38 UTC
           format: rfc1123
         url:
           type: string
           description: LBRY URL
           example: what
           maxLength: 512
+        user_id:
+          type: integer
+          description: User ID
+          example: 541450973
+          format: int32
       example:
-        client: b026324c6904b2a9cb4b88d6d61c81d1
-        client_rate: 1588752272
-        device: web
-        dur: 12992
+        client_rate: 1126833897
+        device: ios
+        dur: 12272
         format: hls
         player: sg-p2
-        position: 508151569
-        rebuf_count: 1909766876
-        rebuf_duration: 48793
-        rel_position: 47
-        t: Sun, 07 Aug 2005 02:16:07 UTC
+        position: 73004217
+        rebuf_count: 811726476
+        rebuf_duration: 52537
+        rel_position: 23
+        t: Fri, 17 Apr 1998 08:22:38 UTC
         url: what
+        user_id: 646993185
       required:
       - url
       - dur
@@ -165,7 +165,7 @@ components:
       - rebuf_duration
       - format
       - player
-      - client
+      - user_id
       - device
       - t
 tags:

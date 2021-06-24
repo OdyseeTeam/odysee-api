@@ -30,8 +30,8 @@ type AddRequestBody struct {
 	Format string `form:"format" json:"format" xml:"format"`
 	// Player server name
 	Player string `form:"player" json:"player" xml:"player"`
-	// Unique client ID
-	Client string `form:"client" json:"client" xml:"client"`
+	// User ID
+	UserID int32 `form:"user_id" json:"user_id" xml:"user_id"`
 	// Client download rate, bit/s
 	ClientRate *int32 `form:"client_rate,omitempty" json:"client_rate,omitempty" xml:"client_rate,omitempty"`
 	// Client device
@@ -52,7 +52,7 @@ func NewAddRequestBody(p *reporter.PlaybackReport) *AddRequestBody {
 		RebufDuration: p.RebufDuration,
 		Format:        p.Format,
 		Player:        p.Player,
-		Client:        p.Client,
+		UserID:        p.UserID,
 		ClientRate:    p.ClientRate,
 		Device:        p.Device,
 		T:             p.T,

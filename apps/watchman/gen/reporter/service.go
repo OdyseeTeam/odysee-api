@@ -47,8 +47,8 @@ type PlaybackReport struct {
 	Format string
 	// Player server name
 	Player string
-	// Unique client ID
-	Client string
+	// User ID
+	UserID int32
 	// Client download rate, bit/s
 	ClientRate *int32
 	// Client device

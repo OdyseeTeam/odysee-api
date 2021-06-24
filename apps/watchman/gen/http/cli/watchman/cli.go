@@ -30,9 +30,8 @@ func UsageCommands() string {
 // UsageExamples produces an example of a valid invocation of the CLI tool.
 func UsageExamples() string {
 	return os.Args[0] + ` reporter add --body '{
-      "client": "b026324c6904b2a9cb4b88d6d61c81d1",
-      "client_rate": 1143315912,
-      "device": "web",
+      "client_rate": 1906586091,
+      "device": "adr",
       "dur": 54906,
       "format": "hls",
       "player": "sg-p2",
@@ -41,7 +40,8 @@ func UsageExamples() string {
       "rebuf_duration": 40307,
       "rel_position": 99,
       "t": "Fri, 23 Dec 1983 15:20:34 UTC",
-      "url": "what"
+      "url": "what",
+      "user_id": 1143315912
    }'` + "\n" +
 		""
 }
@@ -170,9 +170,8 @@ Add implements add.
 
 Example:
     `+os.Args[0]+` reporter add --body '{
-      "client": "b026324c6904b2a9cb4b88d6d61c81d1",
-      "client_rate": 1143315912,
-      "device": "web",
+      "client_rate": 1906586091,
+      "device": "adr",
       "dur": 54906,
       "format": "hls",
       "player": "sg-p2",
@@ -181,7 +180,8 @@ Example:
       "rebuf_duration": 40307,
       "rel_position": 99,
       "t": "Fri, 23 Dec 1983 15:20:34 UTC",
-      "url": "what"
+      "url": "what",
+      "user_id": 1143315912
    }'
 `, os.Args[0])
 }

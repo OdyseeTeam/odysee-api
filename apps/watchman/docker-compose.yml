@@ -1,22 +1,43 @@
 version: "3"
 
 services:
+  clickhouse:
+    image: yandex/clickhouse-server:21.3
+    container_name: clickhouse
+    restart: on-failure
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
   influxdb:
     image: influxdb:2.0
     container_name: influxdb
-    restart: always
+    restart: on-failure
     ports:
       - "8086:8086"
     volumes:
       - influxdb2_data:/var/lib/influxdb2
       - influxdb2_config:/etc/influxdb2
-    # environment:
-    #   - DOCKER_INFLUXDB_INIT_MODE=setup
-    #   - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_USERNAME}
-    #   - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_PASSWORD}
-    #   - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_ORG}
-    #   - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET}
+      # environment:
+        #   - DOCKER_INFLUXDB_INIT_MODE=setup
+        #   - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_USERNAME}
+        #   - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_PASSWORD}
+        #   - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_ORG}
+        #   - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET}
+  grafana:
+    image: grafana/grafana:7.5.4
+    container_name: grafana
+    restart: on-failure
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_INSTALL_PLUGINS=vertamedia-clickhouse-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
 
 volumes:
-  influxdb2_data:
-  influxdb2_config:
+  influxdb2_data: {}
+  influxdb2_config: {}
+  grafana_data: {}
+  clickhouse_data: {}

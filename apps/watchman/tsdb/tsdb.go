@@ -1,7 +1,6 @@
 package tsdb
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
@@ -43,24 +42,24 @@ func ConfigBucket(cfgOrg, cfgBucket string) {
 
 func Write(r *reporter.PlaybackReport, addr string) {
 	area := getClientArea(addr)
-	t, err := time.Parse(time.RFC1123Z, *&r.Ts)
+	t, err := time.Parse(time.RFC1123Z, *&r.T)
 	if err != nil {
 		t = time.Now()
 	}
 	ip := influxdb2.NewPoint("playback",
 		map[string]string{
-			"url":          r.URL,
-			"player":       r.Player,
-			"format":       r.Format,
-			"rel_position": fmt.Sprintf("%v", r.RelPosition),
-			"client":       r.Client,
-			"device":       r.Device,
-			"area":         area,
+			// "url":          r.URL,
+			// "player":       r.Player,
+			// "format":       r.Format,
+			// "rel_position": fmt.Sprintf("%v", r.RelPosition),
+			// "client":       r.Client,
+			// "device":       r.Device,
+			"area": area,
 		},
 		map[string]interface{}{
-			"client_rate":  *r.ClientRate,
-			"buf_count":    r.RebufCount,
-			"buf_duration": r.RebufDuration,
+			"client_rate":    *r.ClientRate,
+			"rebuf_count":    r.RebufCount,
+			"rebuf_duration": r.RebufDuration,
 		},
 		t)
 	wapi.WritePoint(ip)
