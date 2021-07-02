@@ -61,7 +61,7 @@ type BucketCleanup func() error
 // 	defer cleanup()
 // 	ConfigBucket(ifCfg["org"], b)
 
-// 	rep := playbackReportFactory.MustCreate().(*reporter.PlaybackReport)
+// 	rep := PlaybackReportFactory.MustCreate().(*reporter.PlaybackReport)
 // 	Write(rep, randomdata.StringSample(randomdata.IpV4Address(), randomdata.IpV6Address()))
 
 // 	recMap := map[string]int64{}
@@ -86,7 +86,7 @@ type BucketCleanup func() error
 // 		map[string]int64{
 // 			"rebuf_count":    int64(rep.RebufCount),
 // 			"rebuf_duration": int64(rep.RebufDuration),
-// 			"client_rate":    int64(*rep.ClientRate),
+// 			"client_rate":    int64(*rep.Rate),
 // 		},
 // 		recMap,
 // 	)

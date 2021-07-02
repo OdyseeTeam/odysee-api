@@ -79,7 +79,7 @@ watchman_image:
 watchman_models:
 	sqlc -f apps/watchman/sqlc.yaml generate
 
-watchman_api:
+watchman_design:
 	goa gen github.com/lbryio/lbrytv/apps/watchman/design -o apps/watchman
 
 watchman_example:

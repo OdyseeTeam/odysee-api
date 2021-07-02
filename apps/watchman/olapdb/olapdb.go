@@ -2,8 +2,10 @@ package olapdb
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
+	"github.com/Pallinder/go-randomdata"
 	"github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
 	"github.com/lbryio/lbrytv/apps/watchman/log"
 
@@ -11,25 +13,33 @@ import (
 )
 
 var (
-	conn *sql.DB
-	Log  = log.Log.Named("clickhouse")
+	conn     *sql.DB
+	database string
 )
 
-func Connect(url string) {
+func Connect(url string, dbName string) error {
 	var err error
+	if dbName == "" {
+		dbName = database
+	}
+	database = dbName
 	conn, err = sql.Open("clickhouse", url)
 	if err != nil {
-		Log.Fatal(err)
+		return err
 	}
 	if err := conn.Ping(); err != nil {
 		if exception, ok := err.(*clickhouse.Exception); ok {
-			Log.Fatalf("[%d] %s \n%s\n", exception.Code, exception.Message, exception.StackTrace)
+			log.Log.Named("clickhouse").Fatalf("[%d] %s \n%s\n", exception.Code, exception.Message, exception.StackTrace)
 		} else {
-			Log.Fatal(err)
+			return err
 		}
 	}
-	_, err = conn.Exec(`
-	CREATE TABLE IF NOT EXISTS watchman.playback
+	_, err = conn.Exec(fmt.Sprintf(`CREATE DATABASE IF NOT EXISTS %v`, dbName))
+	if err != nil {
+		return err
+	}
+	_, err = conn.Exec(fmt.Sprintf(`
+	CREATE TABLE IF NOT EXISTS %v.playback
 	(
 		"URL" String,
 		"Duration" UInt32,
@@ -41,42 +51,68 @@ func Connect(url string) {
 		"Format" FixedString(3),
 		"Player" FixedString(16),
 		"UserID" UInt32,
-		"ClientRate" UInt32,
-		"ClientDevice" FixedString(3),
-		"ClientArea" FixedString(3)
+		"Rate" UInt32,
+		"Device" FixedString(3),
+		"Area" FixedString(3),
+		"IP" String
 	)
 	ENGINE = MergeTree
 	ORDER BY (Timestamp, UserID, URL)
-	TTL Timestamp + INTERVAL 30 DAY`)
+	TTL Timestamp + INTERVAL 30 DAY`, dbName))
 	if err != nil {
-		Log.Fatal(err)
+		return err
 	}
-	Log.Infof("connected to clickhouse server %v", url)
+	log.Log.Named("clickhouse").Infof("connected to clickhouse server %v (database=%v)", url, dbName)
+	return nil
 }
 
-func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string) {
+func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string) error {
+	// t, err := time.Parse(time.RFC1123Z, r.T)
+	t := time.Now()
 	area := getClientArea(addr)
-	t, err := time.Parse(time.RFC1123, *&r.T)
-	if err != nil {
-		t = time.Now()
-	}
-	_, err = stmt.Exec(r.URL, uint32(r.Dur), t, uint32(r.Position), uint8(r.RelPosition), uint8(r.RebufCount),
-		uint32(r.RebufDuration), r.Format, r.Player, uint32(r.UserID), uint32(*r.ClientRate), r.Device, area,
+	_, err := stmt.Exec(
+		r.URL,
+		uint32(r.Duration),
+		t,
+		uint32(r.Position),
+		uint8(r.RelPosition),
+		uint8(r.RebufCount),
+		uint32(r.RebufDuration),
+		r.Format,
+		r.Player,
+		uint32(r.UserID),
+		uint32(*r.Rate),
+		r.Device,
+		area,
+		addr,
 	)
 	if err != nil {
-		Log.Error(err)
+		return err
 	}
+	log.Log.Named("clickhouse").Infow(
+		"playback record written",
+		"user_id", r.UserID, "url", r.URL, "rebuf_count", r.RebufCount, "area", area, "ip", addr)
+	return nil
+}
+
+func WriteOne(r *reporter.PlaybackReport, addr string) error {
+	tx, _ := conn.Begin()
+	stmt, err := prepareWrite(tx)
+	if err != nil {
+		return err
+	}
+	Write(stmt, r, randomdata.StringSample(randomdata.IpV4Address(), randomdata.IpV6Address()))
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func prepareWrite(tx *sql.Tx) (*sql.Stmt, error) {
-	return tx.Prepare(`
-	INSERT INTO watchman.playback
+	return tx.Prepare(fmt.Sprintf(`
+	INSERT INTO %v.playback
 		(URL, Duration, Timestamp, Position, RelPosition, RebufCount,
-			RebufDuration, Format, Player, UserID, ClientRate, ClientDevice, ClientArea)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`)
-}
-
-func getClientArea(ip string) string {
-	return "eu"
+			RebufDuration, Format, Player, UserID, Rate, Device, Area, IP)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, database))
 }

@@ -1,6 +1,23 @@
 version: "3"
 
 services:
+  watchman:
+    image: lbry/watchman:latest
+    container_name: watchman
+    restart: on-failure
+    ports:
+      - "8080:8080"
+    volumes:
+      - "geoip_data:/app/geoip_data:ro"
+  # influxdb:
+  #   image: influxdb:2.0
+  #   container_name: influxdb
+  #   restart: on-failure
+  #   ports:
+  #     - "8086:8086"
+  #   volumes:
+  #     - influxdb2_data:/var/lib/influxdb2
+  #     - influxdb2_config:/etc/influxdb2
   clickhouse:
     image: yandex/clickhouse-server:21.3
     container_name: clickhouse
@@ -9,7 +26,7 @@ services:
       - "8123:8123"
       - "9000:9000"
     volumes:
-      - clickhouse_data:/var/lib/clickhouse
+      - "clickhouse_data:/var/lib/clickhouse"
   influxdb:
     image: influxdb:2.0
     container_name: influxdb
@@ -34,10 +51,21 @@ services:
     environment:
       - GF_INSTALL_PLUGINS=vertamedia-clickhouse-datasource
     volumes:
-      - grafana_data:/var/lib/grafana
+      - "grafana_data:/var/lib/grafana"
+  geoipupdate:
+    image: "maxmindinc/geoipupdate:v4.7.1"
+    # Override the entrypoint in order to avoid using envvars for config.
+    # Futz with settings so we can keep mmdb and conf in same dir on host
+    # (image looks for them in separate dirs by default).
+    entrypoint:
+      ["/usr/bin/geoipupdate", "-d", "/geoip_data", "-f", "/conf/GeoIP.conf"]
+    volumes:
+      - "./geoip:/conf"
+      - "geoip_data:/geoip_data"
 
 volumes:
   influxdb2_data: {}
   influxdb2_config: {}
   grafana_data: {}
   clickhouse_data: {}
+  geoip_data: {}

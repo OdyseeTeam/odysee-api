@@ -22,6 +22,9 @@ insert_final_newline = ignore
 [*.yml]
 indent_size = 2
 
+[*.yaml]
+indent_size = 2
+
 [**/admin/js/vendor/**]
 indent_style = ignore
 indent_size = ignore

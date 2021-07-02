@@ -3,15 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	stdlog "log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 
-	watchman "github.com/lbryio/lbrytv/apps/watchman"
+	"github.com/lbryio/lbrytv/apps/watchman"
 	"github.com/lbryio/lbrytv/apps/watchman/config"
-	reporter "github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
+	"github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
+	"github.com/lbryio/lbrytv/apps/watchman/log"
 	"github.com/lbryio/lbrytv/apps/watchman/olapdb"
 
 	"github.com/alecthomas/kong"
@@ -30,11 +31,26 @@ var CLI struct {
 func main() {
 	cfg, err := config.Read()
 	if err != nil {
-		log.Fatal(err)
+		log.Log.Fatal(err)
 	}
+	logCfg := cfg.GetStringMapString("log")
+	if logCfg["encoding"] == "" {
+		logCfg["encoding"] = log.EncodingConsole
+	}
+	if logCfg["level"] == "" {
+		logCfg["encoding"] = log.LevelDebug
+	}
+	log.Configure(logCfg["level"], logCfg["encoding"])
 
 	dbCfg := cfg.GetStringMapString("clickhouse")
-	olapdb.Connect(dbCfg["url"])
+	err = olapdb.Connect(dbCfg["url"])
+	if err != nil {
+		log.Log.Fatal(err)
+	}
+	err = olapdb.OpenGeoDB(cfg.GetString("geoipdb"))
+	if err != nil {
+		log.Log.Fatal(err)
+	}
 
 	ctx := kong.Parse(&CLI)
 	switch ctx.Command() {
@@ -43,17 +59,11 @@ func main() {
 	case "generate":
 		generate(CLI.Generate.Number)
 	default:
-		log.Fatal(ctx.Command())
+		log.Log.Fatal(ctx.Command())
 	}
 }
 
 func serve(bindF string, dbgF bool) {
-	var (
-		logger *log.Logger
-	)
-	{
-		logger = log.New(os.Stderr, "[watchman] ", log.Ltime)
-	}
 
 	// Initialize the services.
 	var (
@@ -61,7 +71,7 @@ func serve(bindF string, dbgF bool) {
 	)
 	{
 		// TODO: provide DB connection as the first argument
-		reporterSvc = watchman.NewReporter(nil, logger)
+		reporterSvc = watchman.NewReporter(nil, log.Log)
 	}
 
 	// Wrap the services in endpoints that can be invoked from other services
@@ -89,16 +99,16 @@ func serve(bindF string, dbgF bool) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Start the servers and send errors (if any) to the error channel.
-	handleHTTPServer(ctx, bindF, reporterEndpoints, &wg, errc, logger, dbgF)
+	handleHTTPServer(ctx, bindF, reporterEndpoints, &wg, errc, stdlog.New(os.Stderr, "[watchman] ", stdlog.Ltime), dbgF)
 
 	// Wait for signal.
-	logger.Printf("exiting (%v)", <-errc)
+	log.Log.Infof("exiting (%v)", <-errc)
 
 	// Send cancellation signal to the goroutines.
 	cancel()
 
 	wg.Wait()
-	logger.Println("exited")
+	log.Log.Info("exited")
 }
 
 func generate(cnt int) {

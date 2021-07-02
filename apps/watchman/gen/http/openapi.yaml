@@ -56,7 +56,7 @@ paths:
           $ref: '#/definitions/ReporterAddRequestBody'
           required:
           - url
-          - dur
+          - duration
           - position
           - rel_position
           - rebuf_count
@@ -65,7 +65,6 @@ paths:
           - player
           - user_id
           - device
-          - t
       responses:
         "201":
           description: Created response.
@@ -76,29 +75,24 @@ definitions:
     title: ReporterAddRequestBody
     type: object
     properties:
-      client_rate:
-        type: integer
-        description: Client download rate, bit/s
-        example: 641649845
-        format: int32
       device:
         type: string
         description: Client device
-        example: web
+        example: ios
         enum:
         - ios
         - adr
         - web
-      dur:
+      duration:
         type: integer
         description: Event duration, ms
-        example: 21402
+        example: 52215
         minimum: 0
         maximum: 60000
       format:
         type: string
         description: Video format, stb (binary stream) or HLS
-        example: hls
+        example: stb
         enum:
         - stb
         - hls
@@ -110,30 +104,30 @@ definitions:
       position:
         type: integer
         description: Current playback report stream position, ms
-        example: 579973706
+        example: 1259307073
         minimum: 0
+      rate:
+        type: integer
+        description: Client download rate, bit/s
+        example: 938401497
+        format: int32
       rebuf_count:
         type: integer
         description: Rebuffering events count
-        example: 1253491737
+        example: 1825042135
         minimum: 0
       rebuf_duration:
         type: integer
         description: Rebuffering events total duration, ms
-        example: 14130
+        example: 662
         minimum: 0
         maximum: 60000
       rel_position:
         type: integer
         description: Relative stream position, pct, 0—100
-        example: 87
+        example: 43
         minimum: 0
         maximum: 100
-      t:
-        type: string
-        description: Timestamp
-        example: Thu, 05 Jan 1995 10:51:43 UTC
-        format: rfc1123
       url:
         type: string
         description: LBRY URL
@@ -142,24 +136,23 @@ definitions:
       user_id:
         type: integer
         description: User ID
-        example: 1747405196
+        example: 1543459748
         format: int32
     example:
-      client_rate: 1840487865
-      device: web
-      dur: 15487
-      format: hls
+      device: ios
+      duration: 30916
+      format: stb
       player: sg-p2
-      position: 1277572968
-      rebuf_count: 586784507
-      rebuf_duration: 45168
-      rel_position: 42
-      t: Sat, 30 Jun 1984 20:34:19 UTC
+      position: 1792743378
+      rate: 1305791291
+      rebuf_count: 1028310977
+      rebuf_duration: 21050
+      rel_position: 43
       url: what
-      user_id: 972752239
+      user_id: 1770612318
     required:
     - url
-    - dur
+    - duration
     - position
     - rel_position
     - rebuf_count
@@ -168,4 +161,3 @@ definitions:
     - player
     - user_id
     - device
-    - t

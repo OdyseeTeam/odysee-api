@@ -59,7 +59,7 @@ var PlaybackReport = Type("PlaybackReport", func() {
 		Example("what")
 		MaxLength(512)
 	})
-	Attribute("dur", Int32, "Event duration, ms", func() {
+	Attribute("duration", Int32, "Event duration, ms", func() {
 		Minimum(0)
 		Maximum(60000)
 	})
@@ -89,17 +89,12 @@ var PlaybackReport = Type("PlaybackReport", func() {
 	})
 
 	Attribute("user_id", Int32, "User ID")
-	Attribute("client_rate", Int32, "Client download rate, bit/s")
-
+	Attribute("rate", Int32, "Client download rate, bit/s")
 	Attribute("device", String, "Client device", func() {
 		Enum("ios", "adr", "web")
 	})
 
-	Attribute("t", String, "Timestamp", func() {
-		Format(FormatRFC1123)
-	})
-
 	Required(
-		"url", "dur", "position", "rel_position", "rebuf_count", "rebuf_duration", "format",
-		"player", "user_id", "device", "t")
+		"url", "duration", "position", "rel_position", "rebuf_count", "rebuf_duration", "format",
+		"player", "user_id", "device")
 })

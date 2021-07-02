@@ -8,8 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/lbryio/lbrytv/apps/watchman"
 	reportersvr "github.com/lbryio/lbrytv/apps/watchman/gen/http/reporter/server"
 	reporter "github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
+
 	goahttp "goa.design/goa/v3/http"
 	httpmdlwr "goa.design/goa/v3/http/middleware"
 	"goa.design/goa/v3/middleware"
@@ -53,6 +55,8 @@ func handleHTTPServer(ctx context.Context, addr string, reporterEndpoints *repor
 	{
 		eh := errorHandler(logger)
 		reporterServer = reportersvr.New(reporterEndpoints, mux, dec, enc, eh, nil, nil)
+		reporterServer.Use(watchman.RemoteAddressMiddleware())
+
 		if debug {
 			servers := goahttp.Servers{
 				reporterServer,
