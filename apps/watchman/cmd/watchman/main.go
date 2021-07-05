@@ -43,7 +43,7 @@ func main() {
 	log.Configure(logCfg["level"], logCfg["encoding"])
 
 	dbCfg := cfg.GetStringMapString("clickhouse")
-	err = olapdb.Connect(dbCfg["url"])
+	err = olapdb.Connect(dbCfg["url"], "watchman")
 	if err != nil {
 		log.Log.Fatal(err)
 	}
