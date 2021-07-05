@@ -7,6 +7,8 @@ import (
 
 	"github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
 	"github.com/lbryio/lbrytv/apps/watchman/log"
+
+	_ "github.com/ClickHouse/clickhouse-go"
 )
 
 var (
