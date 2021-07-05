@@ -68,7 +68,7 @@ func Connect(url string, dbName string) error {
 func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string) error {
 	// t, err := time.Parse(time.RFC1123Z, r.T)
 	t := time.Now()
-	area := getClientArea(addr)
+	area := getArea(addr)
 	_, err := stmt.Exec(
 		r.URL,
 		uint32(r.Duration),

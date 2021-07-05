@@ -13,10 +13,8 @@ const RemoteAddressKey ctxKey = iota + 1
 func RemoteAddressMiddleware() func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			req := r
 			ctx := context.WithValue(r.Context(), RemoteAddressKey, from(r))
-			req = r.WithContext(ctx)
-			h.ServeHTTP(w, req)
+			h.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }

@@ -4,10 +4,10 @@ import (
 	"net"
 	"strings"
 
-	"github.com/oschwald/maxminddb-golang"
+	"github.com/oschwald/geoip2-golang"
 )
 
-var geodb *maxminddb.Reader
+var geodb *geoip2.Reader
 
 type record struct {
 	Country struct {
@@ -17,18 +17,26 @@ type record struct {
 
 func OpenGeoDB(file string) error {
 	var err error
-	geodb, err = maxminddb.Open(file)
+	geodb, err = geoip2.Open(file)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func getClientArea(ip string) string {
-	r := record{}
-	err := geodb.Lookup(net.ParseIP(ip), &r)
+func getArea(ip string) string {
+	// r := record{}
+	// err := geodb.Lookup(net.ParseIP(ip), &r)
+	area := ""
+
+	record, err := geodb.City(net.ParseIP(ip))
 	if err != nil {
 		return ""
 	}
-	return strings.ToLower(r.Country.ISOCode)
+
+	area = record.Country.IsoCode
+	if len(record.Subdivisions) >= 2 {
+		area += "-" + record.Subdivisions[1].IsoCode
+	}
+	return strings.ToLower(area)
 }
