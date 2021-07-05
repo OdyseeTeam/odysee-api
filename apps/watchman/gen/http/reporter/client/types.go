@@ -28,6 +28,8 @@ type AddRequestBody struct {
 	RebufDuration int32 `form:"rebuf_duration" json:"rebuf_duration" xml:"rebuf_duration"`
 	// Video format, stb (binary stream) or HLS
 	Format string `form:"format" json:"format" xml:"format"`
+	// Cache status of video
+	Cache *string `form:"cache,omitempty" json:"cache,omitempty" xml:"cache,omitempty"`
 	// Player server name
 	Player string `form:"player" json:"player" xml:"player"`
 	// User ID
@@ -49,6 +51,7 @@ func NewAddRequestBody(p *reporter.PlaybackReport) *AddRequestBody {
 		RebufCount:    p.RebufCount,
 		RebufDuration: p.RebufDuration,
 		Format:        p.Format,
+		Cache:         p.Cache,
 		Player:        p.Player,
 		UserID:        p.UserID,
 		Rate:          p.Rate,

@@ -44,6 +44,7 @@ func Connect(url string, dbName string) error {
 		"RebufCount" UInt8,
 		"RebufDuration" UInt32,
 		"Format" FixedString(3),
+		"Cache" String,
 		"Player" FixedString(16),
 		"UserID" UInt32,
 		"Rate" UInt32,
@@ -74,6 +75,7 @@ func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string) error {
 		uint8(r.RebufCount),
 		uint32(r.RebufDuration),
 		r.Format,
+		r.Cache,
 		r.Player,
 		uint32(r.UserID),
 		uint32(*r.Rate),
@@ -107,8 +109,8 @@ func prepareWrite(tx *sql.Tx) (*sql.Stmt, error) {
 	return tx.Prepare(fmt.Sprintf(`
 	INSERT INTO %v.playback
 		(URL, Duration, Timestamp, Position, RelPosition, RebufCount,
-			RebufDuration, Format, Player, UserID, Rate, Device, Area, IP)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			RebufDuration, Format, Cache, Player, UserID, Rate, Device, Area, IP)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, database))
 }
 

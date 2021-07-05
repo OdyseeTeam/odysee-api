@@ -30,17 +30,18 @@ func UsageCommands() string {
 // UsageExamples produces an example of a valid invocation of the CLI tool.
 func UsageExamples() string {
 	return os.Args[0] + ` reporter add --body '{
+      "cache": "local",
       "device": "web",
-      "duration": 38439,
-      "format": "hls",
+      "duration": 24011,
+      "format": "stb",
       "player": "sg-p2",
-      "position": 1156513664,
-      "rate": 1633176499,
-      "rebuf_count": 64944106,
-      "rebuf_duration": 32061,
-      "rel_position": 43,
+      "position": 1633176499,
+      "rate": 1674309275,
+      "rebuf_count": 1329532192,
+      "rebuf_duration": 23752,
+      "rel_position": 5,
       "url": "what",
-      "user_id": 2068464011
+      "user_id": 611106208
    }'` + "\n" +
 		""
 }
@@ -169,17 +170,18 @@ Add implements add.
 
 Example:
     `+os.Args[0]+` reporter add --body '{
+      "cache": "local",
       "device": "web",
-      "duration": 38439,
-      "format": "hls",
+      "duration": 24011,
+      "format": "stb",
       "player": "sg-p2",
-      "position": 1156513664,
-      "rate": 1633176499,
-      "rebuf_count": 64944106,
-      "rebuf_duration": 32061,
-      "rel_position": 43,
+      "position": 1633176499,
+      "rate": 1674309275,
+      "rebuf_count": 1329532192,
+      "rebuf_duration": 23752,
+      "rel_position": 5,
       "url": "what",
-      "user_id": 2068464011
+      "user_id": 611106208
    }'
 `, os.Args[0])
 }

@@ -45,6 +45,8 @@ type PlaybackReport struct {
 	RebufDuration int32
 	// Video format, stb (binary stream) or HLS
 	Format string
+	// Cache status of video
+	Cache *string
 	// Player server name
 	Player string
 	// User ID

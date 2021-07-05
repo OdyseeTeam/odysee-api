@@ -31,8 +31,8 @@ paths:
             application/json:
               schema:
                 type: string
-                example: Ipsam modi nihil ullam sit.
-              example: Qui aut ut deserunt.
+                example: A sed.
+              example: Nihil odio amet natus autem quis.
   /openapi.json:
     get:
       tags:
@@ -55,17 +55,18 @@ paths:
             schema:
               $ref: '#/components/schemas/AddRequestBody'
             example:
+              cache: local
               device: web
-              duration: 38439
-              format: hls
+              duration: 24011
+              format: stb
               player: sg-p2
-              position: 1156513664
-              rate: 1633176499
-              rebuf_count: 64944106
-              rebuf_duration: 32061
-              rel_position: 43
+              position: 1633176499
+              rate: 1674309275
+              rebuf_count: 1329532192
+              rebuf_duration: 23752
+              rel_position: 5
               url: what
-              user_id: 2068464011
+              user_id: 611106208
       responses:
         "201":
           description: Created response.
@@ -74,6 +75,14 @@ components:
     AddRequestBody:
       type: object
       properties:
+        cache:
+          type: string
+          description: Cache status of video
+          example: player
+          enum:
+          - local
+          - player
+          - miss
         device:
           type: string
           description: Client device
@@ -85,13 +94,13 @@ components:
         duration:
           type: integer
           description: Event duration, ms
-          example: 48254
+          example: 11524
           minimum: 0
           maximum: 60000
         format:
           type: string
           description: Video format, stb (binary stream) or HLS
-          example: hls
+          example: stb
           enum:
           - stb
           - hls
@@ -103,28 +112,28 @@ components:
         position:
           type: integer
           description: Current playback report stream position, ms
-          example: 1223292224
+          example: 1364094906
           minimum: 0
         rate:
           type: integer
           description: Client download rate, bit/s
-          example: 219268455
+          example: 1906586091
           format: int32
         rebuf_count:
           type: integer
           description: Rebuffering events count
-          example: 856140610
+          example: 1454953199
           minimum: 0
         rebuf_duration:
           type: integer
           description: Rebuffering events total duration, ms
-          example: 39650
+          example: 43686
           minimum: 0
           maximum: 60000
         rel_position:
           type: integer
           description: Relative stream position, pct, 0—100
-          example: 64
+          example: 17
           minimum: 0
           maximum: 100
         url:
@@ -135,20 +144,21 @@ components:
         user_id:
           type: integer
           description: User ID
-          example: 830553715
+          example: 1143315912
           format: int32
       example:
-        device: adr
-        duration: 54906
+        cache: local
+        device: ios
+        duration: 56655
         format: hls
         player: sg-p2
-        position: 1152411017
-        rate: 1906586091
-        rebuf_count: 268663686
-        rebuf_duration: 40307
-        rel_position: 99
+        position: 405859869
+        rate: 575882439
+        rebuf_count: 67565010
+        rebuf_duration: 39779
+        rel_position: 10
         url: what
-        user_id: 1143315912
+        user_id: 419824354
       required:
       - url
       - duration

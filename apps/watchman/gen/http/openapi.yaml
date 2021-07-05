@@ -75,10 +75,18 @@ definitions:
     title: ReporterAddRequestBody
     type: object
     properties:
+      cache:
+        type: string
+        description: Cache status of video
+        example: local
+        enum:
+        - local
+        - player
+        - miss
       device:
         type: string
         description: Client device
-        example: ios
+        example: adr
         enum:
         - ios
         - adr
@@ -86,13 +94,13 @@ definitions:
       duration:
         type: integer
         description: Event duration, ms
-        example: 52215
+        example: 19748
         minimum: 0
         maximum: 60000
       format:
         type: string
         description: Video format, stb (binary stream) or HLS
-        example: stb
+        example: hls
         enum:
         - stb
         - hls
@@ -104,28 +112,28 @@ definitions:
       position:
         type: integer
         description: Current playback report stream position, ms
-        example: 1259307073
+        example: 938401497
         minimum: 0
       rate:
         type: integer
         description: Client download rate, bit/s
-        example: 938401497
+        example: 1517669849
         format: int32
       rebuf_count:
         type: integer
         description: Rebuffering events count
-        example: 1825042135
+        example: 155490916
         minimum: 0
       rebuf_duration:
         type: integer
         description: Rebuffering events total duration, ms
-        example: 662
+        example: 3378
         minimum: 0
         maximum: 60000
       rel_position:
         type: integer
         description: Relative stream position, pct, 0—100
-        example: 43
+        example: 48
         minimum: 0
         maximum: 100
       url:
@@ -136,20 +144,21 @@ definitions:
       user_id:
         type: integer
         description: User ID
-        example: 1543459748
+        example: 1477881050
         format: int32
     example:
-      device: ios
-      duration: 30916
+      cache: local
+      device: web
+      duration: 11291
       format: stb
       player: sg-p2
-      position: 1792743378
-      rate: 1305791291
-      rebuf_count: 1028310977
-      rebuf_duration: 21050
-      rel_position: 43
+      position: 263225764
+      rate: 830553715
+      rebuf_count: 1223292224
+      rebuf_duration: 12264
+      rel_position: 54
       url: what
-      user_id: 1770612318
+      user_id: 1422240286
     required:
     - url
     - duration

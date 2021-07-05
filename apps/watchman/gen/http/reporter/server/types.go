@@ -31,6 +31,8 @@ type AddRequestBody struct {
 	RebufDuration *int32 `form:"rebuf_duration,omitempty" json:"rebuf_duration,omitempty" xml:"rebuf_duration,omitempty"`
 	// Video format, stb (binary stream) or HLS
 	Format *string `form:"format,omitempty" json:"format,omitempty" xml:"format,omitempty"`
+	// Cache status of video
+	Cache *string `form:"cache,omitempty" json:"cache,omitempty" xml:"cache,omitempty"`
 	// Player server name
 	Player *string `form:"player,omitempty" json:"player,omitempty" xml:"player,omitempty"`
 	// User ID
@@ -51,6 +53,7 @@ func NewAddPlaybackReport(body *AddRequestBody) *reporter.PlaybackReport {
 		RebufCount:    *body.RebufCount,
 		RebufDuration: *body.RebufDuration,
 		Format:        *body.Format,
+		Cache:         body.Cache,
 		Player:        *body.Player,
 		UserID:        *body.UserID,
 		Rate:          body.Rate,
@@ -140,6 +143,11 @@ func ValidateAddRequestBody(body *AddRequestBody) (err error) {
 	if body.Format != nil {
 		if !(*body.Format == "stb" || *body.Format == "hls") {
 			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.format", *body.Format, []interface{}{"stb", "hls"}))
+		}
+	}
+	if body.Cache != nil {
+		if !(*body.Cache == "local" || *body.Cache == "player" || *body.Cache == "miss") {
+			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.cache", *body.Cache, []interface{}{"local", "player", "miss"}))
 		}
 	}
 	if body.Player != nil {

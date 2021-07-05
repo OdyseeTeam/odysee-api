@@ -83,6 +83,10 @@ var PlaybackReport = Type("PlaybackReport", func() {
 		Enum("stb", "hls")
 	})
 
+	Attribute("cache", String, "Cache status of video", func() {
+		Enum("local", "player", "miss")
+	})
+
 	Attribute("player", String, "Player server name", func() {
 		Example("sg-p2")
 		MaxLength(64)

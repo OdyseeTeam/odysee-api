@@ -24,7 +24,7 @@ func BuildAddPayload(reporterAddBody string) (*reporter.PlaybackReport, error) {
 	{
 		err = json.Unmarshal([]byte(reporterAddBody), &body)
 		if err != nil {
-			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"device\": \"web\",\n      \"duration\": 38439,\n      \"format\": \"hls\",\n      \"player\": \"sg-p2\",\n      \"position\": 1156513664,\n      \"rate\": 1633176499,\n      \"rebuf_count\": 64944106,\n      \"rebuf_duration\": 32061,\n      \"rel_position\": 43,\n      \"url\": \"what\",\n      \"user_id\": 2068464011\n   }'")
+			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"cache\": \"local\",\n      \"device\": \"web\",\n      \"duration\": 24011,\n      \"format\": \"stb\",\n      \"player\": \"sg-p2\",\n      \"position\": 1633176499,\n      \"rate\": 1674309275,\n      \"rebuf_count\": 1329532192,\n      \"rebuf_duration\": 23752,\n      \"rel_position\": 5,\n      \"url\": \"what\",\n      \"user_id\": 611106208\n   }'")
 		}
 		if utf8.RuneCountInString(body.URL) > 512 {
 			err = goa.MergeErrors(err, goa.InvalidLengthError("body.url", body.URL, utf8.RuneCountInString(body.URL), 512, false))
@@ -56,6 +56,11 @@ func BuildAddPayload(reporterAddBody string) (*reporter.PlaybackReport, error) {
 		if !(body.Format == "stb" || body.Format == "hls") {
 			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.format", body.Format, []interface{}{"stb", "hls"}))
 		}
+		if body.Cache != nil {
+			if !(*body.Cache == "local" || *body.Cache == "player" || *body.Cache == "miss") {
+				err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.cache", *body.Cache, []interface{}{"local", "player", "miss"}))
+			}
+		}
 		if utf8.RuneCountInString(body.Player) > 64 {
 			err = goa.MergeErrors(err, goa.InvalidLengthError("body.player", body.Player, utf8.RuneCountInString(body.Player), 64, false))
 		}
@@ -74,6 +79,7 @@ func BuildAddPayload(reporterAddBody string) (*reporter.PlaybackReport, error) {
 		RebufCount:    body.RebufCount,
 		RebufDuration: body.RebufDuration,
 		Format:        body.Format,
+		Cache:         body.Cache,
 		Player:        body.Player,
 		UserID:        body.UserID,
 		Rate:          body.Rate,
