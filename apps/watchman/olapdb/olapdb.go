@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Pallinder/go-randomdata"
 	"github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
 	"github.com/lbryio/lbrytv/apps/watchman/log"
 
@@ -101,7 +100,7 @@ func WriteOne(r *reporter.PlaybackReport, addr string) error {
 	if err != nil {
 		return err
 	}
-	Write(stmt, r, randomdata.StringSample(randomdata.IpV4Address(), randomdata.IpV6Address()))
+	Write(stmt, r, addr)
 	if err := tx.Commit(); err != nil {
 		return err
 	}
