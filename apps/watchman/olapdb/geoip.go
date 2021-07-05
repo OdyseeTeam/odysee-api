@@ -1,6 +1,7 @@
 package olapdb
 
 import (
+	"fmt"
 	"net"
 	"strings"
 
@@ -8,12 +9,6 @@ import (
 )
 
 var geodb *geoip2.Reader
-
-type record struct {
-	Country struct {
-		ISOCode string `maxminddb:"iso_code"`
-	} `maxminddb:"country"`
-}
 
 func OpenGeoDB(file string) error {
 	var err error
@@ -25,8 +20,6 @@ func OpenGeoDB(file string) error {
 }
 
 func getArea(ip string) string {
-	// r := record{}
-	// err := geodb.Lookup(net.ParseIP(ip), &r)
 	area := ""
 
 	record, err := geodb.City(net.ParseIP(ip))
@@ -35,6 +28,7 @@ func getArea(ip string) string {
 	}
 
 	area = record.Country.IsoCode
+	fmt.Println(record.Subdivisions)
 	if len(record.Subdivisions) >= 2 {
 		area += "-" + record.Subdivisions[1].IsoCode
 	}

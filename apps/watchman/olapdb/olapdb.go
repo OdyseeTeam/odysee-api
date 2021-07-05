@@ -7,8 +7,6 @@ import (
 
 	"github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
 	"github.com/lbryio/lbrytv/apps/watchman/log"
-
-	"github.com/ClickHouse/clickhouse-go"
 )
 
 var (
@@ -26,13 +24,9 @@ func Connect(url string, dbName string) error {
 	if err != nil {
 		return err
 	}
-	if err := conn.Ping(); err != nil {
-		if exception, ok := err.(*clickhouse.Exception); ok {
-			log.Log.Named("clickhouse").Fatalf("[%d] %s \n%s\n", exception.Code, exception.Message, exception.StackTrace)
-		} else {
-			return err
-		}
-	}
+
+	go ping()
+
 	_, err = conn.Exec(fmt.Sprintf(`CREATE DATABASE IF NOT EXISTS %v`, dbName))
 	if err != nil {
 		return err
@@ -114,4 +108,13 @@ func prepareWrite(tx *sql.Tx) (*sql.Stmt, error) {
 			RebufDuration, Format, Player, UserID, Rate, Device, Area, IP)
 	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, database))
+}
+
+func ping() {
+	ticker := time.NewTicker(60 * time.Second)
+	for range ticker.C {
+		if err := conn.Ping(); err != nil {
+			log.Log.Named("clickhouse").Errorf("error pinging clickhouse: %v", err)
+		}
+	}
 }

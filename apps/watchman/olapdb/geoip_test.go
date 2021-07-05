@@ -14,4 +14,5 @@ func Test_getArea(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "gb", getArea("81.2.69.142"))
 	assert.Equal(t, "", getArea("2001:41d0:303:df3e::"))
+	assert.False(t, true)
 }
