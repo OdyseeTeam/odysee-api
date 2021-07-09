@@ -44,7 +44,7 @@ func (s *reportersrvc) Add(ctx context.Context, p *reporter.PlaybackReport) erro
 	// 	Car: *p.Car,
 	// })
 	addr := ctx.Value(RemoteAddressKey).(string)
-	err := olapdb.WriteOne(p, addr)
+	err := olapdb.WriteOne(p, addr, "")
 	if err != nil {
 		return err
 	}

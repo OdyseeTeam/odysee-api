@@ -1,12 +1,13 @@
 package olapdb
 
 import (
+	"database/sql"
 	"fmt"
+	"math"
 	"math/rand"
 	"strings"
 	"time"
 
-	// "github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
 	"github.com/lbryio/lbrytv/apps/watchman/gen/http/reporter/client"
 	"github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
 	"github.com/lbryio/lbrytv/apps/watchman/log"
@@ -28,7 +29,6 @@ func EnrichPlaybackReportFactory(f *factory.Factory) *factory.Factory {
 	}).Attr("Position", func(args factory.Args) (interface{}, error) {
 		return int32(randomdata.Number(0, 1000000)), nil
 	}).Attr("Duration", func(args factory.Args) (interface{}, error) {
-		// return int32(randomdata.Number(0, 60000)), nil
 		return int32(30000), nil
 	}).Attr("RelPosition", func(args factory.Args) (interface{}, error) {
 		return int32(randomdata.Number(0, 100)), nil
@@ -47,49 +47,69 @@ func EnrichPlaybackReportFactory(f *factory.Factory) *factory.Factory {
 		return &v, nil
 	}).Attr("Device", func(args factory.Args) (interface{}, error) {
 		return randomdata.StringSample("ios", "adr", "web"), nil
-		// }).Attr("T", func(args factory.Args) (interface{}, error) {
-		// 	min := time.Now().Add(-15 * 24 * time.Hour).Unix()
-		// 	max := time.Now().Unix()
-		// 	delta := max - min
-
-		// 	sec := rand.Int63n(delta) + min
-		// 	t := time.Unix(sec, 0).Format(time.RFC1123Z)
-		// 	return t, nil
 	})
 }
 
-func Generate(cnt int) {
+func Generate(number int, days int) {
+	var (
+		stmt *sql.Stmt
+		tx   *sql.Tx
+	)
 	rand.Seed(time.Now().UnixNano())
-	tx, _ := conn.Begin()
+
+	l := log.Log.Named("clickhouse.generate")
+	counter := 1
+
+	tx, _ = conn.Begin()
 	stmt, err := prepareWrite(tx)
 	if err != nil {
-		log.Log.Named("clickhouse").Fatal(err)
+		l.Fatal(err)
 	}
-	for t := range timeSeries(cnt, time.Now().Add(-1*24*time.Hour)) {
+
+	for t := range timeSeries(number, time.Now().Add(time.Duration(-days)*24*time.Hour)) {
 		r := PlaybackReportFactory.MustCreate().(*reporter.PlaybackReport)
-		// r.T = t.UTC().Format(time.RFC1123Z)
-		// r.T = t.Format(time.RFC1123)
-		fmt.Println(t.UTC().Format(time.RFC1123Z), t.Format(time.RFC1123))
-		Write(stmt, r, randomdata.StringSample(randomdata.IpV4Address(), randomdata.IpV6Address()))
-		// Log.Infof(">>> %+v", r)
+		ts := t.Format(time.RFC1123Z)
+		err := Write(stmt, r, randomdata.StringSample(randomdata.IpV4Address(), randomdata.IpV6Address()), ts)
+		if err != nil {
+			l.Fatal(err)
+		}
+		if counter%100 == 0 {
+			if err := tx.Commit(); err != nil {
+				l.Warn(err)
+			} else {
+				l.Infof("sent %v records", counter)
+			}
+			tx, _ = conn.Begin()
+			stmt, err = prepareWrite(tx)
+			if err != nil {
+				l.Fatal(err)
+			}
+		}
+		counter++
 	}
 	if err := tx.Commit(); err != nil {
-		log.Log.Named("clickhouse").Fatal(err)
+		l.Warn(err)
+	} else {
+		l.Infof("total of %v records sent", counter)
 	}
 
-	log.Log.Named("clickhouse").Infof("sent %v records", cnt)
 }
 
-func timeSeries(cnt int, start time.Time) <-chan time.Time {
-	s := float64(start.Unix())
-	e := time.Now().Unix()
-	seconds := float64(e) - s
-	avgStep := float64(seconds) / float64(cnt)
+func timeSeries(number int, start time.Time) <-chan time.Time {
+	l := log.Log.Named("clickhouse.generate")
+
+	startSec := float64(start.Unix())
+	endSec := float64(time.Now().Unix())
+
+	totalSec := float64(endSec) - startSec
+	avgStep := float64(totalSec) / float64(number)
+	l.Infof("generating %v time entries from approx. %v to %v, interval=%vs", number, start.Format(time.RFC1123Z), time.Now().Format(time.RFC1123Z), avgStep)
 	ret := make(chan time.Time)
 	go func() {
-		for i := 0; i < cnt; i++ {
-			ret <- time.Unix(int64(s), 0)
-			s += avgStep
+		for i := 0; i < number; i++ {
+			sec, dec := math.Modf(endSec)
+			ret <- time.Unix(int64(sec), int64(dec*(1e9)))
+			endSec -= float64(rand.Float64() * avgStep * 2)
 		}
 		close(ret)
 	}()

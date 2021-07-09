@@ -25,6 +25,7 @@ var CLI struct {
 	} `cmd help:"Start watchman service"`
 	Generate struct {
 		Number int `required name:"number" help:"Number of records to generate"`
+		Days   int `optional name:"days" help:"Number of records to generate" default:2`
 	} `cmd help:"Generate test data"`
 }
 
@@ -57,7 +58,7 @@ func main() {
 	case "serve":
 		serve(CLI.Serve.Bind, CLI.Serve.Debug)
 	case "generate":
-		generate(CLI.Generate.Number)
+		generate(CLI.Generate.Number, CLI.Generate.Days)
 	default:
 		log.Log.Fatal(ctx.Command())
 	}
@@ -111,6 +112,6 @@ func serve(bindF string, dbgF bool) {
 	log.Log.Info("exited")
 }
 
-func generate(cnt int) {
-	olapdb.Generate(cnt)
+func generate(number, days int) {
+	olapdb.Generate(number, days)
 }

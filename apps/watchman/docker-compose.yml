@@ -61,7 +61,8 @@ services:
       ["/usr/bin/geoipupdate", "-d", "/geoip_data", "-f", "/conf/GeoIP.conf"]
     volumes:
       - "./geoip:/conf"
-      - "geoip_data:/geoip_data"
+      - "./geoip_data:/geoip_data"
+      # - "geoip_data:/geoip_data"
 
 volumes:
   influxdb2_data: {}

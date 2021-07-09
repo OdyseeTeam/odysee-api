@@ -1,7 +1,6 @@
 package olapdb
 
 import (
-	"fmt"
 	"net"
 	"strings"
 
@@ -19,18 +18,17 @@ func OpenGeoDB(file string) error {
 	return nil
 }
 
-func getArea(ip string) string {
-	area := ""
+func getArea(ip string) (string, string) {
+	var area, subarea string
 
 	record, err := geodb.City(net.ParseIP(ip))
 	if err != nil {
-		return ""
+		return "", ""
 	}
 
 	area = record.Country.IsoCode
-	fmt.Println(record.Subdivisions)
 	if len(record.Subdivisions) >= 2 {
-		area += "-" + record.Subdivisions[1].IsoCode
+		subarea = record.Subdivisions[1].IsoCode
 	}
-	return strings.ToLower(area)
+	return strings.ToLower(area), strings.ToLower(subarea)
 }

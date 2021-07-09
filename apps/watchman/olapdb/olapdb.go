@@ -7,6 +7,7 @@ import (
 
 	"github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
 	"github.com/lbryio/lbrytv/apps/watchman/log"
+	"github.com/pkg/errors"
 
 	_ "github.com/ClickHouse/clickhouse-go"
 )
@@ -49,8 +50,9 @@ func Connect(url string, dbName string) error {
 		"UserID" UInt32,
 		"Rate" UInt32,
 		"Device" FixedString(3),
-		"Area" FixedString(3),
-		"IP" String
+		"Area" FixedString(2),
+		"SubArea" FixedString(3),
+		"IP" IPv6
 	)
 	ENGINE = MergeTree
 	ORDER BY (Timestamp, UserID, URL)
@@ -62,11 +64,37 @@ func Connect(url string, dbName string) error {
 	return nil
 }
 
-func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string) error {
+func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string, ts string) error {
 	// t, err := time.Parse(time.RFC1123Z, r.T)
-	t := time.Now()
-	area := getArea(addr)
-	_, err := stmt.Exec(
+	var (
+		t     time.Time
+		err   error
+		rate  uint32
+		cache string
+	)
+	if ts != "" {
+		t, err = time.Parse(time.RFC1123Z, ts)
+		if err != nil {
+			return err
+		}
+	} else {
+		t = time.Now()
+	}
+	area, subarea := getArea(addr)
+	// if area == "" {
+	// 	area = "unknown"
+	// }
+
+	if r.Rate != nil {
+		rate = uint32(*r.Rate)
+	}
+	if r.Cache != nil {
+		cache = (*r.Cache)
+	} else {
+		cache = "miss"
+	}
+
+	_, err = stmt.Exec(
 		r.URL,
 		uint32(r.Duration),
 		t,
@@ -75,12 +103,13 @@ func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string) error {
 		uint8(r.RebufCount),
 		uint32(r.RebufDuration),
 		r.Format,
-		r.Cache,
+		cache,
 		r.Player,
 		uint32(r.UserID),
-		uint32(*r.Rate),
+		rate,
 		r.Device,
 		area,
+		subarea,
 		addr,
 	)
 	if err != nil {
@@ -88,19 +117,23 @@ func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string) error {
 	}
 	log.Log.Named("clickhouse").Infow(
 		"playback record written",
-		"user_id", r.UserID, "url", r.URL, "rebuf_count", r.RebufCount, "area", area, "ip", addr)
+		"user_id", r.UserID, "url", r.URL, "rebuf_count", r.RebufCount, "area", area, "ip", addr, "ts", t)
 	return nil
 }
 
-func WriteOne(r *reporter.PlaybackReport, addr string) error {
-	tx, _ := conn.Begin()
-	stmt, err := prepareWrite(tx)
+func WriteOne(r *reporter.PlaybackReport, addr string, ts string) error {
+	tx, err := conn.Begin()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "cannot begin")
 	}
-	Write(stmt, r, addr)
+	stmt, err := prepareWrite(tx)
+	defer stmt.Close()
+	if err != nil {
+		return errors.Wrap(err, "cannot prepare")
+	}
+	Write(stmt, r, addr, ts)
 	if err := tx.Commit(); err != nil {
-		return err
+		return errors.Wrap(err, "cannot commit")
 	}
 	return nil
 }
@@ -109,8 +142,8 @@ func prepareWrite(tx *sql.Tx) (*sql.Stmt, error) {
 	return tx.Prepare(fmt.Sprintf(`
 	INSERT INTO %v.playback
 		(URL, Duration, Timestamp, Position, RelPosition, RebufCount,
-			RebufDuration, Format, Cache, Player, UserID, Rate, Device, Area, IP)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			RebufDuration, Format, Cache, Player, UserID, Rate, Device, Area, SubArea, IP)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, database))
 }
 
