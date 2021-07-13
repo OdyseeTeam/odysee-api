@@ -36,13 +36,13 @@ func EnrichPlaybackReportFactory(f *factory.Factory) *factory.Factory {
 		return int32(randomdata.Number(0, 25)), nil
 	}).Attr("RebufDuration", func(args factory.Args) (interface{}, error) {
 		return int32(randomdata.Number(0, 30000)), nil
-	}).Attr("Format", func(args factory.Args) (interface{}, error) {
+	}).Attr("Protocol", func(args factory.Args) (interface{}, error) {
 		return randomdata.StringSample("hls", "stb"), nil
 	}).Attr("Player", func(args factory.Args) (interface{}, error) {
 		return randomdata.StringSample("use-p1", "use-p2", "sg-p1", "sg-p2"), nil
 	}).Attr("UserID", func(args factory.Args) (interface{}, error) {
 		return int32(randomdata.Number(100000, 150000)), nil
-	}).Attr("Rate", func(args factory.Args) (interface{}, error) {
+	}).Attr("Bandwidth", func(args factory.Args) (interface{}, error) {
 		v := int32(randomdata.Number(128000, 3000000))
 		return &v, nil
 	}).Attr("Device", func(args factory.Args) (interface{}, error) {

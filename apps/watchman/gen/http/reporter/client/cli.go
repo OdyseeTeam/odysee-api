@@ -24,7 +24,7 @@ func BuildAddPayload(reporterAddBody string) (*reporter.PlaybackReport, error) {
 	{
 		err = json.Unmarshal([]byte(reporterAddBody), &body)
 		if err != nil {
-			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"cache\": \"local\",\n      \"device\": \"web\",\n      \"duration\": 24011,\n      \"format\": \"stb\",\n      \"player\": \"sg-p2\",\n      \"position\": 1633176499,\n      \"rate\": 1674309275,\n      \"rebuf_count\": 1329532192,\n      \"rebuf_duration\": 23752,\n      \"rel_position\": 5,\n      \"url\": \"what\",\n      \"user_id\": 611106208\n   }'")
+			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"bandwidth\": 1674309275,\n      \"cache\": \"local\",\n      \"device\": \"web\",\n      \"duration\": 24011,\n      \"player\": \"sg-p2\",\n      \"position\": 1633176499,\n      \"protocol\": \"stb\",\n      \"rebuf_count\": 1329532192,\n      \"rebuf_duration\": 23752,\n      \"rel_position\": 5,\n      \"url\": \"what\",\n      \"user_id\": 611106208\n   }'")
 		}
 		if utf8.RuneCountInString(body.URL) > 512 {
 			err = goa.MergeErrors(err, goa.InvalidLengthError("body.url", body.URL, utf8.RuneCountInString(body.URL), 512, false))
@@ -53,8 +53,8 @@ func BuildAddPayload(reporterAddBody string) (*reporter.PlaybackReport, error) {
 		if body.RebufDuration > 60000 {
 			err = goa.MergeErrors(err, goa.InvalidRangeError("body.rebuf_duration", body.RebufDuration, 60000, false))
 		}
-		if !(body.Format == "stb" || body.Format == "hls") {
-			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.format", body.Format, []interface{}{"stb", "hls"}))
+		if !(body.Protocol == "stb" || body.Protocol == "hls") {
+			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.protocol", body.Protocol, []interface{}{"stb", "hls"}))
 		}
 		if body.Cache != nil {
 			if !(*body.Cache == "local" || *body.Cache == "player" || *body.Cache == "miss") {
@@ -78,11 +78,11 @@ func BuildAddPayload(reporterAddBody string) (*reporter.PlaybackReport, error) {
 		RelPosition:   body.RelPosition,
 		RebufCount:    body.RebufCount,
 		RebufDuration: body.RebufDuration,
-		Format:        body.Format,
+		Protocol:      body.Protocol,
 		Cache:         body.Cache,
 		Player:        body.Player,
 		UserID:        body.UserID,
-		Rate:          body.Rate,
+		Bandwidth:     body.Bandwidth,
 		Device:        body.Device,
 	}
 

@@ -41,18 +41,18 @@ type PlaybackReport struct {
 	RelPosition int32
 	// Rebuffering events count
 	RebufCount int32
-	// Rebuffering events total duration, ms
+	// Rebuffering events duration, ms
 	RebufDuration int32
-	// Video format, stb (binary stream) or HLS
-	Format string
+	// Video delivery protocol, stb (binary stream) or HLS
+	Protocol string
 	// Cache status of video
 	Cache *string
 	// Player server name
 	Player string
 	// User ID
 	UserID int32
-	// Client download rate, bit/s
-	Rate *int32
+	// Client bandwidth, bit/s
+	Bandwidth *int32
 	// Client device
 	Device string
 }

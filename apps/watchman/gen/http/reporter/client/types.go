@@ -24,18 +24,18 @@ type AddRequestBody struct {
 	RelPosition int32 `form:"rel_position" json:"rel_position" xml:"rel_position"`
 	// Rebuffering events count
 	RebufCount int32 `form:"rebuf_count" json:"rebuf_count" xml:"rebuf_count"`
-	// Rebuffering events total duration, ms
+	// Rebuffering events duration, ms
 	RebufDuration int32 `form:"rebuf_duration" json:"rebuf_duration" xml:"rebuf_duration"`
-	// Video format, stb (binary stream) or HLS
-	Format string `form:"format" json:"format" xml:"format"`
+	// Video delivery protocol, stb (binary stream) or HLS
+	Protocol string `form:"protocol" json:"protocol" xml:"protocol"`
 	// Cache status of video
 	Cache *string `form:"cache,omitempty" json:"cache,omitempty" xml:"cache,omitempty"`
 	// Player server name
 	Player string `form:"player" json:"player" xml:"player"`
 	// User ID
 	UserID int32 `form:"user_id" json:"user_id" xml:"user_id"`
-	// Client download rate, bit/s
-	Rate *int32 `form:"rate,omitempty" json:"rate,omitempty" xml:"rate,omitempty"`
+	// Client bandwidth, bit/s
+	Bandwidth *int32 `form:"bandwidth,omitempty" json:"bandwidth,omitempty" xml:"bandwidth,omitempty"`
 	// Client device
 	Device string `form:"device" json:"device" xml:"device"`
 }
@@ -50,11 +50,11 @@ func NewAddRequestBody(p *reporter.PlaybackReport) *AddRequestBody {
 		RelPosition:   p.RelPosition,
 		RebufCount:    p.RebufCount,
 		RebufDuration: p.RebufDuration,
-		Format:        p.Format,
+		Protocol:      p.Protocol,
 		Cache:         p.Cache,
 		Player:        p.Player,
 		UserID:        p.UserID,
-		Rate:          p.Rate,
+		Bandwidth:     p.Bandwidth,
 		Device:        p.Device,
 	}
 	return body

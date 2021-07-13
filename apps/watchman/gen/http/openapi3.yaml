@@ -9,14 +9,8 @@ info:
 servers:
 - url: https://watchman.na-backend.odysee.com
   description: watchman hosts the Watchman service
-  variables:
-    version:
-      default: v1
-- url: https://watchman.dev.na-backend.odysee.com
+- url: https://watchman.na-backend.dev.odysee.com
   description: watchman hosts the Watchman service
-  variables:
-    version:
-      default: v1
 paths:
   /healthz:
     get:
@@ -55,13 +49,13 @@ paths:
             schema:
               $ref: '#/components/schemas/AddRequestBody'
             example:
+              bandwidth: 1674309275
               cache: local
               device: web
               duration: 24011
-              format: stb
               player: sg-p2
               position: 1633176499
-              rate: 1674309275
+              protocol: stb
               rebuf_count: 1329532192
               rebuf_duration: 23752
               rel_position: 5
@@ -75,6 +69,11 @@ components:
     AddRequestBody:
       type: object
       properties:
+        bandwidth:
+          type: integer
+          description: Client bandwidth, bit/s
+          example: 1906586091
+          format: int32
         cache:
           type: string
           description: Cache status of video
@@ -97,13 +96,6 @@ components:
           example: 11524
           minimum: 0
           maximum: 60000
-        format:
-          type: string
-          description: Video format, stb (binary stream) or HLS
-          example: stb
-          enum:
-          - stb
-          - hls
         player:
           type: string
           description: Player server name
@@ -114,11 +106,13 @@ components:
           description: Current playback report stream position, ms
           example: 1364094906
           minimum: 0
-        rate:
-          type: integer
-          description: Client download rate, bit/s
-          example: 1906586091
-          format: int32
+        protocol:
+          type: string
+          description: Video delivery protocol, stb (binary stream) or HLS
+          example: stb
+          enum:
+          - stb
+          - hls
         rebuf_count:
           type: integer
           description: Rebuffering events count
@@ -126,7 +120,7 @@ components:
           minimum: 0
         rebuf_duration:
           type: integer
-          description: Rebuffering events total duration, ms
+          description: Rebuffering events duration, ms
           example: 43686
           minimum: 0
           maximum: 60000
@@ -147,13 +141,13 @@ components:
           example: 1143315912
           format: int32
       example:
+        bandwidth: 575882439
         cache: local
         device: ios
         duration: 56655
-        format: hls
         player: sg-p2
         position: 405859869
-        rate: 575882439
+        protocol: hls
         rebuf_count: 67565010
         rebuf_duration: 39779
         rel_position: 10
@@ -166,7 +160,7 @@ components:
       - rel_position
       - rebuf_count
       - rebuf_duration
-      - format
+      - protocol
       - player
       - user_id
       - device

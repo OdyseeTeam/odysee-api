@@ -61,7 +61,7 @@ paths:
           - rel_position
           - rebuf_count
           - rebuf_duration
-          - format
+          - protocol
           - player
           - user_id
           - device
@@ -75,6 +75,11 @@ definitions:
     title: ReporterAddRequestBody
     type: object
     properties:
+      bandwidth:
+        type: integer
+        description: Client bandwidth, bit/s
+        example: 1517669849
+        format: int32
       cache:
         type: string
         description: Cache status of video
@@ -97,13 +102,6 @@ definitions:
         example: 19748
         minimum: 0
         maximum: 60000
-      format:
-        type: string
-        description: Video format, stb (binary stream) or HLS
-        example: hls
-        enum:
-        - stb
-        - hls
       player:
         type: string
         description: Player server name
@@ -114,11 +112,13 @@ definitions:
         description: Current playback report stream position, ms
         example: 938401497
         minimum: 0
-      rate:
-        type: integer
-        description: Client download rate, bit/s
-        example: 1517669849
-        format: int32
+      protocol:
+        type: string
+        description: Video delivery protocol, stb (binary stream) or HLS
+        example: hls
+        enum:
+        - stb
+        - hls
       rebuf_count:
         type: integer
         description: Rebuffering events count
@@ -126,7 +126,7 @@ definitions:
         minimum: 0
       rebuf_duration:
         type: integer
-        description: Rebuffering events total duration, ms
+        description: Rebuffering events duration, ms
         example: 3378
         minimum: 0
         maximum: 60000
@@ -147,13 +147,13 @@ definitions:
         example: 1477881050
         format: int32
     example:
+      bandwidth: 830553715
       cache: local
       device: web
       duration: 11291
-      format: stb
       player: sg-p2
       position: 263225764
-      rate: 830553715
+      protocol: stb
       rebuf_count: 1223292224
       rebuf_duration: 12264
       rel_position: 54
@@ -166,7 +166,7 @@ definitions:
     - rel_position
     - rebuf_count
     - rebuf_duration
-    - format
+    - protocol
     - player
     - user_id
     - device

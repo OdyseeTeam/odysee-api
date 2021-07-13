@@ -18,18 +18,10 @@ var _ = API("watchman", func() {
 		Host("production", func() {
 			Description("Production host")
 			URI("https://watchman.na-backend.odysee.com")
-
-			Variable("version", String, "API version", func() {
-				Default("v1")
-			})
 		})
 		Host("dev", func() {
 			Description("Development host")
-			URI("https://watchman.dev.na-backend.odysee.com")
-
-			Variable("version", String, "API version", func() {
-				Default("v1")
-			})
+			URI("https://watchman.na-backend.dev.odysee.com")
 		})
 	})
 })
@@ -74,12 +66,12 @@ var PlaybackReport = Type("PlaybackReport", func() {
 	Attribute("rebuf_count", Int32, "Rebuffering events count", func() {
 		Minimum(0)
 	})
-	Attribute("rebuf_duration", Int32, "Rebuffering events total duration, ms", func() {
+	Attribute("rebuf_duration", Int32, "Rebuffering events duration, ms", func() {
 		Minimum(0)
 		Maximum(60000)
 	})
 
-	Attribute("format", String, "Video format, stb (binary stream) or HLS", func() {
+	Attribute("protocol", String, "Video delivery protocol, stb (binary stream) or HLS", func() {
 		Enum("stb", "hls")
 	})
 
@@ -93,12 +85,12 @@ var PlaybackReport = Type("PlaybackReport", func() {
 	})
 
 	Attribute("user_id", Int32, "User ID")
-	Attribute("rate", Int32, "Client download rate, bit/s")
+	Attribute("bandwidth", Int32, "Client bandwidth, bit/s")
 	Attribute("device", String, "Client device", func() {
 		Enum("ios", "adr", "web")
 	})
 
 	Required(
-		"url", "duration", "position", "rel_position", "rebuf_count", "rebuf_duration", "format",
+		"url", "duration", "position", "rel_position", "rebuf_count", "rebuf_duration", "protocol",
 		"player", "user_id", "device")
 })

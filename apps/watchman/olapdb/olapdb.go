@@ -44,11 +44,11 @@ func Connect(url string, dbName string) error {
 		"RelPosition" UInt8,
 		"RebufCount" UInt8,
 		"RebufDuration" UInt32,
-		"Format" FixedString(3),
+		"Protocol" FixedString(3),
 		"Cache" String,
 		"Player" FixedString(16),
 		"UserID" UInt32,
-		"Rate" UInt32,
+		"Bandwidth" UInt32,
 		"Device" FixedString(3),
 		"Area" FixedString(2),
 		"SubArea" FixedString(3),
@@ -85,8 +85,8 @@ func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string, ts string) e
 	// 	area = "unknown"
 	// }
 
-	if r.Rate != nil {
-		rate = uint32(*r.Rate)
+	if r.Bandwidth != nil {
+		rate = uint32(*r.Bandwidth)
 	}
 	if r.Cache != nil {
 		cache = (*r.Cache)
@@ -102,7 +102,7 @@ func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string, ts string) e
 		uint8(r.RelPosition),
 		uint8(r.RebufCount),
 		uint32(r.RebufDuration),
-		r.Format,
+		r.Protocol,
 		cache,
 		r.Player,
 		uint32(r.UserID),
@@ -142,7 +142,7 @@ func prepareWrite(tx *sql.Tx) (*sql.Stmt, error) {
 	return tx.Prepare(fmt.Sprintf(`
 	INSERT INTO %v.playback
 		(URL, Duration, Timestamp, Position, RelPosition, RebufCount,
-			RebufDuration, Format, Cache, Player, UserID, Rate, Device, Area, SubArea, IP)
+			RebufDuration, Protocol, Cache, Player, UserID, Bandwidth, Device, Area, SubArea, IP)
 	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, database))
 }

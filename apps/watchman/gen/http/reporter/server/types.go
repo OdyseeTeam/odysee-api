@@ -27,18 +27,18 @@ type AddRequestBody struct {
 	RelPosition *int32 `form:"rel_position,omitempty" json:"rel_position,omitempty" xml:"rel_position,omitempty"`
 	// Rebuffering events count
 	RebufCount *int32 `form:"rebuf_count,omitempty" json:"rebuf_count,omitempty" xml:"rebuf_count,omitempty"`
-	// Rebuffering events total duration, ms
+	// Rebuffering events duration, ms
 	RebufDuration *int32 `form:"rebuf_duration,omitempty" json:"rebuf_duration,omitempty" xml:"rebuf_duration,omitempty"`
-	// Video format, stb (binary stream) or HLS
-	Format *string `form:"format,omitempty" json:"format,omitempty" xml:"format,omitempty"`
+	// Video delivery protocol, stb (binary stream) or HLS
+	Protocol *string `form:"protocol,omitempty" json:"protocol,omitempty" xml:"protocol,omitempty"`
 	// Cache status of video
 	Cache *string `form:"cache,omitempty" json:"cache,omitempty" xml:"cache,omitempty"`
 	// Player server name
 	Player *string `form:"player,omitempty" json:"player,omitempty" xml:"player,omitempty"`
 	// User ID
 	UserID *int32 `form:"user_id,omitempty" json:"user_id,omitempty" xml:"user_id,omitempty"`
-	// Client download rate, bit/s
-	Rate *int32 `form:"rate,omitempty" json:"rate,omitempty" xml:"rate,omitempty"`
+	// Client bandwidth, bit/s
+	Bandwidth *int32 `form:"bandwidth,omitempty" json:"bandwidth,omitempty" xml:"bandwidth,omitempty"`
 	// Client device
 	Device *string `form:"device,omitempty" json:"device,omitempty" xml:"device,omitempty"`
 }
@@ -52,11 +52,11 @@ func NewAddPlaybackReport(body *AddRequestBody) *reporter.PlaybackReport {
 		RelPosition:   *body.RelPosition,
 		RebufCount:    *body.RebufCount,
 		RebufDuration: *body.RebufDuration,
-		Format:        *body.Format,
+		Protocol:      *body.Protocol,
 		Cache:         body.Cache,
 		Player:        *body.Player,
 		UserID:        *body.UserID,
-		Rate:          body.Rate,
+		Bandwidth:     body.Bandwidth,
 		Device:        *body.Device,
 	}
 
@@ -83,8 +83,8 @@ func ValidateAddRequestBody(body *AddRequestBody) (err error) {
 	if body.RebufDuration == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("rebuf_duration", "body"))
 	}
-	if body.Format == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("format", "body"))
+	if body.Protocol == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("protocol", "body"))
 	}
 	if body.Player == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("player", "body"))
@@ -140,9 +140,9 @@ func ValidateAddRequestBody(body *AddRequestBody) (err error) {
 			err = goa.MergeErrors(err, goa.InvalidRangeError("body.rebuf_duration", *body.RebufDuration, 60000, false))
 		}
 	}
-	if body.Format != nil {
-		if !(*body.Format == "stb" || *body.Format == "hls") {
-			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.format", *body.Format, []interface{}{"stb", "hls"}))
+	if body.Protocol != nil {
+		if !(*body.Protocol == "stb" || *body.Protocol == "hls") {
+			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.protocol", *body.Protocol, []interface{}{"stb", "hls"}))
 		}
 	}
 	if body.Cache != nil {

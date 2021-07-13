@@ -30,13 +30,13 @@ func UsageCommands() string {
 // UsageExamples produces an example of a valid invocation of the CLI tool.
 func UsageExamples() string {
 	return os.Args[0] + ` reporter add --body '{
+      "bandwidth": 1674309275,
       "cache": "local",
       "device": "web",
       "duration": 24011,
-      "format": "stb",
       "player": "sg-p2",
       "position": 1633176499,
-      "rate": 1674309275,
+      "protocol": "stb",
       "rebuf_count": 1329532192,
       "rebuf_duration": 23752,
       "rel_position": 5,
@@ -170,13 +170,13 @@ Add implements add.
 
 Example:
     `+os.Args[0]+` reporter add --body '{
+      "bandwidth": 1674309275,
       "cache": "local",
       "device": "web",
       "duration": 24011,
-      "format": "stb",
       "player": "sg-p2",
       "position": 1633176499,
-      "rate": 1674309275,
+      "protocol": "stb",
       "rebuf_count": 1329532192,
       "rebuf_duration": 23752,
       "rel_position": 5,
