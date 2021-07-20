@@ -8,16 +8,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - "geoip_data:/app/geoip_data:ro"
-  # influxdb:
-  #   image: influxdb:2.0
-  #   container_name: influxdb
-  #   restart: on-failure
-  #   ports:
-  #     - "8086:8086"
-  #   volumes:
-  #     - influxdb2_data:/var/lib/influxdb2
-  #     - influxdb2_config:/etc/influxdb2
+      - "./docker-data/geoip:/app/geoip:ro"
   clickhouse:
     image: yandex/clickhouse-server:21.3
     container_name: clickhouse
@@ -26,22 +17,7 @@ services:
       - "8123:8123"
       - "9000:9000"
     volumes:
-      - "clickhouse_data:/var/lib/clickhouse"
-  influxdb:
-    image: influxdb:2.0
-    container_name: influxdb
-    restart: on-failure
-    ports:
-      - "8086:8086"
-    volumes:
-      - influxdb2_data:/var/lib/influxdb2
-      - influxdb2_config:/etc/influxdb2
-      # environment:
-        #   - DOCKER_INFLUXDB_INIT_MODE=setup
-        #   - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_USERNAME}
-        #   - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_PASSWORD}
-        #   - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_ORG}
-        #   - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET}
+      - "clickhouse:/var/lib/clickhouse"
   grafana:
     image: grafana/grafana:7.5.4
     container_name: grafana
@@ -51,22 +27,15 @@ services:
     environment:
       - GF_INSTALL_PLUGINS=vertamedia-clickhouse-datasource
     volumes:
-      - "grafana_data:/var/lib/grafana"
+      - "grafana:/var/lib/grafana"
   geoipupdate:
     image: "maxmindinc/geoipupdate:v4.7.1"
-    # Override the entrypoint in order to avoid using envvars for config.
-    # Futz with settings so we can keep mmdb and conf in same dir on host
-    # (image looks for them in separate dirs by default).
     entrypoint:
-      ["/usr/bin/geoipupdate", "-d", "/geoip_data", "-f", "/conf/GeoIP.conf"]
+      ["/usr/bin/geoipupdate", "-d", "/geoip-data", "-f", "/conf/GeoIP.conf"]
     volumes:
-      - "./geoip:/conf"
-      - "./geoip_data:/geoip_data"
-      # - "geoip_data:/geoip_data"
+      - "./docker-data/geoip-conf:/conf"
+      - "./docker-data/geoip:/geoip-data"
 
 volumes:
-  influxdb2_data: {}
-  influxdb2_config: {}
-  grafana_data: {}
-  clickhouse_data: {}
-  geoip_data: {}
+  grafana: {}
+  clickhouse: {}
