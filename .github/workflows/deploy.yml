@@ -43,37 +43,37 @@ jobs:
         with:
           install-only: true
 
-      # lbrytv-api specific section
+      # odysee-api specific section
 
-      - name: Build lbrytv-api
+      - name: Build odysee-api
         if: steps.service.outputs.service == 'api'
         run: |
           go get github.com/gobuffalo/packr/v2/packr2@v2.7.1
           goreleaser --rm-dist --snapshot
 
-      - name: Build lbrytv-api docker image
+      - name: Build odysee-api docker image
         if: steps.service.outputs.service == 'api'
         uses: docker/build-push-action@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-          repository: lbry/lbrytv
+          repository: lbry/odysee-api
           tags: latest,${{ steps.version.outputs.version }}
 
-      - name: Deploy lbrytv-api
+      - name: Deploy odysee-api
         if: steps.service.outputs.service == 'api'
         uses: octokit/request-action@v2.x
-        id: deploy-lbrytv-api
+        id: deploy-odysee-api
         env:
           GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
         with:
           route: POST /repos/:repository/dispatches
           repository: lbryio/lbrytv-deployment
-          event_type: deploy-lbrytv
+          event_type: deploy-odysee-api
           client_payload: |
             tag: ${{ steps.version.outputs.version }}
             ref: ${{ github.ref }}
-            service: lbrytv-api
+            service: odysee-api
 
       # lbrytv-collector specific section
 
