@@ -1,10 +1,10 @@
-# API Server for LBRY on the Web
+# API Server for Odysee
 
-This project is the API server used by lbry.tv. If you are looking for the UI code, that lives here: https://github.com/lbryio/lbry-desktop.
+⚠️ If you are looking for the UI code, that lives here: https://github.com/lbryio/lbry-desktop. ⚠️
 
-Active development is in progress, expect failing tests and breaking changes.
+This is the API server used by [Odysee](https://odysee.com), mostly acting as a bridge between web and the blockchain.
 
-[![CircleCI](https://img.shields.io/circleci/project/github/lbryio/lbrytv/master.svg)](https://circleci.com/gh/lbryio/lbrytv/tree/master) [![Coverage](https://img.shields.io/coveralls/github/lbryio/lbrytv.svg)](https://coveralls.io/github/lbryio/lbrytv)
+![Tests](https://github.com/lbryio/odysee-api/actions/workflows/test.yml/badge.svg) [![Coverage](https://img.shields.io/coveralls/github/lbryio/lbrytv.svg)](https://coveralls.io/github/lbryio/lbrytv)
 
 ## Running with Docker
 
@@ -14,7 +14,7 @@ Make sure you have recent enough Docker and `docker-compose` installed.
 
 **1. Initialize and launch the containers**
 
-This will pull and launch SDK and postgres images, which lbrytv requires to operate.
+This will pull and launch SDK and postgres images, which Odysee API requires to operate.
 
 `docker-compose up app`
 
@@ -47,7 +47,7 @@ You still might want to use `docker` and `docker-compose` for running SDK and DB
 
 `docker-compose up -d postgres lbrynet`
 
-*Note: if you're running a LBRY desktop app or lbrynet instance, you will have to either shut it down or change ports*
+*Note: if you're running a LBRY desktop app or a lbrynet instance, you will have to either shut it down or change ports*
 
 **2. Setup up the database schema if this is your first launch**
 
@@ -57,7 +57,7 @@ You still might want to use `docker` and `docker-compose` for running SDK and DB
 
 `ssh-keygen -t rsa -f token_privkey.rsa -m pem`
 
-**4. Start lbrytv API server**
+**4. Start Odysee API server**
 
 `go run .`
 
