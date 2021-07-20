@@ -22,8 +22,7 @@ require (
 	github.com/magiconair/properties v1.8.4 // indirect
 	github.com/markbates/pkger v0.17.0
 	github.com/nsf/jsondiff v0.0.0-20190712045011-8443391ee9b6
-	github.com/oschwald/geoip2-golang v1.5.0 // indirect
-	github.com/oschwald/maxminddb-golang v1.8.0
+	github.com/oschwald/geoip2-golang v1.5.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pelletier/go-toml v1.8.1 // indirect
 	github.com/pkg/errors v0.9.1
