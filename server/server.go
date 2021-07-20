@@ -64,6 +64,11 @@ func defaultHeadersMiddleware(defaultHeaders map[string]string) mux.MiddlewareFu
 	}
 }
 
+// Address returns the address which server is listening on.
+func (s *Server) Address() string {
+	return s.address
+}
+
 // Start starts a http server and returns immediately.
 func (s *Server) Start() error {
 	go func() {

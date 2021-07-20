@@ -1,6 +1,8 @@
 package server
 
 import (
+	"fmt"
+	"math/rand"
 	"net/http"
 	"os"
 	"syscall"
@@ -30,13 +32,19 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func randomServer(r *sdkrouter.Router) *Server {
+	return NewServer(fmt.Sprintf("localhost:%v", 30000+rand.Intn(30000)), r)
+}
+
 func TestStartAndServeUntilShutdown(t *testing.T) {
-	server := NewServer("localhost:40080", sdkrouter.New(config.GetLbrynetServers()))
+	server := randomServer(sdkrouter.New(config.GetLbrynetServers()))
 	server.Start()
 	go server.ServeUntilShutdown()
 
+	url := fmt.Sprintf("http://%v/", server.Address())
+
 	time.Sleep(100 * time.Millisecond)
-	response, err := http.Get("http://localhost:40080/")
+	response, err := http.Get(url)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +54,7 @@ func TestStartAndServeUntilShutdown(t *testing.T) {
 	// Retry 10 times to give the server a chance to shut down
 	for range [10]int{} {
 		time.Sleep(100 * time.Millisecond)
-		response, err = http.Get("http://localhost:40080/")
+		_, err = http.Get(url)
 		if err != nil {
 			break
 		}
@@ -60,11 +68,13 @@ func TestHeaders(t *testing.T) {
 		response *http.Response
 	)
 
-	server := NewServer("localhost:40080", sdkrouter.New(config.GetLbrynetServers()))
+	server := randomServer(sdkrouter.New(config.GetLbrynetServers()))
 	server.Start()
 	go server.ServeUntilShutdown()
 
-	request, _ := http.NewRequest("OPTIONS", "http://localhost:40080/api/v1/proxy", nil)
+	url := fmt.Sprintf("http://%v/api/v1/proxy", server.Address())
+
+	request, _ := http.NewRequest("OPTIONS", url, nil)
 	client := http.Client{}
 
 	// Retry 10 times to give the server a chance to start
