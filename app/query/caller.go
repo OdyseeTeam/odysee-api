@@ -26,7 +26,7 @@ const (
 	walletLoadRetries   = 3
 	walletLoadRetryWait = 100 * time.Millisecond
 	builtinHookName     = "builtin"
-	defaultRPCTimeout   = 120 * time.Second
+	defaultRPCTimeout   = 240 * time.Second
 
 	// AllMethodsHook is used as the first argument to Add*Hook to make it apply to all methods
 	AllMethodsHook = ""
@@ -94,7 +94,7 @@ func (c *Caller) newRPCClient(timeout time.Duration) jsonrpc.RPCClient {
 			Timeout: sdkrouter.RPCTimeout + timeout,
 			Transport: &http.Transport{
 				Dial: (&net.Dialer{
-					Timeout:   15 * time.Second,
+					Timeout:   30 * time.Second,
 					KeepAlive: 120 * time.Second,
 				}).Dial,
 				ResponseHeaderTimeout: timeout,

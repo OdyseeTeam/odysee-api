@@ -37,7 +37,7 @@ CORSDomains:
   - https://lbry.tv
 
 RPCTimeouts:
-  txo_spend: 1m
-  txo_list: 1m
-  transaction_list: 1m
-  publish: 1m
+  txo_spend: 4m
+  txo_list: 4m
+  transaction_list: 4m
+  publish: 4m
