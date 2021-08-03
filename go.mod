@@ -42,9 +42,9 @@ require (
 	github.com/volatiletech/null v8.0.0+incompatible
 	github.com/volatiletech/sqlboiler v3.4.0+incompatible
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
-	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.17.0
 	goa.design/goa/v3 v3.4.3
+	goa.design/plugins/v3 v3.4.3
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
 	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
 	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22 // indirect

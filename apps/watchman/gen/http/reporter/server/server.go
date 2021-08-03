@@ -10,10 +10,12 @@ package server
 import (
 	"context"
 	"net/http"
+	"regexp"
 
 	reporter "github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
 	goahttp "goa.design/goa/v3/http"
 	goa "goa.design/goa/v3/pkg"
+	"goa.design/plugins/v3/cors"
 )
 
 // Server lists the reporter service endpoint HTTP handlers.
@@ -21,6 +23,7 @@ type Server struct {
 	Mounts             []*MountPoint
 	Add                http.Handler
 	Healthz            http.Handler
+	CORS               http.Handler
 	GenHTTPOpenapiJSON http.Handler
 }
 
@@ -63,10 +66,14 @@ func New(
 		Mounts: []*MountPoint{
 			{"Add", "POST", "/reports/playback"},
 			{"Healthz", "GET", "/healthz"},
+			{"CORS", "OPTIONS", "/reports/playback"},
+			{"CORS", "OPTIONS", "/healthz"},
+			{"CORS", "OPTIONS", "/openapi.json"},
 			{"./gen/http/openapi.json", "GET", "/openapi.json"},
 		},
 		Add:                NewAddHandler(e.Add, mux, decoder, encoder, errhandler, formatter),
 		Healthz:            NewHealthzHandler(e.Healthz, mux, decoder, encoder, errhandler, formatter),
+		CORS:               NewCORSHandler(),
 		GenHTTPOpenapiJSON: http.FileServer(fileSystemGenHTTPOpenapiJSON),
 	}
 }
@@ -78,19 +85,21 @@ func (s *Server) Service() string { return "reporter" }
 func (s *Server) Use(m func(http.Handler) http.Handler) {
 	s.Add = m(s.Add)
 	s.Healthz = m(s.Healthz)
+	s.CORS = m(s.CORS)
 }
 
 // Mount configures the mux to serve the reporter endpoints.
 func Mount(mux goahttp.Muxer, h *Server) {
 	MountAddHandler(mux, h.Add)
 	MountHealthzHandler(mux, h.Healthz)
+	MountCORSHandler(mux, h.CORS)
 	MountGenHTTPOpenapiJSON(mux, goahttp.Replace("", "/./gen/http/openapi.json", h.GenHTTPOpenapiJSON))
 }
 
 // MountAddHandler configures the mux to serve the "reporter" service "add"
 // endpoint.
 func MountAddHandler(mux goahttp.Muxer, h http.Handler) {
-	f, ok := h.(http.HandlerFunc)
+	f, ok := HandleReporterOrigin(h).(http.HandlerFunc)
 	if !ok {
 		f = func(w http.ResponseWriter, r *http.Request) {
 			h.ServeHTTP(w, r)
@@ -141,7 +150,7 @@ func NewAddHandler(
 // MountHealthzHandler configures the mux to serve the "reporter" service
 // "healthz" endpoint.
 func MountHealthzHandler(mux goahttp.Muxer, h http.Handler) {
-	f, ok := h.(http.HandlerFunc)
+	f, ok := HandleReporterOrigin(h).(http.HandlerFunc)
 	if !ok {
 		f = func(w http.ResponseWriter, r *http.Request) {
 			h.ServeHTTP(w, r)
@@ -185,5 +194,54 @@ func NewHealthzHandler(
 // MountGenHTTPOpenapiJSON configures the mux to serve GET request made to
 // "/openapi.json".
 func MountGenHTTPOpenapiJSON(mux goahttp.Muxer, h http.Handler) {
-	mux.Handle("GET", "/openapi.json", h.ServeHTTP)
+	mux.Handle("GET", "/openapi.json", HandleReporterOrigin(h).ServeHTTP)
+}
+
+// MountCORSHandler configures the mux to serve the CORS endpoints for the
+// service reporter.
+func MountCORSHandler(mux goahttp.Muxer, h http.Handler) {
+	h = HandleReporterOrigin(h)
+	f, ok := h.(http.HandlerFunc)
+	if !ok {
+		f = func(w http.ResponseWriter, r *http.Request) {
+			h.ServeHTTP(w, r)
+		}
+	}
+	mux.Handle("OPTIONS", "/reports/playback", f)
+	mux.Handle("OPTIONS", "/healthz", f)
+	mux.Handle("OPTIONS", "/openapi.json", f)
+}
+
+// NewCORSHandler creates a HTTP handler which returns a simple 200 response.
+func NewCORSHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+	})
+}
+
+// HandleReporterOrigin applies the CORS response headers corresponding to the
+// origin for the service reporter.
+func HandleReporterOrigin(h http.Handler) http.Handler {
+	spec0 := regexp.MustCompile("(http:\\/\\/localhost:\\d+)|(https:\\/\\/odysee.com)|(https:\\/\\/.+\\.odysee.com)")
+	origHndlr := h.(http.HandlerFunc)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			// Not a CORS request
+			origHndlr(w, r)
+			return
+		}
+		if cors.MatchOriginRegexp(origin, spec0) {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+			if acrm := r.Header.Get("Access-Control-Request-Method"); acrm != "" {
+				// We are handling a preflight request
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST")
+			}
+			origHndlr(w, r)
+			return
+		}
+		origHndlr(w, r)
+		return
+	})
 }

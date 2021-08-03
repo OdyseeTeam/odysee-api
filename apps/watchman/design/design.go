@@ -1,6 +1,11 @@
 package design
 
-import . "goa.design/goa/v3/dsl"
+import (
+	"net/http"
+
+	. "goa.design/goa/v3/dsl"
+	cors "goa.design/plugins/v3/cors/dsl"
+)
 
 var _ = API("watchman", func() {
 	Title("Watchman service")
@@ -9,6 +14,10 @@ var _ = API("watchman", func() {
 		via playback reports, which should be sent from the client each n sec
 		(with n being something reasonable between 5 and 30s)
 	`)
+
+	cors.Origin(`/(http:\/\/localhost:\d+)|(https:\/\/odysee.com)|(https:\/\/.+\.odysee.com)/`, func() {
+		cors.Methods(http.MethodGet, http.MethodPost)
+	})
 
 	Server("watchman", func() {
 		Description("watchman hosts the Watchman service")
@@ -28,6 +37,7 @@ var _ = API("watchman", func() {
 
 var _ = Service("reporter", func() {
 	Description("Media playback reports")
+
 	Method("add", func() {
 		Payload(PlaybackReport)
 		Result(Empty)

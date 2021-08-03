@@ -64,31 +64,39 @@ func (s *reporterSuite) SetupSuite() {
 
 func (s *reporterSuite) TestAdd() {
 	rep := olapdb.PlaybackReportAddRequestFactory.MustCreate().(*client.AddRequestBody)
-	// rep.T = t.UTC().Format(time.RFC1123Z)
-	// Write(stmt, r, randomdata.StringSample(randomdata.IpV4Address(), randomdata.IpV6Address()))
 
 	qBody, err := json.Marshal(rep)
 	s.Require().NoError(err)
-	r, err := http.NewRequest(http.MethodPost, s.ts.URL+reporterclt.AddReporterPath(), bytes.NewBuffer(qBody))
-	s.Require().NoError(err)
 
-	c := &http.Client{}
-	resp, err := c.Do(r)
-	s.Require().NoError(err)
-	b, err := ioutil.ReadAll(resp.Body)
-	s.NoError(err)
-	s.Equal(http.StatusCreated, resp.StatusCode, string(b))
-	s.True(false)
+	cases := []struct {
+		origin   string
+		body     []byte
+		respCode int
+	}{
+		{"https://odysee.com", qBody, http.StatusCreated},
+		{"http://localhost:1337", qBody, http.StatusCreated},
+		{"http://localhost:9090", nil, http.StatusBadRequest},
+	}
+
+	for _, c := range cases {
+		s.Run(c.origin, func() {
+			r, err := http.NewRequest(http.MethodPost, s.ts.URL+reporterclt.AddReporterPath(), bytes.NewBuffer(qBody))
+			s.Require().NoError(err)
+			cl := &http.Client{}
+			r.Header.Add("origin", c.origin)
+			r.Header.Add("access-control-request-method", http.MethodPost)
+
+			resp, err := cl.Do(r)
+			s.Require().NoError(err)
+			b, err := ioutil.ReadAll(resp.Body)
+			s.NoError(err)
+			s.Equal(http.StatusCreated, resp.StatusCode, string(b))
+			s.Equal(c.origin, resp.Header.Get("access-control-allow-origin"))
+			s.Equal("GET, POST", resp.Header.Get("access-control-allow-methods"))
+		})
+	}
+
 }
-
-// func (s *reporterSuite) newAddRequest(p db.CreatePlaybackReportParams) *http.Request {
-// 	qBody, err := json.Marshal(p)
-// 	fmt.Println(string(qBody))
-// 	s.Require().NoError(err)
-// 	r, err := http.NewRequest("POST", s.ts.URL+reporterclt.AddReporterPath(), bytes.NewBuffer(qBody))
-// 	s.Require().NoError(err)
-// 	return r
-// }
 
 func (s *reporterSuite) TearDownSuite() {
 	// s.cleanup()

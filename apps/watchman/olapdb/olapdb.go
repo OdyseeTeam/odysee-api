@@ -127,10 +127,10 @@ func WriteOne(r *reporter.PlaybackReport, addr string, ts string) error {
 		return errors.Wrap(err, "cannot begin")
 	}
 	stmt, err := prepareWrite(tx)
-	defer stmt.Close()
 	if err != nil {
 		return errors.Wrap(err, "cannot prepare")
 	}
+	defer stmt.Close()
 	Write(stmt, r, addr, ts)
 	if err := tx.Commit(); err != nil {
 		return errors.Wrap(err, "cannot commit")
