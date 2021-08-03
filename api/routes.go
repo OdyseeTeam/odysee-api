@@ -68,6 +68,7 @@ func defaultMiddlewares(rt *sdkrouter.Router, internalAPIHost string) mux.Middle
 		AllowedOrigins:   config.GetCORSDomains(),
 		AllowCredentials: true,
 		AllowedHeaders:   []string{wallet.TokenHeader, "X-Requested-With", "Content-Type", "Accept"},
+		MaxAge:           600,
 	})
 	logger.Log().Infof("added CORS domains: %v", config.GetCORSDomains())
 
