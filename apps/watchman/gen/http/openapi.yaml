@@ -98,8 +98,8 @@ definitions:
         - web
       duration:
         type: integer
-        description: Event duration, ms
-        example: 19748
+        description: Duration of time between event calls in ms (aiming for between 5s and 30s so generally 5000 - 3000)
+        example: 30000
         minimum: 0
         maximum: 60000
       player:
@@ -121,12 +121,12 @@ definitions:
         - hls
       rebuf_count:
         type: integer
-        description: Rebuffering events count
-        example: 155490916
+        description: Rebuffering events count elapsed during the duration
+        example: 3
         minimum: 0
       rebuf_duration:
         type: integer
-        description: Rebuffering events duration, ms
+        description: Sum of total rebuffering events durations, ms
         example: 3378
         minimum: 0
         maximum: 60000
