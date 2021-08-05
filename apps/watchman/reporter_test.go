@@ -93,6 +93,7 @@ func (s *reporterSuite) TestAdd() {
 			s.Equal(http.StatusCreated, resp.StatusCode, string(b))
 			s.Equal(c.origin, resp.Header.Get("access-control-allow-origin"))
 			s.Equal("GET, POST", resp.Header.Get("access-control-allow-methods"))
+			s.Equal("content-type", resp.Header.Get("access-control-allow-headers"))
 		})
 	}
 
