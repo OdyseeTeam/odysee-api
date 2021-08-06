@@ -7,16 +7,10 @@ info:
     between 5 and 30s)\n\t"
   version: "1.0"
 servers:
-- url: https://watchman.na-backend.odysee.com/{version}
+- url: https://watchman.na-backend.odysee.com/
   description: watchman hosts the Watchman service
-  variables:
-    version:
-      default: v1
-- url: https://watchman.na-backend.dev.odysee.com/{version}
+- url: https://watchman.na-backend.dev.odysee.com
   description: watchman hosts the Watchman service
-  variables:
-    version:
-      default: v1
 paths:
   /healthz:
     get:
@@ -31,17 +25,8 @@ paths:
             application/json:
               schema:
                 type: string
-                example: Et ipsam.
-              example: Nihil ullam sit laborum qui aut.
-  /openapi.json:
-    get:
-      tags:
-      - reporter
-      summary: Download ./gen/http/openapi.json
-      operationId: reporter#/openapi.json
-      responses:
-        "200":
-          description: File downloaded
+                example: OK
+              example: OK
   /reports/playback:
     post:
       tags:
@@ -55,16 +40,16 @@ paths:
             schema:
               $ref: '#/components/schemas/AddRequestBody'
             example:
-              bandwidth: 1329532192
+              bandwidth: 356512143
               cache: miss
-              device: ios
+              device: web
               duration: 30000
               player: sg-p2
-              position: 64944106
+              position: 615768058
               protocol: stb
-              rebuf_count: 1296207437
-              rebuf_duration: 24011
-              rel_position: 61
+              rebuf_count: 1869209513
+              rebuf_duration: 15930
+              rel_position: 86
               url: '@veritasium#f/driverless-cars-are-already-here#1'
               user_id: "432521"
       responses:
@@ -86,12 +71,12 @@ components:
         bandwidth:
           type: integer
           description: Client bandwidth, bit/s
-          example: 219268455
+          example: 938401497
           format: int32
         cache:
           type: string
           description: Cache status of video
-          example: local
+          example: player
           enum:
           - local
           - player
@@ -99,7 +84,7 @@ components:
         device:
           type: string
           description: Client device
-          example: adr
+          example: ios
           enum:
           - ios
           - adr
@@ -107,7 +92,7 @@ components:
         duration:
           type: integer
           description: Duration of time between event calls in ms (aiming for between
-            5s and 30s so generally 5000–3000)
+            5s and 30s so generally 5000–30000)
           example: 30000
           minimum: 0
           maximum: 60000
@@ -119,30 +104,30 @@ components:
         position:
           type: integer
           description: Current playback report stream position, ms
-          example: 1223292224
+          example: 1259307073
           minimum: 0
         protocol:
           type: string
           description: Video delivery protocol, stb (binary stream) or HLS
-          example: hls
+          example: stb
           enum:
           - stb
           - hls
         rebuf_count:
           type: integer
           description: Rebuffering events count during the interval
-          example: 856140610
+          example: 1825042135
           minimum: 0
         rebuf_duration:
           type: integer
           description: Sum of total rebuffering events duration in the interval, ms
-          example: 39650
+          example: 662
           minimum: 0
           maximum: 60000
         rel_position:
           type: integer
           description: Relative stream position, pct, 0—100
-          example: 64
+          example: 43
           minimum: 0
           maximum: 100
         url:
@@ -157,16 +142,16 @@ components:
           minLength: 1
           maxLength: 45
       example:
-        bandwidth: 1143315912
+        bandwidth: 1770612318
         cache: player
-        device: web
+        device: ios
         duration: 30000
         player: sg-p2
-        position: 1364094906
+        position: 155490916
         protocol: stb
-        rebuf_count: 1454953199
-        rebuf_duration: 43686
-        rel_position: 17
+        rebuf_count: 1390789543
+        rebuf_duration: 30977
+        rel_position: 78
         url: '@veritasium#f/driverless-cars-are-already-here#1'
         user_id: "432521"
       required:

@@ -28,17 +28,11 @@ var _ = API("watchman", func() {
 
 		Host("production", func() {
 			Description("Production host")
-			URI("https://watchman.na-backend.odysee.com/{version}")
-			Variable("version", String, "API version", func() {
-				Default("v1")
-			})
+			URI("https://watchman.na-backend.odysee.com/")
 		})
 		Host("dev", func() {
 			Description("Development host")
-			URI("https://watchman.na-backend.dev.odysee.com/{version}")
-			Variable("version", String, "API version", func() {
-				Default("v1")
-			})
+			URI("https://watchman.na-backend.dev.odysee.com")
 		})
 	})
 })
@@ -58,13 +52,14 @@ var _ = Service("reporter", func() {
 		})
 	})
 	Method("healthz", func() {
-		Result(String)
+		Result(String, func() {
+			Example("OK")
+		})
 		HTTP(func() {
 			GET("/healthz")
 			Response(StatusOK)
 		})
 	})
-	Files("/openapi.json", "./gen/http/openapi.json")
 })
 
 var MultiFieldError = Type("MultiFieldError", func() {

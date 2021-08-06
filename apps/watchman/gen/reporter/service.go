@@ -34,7 +34,7 @@ type PlaybackReport struct {
 	// LBRY URL (lbry://... without the protocol part)
 	URL string
 	// Duration of time between event calls in ms (aiming for between 5s and 30s so
-	// generally 5000–3000)
+	// generally 5000–30000)
 	Duration int32
 	// Current playback report stream position, ms
 	Position int32

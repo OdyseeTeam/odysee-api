@@ -18,7 +18,7 @@ type AddRequestBody struct {
 	// LBRY URL (lbry://... without the protocol part)
 	URL string `form:"url" json:"url" xml:"url"`
 	// Duration of time between event calls in ms (aiming for between 5s and 30s so
-	// generally 5000–3000)
+	// generally 5000–30000)
 	Duration int32 `form:"duration" json:"duration" xml:"duration"`
 	// Current playback report stream position, ms
 	Position int32 `form:"position" json:"position" xml:"position"`

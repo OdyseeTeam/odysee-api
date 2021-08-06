@@ -29,19 +29,6 @@ paths:
             type: string
       schemes:
       - https
-  /openapi.json:
-    get:
-      tags:
-      - reporter
-      summary: Download ./gen/http/openapi.json
-      operationId: reporter#/openapi.json
-      responses:
-        "200":
-          description: File downloaded
-          schema:
-            type: file
-      schemes:
-      - https
   /reports/playback:
     post:
       tags:
@@ -95,12 +82,12 @@ definitions:
       bandwidth:
         type: integer
         description: Client bandwidth, bit/s
-        example: 155490916
+        example: 1997303752
         format: int32
       cache:
         type: string
         description: Cache status of video
-        example: local
+        example: miss
         enum:
         - local
         - player
@@ -116,7 +103,7 @@ definitions:
       duration:
         type: integer
         description: Duration of time between event calls in ms (aiming for between
-          5s and 30s so generally 5000–3000)
+          5s and 30s so generally 5000–30000)
         example: 30000
         minimum: 0
         maximum: 60000
@@ -128,30 +115,30 @@ definitions:
       position:
         type: integer
         description: Current playback report stream position, ms
-        example: 1825042135
+        example: 13952061
         minimum: 0
       protocol:
         type: string
         description: Video delivery protocol, stb (binary stream) or HLS
-        example: stb
+        example: hls
         enum:
         - stb
         - hls
       rebuf_count:
         type: integer
         description: Rebuffering events count during the interval
-        example: 1479834203
+        example: 2068464011
         minimum: 0
       rebuf_duration:
         type: integer
         description: Sum of total rebuffering events duration in the interval, ms
-        example: 19748
+        example: 36499
         minimum: 0
         maximum: 60000
       rel_position:
         type: integer
         description: Relative stream position, pct, 0—100
-        example: 62
+        example: 37
         minimum: 0
         maximum: 100
       url:
@@ -166,16 +153,16 @@ definitions:
         minLength: 1
         maxLength: 45
     example:
-      bandwidth: 263225764
-      cache: local
+      bandwidth: 431507972
+      cache: miss
       device: web
       duration: 30000
       player: sg-p2
-      position: 1390789543
+      position: 1850104351
       protocol: stb
-      rebuf_count: 1477881050
-      rebuf_duration: 29849
-      rel_position: 77
+      rebuf_count: 1674309275
+      rebuf_duration: 56176
+      rel_position: 8
       url: '@veritasium#f/driverless-cars-are-already-here#1'
       user_id: "432521"
     required:

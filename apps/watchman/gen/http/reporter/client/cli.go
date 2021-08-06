@@ -24,7 +24,7 @@ func BuildAddPayload(reporterAddBody string) (*reporter.PlaybackReport, error) {
 	{
 		err = json.Unmarshal([]byte(reporterAddBody), &body)
 		if err != nil {
-			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"bandwidth\": 1329532192,\n      \"cache\": \"miss\",\n      \"device\": \"ios\",\n      \"duration\": 30000,\n      \"player\": \"sg-p2\",\n      \"position\": 64944106,\n      \"protocol\": \"stb\",\n      \"rebuf_count\": 1296207437,\n      \"rebuf_duration\": 24011,\n      \"rel_position\": 61,\n      \"url\": \"@veritasium#f/driverless-cars-are-already-here#1\",\n      \"user_id\": \"432521\"\n   }'")
+			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"bandwidth\": 356512143,\n      \"cache\": \"miss\",\n      \"device\": \"web\",\n      \"duration\": 30000,\n      \"player\": \"sg-p2\",\n      \"position\": 615768058,\n      \"protocol\": \"stb\",\n      \"rebuf_count\": 1869209513,\n      \"rebuf_duration\": 15930,\n      \"rel_position\": 86,\n      \"url\": \"@veritasium#f/driverless-cars-are-already-here#1\",\n      \"user_id\": \"432521\"\n   }'")
 		}
 		if utf8.RuneCountInString(body.URL) > 512 {
 			err = goa.MergeErrors(err, goa.InvalidLengthError("body.url", body.URL, utf8.RuneCountInString(body.URL), 512, false))
