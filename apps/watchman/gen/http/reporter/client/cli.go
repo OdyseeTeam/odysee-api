@@ -24,7 +24,7 @@ func BuildAddPayload(reporterAddBody string) (*reporter.PlaybackReport, error) {
 	{
 		err = json.Unmarshal([]byte(reporterAddBody), &body)
 		if err != nil {
-			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"bandwidth\": 1674309275,\n      \"cache\": \"local\",\n      \"device\": \"web\",\n      \"duration\": 24011,\n      \"player\": \"sg-p2\",\n      \"position\": 1633176499,\n      \"protocol\": \"stb\",\n      \"rebuf_count\": 1329532192,\n      \"rebuf_duration\": 23752,\n      \"rel_position\": 5,\n      \"url\": \"what\",\n      \"user_id\": 611106208\n   }'")
+			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"bandwidth\": 1329532192,\n      \"cache\": \"miss\",\n      \"device\": \"ios\",\n      \"duration\": 30000,\n      \"player\": \"sg-p2\",\n      \"position\": 64944106,\n      \"protocol\": \"stb\",\n      \"rebuf_count\": 1296207437,\n      \"rebuf_duration\": 24011,\n      \"rel_position\": 61,\n      \"url\": \"@veritasium#f/driverless-cars-are-already-here#1\",\n      \"user_id\": \"432521\"\n   }'")
 		}
 		if utf8.RuneCountInString(body.URL) > 512 {
 			err = goa.MergeErrors(err, goa.InvalidLengthError("body.url", body.URL, utf8.RuneCountInString(body.URL), 512, false))
@@ -63,6 +63,12 @@ func BuildAddPayload(reporterAddBody string) (*reporter.PlaybackReport, error) {
 		}
 		if utf8.RuneCountInString(body.Player) > 64 {
 			err = goa.MergeErrors(err, goa.InvalidLengthError("body.player", body.Player, utf8.RuneCountInString(body.Player), 64, false))
+		}
+		if utf8.RuneCountInString(body.UserID) < 1 {
+			err = goa.MergeErrors(err, goa.InvalidLengthError("body.user_id", body.UserID, utf8.RuneCountInString(body.UserID), 1, true))
+		}
+		if utf8.RuneCountInString(body.UserID) > 45 {
+			err = goa.MergeErrors(err, goa.InvalidLengthError("body.user_id", body.UserID, utf8.RuneCountInString(body.UserID), 45, false))
 		}
 		if !(body.Device == "ios" || body.Device == "adr" || body.Device == "web") {
 			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.device", body.Device, []interface{}{"ios", "adr", "web"}))

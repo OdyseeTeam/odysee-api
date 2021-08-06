@@ -68,9 +68,26 @@ paths:
       responses:
         "201":
           description: Created response.
+        "400":
+          description: Bad Request response.
+          schema:
+            $ref: '#/definitions/ReporterAddMultiFieldErrorResponseBody'
+            required:
+            - message
       schemes:
       - https
 definitions:
+  ReporterAddMultiFieldErrorResponseBody:
+    title: ReporterAddMultiFieldErrorResponseBody
+    type: object
+    properties:
+      message:
+        type: string
+        example: rebufferung duration cannot be larger than duration
+    example:
+      message: rebufferung duration cannot be larger than duration
+    required:
+    - message
   ReporterAddRequestBody:
     title: ReporterAddRequestBody
     type: object
@@ -78,7 +95,7 @@ definitions:
       bandwidth:
         type: integer
         description: Client bandwidth, bit/s
-        example: 1517669849
+        example: 155490916
         format: int32
       cache:
         type: string
@@ -91,15 +108,16 @@ definitions:
       device:
         type: string
         description: Client device
-        example: adr
+        example: ios
         enum:
         - ios
         - adr
         - web
       duration:
         type: integer
-        description: Event duration, ms
-        example: 19748
+        description: Duration of time between event calls in ms (aiming for between
+          5s and 30s so generally 5000–3000)
+        example: 30000
         minimum: 0
         maximum: 60000
       player:
@@ -110,55 +128,56 @@ definitions:
       position:
         type: integer
         description: Current playback report stream position, ms
-        example: 938401497
+        example: 1825042135
         minimum: 0
       protocol:
         type: string
         description: Video delivery protocol, stb (binary stream) or HLS
-        example: hls
+        example: stb
         enum:
         - stb
         - hls
       rebuf_count:
         type: integer
-        description: Rebuffering events count
-        example: 155490916
+        description: Rebuffering events count during the interval
+        example: 1479834203
         minimum: 0
       rebuf_duration:
         type: integer
-        description: Rebuffering events duration, ms
-        example: 3378
+        description: Sum of total rebuffering events duration in the interval, ms
+        example: 19748
         minimum: 0
         maximum: 60000
       rel_position:
         type: integer
         description: Relative stream position, pct, 0—100
-        example: 48
+        example: 62
         minimum: 0
         maximum: 100
       url:
         type: string
-        description: LBRY URL
-        example: what
+        description: LBRY URL (lbry://... without the protocol part)
+        example: '@veritasium#f/driverless-cars-are-already-here#1'
         maxLength: 512
       user_id:
-        type: integer
+        type: string
         description: User ID
-        example: 1477881050
-        format: int32
+        example: "432521"
+        minLength: 1
+        maxLength: 45
     example:
-      bandwidth: 830553715
+      bandwidth: 263225764
       cache: local
       device: web
-      duration: 11291
+      duration: 30000
       player: sg-p2
-      position: 263225764
+      position: 1390789543
       protocol: stb
-      rebuf_count: 1223292224
-      rebuf_duration: 12264
-      rel_position: 54
-      url: what
-      user_id: 1422240286
+      rebuf_count: 1477881050
+      rebuf_duration: 29849
+      rel_position: 77
+      url: '@veritasium#f/driverless-cars-are-already-here#1'
+      user_id: "432521"
     required:
     - url
     - duration

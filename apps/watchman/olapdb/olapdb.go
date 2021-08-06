@@ -1,6 +1,7 @@
 package olapdb
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -30,42 +31,12 @@ func Connect(url string, dbName string) error {
 
 	go ping()
 
-	_, err = conn.Exec(fmt.Sprintf(`CREATE DATABASE IF NOT EXISTS %v`, dbName))
-	if err != nil {
-		return err
-	}
-	_, err = conn.Exec(fmt.Sprintf(`
-	CREATE TABLE IF NOT EXISTS %v.playback
-	(
-		"URL" String,
-		"Duration" UInt32,
-		"Timestamp" Timestamp,
-		"Position" UInt32,
-		"RelPosition" UInt8,
-		"RebufCount" UInt8,
-		"RebufDuration" UInt32,
-		"Protocol" FixedString(3),
-		"Cache" String,
-		"Player" FixedString(16),
-		"UserID" UInt32,
-		"Bandwidth" UInt32,
-		"Device" FixedString(3),
-		"Area" FixedString(2),
-		"SubArea" FixedString(3),
-		"IP" IPv6
-	)
-	ENGINE = MergeTree
-	ORDER BY (Timestamp, UserID, URL)
-	TTL Timestamp + INTERVAL 30 DAY`, dbName))
-	if err != nil {
-		return err
-	}
+	MigrateUp(dbName)
 	log.Log.Named("clickhouse").Infof("connected to clickhouse server %v (database=%v)", url, dbName)
 	return nil
 }
 
 func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string, ts string) error {
-	// t, err := time.Parse(time.RFC1123Z, r.T)
 	var (
 		t     time.Time
 		err   error
@@ -81,9 +52,6 @@ func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string, ts string) e
 		t = time.Now()
 	}
 	area, subarea := getArea(addr)
-	// if area == "" {
-	// 	area = "unknown"
-	// }
 
 	if r.Bandwidth != nil {
 		rate = uint32(*r.Bandwidth)
@@ -105,7 +73,7 @@ func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string, ts string) e
 		r.Protocol,
 		cache,
 		r.Player,
-		uint32(r.UserID),
+		r.UserID,
 		rate,
 		r.Device,
 		area,
@@ -122,7 +90,9 @@ func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string, ts string) e
 }
 
 func WriteOne(r *reporter.PlaybackReport, addr string, ts string) error {
-	tx, err := conn.Begin()
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
 		return errors.Wrap(err, "cannot begin")
 	}

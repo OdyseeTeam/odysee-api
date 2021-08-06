@@ -28,11 +28,17 @@ var _ = API("watchman", func() {
 
 		Host("production", func() {
 			Description("Production host")
-			URI("https://watchman.na-backend.odysee.com")
+			URI("https://watchman.na-backend.odysee.com/{version}")
+			Variable("version", String, "API version", func() {
+				Default("v1")
+			})
 		})
 		Host("dev", func() {
 			Description("Development host")
-			URI("https://watchman.na-backend.dev.odysee.com")
+			URI("https://watchman.na-backend.dev.odysee.com/{version}")
+			Variable("version", String, "API version", func() {
+				Default("v1")
+			})
 		})
 	})
 })
@@ -40,11 +46,14 @@ var _ = API("watchman", func() {
 var _ = Service("reporter", func() {
 	Description("Media playback reports")
 
+	Error("multi_field_error", MultiFieldError) // Use custom error type
+
 	Method("add", func() {
 		Payload(PlaybackReport)
 		Result(Empty)
 		HTTP(func() {
 			POST("/reports/playback")
+			Response("multi_field_error", StatusBadRequest)
 			Response(StatusCreated)
 		})
 	})
@@ -58,12 +67,21 @@ var _ = Service("reporter", func() {
 	Files("/openapi.json", "./gen/http/openapi.json")
 })
 
+var MultiFieldError = Type("MultiFieldError", func() {
+	Description("MultiFieldError is the error returned when several fields failed a validation rule.")
+	Field(1, "message", String, func() {
+		Example("rebufferung duration cannot be larger than duration")
+	})
+	Required("message")
+})
+
 var PlaybackReport = Type("PlaybackReport", func() {
-	Attribute("url", String, "LBRY URL", func() {
-		Example("what")
+	Attribute("url", String, "LBRY URL (lbry://... without the protocol part)", func() {
+		Example("@veritasium#f/driverless-cars-are-already-here#1")
 		MaxLength(512)
 	})
-	Attribute("duration", Int32, "Event duration, ms", func() {
+	Attribute("duration", Int32, "Duration of time between event calls in ms (aiming for between 5s and 30s so generally 5000–30000)", func() {
+		Example(30000)
 		Minimum(0)
 		Maximum(60000)
 	})
@@ -75,10 +93,10 @@ var PlaybackReport = Type("PlaybackReport", func() {
 		Maximum(100)
 	})
 
-	Attribute("rebuf_count", Int32, "Rebuffering events count", func() {
+	Attribute("rebuf_count", Int32, "Rebuffering events count during the interval", func() {
 		Minimum(0)
 	})
-	Attribute("rebuf_duration", Int32, "Rebuffering events duration, ms", func() {
+	Attribute("rebuf_duration", Int32, "Sum of total rebuffering events duration in the interval, ms", func() {
 		Minimum(0)
 		Maximum(60000)
 	})
@@ -96,7 +114,11 @@ var PlaybackReport = Type("PlaybackReport", func() {
 		MaxLength(64)
 	})
 
-	Attribute("user_id", Int32, "User ID")
+	Attribute("user_id", String, "User ID", func() {
+		Example("432521")
+		MinLength(1)
+		MaxLength(45)
+	})
 	Attribute("bandwidth", Int32, "Client bandwidth, bit/s")
 	Attribute("device", String, "Client device", func() {
 		Enum("ios", "adr", "web")

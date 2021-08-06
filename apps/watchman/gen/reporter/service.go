@@ -31,17 +31,18 @@ var MethodNames = [2]string{"add", "healthz"}
 
 // PlaybackReport is the payload type of the reporter service add method.
 type PlaybackReport struct {
-	// LBRY URL
+	// LBRY URL (lbry://... without the protocol part)
 	URL string
-	// Event duration, ms
+	// Duration of time between event calls in ms (aiming for between 5s and 30s so
+	// generally 5000–3000)
 	Duration int32
 	// Current playback report stream position, ms
 	Position int32
 	// Relative stream position, pct, 0—100
 	RelPosition int32
-	// Rebuffering events count
+	// Rebuffering events count during the interval
 	RebufCount int32
-	// Rebuffering events duration, ms
+	// Sum of total rebuffering events duration in the interval, ms
 	RebufDuration int32
 	// Video delivery protocol, stb (binary stream) or HLS
 	Protocol string
@@ -50,9 +51,25 @@ type PlaybackReport struct {
 	// Player server name
 	Player string
 	// User ID
-	UserID int32
+	UserID string
 	// Client bandwidth, bit/s
 	Bandwidth *int32
 	// Client device
 	Device string
+}
+
+// MultiFieldError is the error returned when several fields failed a
+// validation rule.
+type MultiFieldError struct {
+	Message string
+}
+
+// Error returns an error description.
+func (e *MultiFieldError) Error() string {
+	return "MultiFieldError is the error returned when several fields failed a validation rule."
+}
+
+// ErrorName returns "MultiFieldError".
+func (e *MultiFieldError) ErrorName() string {
+	return "multi_field_error"
 }

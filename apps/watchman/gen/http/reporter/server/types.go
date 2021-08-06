@@ -17,17 +17,18 @@ import (
 // AddRequestBody is the type of the "reporter" service "add" endpoint HTTP
 // request body.
 type AddRequestBody struct {
-	// LBRY URL
+	// LBRY URL (lbry://... without the protocol part)
 	URL *string `form:"url,omitempty" json:"url,omitempty" xml:"url,omitempty"`
-	// Event duration, ms
+	// Duration of time between event calls in ms (aiming for between 5s and 30s so
+	// generally 5000–3000)
 	Duration *int32 `form:"duration,omitempty" json:"duration,omitempty" xml:"duration,omitempty"`
 	// Current playback report stream position, ms
 	Position *int32 `form:"position,omitempty" json:"position,omitempty" xml:"position,omitempty"`
 	// Relative stream position, pct, 0—100
 	RelPosition *int32 `form:"rel_position,omitempty" json:"rel_position,omitempty" xml:"rel_position,omitempty"`
-	// Rebuffering events count
+	// Rebuffering events count during the interval
 	RebufCount *int32 `form:"rebuf_count,omitempty" json:"rebuf_count,omitempty" xml:"rebuf_count,omitempty"`
-	// Rebuffering events duration, ms
+	// Sum of total rebuffering events duration in the interval, ms
 	RebufDuration *int32 `form:"rebuf_duration,omitempty" json:"rebuf_duration,omitempty" xml:"rebuf_duration,omitempty"`
 	// Video delivery protocol, stb (binary stream) or HLS
 	Protocol *string `form:"protocol,omitempty" json:"protocol,omitempty" xml:"protocol,omitempty"`
@@ -36,11 +37,26 @@ type AddRequestBody struct {
 	// Player server name
 	Player *string `form:"player,omitempty" json:"player,omitempty" xml:"player,omitempty"`
 	// User ID
-	UserID *int32 `form:"user_id,omitempty" json:"user_id,omitempty" xml:"user_id,omitempty"`
+	UserID *string `form:"user_id,omitempty" json:"user_id,omitempty" xml:"user_id,omitempty"`
 	// Client bandwidth, bit/s
 	Bandwidth *int32 `form:"bandwidth,omitempty" json:"bandwidth,omitempty" xml:"bandwidth,omitempty"`
 	// Client device
 	Device *string `form:"device,omitempty" json:"device,omitempty" xml:"device,omitempty"`
+}
+
+// AddMultiFieldErrorResponseBody is the type of the "reporter" service "add"
+// endpoint HTTP response body for the "multi_field_error" error.
+type AddMultiFieldErrorResponseBody struct {
+	Message string `form:"message" json:"message" xml:"message"`
+}
+
+// NewAddMultiFieldErrorResponseBody builds the HTTP response body from the
+// result of the "add" endpoint of the "reporter" service.
+func NewAddMultiFieldErrorResponseBody(res *reporter.MultiFieldError) *AddMultiFieldErrorResponseBody {
+	body := &AddMultiFieldErrorResponseBody{
+		Message: res.Message,
+	}
+	return body
 }
 
 // NewAddPlaybackReport builds a reporter service add endpoint payload.
@@ -153,6 +169,16 @@ func ValidateAddRequestBody(body *AddRequestBody) (err error) {
 	if body.Player != nil {
 		if utf8.RuneCountInString(*body.Player) > 64 {
 			err = goa.MergeErrors(err, goa.InvalidLengthError("body.player", *body.Player, utf8.RuneCountInString(*body.Player), 64, false))
+		}
+	}
+	if body.UserID != nil {
+		if utf8.RuneCountInString(*body.UserID) < 1 {
+			err = goa.MergeErrors(err, goa.InvalidLengthError("body.user_id", *body.UserID, utf8.RuneCountInString(*body.UserID), 1, true))
+		}
+	}
+	if body.UserID != nil {
+		if utf8.RuneCountInString(*body.UserID) > 45 {
+			err = goa.MergeErrors(err, goa.InvalidLengthError("body.user_id", *body.UserID, utf8.RuneCountInString(*body.UserID), 45, false))
 		}
 	}
 	if body.Device != nil {

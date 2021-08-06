@@ -29,20 +29,10 @@ func NewReporter(db *sql.DB, logger *zap.SugaredLogger) reporter.Service {
 // Add implements add.
 func (s *reportersrvc) Add(ctx context.Context, p *reporter.PlaybackReport) error {
 	s.logger.Debug("reporter.add")
-	// db.New(s.db).CreatePlaybackReport(context.Background(), db.CreatePlaybackReportParams{
-	// 	URL: p.URL,
-	// 	Pos: p.Pos,
-	// 	Por: p.Por,
-	// 	Dur: p.Dur,
-	// 	Bfc: p.Bfc,
-	// 	Bfd: p.Bfd,
-	// 	Fmt: p.Fmt,
-	// 	Pid: p.Pid,
-	// 	Cid: p.Cid,
-	// 	Cdv: p.Cdv,
-	// 	Crt: *p.Crt,
-	// 	Car: *p.Car,
-	// })
+
+	if p.RebufDuration > p.Duration {
+		return &reporter.MultiFieldError{Message: "rebufferung duration cannot be larger than duration"}
+	}
 	addr := ctx.Value(RemoteAddressKey).(string)
 	err := olapdb.WriteOne(p, addr, "")
 	if err != nil {

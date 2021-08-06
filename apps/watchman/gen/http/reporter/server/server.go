@@ -121,7 +121,7 @@ func NewAddHandler(
 	var (
 		decodeRequest  = DecodeAddRequest(mux, decoder)
 		encodeResponse = EncodeAddResponse(encoder)
-		encodeError    = goahttp.ErrorEncoder(encoder, formatter)
+		encodeError    = EncodeAddError(encoder, formatter)
 	)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))

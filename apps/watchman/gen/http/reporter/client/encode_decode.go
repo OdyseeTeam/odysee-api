@@ -52,6 +52,9 @@ func EncodeAddRequest(encoder func(*http.Request) goahttp.Encoder) func(*http.Re
 // DecodeAddResponse returns a decoder for responses returned by the reporter
 // add endpoint. restoreBody controls whether the response body should be
 // restored after having been read.
+// DecodeAddResponse may return the following errors:
+//	- "multi_field_error" (type *reporter.MultiFieldError): http.StatusBadRequest
+//	- error: internal error
 func DecodeAddResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (interface{}, error) {
 	return func(resp *http.Response) (interface{}, error) {
 		if restoreBody {
@@ -69,6 +72,20 @@ func DecodeAddResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody
 		switch resp.StatusCode {
 		case http.StatusCreated:
 			return nil, nil
+		case http.StatusBadRequest:
+			var (
+				body AddMultiFieldErrorResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("reporter", "add", err)
+			}
+			err = ValidateAddMultiFieldErrorResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("reporter", "add", err)
+			}
+			return nil, NewAddMultiFieldError(&body)
 		default:
 			body, _ := ioutil.ReadAll(resp.Body)
 			return nil, goahttp.ErrInvalidResponse("reporter", "add", resp.StatusCode, string(body))

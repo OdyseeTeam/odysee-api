@@ -41,7 +41,7 @@ func EnrichPlaybackReportFactory(f *factory.Factory) *factory.Factory {
 	}).Attr("Player", func(args factory.Args) (interface{}, error) {
 		return randomdata.StringSample("use-p1", "use-p2", "sg-p1", "sg-p2"), nil
 	}).Attr("UserID", func(args factory.Args) (interface{}, error) {
-		return int32(randomdata.Number(100000, 150000)), nil
+		return fmt.Sprint(randomdata.Number(100000, 150000)), nil
 	}).Attr("Bandwidth", func(args factory.Args) (interface{}, error) {
 		v := int32(randomdata.Number(128000, 3000000))
 		return &v, nil

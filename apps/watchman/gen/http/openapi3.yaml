@@ -7,10 +7,16 @@ info:
     between 5 and 30s)\n\t"
   version: "1.0"
 servers:
-- url: https://watchman.na-backend.odysee.com
+- url: https://watchman.na-backend.odysee.com/{version}
   description: watchman hosts the Watchman service
-- url: https://watchman.na-backend.dev.odysee.com
+  variables:
+    version:
+      default: v1
+- url: https://watchman.na-backend.dev.odysee.com/{version}
   description: watchman hosts the Watchman service
+  variables:
+    version:
+      default: v1
 paths:
   /healthz:
     get:
@@ -25,8 +31,8 @@ paths:
             application/json:
               schema:
                 type: string
-                example: A sed.
-              example: Nihil odio amet natus autem quis.
+                example: Et ipsam.
+              example: Nihil ullam sit laborum qui aut.
   /openapi.json:
     get:
       tags:
@@ -49,21 +55,29 @@ paths:
             schema:
               $ref: '#/components/schemas/AddRequestBody'
             example:
-              bandwidth: 1674309275
-              cache: local
-              device: web
-              duration: 24011
+              bandwidth: 1329532192
+              cache: miss
+              device: ios
+              duration: 30000
               player: sg-p2
-              position: 1633176499
+              position: 64944106
               protocol: stb
-              rebuf_count: 1329532192
-              rebuf_duration: 23752
-              rel_position: 5
-              url: what
-              user_id: 611106208
+              rebuf_count: 1296207437
+              rebuf_duration: 24011
+              rel_position: 61
+              url: '@veritasium#f/driverless-cars-are-already-here#1'
+              user_id: "432521"
       responses:
         "201":
           description: Created response.
+        "400":
+          description: Bad Request response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MultiFieldError'
+              example:
+                message: rebufferung duration cannot be larger than duration
 components:
   schemas:
     AddRequestBody:
@@ -72,12 +86,12 @@ components:
         bandwidth:
           type: integer
           description: Client bandwidth, bit/s
-          example: 1906586091
+          example: 219268455
           format: int32
         cache:
           type: string
           description: Cache status of video
-          example: player
+          example: local
           enum:
           - local
           - player
@@ -92,8 +106,9 @@ components:
           - web
         duration:
           type: integer
-          description: Event duration, ms
-          example: 11524
+          description: Duration of time between event calls in ms (aiming for between
+            5s and 30s so generally 5000–3000)
+          example: 30000
           minimum: 0
           maximum: 60000
         player:
@@ -104,55 +119,56 @@ components:
         position:
           type: integer
           description: Current playback report stream position, ms
-          example: 1364094906
+          example: 1223292224
           minimum: 0
         protocol:
           type: string
           description: Video delivery protocol, stb (binary stream) or HLS
-          example: stb
+          example: hls
           enum:
           - stb
           - hls
         rebuf_count:
           type: integer
-          description: Rebuffering events count
-          example: 1454953199
+          description: Rebuffering events count during the interval
+          example: 856140610
           minimum: 0
         rebuf_duration:
           type: integer
-          description: Rebuffering events duration, ms
-          example: 43686
+          description: Sum of total rebuffering events duration in the interval, ms
+          example: 39650
           minimum: 0
           maximum: 60000
         rel_position:
           type: integer
           description: Relative stream position, pct, 0—100
-          example: 17
+          example: 64
           minimum: 0
           maximum: 100
         url:
           type: string
-          description: LBRY URL
-          example: what
+          description: LBRY URL (lbry://... without the protocol part)
+          example: '@veritasium#f/driverless-cars-are-already-here#1'
           maxLength: 512
         user_id:
-          type: integer
+          type: string
           description: User ID
-          example: 1143315912
-          format: int32
+          example: "432521"
+          minLength: 1
+          maxLength: 45
       example:
-        bandwidth: 575882439
-        cache: local
-        device: ios
-        duration: 56655
+        bandwidth: 1143315912
+        cache: player
+        device: web
+        duration: 30000
         player: sg-p2
-        position: 405859869
-        protocol: hls
-        rebuf_count: 67565010
-        rebuf_duration: 39779
-        rel_position: 10
-        url: what
-        user_id: 419824354
+        position: 1364094906
+        protocol: stb
+        rebuf_count: 1454953199
+        rebuf_duration: 43686
+        rel_position: 17
+        url: '@veritasium#f/driverless-cars-are-already-here#1'
+        user_id: "432521"
       required:
       - url
       - duration
@@ -164,6 +180,16 @@ components:
       - player
       - user_id
       - device
+    MultiFieldError:
+      type: object
+      properties:
+        message:
+          type: string
+          example: rebufferung duration cannot be larger than duration
+      example:
+        message: rebufferung duration cannot be larger than duration
+      required:
+      - message
 tags:
 - name: reporter
   description: Media playback reports

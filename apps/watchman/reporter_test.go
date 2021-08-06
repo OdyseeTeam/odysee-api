@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"github.com/lbryio/lbrytv/apps/watchman/config"
@@ -41,7 +42,11 @@ func (s *reporterSuite) SetupSuite() {
 	log.Configure(log.LevelDebug, log.EncodingConsole)
 
 	dbCfg := cfg.GetStringMapString("clickhouse")
-	err = olapdb.Connect(dbCfg["url"], randomdata.Alphanumeric(32))
+	dbName := randomdata.Alphanumeric(32)
+	err = olapdb.Connect(dbCfg["url"], dbName)
+	s.cleanup = func() {
+		olapdb.MigrateDown(dbName)
+	}
 	s.Require().NoError(err)
 
 	p, _ := filepath.Abs(filepath.Join("./olapdb/testdata", "GeoIP2-City-Test.mmdb"))
@@ -63,24 +68,30 @@ func (s *reporterSuite) SetupSuite() {
 }
 
 func (s *reporterSuite) TestAdd() {
-	rep := olapdb.PlaybackReportAddRequestFactory.MustCreate().(*client.AddRequestBody)
+	okRep := olapdb.PlaybackReportAddRequestFactory.MustCreate().(*client.AddRequestBody)
+	rbdTooLargeRep := olapdb.PlaybackReportAddRequestFactory.MustCreate().(*client.AddRequestBody)
+	rbdTooLargeRep.RebufDuration = rbdTooLargeRep.Duration + 1
 
-	qBody, err := json.Marshal(rep)
+	okBody, err := json.Marshal(okRep)
+	s.Require().NoError(err)
+	rbdTooLargeBody, err := json.Marshal(rbdTooLargeRep)
 	s.Require().NoError(err)
 
 	cases := []struct {
-		origin   string
-		body     []byte
-		respCode int
+		name, origin  string
+		body          []byte
+		respCode      int
+		respBodyRegex string
 	}{
-		{"https://odysee.com", qBody, http.StatusCreated},
-		{"http://localhost:1337", qBody, http.StatusCreated},
-		{"http://localhost:9090", nil, http.StatusBadRequest},
+		{"Valid", "https://odysee.com", okBody, http.StatusCreated, "^$"},
+		{"ValidLocal", "http://localhost:1337", okBody, http.StatusCreated, "^$"},
+		{"Empty", "http://localhost:9090", nil, http.StatusBadRequest, `"message":"missing required payload"`},
+		{"RebufDurationTooLarge", "http://localhost:9090", rbdTooLargeBody, http.StatusBadRequest, `"message":"rebufferung duration cannot be larger than duration"`},
 	}
 
 	for _, c := range cases {
-		s.Run(c.origin, func() {
-			r, err := http.NewRequest(http.MethodPost, s.ts.URL+reporterclt.AddReporterPath(), bytes.NewBuffer(qBody))
+		s.Run(c.name, func() {
+			r, err := http.NewRequest(http.MethodPost, s.ts.URL+reporterclt.AddReporterPath(), bytes.NewBuffer(c.body))
 			s.Require().NoError(err)
 			cl := &http.Client{}
 			r.Header.Add("origin", c.origin)
@@ -90,7 +101,8 @@ func (s *reporterSuite) TestAdd() {
 			s.Require().NoError(err)
 			b, err := ioutil.ReadAll(resp.Body)
 			s.NoError(err)
-			s.Equal(http.StatusCreated, resp.StatusCode, string(b))
+			s.Equal(c.respCode, resp.StatusCode, string(b))
+			s.Regexp(regexp.MustCompile(c.respBodyRegex), string(b))
 			s.Equal(c.origin, resp.Header.Get("access-control-allow-origin"))
 			s.Equal("GET, POST", resp.Header.Get("access-control-allow-methods"))
 			s.Equal("content-type", resp.Header.Get("access-control-allow-headers"))
@@ -100,5 +112,5 @@ func (s *reporterSuite) TestAdd() {
 }
 
 func (s *reporterSuite) TearDownSuite() {
-	// s.cleanup()
+	s.cleanup()
 }
