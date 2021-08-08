@@ -65,7 +65,7 @@ func TestUploadHandler(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	auth.Middleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
+	auth.LegacyMiddleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
 	response := rr.Result()
 	respBody, err := ioutil.ReadAll(response.Body)
 	require.NoError(t, err)
@@ -108,7 +108,7 @@ func TestHandler_NoSDKAddress(t *testing.T) {
 		return &models.User{ID: 20404}, nil
 	}
 
-	auth.Middleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
+	auth.LegacyMiddleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
 	response := rr.Result()
 	respBody, err := ioutil.ReadAll(response.Body)
 	require.NoError(t, err)
@@ -131,7 +131,7 @@ func TestHandler_AuthRequired(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	auth.Middleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
+	auth.LegacyMiddleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
 	response := rr.Result()
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
@@ -179,7 +179,7 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	auth.Middleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, req)
+	auth.LegacyMiddleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, req)
 	response := rr.Result()
 
 	require.False(t, publisher.called)

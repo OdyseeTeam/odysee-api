@@ -8,5 +8,6 @@ coverage.*
 packrd/
 *packr.go
 secrets.env
+/token_privkey.rsa
 **/dist/
 **/docker-data/

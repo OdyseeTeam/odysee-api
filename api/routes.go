@@ -34,7 +34,8 @@ func emptyHandler(_ http.ResponseWriter, _ *http.Request) {}
 // InstallRoutes sets up global API handlers
 func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	uploadPath := config.GetPublishSourceDir()
-	authProvider := auth.NewIAPIProvider(sdkRouter, config.GetInternalAPIHost())
+	legacyProvider := auth.NewIAPIProvider(sdkRouter, config.GetInternalAPIHost())
+	oAuthProvider := auth.NewOauthProvider(sdkRouter, config.GetInternalAPIHost())
 
 	upHandler := &publish.Handler{UploadPath: uploadPath}
 	r.Use(methodTimer)
@@ -45,7 +46,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	r.HandleFunc("", emptyHandler)
 
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
-	v1Router.Use(defaultMiddlewares(sdkRouter, authProvider))
+	v1Router.Use(defaultMiddlewares(sdkRouter, legacyProvider, oAuthProvider))
 
 	v1Router.HandleFunc("/proxy", upHandler.Handle).MatcherFunc(publish.CanHandle)
 	v1Router.HandleFunc("/proxy", proxy.Handle).Methods(http.MethodPost)
@@ -61,7 +62,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	internalRouter.Handle("/metrics", promhttp.Handler())
 
 	v2Router := r.PathPrefix("/api/v2").Subrouter()
-	v2Router.Use(defaultMiddlewares(sdkRouter, authProvider))
+	v2Router.Use(defaultMiddlewares(sdkRouter, legacyProvider, oAuthProvider))
 	v2Router.HandleFunc("/status", status.GetStatusV2).Methods(http.MethodGet)
 	v2Router.HandleFunc("/status", emptyHandler).Methods(http.MethodOptions)
 
@@ -75,7 +76,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 		StoreComposer: composer,
 	}
 
-	tusHandler, err := publish.NewTusHandler(authProvider, tusCfg, uploadPath)
+	tusHandler, err := publish.NewTusHandler(legacyProvider, tusCfg, uploadPath)
 	if err != nil {
 		logger.Log().WithError(err).Fatal(err)
 	}
@@ -87,12 +88,12 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	tusRouter.HandleFunc("/{id}/notify", tusHandler.Notify).Methods(http.MethodPost)
 }
 
-func defaultMiddlewares(rt *sdkrouter.Router, authProvider auth.Provider) mux.MiddlewareFunc {
+func defaultMiddlewares(rt *sdkrouter.Router, legacyProvider auth.Provider, oauthProvider auth.Provider) mux.MiddlewareFunc {
 	memCache := cache.NewMemoryCache()
 	c := cors.New(cors.Options{
 		AllowedOrigins:   config.GetCORSDomains(),
 		AllowCredentials: true,
-		AllowedHeaders:   []string{wallet.TokenHeader, "X-Requested-With", "Content-Type", "Accept"},
+		AllowedHeaders:   []string{wallet.TokenHeader, wallet.AuthorizationHeader, "X-Requested-With", "Content-Type", "Accept"},
 		MaxAge:           600,
 	})
 	logger.Log().Infof("added CORS domains: %v", config.GetCORSDomains())
@@ -102,7 +103,8 @@ func defaultMiddlewares(rt *sdkrouter.Router, authProvider auth.Provider) mux.Mi
 		c.Handler,
 		ip.Middleware,
 		sdkrouter.Middleware(rt),
-		auth.Middleware(authProvider),
+		auth.Middleware(oauthProvider), // Will pass forward user/error to next
+		auth.LegacyMiddleware(legacyProvider),
 		cache.Middleware(memCache),
 	)
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/test"
+	"github.com/lbryio/lbrytv/models"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +23,7 @@ func TestCache(t *testing.T) {
 	assert.Nil(t, cachedUser)
 	assert.Equal(t, metricValue, metrics.GetCounterValue(metrics.AuthTokenCacheHits))
 
-	user, err := getOrCreateLocalUser(boil.GetDB(), dummyUserID, logger.Log())
+	user, err := getOrCreateLocalUser(boil.GetDB(), models.User{ID: dummyUserID}, logger.Log())
 	require.NoError(t, err)
 
 	srv := test.RandServerAddress(t)

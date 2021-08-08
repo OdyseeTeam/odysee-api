@@ -14,12 +14,12 @@ import (
 var utilDB = "postgres"
 
 // MigrateUp executes forward migrations.
-func (c *Connection) MigrateUp() {
+func (c *Connection) MigrateUp(nrMigrations int) {
 	migrations := &migrate.PackrMigrationSource{
 		Box: packr.New("migrations", "./migrations"),
 		Dir: ".",
 	}
-	n, err := migrate.Exec(c.DB.DB, c.dialect, migrations, migrate.Up)
+	n, err := migrate.ExecMax(c.DB.DB, c.dialect, migrations, migrate.Up, nrMigrations)
 	if err != nil {
 		c.logger.Log().Panicf("failed to migrate the database up: %v", err)
 	}
@@ -27,12 +27,12 @@ func (c *Connection) MigrateUp() {
 }
 
 // MigrateDown undoes the previous migration.
-func (c *Connection) MigrateDown() {
+func (c *Connection) MigrateDown(nrMigrations int) {
 	migrations := &migrate.PackrMigrationSource{
 		Box: packr.New("migrations", "./migrations"),
 		Dir: ".",
 	}
-	n, err := migrate.Exec(c.DB.DB, c.dialect, migrations, migrate.Down)
+	n, err := migrate.ExecMax(c.DB.DB, c.dialect, migrations, migrate.Down, nrMigrations)
 	if err != nil {
 		c.logger.Log().Panicf("failed to migrate the database down: %v", err)
 	}

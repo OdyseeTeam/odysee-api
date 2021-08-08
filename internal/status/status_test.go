@@ -136,7 +136,7 @@ func TestGetStatusV2_Authenticated(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 
-	u, err := wallet.GetDBUserG(123)
+	u, err := wallet.GetDBUserG(wallet.ByID(123))
 	require.NoError(t, err)
 
 	var respStatus statusResponse

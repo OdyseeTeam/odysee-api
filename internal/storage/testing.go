@@ -33,7 +33,7 @@ func CreateTestConn(params ConnParams) (*Connection, func()) {
 		migrator := NewMigrator(params.MigrationsPath)
 		migrator.MigrateUp(testConn)
 	} else {
-		testConn.MigrateUp()
+		testConn.MigrateUp(0)
 	}
 
 	return testConn, func() {
