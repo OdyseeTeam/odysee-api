@@ -153,13 +153,45 @@ func TestUnload_E2E(t *testing.T) {
 	assert.True(t, isWalletLoaded(t, c, sdkrouter.WalletID(u.ID)))
 }
 
-func TestMiddleware(t *testing.T) {
+func TestLegacyMiddleware(t *testing.T) {
 	r, err := http.NewRequest("GET", "/api/v1/proxy", nil)
 	require.NoError(t, err)
 	r.Header.Add("X-Lbry-Auth-Token", "auth me")
 
 	authProvider := func(token, ip string) (*models.User, error) {
 		return &models.User{ID: 994}, nil
+	}
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("hello"))
+	}
+
+	rr := httptest.NewRecorder()
+	hook := logrusTest.NewLocal(GetLogger().Entry.Logger)
+	GetLogger().Entry.Logger.SetLevel(logrus.TraceLevel)
+
+	auth.LegacyMiddleware(authProvider)(
+		Middleware(boil.GetDB())(
+			http.HandlerFunc(handler),
+		),
+	).ServeHTTP(rr, r)
+	body, err := ioutil.ReadAll(rr.Result().Body)
+	require.NoError(t, err)
+	assert.Equal(t, string(body), "hello")
+
+	assert.Equal(t, 1, len(hook.Entries), "unexpected log entry")
+	assert.Equal(t, logrus.TraceLevel, hook.LastEntry().Level)
+	assert.Equal(t, "touched user", hook.LastEntry().Message)
+	assert.Equal(t, 994, hook.LastEntry().Data["user_id"])
+}
+
+func TestMiddleware(t *testing.T) {
+	r, err := http.NewRequest("GET", "/api/v1/proxy", nil)
+	require.NoError(t, err)
+	r.Header.Add("Authorization", "auth me")
+
+	authProvider := func(token, ip string) (*models.User, error) {
+		return &models.User{ID: 994, IdpID: null.StringFrom("my-idp-id")}, nil
 	}
 
 	handler := func(w http.ResponseWriter, r *http.Request) {

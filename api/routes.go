@@ -62,12 +62,13 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 }
 
 func defaultMiddlewares(rt *sdkrouter.Router, internalAPIHost string) mux.MiddlewareFunc {
-	authProvider := auth.NewIAPIProvider(rt, internalAPIHost)
+	legacyProvider := auth.NewIAPIProvider(rt, internalAPIHost)
+	oAuthProvider := auth.NewOauthProvider(rt, internalAPIHost)
 	memCache := cache.NewMemoryCache()
 	c := cors.New(cors.Options{
 		AllowedOrigins:   config.GetCORSDomains(),
 		AllowCredentials: true,
-		AllowedHeaders:   []string{wallet.TokenHeader, "X-Requested-With", "Content-Type", "Accept"},
+		AllowedHeaders:   []string{wallet.TokenHeader, wallet.AuthorizationHeader, "X-Requested-With", "Content-Type", "Accept"},
 		MaxAge:           600,
 	})
 	logger.Log().Infof("added CORS domains: %v", config.GetCORSDomains())
@@ -77,7 +78,8 @@ func defaultMiddlewares(rt *sdkrouter.Router, internalAPIHost string) mux.Middle
 		c.Handler,
 		ip.Middleware,
 		sdkrouter.Middleware(rt),
-		auth.Middleware(authProvider),
+		auth.Middleware(oAuthProvider), // Will pass forward user/error to next
+		auth.LegacyMiddleware(legacyProvider),
 		cache.Middleware(memCache),
 	)
 }

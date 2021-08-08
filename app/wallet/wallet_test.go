@@ -408,7 +408,30 @@ func TestCreateDBUser_ConcurrentDuplicateUser(t *testing.T) {
 
 	err = inTx(context.Background(), storage.Conn.DB.DB, func(tx *sql.Tx) error {
 		mockExecutor.ex = tx
-		_, err := getOrCreateLocalUser(mockExecutor, id, logger.Log())
+		_, err := getOrCreateLocalUser(mockExecutor, models.User{ID: id}, logger.Log())
+		return err
+	})
+
+	assert.NoError(t, err)
+}
+
+func TestCreateDBUser_ConcurrentDuplicateUserIDP(t *testing.T) {
+	storage.Conn.Truncate([]string{models.TableNames.Users})
+
+	id := null.StringFrom("my-idp-id")
+	user := &models.User{IdpID: id}
+	err := user.Insert(storage.Conn.DB.DB, boil.Infer())
+	require.NoError(t, err)
+
+	// we want the very first getDBUser() call in getOrCreateLocalUser() to return no results to
+	// simulate the case where that call returns nothing and then the user is created in another
+	// request
+
+	mockExecutor := &firstQueryNoResults{}
+
+	err = inTx(context.Background(), storage.Conn.DB.DB, func(tx *sql.Tx) error {
+		mockExecutor.ex = tx
+		_, err := getOrCreateLocalUser(mockExecutor, models.User{IdpID: id}, logger.Log())
 		return err
 	})
 
