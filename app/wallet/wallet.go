@@ -18,6 +18,7 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
+	"github.com/volatiletech/null"
 	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/volatiletech/sqlboiler/queries/qm"
 )
@@ -30,7 +31,8 @@ func DisableLogger() { logger.Disable() } // for testing
 
 // TokenHeader is the name of HTTP header which is supplied by client and should contain internal-api auth_token.
 const (
-	TokenHeader = "X-Lbry-Auth-Token"
+	TokenHeader         = "X-Lbry-Auth-Token"
+	AuthorizationHeader = "Authorization"
 
 	pgUniqueConstraintViolation   = "23505"
 	pgAbortedTransactionViolation = "25P02"
@@ -43,49 +45,47 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 	var localUser *models.User
 	log := logger.WithFields(logrus.Fields{monitor.TokenF: token, "ip": metaRemoteIP})
 
-	user, err := currentCache.get(token, func() (interface{}, error) {
-		remoteUser, err := getRemoteUser(internalAPIHost, token, metaRemoteIP)
+	if cachedUser := currentCache.get(token); cachedUser != nil {
+		log.Debugf("user found in cache")
+		return cachedUser, nil
+	}
+
+	remoteUser, err := getRemoteUserLegacy(internalAPIHost, token, metaRemoteIP)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	if !remoteUser.HasVerifiedEmail {
+		return nil, nil
+	}
+
+	log.Data["remote_user_id"] = remoteUser.ID
+	log.Data["has_email"] = remoteUser.HasVerifiedEmail
+	log.Debugf("user authenticated")
+
+	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelFn()
+
+	err = inTx(ctx, storage.Conn.DB.DB, func(tx *sql.Tx) error {
+		localUser, err = getOrCreateLocalUser(tx, models.User{ID: remoteUser.ID}, log)
 		if err != nil {
-			log.Error(err)
-			return nil, err
-		}
-		if !remoteUser.HasVerifiedEmail {
-			return nil, nil
+			return err
 		}
 
-		log.Data["remote_user_id"] = remoteUser.ID
-		log.Data["has_email"] = remoteUser.HasVerifiedEmail
-		log.Debugf("user authenticated")
-
-		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancelFn()
-
-		err = inTx(ctx, storage.Conn.DB.DB, func(tx *sql.Tx) error {
-			localUser, err = getOrCreateLocalUser(tx, remoteUser.ID, log)
+		if localUser.LbrynetServerID.IsZero() {
+			err := assignSDKServerToUser(tx, localUser, rt.LeastLoaded(), log)
 			if err != nil {
 				return err
 			}
-
-			if localUser.LbrynetServerID.IsZero() {
-				err := assignSDKServerToUser(tx, localUser, rt.LeastLoaded(), log)
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			return nil, err
 		}
-
-		return localUser, nil
+		return nil
 	})
 
-	// if err == nil && localUser != nil {
-	// 	currentCache.set(token, localUser)
-	// }
+	if err == nil && localUser != nil {
+		currentCache.set(token, localUser)
+	}
 
-	return user, err
+	return localUser, err
 }
 
 func inTx(ctx context.Context, db *sql.DB, f func(tx *sql.Tx) error) error {
@@ -126,29 +126,36 @@ func inTx(ctx context.Context, db *sql.DB, f func(tx *sql.Tx) error) error {
 	return err
 }
 
-func getOrCreateLocalUser(exec boil.Executor, remoteUserID int, log *logrus.Entry) (*models.User, error) {
-	localUser, err := getDBUser(exec, remoteUserID)
-
-	if err == nil {
-		if localUser.LbrynetServerID.IsZero() {
-			// Should not happen, but not enforced in DB structure yet
-			log.Errorf("user %d found in db but doesn't have sdk assigned", localUser.ID)
-		}
-		return localUser, nil
+func getOrCreateLocalUser(exec boil.Executor, user models.User, log *logrus.Entry) (*models.User, error) {
+	by := ByID(user.ID)
+	if user.IdpID.Valid {
+		by = ByIDPID(user.IdpID.String)
 	}
-
-	if !errors.Is(err, sql.ErrNoRows) {
+	localUser, err := getDBUser(exec, by)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
+	if localUser == nil {
+		log.Infof("user not found in the database, creating")
+		localUser, err = createUser(exec, &user, log)
+		if err != nil {
+			return nil, err
+		}
+	}
 
-	log.Infof("user not found in the database, creating")
+	if localUser.LbrynetServerID.IsZero() {
+		// Should not happen, but not enforced in DB structure yet
+		log.Errorf("user %d found in db but doesn't have sdk assigned", localUser.ID)
+	}
+	return localUser, nil
+}
 
+func createUser(exec boil.Executor, user *models.User, log *logrus.Entry) (*models.User, error) {
 	op := metrics.StartOperation("db", "create_user")
-	u := &models.User{ID: remoteUserID}
-	err = u.Insert(exec, boil.Infer())
+	err := user.Insert(exec, boil.Infer())
 	if err == nil {
 		metrics.LbrytvNewUsers.Inc()
-		return u, nil
+		return user, nil
 	}
 	op.End()
 
@@ -157,33 +164,39 @@ func getOrCreateLocalUser(exec boil.Executor, remoteUserID int, log *logrus.Entr
 	var pgErr *pq.Error
 	if errors.As(err, &pgErr) && pgErr.Code == pgUniqueConstraintViolation {
 		log.Info("user creation conflict, trying to retrieve the local user again")
-		return getDBUser(exec, remoteUserID)
+		if !user.IdpID.IsZero() {
+			return getDBUser(exec, ByIDPID(user.IdpID.String))
+		}
+		return getDBUser(exec, ByID(user.ID))
 	}
 
 	log.Error("unknown error encountered while creating user:", err)
 	return nil, err
 }
 
-func getDBUser(exec boil.Executor, id int) (*models.User, error) {
+// ByID filters the user by the id column in the database
+var ByID = func(id int) qm.QueryMod { return models.UserWhere.ID.EQ(id) }
+
+// ByIDPID filters the user by the idp_id column in the database
+var ByIDPID = func(idpID string) qm.QueryMod { return models.UserWhere.IdpID.EQ(null.StringFrom(idpID)) }
+
+func getDBUser(exec boil.Executor, by qm.QueryMod) (*models.User, error) {
 	op := metrics.StartOperation("db", "get_user")
 	defer op.End()
 
 	user, err := models.Users(
-		models.UserWhere.ID.EQ(id),
+		by,
 		qm.Load(models.UserRels.LbrynetServer),
 	).One(exec)
 	return user, errors.Err(err)
 }
 
 // GetDBUserG returns a database user with LbrynetServer selected, using the global executor.
-func GetDBUserG(id int) (*models.User, error) {
+func GetDBUserG(by qm.QueryMod) (*models.User, error) {
+	getDBUser(boil.GetDB(), by)
 	op := metrics.StartOperation("db", "get_user")
 	defer op.End()
-
-	return models.Users(
-		models.UserWhere.ID.EQ(id),
-		qm.Load(models.UserRels.LbrynetServer),
-	).OneG()
+	return getDBUser(boil.GetDB(), by)
 }
 
 // assignSDKServerToUser permanently assigns an sdk to a user, and creates a wallet on that sdk for that user.

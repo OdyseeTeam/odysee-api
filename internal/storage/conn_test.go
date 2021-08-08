@@ -71,12 +71,12 @@ func TestMigrate(t *testing.T) {
 	rows, err = c.DB.Query("SELECT id FROM users")
 	require.Error(t, err)
 
-	c.MigrateUp()
+	c.MigrateUp(0)
 	rows, err = c.DB.Query("SELECT id FROM users")
 	require.NoError(t, err)
 	rows.Close()
 
-	c.MigrateDown()
+	c.MigrateDown(0)
 	rows, err = c.DB.Query("SELECT id FROM users")
 	require.Error(t, err)
 	require.Nil(t, rows)

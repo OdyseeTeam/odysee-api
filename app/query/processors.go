@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/lbryio/lbrytv/internal/errors"
+
 	"github.com/lbryio/lbrytv-player/pkg/paid"
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
@@ -38,7 +40,13 @@ func preflightHookGet(caller *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, 
 	}
 
 	// uri vs url is not a typo, `get` query parameter will be called `uri`. It's `url(s)` in all other method calls.
-	url := query.ParamsAsMap()["uri"].(string)
+	var url string
+	paramsMap := query.ParamsAsMap()
+	uri, ok := paramsMap["uri"]
+	if !ok {
+		return nil, errors.Err("missing uri parameter for 'get' method")
+	}
+	url = uri.(string)
 	log := logger.Log().WithField("url", url)
 
 	claim, err := resolve(caller, query, url)

@@ -100,7 +100,7 @@ func defaultMiddlewares(rt *sdkrouter.Router, authProvider auth.Provider) mux.Mi
 		panic(err)
 	}
 	defaultHeaders := []string{
-		wallet.TokenHeader, "X-Requested-With", "Content-Type", "Accept",
+		wallet.TokenHeader, wallet.AuthorizationHeader, "X-Requested-With", "Content-Type", "Accept",
 	}
 	c := cors.New(cors.Options{
 		AllowedOrigins:   config.GetCORSDomains(),
@@ -116,7 +116,8 @@ func defaultMiddlewares(rt *sdkrouter.Router, authProvider auth.Provider) mux.Mi
 		c.Handler,
 		ip.Middleware,
 		sdkrouter.Middleware(rt),
-		auth.Middleware(authProvider),
+		auth.Middleware(oAuthProvider), // Will pass forward user/error to next
+		auth.LegacyMiddleware(legacyProvider),
 		cache.Middleware(queryCache),
 	)
 }
