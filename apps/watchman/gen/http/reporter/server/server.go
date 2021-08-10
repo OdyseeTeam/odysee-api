@@ -206,7 +206,7 @@ func NewCORSHandler() http.Handler {
 // HandleReporterOrigin applies the CORS response headers corresponding to the
 // origin for the service reporter.
 func HandleReporterOrigin(h http.Handler) http.Handler {
-	spec0 := regexp.MustCompile("(http:\\/\\/localhost:\\d+)|(https:\\/\\/odysee.com)|(https:\\/\\/.+\\.odysee.com)")
+	spec0 := regexp.MustCompile("(http:\\/\\/localhost:\\d+)|(https:\\/\\/odysee.com)|(https:\\/\\/.+\\.odysee.com)|(https:\\/\\/.+\\.lbry.tv)")
 	origHndlr := h.(http.HandlerFunc)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")

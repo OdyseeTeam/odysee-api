@@ -15,7 +15,7 @@ var _ = API("watchman", func() {
 		(with n being something reasonable between 5 and 30s)
 	`)
 
-	cors.Origin(`/(http:\/\/localhost:\d+)|(https:\/\/odysee.com)|(https:\/\/.+\.odysee.com)/`, func() {
+	cors.Origin(`/(http:\/\/localhost:\d+)|(https:\/\/odysee.com)|(https:\/\/.+\.odysee.com)|(https:\/\/.+\.lbry.tv)/`, func() {
 		cors.Methods(http.MethodGet, http.MethodPost)
 		cors.Headers("content-type")
 		cors.MaxAge(600)

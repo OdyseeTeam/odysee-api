@@ -84,6 +84,7 @@ func (s *reporterSuite) TestAdd() {
 		respBodyRegex string
 	}{
 		{"Valid", "https://odysee.com", okBody, http.StatusCreated, "^$"},
+		{"ValidLbrytvOrigin", "https://a.lbry.tv", okBody, http.StatusCreated, "^$"},
 		{"ValidLocal", "http://localhost:1337", okBody, http.StatusCreated, "^$"},
 		{"Empty", "http://localhost:9090", nil, http.StatusBadRequest, `"message":"missing required payload"`},
 		{"RebufDurationTooLarge", "http://localhost:9090", rbdTooLargeBody, http.StatusBadRequest, `"message":"rebufferung duration cannot be larger than duration"`},
