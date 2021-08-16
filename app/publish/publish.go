@@ -228,6 +228,13 @@ func (h Handler) createFile(userID int, origFilename string) (*os.File, error) {
 	return os.Create(path.Join(randomDir, origFilename))
 }
 
+// https://brandur.org/fragments/go-http-retry
+var backoffSchedule = []time.Duration{
+	1 * time.Second,
+	3 * time.Second,
+	5 * time.Second,
+}
+
 // fetchFile downloads remote file from the URL provided by client.
 // ErrEmptyRemoteURL is a standard error when no URL has been provided.
 func (h Handler) fetchFile(r *http.Request, userID int) (*os.File, error) {
@@ -255,7 +262,14 @@ func (h Handler) fetchFile(r *http.Request, userID int) (*os.File, error) {
 	c := &http.Client{
 		Timeout: fetchTimeout,
 	}
-	resp, err := c.Do(r)
+	var resp *http.Response
+	for _, backoff := range backoffSchedule {
+		resp, err = c.Do(r)
+		if err == nil {
+			break
+		}
+		time.Sleep(backoff)
+	}
 	if err != nil {
 		return nil, err
 	}
