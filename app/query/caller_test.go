@@ -543,6 +543,37 @@ func TestCaller_CallQueryWithRetry(t *testing.T) {
 	require.Nil(t, r.Error)
 }
 
+func TestCaller_timeouts(t *testing.T) {
+	srv := test.MockHTTPServer(nil)
+	defer srv.Close()
+
+	config.Override("RPCTimeouts", map[string]string{
+		"resolve": "300ms",
+	})
+
+	c := NewCaller(srv.URL, 0)
+	q, err := NewQuery(jsonrpc.NewRequest("resolve"), "")
+	require.NoError(t, err)
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		srv.NextResponse <- test.ResToStr(t, &jsonrpc.RPCResponse{
+			JSONRPC: "2.0",
+			Result:  `""`,
+		})
+		time.Sleep(500 * time.Millisecond)
+		srv.NextResponse <- test.ResToStr(t, &jsonrpc.RPCResponse{
+			JSONRPC: "2.0",
+			Result:  `""`,
+		})
+	}()
+
+	_, err = c.SendQuery(q)
+	require.NoError(t, err)
+
+	_, err = c.SendQuery(q)
+	require.Regexp(t, `timeout awaiting response headers`, err.Error())
+}
+
 func TestCaller_DontReloadWalletAfterOtherErrors(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	walletID := sdkrouter.WalletID(rand.Intn(100))
@@ -891,17 +922,20 @@ func TestCaller_LogLevels(t *testing.T) {
 	require.NoError(t, err)
 	e := hook.LastEntry()
 	assert.Equal(t, "resolve", hook.LastEntry().Data["method"])
+	assert.NotNil(t, hook.LastEntry().Data["params"])
 	assert.Equal(t, logrus.InfoLevel, e.Level)
 
 	_, err = c.Call(jsonrpc.NewRequest("wallet_balance"))
 	require.NoError(t, err)
 	e = hook.LastEntry()
 	assert.Equal(t, "wallet_balance", hook.LastEntry().Data["method"])
+	assert.NotNil(t, hook.LastEntry().Data["params"])
 	assert.Equal(t, logrus.DebugLevel, e.Level)
 
 	_, err = c.Call(jsonrpc.NewRequest("sync_apply"))
 	require.NoError(t, err)
 	e = hook.LastEntry()
 	assert.Equal(t, "sync_apply", hook.LastEntry().Data["method"])
+	assert.Nil(t, hook.LastEntry().Data["params"])
 	assert.Equal(t, logrus.DebugLevel, e.Level)
 }

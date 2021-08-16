@@ -10,8 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type FormParam [2]string
+
 // CreatePublishRequest creates and returns a HTTP request providing data for the publishing endpoint.
-func CreatePublishRequest(t *testing.T, data []byte) *http.Request {
+func CreatePublishRequest(t *testing.T, data []byte, extra ...FormParam) *http.Request {
 	readSeeker := bytes.NewReader(data)
 	body := &bytes.Buffer{}
 
@@ -22,9 +24,12 @@ func CreatePublishRequest(t *testing.T, data []byte) *http.Request {
 	_, err = io.Copy(fileBody, readSeeker)
 	require.NoError(t, err)
 
-	jsonPayload, err := writer.CreateFormField(jsonRPCFieldName)
-	require.NoError(t, err)
-	jsonPayload.Write([]byte(expectedStreamCreateRequest))
+	extra = append([]FormParam{{jsonRPCFieldName, expectedStreamCreateRequest}}, extra...)
+	for _, kv := range extra {
+		fld, err := writer.CreateFormField(kv[0])
+		require.NoError(t, err)
+		fld.Write([]byte(kv[1]))
+	}
 
 	writer.Close()
 

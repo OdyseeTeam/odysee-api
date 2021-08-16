@@ -26,6 +26,7 @@ const (
 	walletLoadRetries   = 3
 	walletLoadRetryWait = 100 * time.Millisecond
 	builtinHookName     = "builtin"
+	defaultRPCTimeout   = 240 * time.Second
 
 	// AllMethodsHook is used as the first argument to Add*Hook to make it apply to all methods
 	AllMethodsHook = ""
@@ -74,32 +75,47 @@ type Caller struct {
 
 	Duration float64
 
-	client   jsonrpc.RPCClient
 	userID   int
 	endpoint string
 }
 
 func NewCaller(endpoint string, userID int) *Caller {
 	c := &Caller{
-		client: jsonrpc.NewClientWithOpts(endpoint, &jsonrpc.RPCClientOpts{
-			HTTPClient: &http.Client{
-				Timeout: sdkrouter.RPCTimeout,
-				Transport: &http.Transport{
-					Dial: (&net.Dialer{
-						Timeout:   120 * time.Second,
-						KeepAlive: 120 * time.Second,
-					}).Dial,
-					TLSHandshakeTimeout:   30 * time.Second,
-					ResponseHeaderTimeout: 600 * time.Second,
-					ExpectContinueTimeout: 1 * time.Second,
-				},
-			},
-		}),
 		endpoint: endpoint,
 		userID:   userID,
 	}
 	c.addDefaultHooks()
 	return c
+}
+
+func (c *Caller) newRPCClient(timeout time.Duration) jsonrpc.RPCClient {
+	client := jsonrpc.NewClientWithOpts(c.endpoint, &jsonrpc.RPCClientOpts{
+		HTTPClient: &http.Client{
+			Timeout: sdkrouter.RPCTimeout + timeout,
+			Transport: &http.Transport{
+				Dial: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 120 * time.Second,
+				}).Dial,
+				ResponseHeaderTimeout: timeout,
+				ExpectContinueTimeout: 1 * time.Second,
+			},
+		},
+	})
+	return client
+}
+
+func (c *Caller) getRPCTimeout(method string) time.Duration {
+	t := config.GetRPCTimeout(method)
+	if t != nil {
+		return *t
+	}
+	return defaultRPCTimeout
+}
+
+func (c *Caller) getRPCClient(method string) jsonrpc.RPCClient {
+	var client jsonrpc.RPCClient = c.newRPCClient(c.getRPCTimeout(method))
+	return client
 }
 
 // AddPreflightHook adds query preflight hook function,
@@ -201,7 +217,8 @@ func (c *Caller) SendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 
 	for i := 0; i < walletLoadRetries; i++ {
 		start := time.Now()
-		r, err = c.client.CallRaw(q.Request)
+		client := c.getRPCClient(q.Method())
+		r, err = client.CallRaw(q.Request)
 		c.Duration = time.Since(start).Seconds()
 
 		// Generally a HTTP transport failure (connect error etc)
@@ -238,10 +255,13 @@ func (c *Caller) SendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 
 	logFields := logrus.Fields{
 		"method":   q.Method(),
-		"params":   q.Params(),
 		"endpoint": c.endpoint,
 		"user_id":  c.userID,
 		"duration": c.Duration,
+	}
+	// Don't log query params for "sync_apply" method
+	if q.Method() != MethodSyncApply {
+		logFields["params"] = q.Params()
 	}
 	logEntry := logger.WithFields(logFields)
 

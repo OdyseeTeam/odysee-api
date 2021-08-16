@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/lbryio/lbrytv/app/auth"
@@ -73,7 +74,7 @@ func TestUploadHandler(t *testing.T) {
 	test.AssertEqualJSON(t, expectedStreamCreateResponse, respBody)
 
 	require.True(t, publisher.called)
-	expectedPath := path.Join(os.TempDir(), "20404", ".*_lbry_auto_test_file")
+	expectedPath := path.Join(os.TempDir(), "20404", ".+", "lbry_auto_test_file")
 	assert.Regexp(t, expectedPath, publisher.filePath)
 	assert.Equal(t, sdkrouter.WalletID(20404), publisher.walletID)
 	expectedReq := fmt.Sprintf(expectedStreamCreateRequest, sdkrouter.WalletID(20404), publisher.filePath)
@@ -188,4 +189,106 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "unexpected EOF", rpcResponse.Error.Message)
 	require.False(t, publisher.called)
+}
+
+func Test_fetchFileInvalidInput(t *testing.T) {
+	h := &Handler{UploadPath: os.TempDir()}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "404") {
+			w.WriteHeader(http.StatusNotFound)
+		} else if strings.HasSuffix(r.URL.Path, "400") {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	defer ts.Close()
+
+	cases := []struct {
+		url, errMsg string
+	}{
+		{"", ErrEmptyRemoteURL.Error()},
+		{fmt.Sprintf("%v/files/404", ts.URL), "remote server returned non-OK status 404"},
+		{fmt.Sprintf("%v/files/400", ts.URL), "remote server returned non-OK status 400"},
+		{fmt.Sprintf("%v/../../../../../etc/passwd", ts.URL), "remote file is empty"},
+		{"/etc/passwd", `Get "/etc/passwd": unsupported protocol scheme ""`},
+		{"http://nonexistenthost/some_file.mp4", `dial tcp: lookup nonexistenthost:`},
+		{"http://nonexistenthost/", "couldn't determine remote file name"},
+		{ts.URL, `couldn't determine remote file name`},
+		{"/", "couldn't determine remote file name"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.url, func(t *testing.T) {
+			r := CreatePublishRequest(t, nil, FormParam{remoteURLParam, c.url})
+
+			f, err := h.fetchFile(r, 20404)
+			require.NotNil(t, err)
+			require.Nil(t, f)
+			assert.Regexp(t, fmt.Sprintf(".*%v.*", c.errMsg), err.Error())
+		})
+	}
+}
+
+func Test_fetchFile(t *testing.T) {
+	h := &Handler{UploadPath: os.TempDir()}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "1Mb.dat") {
+			w.Header().Add("content-length", "125000")
+			for range [125000]int{} {
+				w.Write([]byte{0})
+			}
+		} else if strings.HasSuffix(r.URL.Path, "../../etc/passwd") {
+			w.Write([]byte{0})
+		}
+	}))
+	defer ts.Close()
+
+	cases := []struct {
+		url, nameRe string
+		size        int64
+	}{
+		{fmt.Sprintf("%v/1Mb.dat", ts.URL), ".+/20404/.+", 125000},
+		{fmt.Sprintf("%v/../../../../../etc/passwd", ts.URL), ".+/20404/.+/passwd$", 1},
+	}
+
+	for _, c := range cases {
+		t.Run(c.url, func(t *testing.T) {
+			r := CreatePublishRequest(t, nil, FormParam{remoteURLParam, c.url})
+
+			f, err := h.fetchFile(r, 20404)
+			require.NoError(t, err)
+			assert.Regexp(t, c.nameRe, f.Name())
+			s, err := os.Stat(f.Name())
+			require.NoError(t, err)
+			require.EqualValues(t, c.size, s.Size())
+		})
+	}
+}
+
+func Test_fetchFileEmptyRemoteFile(t *testing.T) {
+	ts := test.MockHTTPServer(nil)
+	defer ts.Close()
+	ts.NextResponse <- ""
+
+	h := &Handler{UploadPath: os.TempDir()}
+	r := CreatePublishRequest(t, nil, FormParam{remoteURLParam, fmt.Sprintf("%v/file.mp4", ts.URL)})
+
+	f, err := h.fetchFile(r, 20404)
+	require.EqualError(t, err, "remote file is empty")
+	assert.Nil(t, f)
+}
+
+func Test_fetchFileRemoteFileTooLarge(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Length", fmt.Sprintf("%v", FetchSizeLimit+1))
+	}))
+	defer ts.Close()
+
+	h := &Handler{UploadPath: os.TempDir()}
+	r := CreatePublishRequest(t, nil, FormParam{remoteURLParam, fmt.Sprintf("%v/file.mp4", ts.URL)})
+
+	f, err := h.fetchFile(r, 20404)
+	require.EqualError(t, err, fmt.Sprintf("remote file is too large at %v bytes", FetchSizeLimit+1))
+	assert.Nil(t, f)
 }

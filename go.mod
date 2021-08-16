@@ -18,8 +18,8 @@ require (
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
 	github.com/lbryio/lbry.go/v2 v2.7.1
 	github.com/lbryio/lbrytv-player v0.7.12
-	github.com/lib/pq v1.9.0
-	github.com/magiconair/properties v1.8.4 // indirect
+	github.com/lib/pq v1.10.0
+	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/markbates/pkger v0.17.0
 	github.com/nsf/jsondiff v0.0.0-20190712045011-8443391ee9b6
 	github.com/oschwald/geoip2-golang v1.5.0
@@ -32,9 +32,9 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/rubenv/sql-migrate v0.0.0-20210215143335-f84234893558
 	github.com/sirupsen/logrus v1.6.0
-	github.com/spf13/afero v1.5.1 // indirect
+	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.3.1
-	github.com/spf13/cobra v1.1.1
+	github.com/spf13/cobra v1.1.3
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0

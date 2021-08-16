@@ -2,9 +2,11 @@ name: Test
 
 on:
   push:
-    branches-ignore:
+    branches:
       - master
-      - dev
+  pull_request:
+    branches:
+      - master
 
 jobs:
   test:
@@ -23,7 +25,7 @@ jobs:
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
         with:
-          go-version: ^1.13
+          go-version: ^1.16
         id: go
 
       - name: Prepare for tests
@@ -34,6 +36,5 @@ jobs:
 
       - name: Test
         run: go test -covermode=count -coverprofile=coverage.out ./...
-
-      - name: Check coverage
-        run: goveralls -coverprofile=coverage.out -service=circle-ci -ignore=models/ -repotoken ${{ secrets.COVERALLS_TOKEN }}
+      # - name: Check coverage
+      #   run: goveralls -coverprofile=coverage.out -service=circle-ci -ignore=models/ -repotoken ${{ secrets.COVERALLS_TOKEN }}

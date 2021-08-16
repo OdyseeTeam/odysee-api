@@ -31,8 +31,9 @@ func NewServer(address string, sdkRouter *sdkrouter.Router) *Server {
 	api.InstallRoutes(r, sdkRouter)
 	r.Use(monitor.ErrorLoggingMiddleware)
 	r.Use(defaultHeadersMiddleware(map[string]string{
-		"Server":                      "api.lbry.tv",
-		"Access-Control-Allow-Origin": "*",
+		"Server":                       "api.lbry.tv",
+		"Access-Control-Allow-Origin":  "*",
+		"Access-Control-Allow-Headers": "content-type", // Needed this to get any request to work
 	}))
 
 	return &Server{
@@ -44,7 +45,8 @@ func NewServer(address string, sdkRouter *sdkrouter.Router) *Server {
 			Handler: r,
 			// We need this for long uploads
 			WriteTimeout: 0,
-			// prev WriteTimeout was (sdkrouter.RPCTimeout + (1 * time.Second)). it must be longer than rpc timeout to allow those timeouts to be handled
+			// prev WriteTimeout was (sdkrouter.RPCTimeout + (1 * time.Second)).
+			// It must be longer than rpc timeout to allow those timeouts to be handled
 			IdleTimeout:       0,
 			ReadHeaderTimeout: 10 * time.Second,
 		},
@@ -60,6 +62,11 @@ func defaultHeadersMiddleware(defaultHeaders map[string]string) mux.MiddlewareFu
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// Address returns the address which server is listening on.
+func (s *Server) Address() string {
+	return s.address
 }
 
 // Start starts a http server and returns immediately.
