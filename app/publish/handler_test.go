@@ -209,7 +209,6 @@ func Test_fetchFileInvalidInput(t *testing.T) {
 		{"", ErrEmptyRemoteURL.Error()},
 		{fmt.Sprintf("%v/files/404", ts.URL), "remote server returned non-OK status 404"},
 		{fmt.Sprintf("%v/files/400", ts.URL), "remote server returned non-OK status 400"},
-		{fmt.Sprintf("%v/../../../../../etc/passwd", ts.URL), "remote file is empty"},
 		{"/etc/passwd", `Get "/etc/passwd": unsupported protocol scheme ""`},
 		{"http://nonexistenthost/some_file.mp4", `dial tcp: lookup nonexistenthost:`},
 		{"http://nonexistenthost/", "couldn't determine remote file name"},
@@ -222,8 +221,8 @@ func Test_fetchFileInvalidInput(t *testing.T) {
 			r := CreatePublishRequest(t, nil, FormParam{remoteURLParam, c.url})
 
 			f, err := h.fetchFile(r, 20404)
-			require.NotNil(t, err)
-			require.Nil(t, f)
+			assert.NotNil(t, err)
+			assert.Nil(t, f)
 			assert.Regexp(t, fmt.Sprintf(".*%v.*", c.errMsg), err.Error())
 		})
 	}
@@ -264,31 +263,4 @@ func Test_fetchFile(t *testing.T) {
 			require.EqualValues(t, c.size, s.Size())
 		})
 	}
-}
-
-func Test_fetchFileEmptyRemoteFile(t *testing.T) {
-	ts := test.MockHTTPServer(nil)
-	defer ts.Close()
-	ts.NextResponse <- ""
-
-	h := &Handler{UploadPath: os.TempDir()}
-	r := CreatePublishRequest(t, nil, FormParam{remoteURLParam, fmt.Sprintf("%v/file.mp4", ts.URL)})
-
-	f, err := h.fetchFile(r, 20404)
-	require.EqualError(t, err, "remote file is empty")
-	assert.Nil(t, f)
-}
-
-func Test_fetchFileRemoteFileTooLarge(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Length", fmt.Sprintf("%v", FetchSizeLimit+1))
-	}))
-	defer ts.Close()
-
-	h := &Handler{UploadPath: os.TempDir()}
-	r := CreatePublishRequest(t, nil, FormParam{remoteURLParam, fmt.Sprintf("%v/file.mp4", ts.URL)})
-
-	f, err := h.fetchFile(r, 20404)
-	require.EqualError(t, err, fmt.Sprintf("remote file is too large at %v bytes", FetchSizeLimit+1))
-	assert.Nil(t, f)
 }
