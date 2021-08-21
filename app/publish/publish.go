@@ -8,7 +8,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/lbryio/lbrytv/app/auth"
@@ -264,18 +263,6 @@ func (h Handler) fetchFile(r *http.Request, userID int) (*os.File, error) {
 	}
 
 	defer resp.Body.Close()
-
-	clh := resp.Header.Get("Content-Length")
-	cl, err := strconv.Atoi(clh)
-	if err != nil {
-		return nil, werrors.Wrap(err, "cannot determine remote file size")
-	}
-	if cl >= FetchSizeLimit {
-		return nil, fmt.Errorf("remote file is too large at %v bytes", cl)
-	}
-	if cl == 0 {
-		return nil, werrors.New("remote file is empty")
-	}
 
 	f, err := h.createFile(userID, fname)
 	if err != nil {
