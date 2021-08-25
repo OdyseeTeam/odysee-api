@@ -35,9 +35,7 @@ func TestSuite(t *testing.T) {
 
 func (s *reporterSuite) SetupSuite() {
 	cfg, err := config.Read()
-	if err != nil {
-		log.Log.Fatal(err)
-	}
+	s.Require().NoError(err)
 
 	log.Configure(log.LevelDebug, log.EncodingConsole)
 

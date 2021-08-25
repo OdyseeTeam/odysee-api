@@ -14,8 +14,11 @@ import (
 )
 
 var (
-	conn     *sql.DB
-	database string
+	conn        *sql.DB
+	database    string
+	batchWriter *BatchWriter
+	repBatch    []*reporter.PlaybackReport
+	repChan     chan *reporter.PlaybackReport
 )
 
 func Connect(url string, dbName string) error {
@@ -31,12 +34,17 @@ func Connect(url string, dbName string) error {
 
 	go ping()
 
+	repChan = make(chan *reporter.PlaybackReport, 20000)
+
 	MigrateUp(dbName)
+
+	batchWriter = NewBatchWriter(2*time.Second, 16)
+
 	log.Log.Named("clickhouse").Infof("connected to clickhouse server %v (database=%v)", url, dbName)
 	return nil
 }
 
-func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string, ts string) error {
+func prepareArgs(r *reporter.PlaybackReport, addr string, ts string) ([]interface{}, error) {
 	var (
 		t     time.Time
 		err   error
@@ -46,7 +54,7 @@ func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string, ts string) e
 	if ts != "" {
 		t, err = time.Parse(time.RFC1123Z, ts)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	} else {
 		t = time.Now()
@@ -62,7 +70,7 @@ func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string, ts string) e
 		cache = "miss"
 	}
 
-	_, err = stmt.Exec(
+	return []interface{}{
 		r.URL,
 		uint32(r.Duration),
 		t,
@@ -79,13 +87,21 @@ func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string, ts string) e
 		area,
 		subarea,
 		addr,
-	)
+	}, nil
+}
+
+func Write(stmt *sql.Stmt, r *reporter.PlaybackReport, addr string, ts string) error {
+	args, err := prepareArgs(r, addr, ts)
 	if err != nil {
 		return err
 	}
-	log.Log.Named("clickhouse").Infow(
+	_, err = stmt.Exec(args...)
+	if err != nil {
+		return err
+	}
+	log.Log.Named("clickhouse").Debugw(
 		"playback record written",
-		"user_id", r.UserID, "url", r.URL, "rebuf_count", r.RebufCount, "area", area, "ip", addr, "ts", t)
+		"user_id", r.UserID, "url", r.URL, "rebuf_count", r.RebufCount, "ip", addr, "ts", args[2])
 	return nil
 }
 
@@ -108,13 +124,12 @@ func WriteOne(r *reporter.PlaybackReport, addr string, ts string) error {
 	return nil
 }
 
+func BatchWrite(r *reporter.PlaybackReport, addr string, ts string) error {
+	return batchWriter.Write(r, addr, ts)
+}
+
 func prepareWrite(tx *sql.Tx) (*sql.Stmt, error) {
-	return tx.Prepare(fmt.Sprintf(`
-	INSERT INTO %v.playback
-		(URL, Duration, Timestamp, Position, RelPosition, RebufCount,
-			RebufDuration, Protocol, Cache, Player, UserID, Bandwidth, Device, Area, SubArea, IP)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, database))
+	return tx.Prepare(prepareInsertQuery("(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
 }
 
 func ping() {
@@ -124,4 +139,13 @@ func ping() {
 			log.Log.Named("clickhouse").Errorf("error pinging clickhouse: %v", err)
 		}
 	}
+}
+
+func prepareInsertQuery(values string) string {
+	return fmt.Sprintf(`
+		INSERT INTO %v.playback
+			(URL, Duration, Timestamp, Position, RelPosition, RebufCount,
+				RebufDuration, Protocol, Cache, Player, UserID, Bandwidth, Device, Area, SubArea, IP)
+		VALUES %v
+	`, database, values)
 }

@@ -34,7 +34,7 @@ func (s *reportersrvc) Add(ctx context.Context, p *reporter.PlaybackReport) erro
 		return &reporter.MultiFieldError{Message: "rebufferung duration cannot be larger than duration"}
 	}
 	addr := ctx.Value(RemoteAddressKey).(string)
-	err := olapdb.WriteOne(p, addr, "")
+	err := olapdb.BatchWrite(p, addr, "")
 	if err != nil {
 		return err
 	}
