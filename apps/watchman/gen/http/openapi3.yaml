@@ -42,7 +42,7 @@ paths:
             example:
               bandwidth: 356512143
               cache: miss
-              device: web
+              device: dsk
               duration: 30000
               player: sg-p2
               position: 615768058
@@ -84,11 +84,12 @@ components:
         device:
           type: string
           description: Client device
-          example: ios
+          example: dsk
           enum:
           - ios
           - adr
           - web
+          - dsk
         duration:
           type: integer
           description: Duration of time between event calls in ms (aiming for between

@@ -32,7 +32,7 @@ func UsageExamples() string {
 	return os.Args[0] + ` reporter add --body '{
       "bandwidth": 356512143,
       "cache": "miss",
-      "device": "web",
+      "device": "dsk",
       "duration": 30000,
       "player": "sg-p2",
       "position": 615768058,
@@ -172,7 +172,7 @@ Example:
     `+os.Args[0]+` reporter add --body '{
       "bandwidth": 356512143,
       "cache": "miss",
-      "device": "web",
+      "device": "dsk",
       "duration": 30000,
       "player": "sg-p2",
       "position": 615768058,

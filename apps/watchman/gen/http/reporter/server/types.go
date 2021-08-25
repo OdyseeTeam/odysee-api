@@ -182,8 +182,8 @@ func ValidateAddRequestBody(body *AddRequestBody) (err error) {
 		}
 	}
 	if body.Device != nil {
-		if !(*body.Device == "ios" || *body.Device == "adr" || *body.Device == "web") {
-			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.device", *body.Device, []interface{}{"ios", "adr", "web"}))
+		if !(*body.Device == "ios" || *body.Device == "adr" || *body.Device == "web" || *body.Device == "dsk") {
+			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.device", *body.Device, []interface{}{"ios", "adr", "web", "dsk"}))
 		}
 	}
 	return

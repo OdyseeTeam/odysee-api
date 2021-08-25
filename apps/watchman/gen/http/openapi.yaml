@@ -100,6 +100,7 @@ definitions:
         - ios
         - adr
         - web
+        - dsk
       duration:
         type: integer
         description: Duration of time between event calls in ms (aiming for between
