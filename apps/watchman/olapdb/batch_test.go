@@ -16,7 +16,7 @@ type batchWriterSuite struct {
 }
 
 func TestBatchWriterSuite(t *testing.T) {
-	log.Configure(log.LevelDebug, log.EncodingConsole)
+	log.Configure(log.LevelInfo, log.EncodingConsole)
 	suite.Run(t, new(batchWriterSuite))
 }
 
@@ -37,7 +37,6 @@ func (s *batchWriterSuite) TestBatch() {
 
 	time.Sleep(10 * time.Second)
 	bw.Stop()
-	// <-bw.stopChan
 
 	var (
 		url      string

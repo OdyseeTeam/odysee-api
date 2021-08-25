@@ -1,9 +1,15 @@
 package olapdb
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"time"
+)
 
 func MigrateUp(dbName string) error {
-	_, err := conn.Exec(fmt.Sprintf(`CREATE DATABASE IF NOT EXISTS %v`, dbName))
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := conn.ExecContext(ctx, fmt.Sprintf(`CREATE DATABASE IF NOT EXISTS %v`, dbName))
 	if err != nil {
 		return err
 	}

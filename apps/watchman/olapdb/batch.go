@@ -26,7 +26,7 @@ func NewBatchWriter(interval time.Duration, width int) *BatchWriter {
 		width:    width,
 		interval: interval,
 		capacity: capacity,
-		batch:    make([][]interface{}, capacity),
+		batch:    [][]interface{}{},
 		rcvChan:  make(chan []interface{}, capacity*3),
 		stopChan: make(chan bool, 1),
 	}
@@ -44,27 +44,28 @@ func (b *BatchWriter) Start() {
 			if el == nil {
 				continue
 			}
-			log.Log.Debugw("batch element received", "el", el)
-			b.batch[counter] = el
+			log.Log.Debugw("batch element received", "el", el, "count", counter)
+			b.batch = append(b.batch, el)
 			counter++
 		case <-ticker.C:
 			if counter == 0 {
+				log.Log.Info("no elements in the current batch")
 				continue
 			}
-			log.Log.Infof("preparing a batch write", "count", counter)
-			err := b.writeBatch(counter)
+			log.Log.Infow("preparing a batch write", "count", counter)
+			err := b.writeBatch()
 			if err != nil {
 				log.Log.Warnw("could not write a batch", "err", err)
+			} else {
+				log.Log.Infow("batch written", "count", counter)
 			}
 			counter = 0
-		default:
-			time.Sleep(10 * time.Millisecond)
 		}
 	}
 
 	// Write out the remaining records after Stop() has been called.
 	if counter > 0 {
-		err := b.writeBatch(counter)
+		err := b.writeBatch()
 		if err != nil {
 			log.Log.Warnw("could not write the last batch", "err", err)
 		}
@@ -85,10 +86,10 @@ func (b *BatchWriter) Write(r *reporter.PlaybackReport, addr string, ts string) 
 	return nil
 }
 
-func (b *BatchWriter) writeBatch(num int) error {
+func (b *BatchWriter) writeBatch() error {
 	ph := fmt.Sprintf("(%s)", "?"+strings.Repeat(", ?", b.width-1))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	tx, err := conn.BeginTx(ctx, nil)
@@ -103,7 +104,7 @@ func (b *BatchWriter) writeBatch(num int) error {
 	log.Log.Debugw("insert query prepared", "q", q)
 	defer stmt.Close()
 
-	for i, row := range b.batch[:num] {
+	for i, row := range b.batch {
 		_, err := stmt.Exec(row...)
 		if err != nil {
 			return err
@@ -115,6 +116,7 @@ func (b *BatchWriter) writeBatch(num int) error {
 		return errors.Wrap(err, "cannot commit")
 	}
 
+	b.batch = [][]interface{}{}
 	return nil
 }
 

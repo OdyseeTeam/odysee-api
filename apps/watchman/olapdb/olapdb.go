@@ -39,6 +39,7 @@ func Connect(url string, dbName string) error {
 	MigrateUp(dbName)
 
 	batchWriter = NewBatchWriter(2*time.Second, 16)
+	go batchWriter.Start()
 
 	log.Log.Named("clickhouse").Infof("connected to clickhouse server %v (database=%v)", url, dbName)
 	return nil

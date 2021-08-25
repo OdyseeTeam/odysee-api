@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	stdlog "log"
 	"os"
 	"os/signal"
@@ -100,7 +101,7 @@ func serve(bindF string, dbgF bool) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Start the servers and send errors (if any) to the error channel.
-	handleHTTPServer(ctx, bindF, reporterEndpoints, &wg, errc, stdlog.New(os.Stderr, "[watchman] ", stdlog.Ltime), dbgF)
+	handleHTTPServer(ctx, bindF, reporterEndpoints, &wg, errc, stdlog.New(io.Discard, "[watchman] ", stdlog.Ltime), dbgF)
 
 	// Wait for signal.
 	log.Log.Infof("exiting (%v)", <-errc)
