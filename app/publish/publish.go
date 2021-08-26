@@ -80,6 +80,25 @@ var (
 	lookupHostErrorRe = regexp.MustCompile(`dial tcp: lookup`)
 )
 
+// copied from hashicorp/go-retryablehttp/client.go
+var (
+	// A regular expression to match the error returned by net/http when the
+	// configured number of redirects is exhausted. This error isn't typed
+	// specifically so we resort to matching on the error string.
+	redirectsErrorRe = regexp.MustCompile(`stopped after \d+ redirects\z`)
+
+	// A regular expression to match the error returned by net/http when the
+	// scheme specified in the URL is invalid. This error isn't typed
+	// specifically so we resort to matching on the error string.
+	schemeErrorRe = regexp.MustCompile(`unsupported protocol scheme`)
+
+	// A regular expression to match the error returned by net/http when the
+	// it failed to resolve the host address. The error will be wrapped with
+	// the net/url error and another error, so for convenience we resort to
+	// match the error string instead.
+	lookupHostErrorRe = regexp.MustCompile(`dial tcp: lookup`)
+)
+
 // Handler has path to save uploads to
 type Handler struct {
 	UploadPath string
