@@ -264,3 +264,80 @@ func Test_fetchFile(t *testing.T) {
 		})
 	}
 }
+
+func Test_fetchFileWithRetries(t *testing.T) {
+	t.Parallel()
+
+	h := &Handler{UploadPath: os.TempDir()}
+
+	t.Run("Success", func(t *testing.T) {
+		t.Parallel()
+
+		attempt := 1
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if attempt == 2 {
+				w.WriteHeader(http.StatusOK)
+				w.Header().Add("content-length", "125000")
+				for range [125000]int{} {
+					w.Write([]byte{0})
+				}
+			} else {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+			attempt++
+		}))
+		defer ts.Close()
+
+		r := CreatePublishRequest(t, nil, FormParam{
+			remoteURLParam,
+			fmt.Sprintf("%v/with_retries/success", ts.URL),
+		})
+
+		_, err := h.fetchFile(r, 20404)
+		require.NoError(t, err)
+	})
+
+	t.Run("FailedWithMaximumRetries", func(t *testing.T) {
+		t.Parallel()
+
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(600)
+		}))
+		defer ts.Close()
+
+		r := CreatePublishRequest(t, nil, FormParam{
+			remoteURLParam,
+			fmt.Sprintf("%v/bad_status_code", ts.URL),
+		})
+		f, err := h.fetchFile(r, 20404)
+
+		assert.NotNil(t, err)
+		assert.Nil(t, f)
+		assert.Contains(t, err.Error(), "remote server returned non-OK status 600")
+	})
+
+	t.Run("FailedWithClosedConnection", func(t *testing.T) {
+		t.Parallel()
+
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(500)
+		}))
+		defer ts.Close()
+
+		r := CreatePublishRequest(t, nil, FormParam{
+			remoteURLParam,
+			fmt.Sprintf("%v/closed_connection", ts.URL),
+		})
+
+		// close the listener to simulate server closing the client connection
+		if err := ts.Listener.Close(); err != nil {
+			t.Fatalf("failed to close client connection: %v", err)
+		}
+
+		f, err := h.fetchFile(r, 20404)
+
+		assert.NotNil(t, err)
+		assert.Nil(t, f)
+		assert.Contains(t, err.Error(), "connect: connection refused")
+	})
+}
