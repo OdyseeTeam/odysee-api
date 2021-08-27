@@ -1,3 +1,7 @@
+date := $(shell date "+%Y-%m-%d-%H-%M")
+watchman_version := $(shell git describe --tags --match 'watchman-v*'|sed -e 's/.*\-v//')
+git_hash := $(shell git rev-parse --short HEAD)
+
 .PHONY: test
 test:
 	go test -cover ./...
@@ -10,7 +14,6 @@ prepare_test:
 	go get golang.org/x/tools/cmd/cover
 	go get github.com/mattn/goveralls
 	go run . db_migrate_up
-	go run ./apps/collector db_migrate_up
 
 .PHONY: test_circleci
 test_circleci:
@@ -51,14 +54,20 @@ get_sqlboiler:
 models: get_sqlboiler
 	sqlboiler --add-global-variants --wipe psql --no-context
 
-app_path := ./apps/collector
-.PHONY: collector_models
-collector_models: get_sqlboiler
-	sqlboiler --no-tests --add-global-variants --wipe psql --no-context -o $(app_path)/models -c $(app_path)/sqlboiler.toml
-	# So sqlboiler can discover their sqlboiler.toml config files instead of reaching for the one in the root
-	# find . -name boil_main_test.go|xargs sed -i '' -e 's/outputDirDepth = 3/outputDirDepth = 1/g'
+watchman:
+	GOARCH=amd64 GOOS=linux go build \
+		-o apps/watchman/dist/linux_amd64/watchman \
+		-ldflags "-X github.com/lbryio/lbrytv/version.version=$(watchman_version) -X github.com/lbryio/lbrytv/version.commit=$(git_hash) -X github.com/lbryio/lbrytv/apps/version.buildDate=$(date)" \
+		./apps/watchman/cmd/watchman/
 
-GORELEASER_CURRENT_TAG := $(shell git describe --tags --match 'collector-v*'|sed -e 's/.*\-v//')
-collector:
-	goreleaser build -f apps/collector/.goreleaser.yml --snapshot --rm-dist
-	find . -name pkged.go -delete
+watchman_image:
+	docker build -t lbry/odysee-watchman:$(watchman_version) ./apps/watchman
+
+watchman_models:
+	sqlc -f apps/watchman/sqlc.yaml generate
+
+watchman_design:
+	goa gen github.com/lbryio/lbrytv/apps/watchman/design -o apps/watchman
+
+watchman_example:
+	goa example github.com/lbryio/lbrytv/apps/watchman/design -o apps/watchman

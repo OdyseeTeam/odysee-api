@@ -1,0 +1,8 @@
+Clickhouse:
+  URL: tcp://127.0.0.1:9000
+
+GeoIPDB: ./docker-data/geoip/GeoLite2-City.mmdb
+
+Log:
+  Encoding: console
+  Level: debug

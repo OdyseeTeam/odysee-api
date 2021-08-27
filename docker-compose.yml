@@ -44,21 +44,8 @@ services:
       PGDATA: /pgdata
       TZ: "UTC"
       PGTZ: "UTC"
-  postgres-collector:
-    image: postgres:11-alpine
-    ports:
-      - "5433:5432"
-    volumes:
-      - pgdata-collector:/pgdata
-    environment:
-      POSTGRES_USER: collector
-      POSTGRES_PASSWORD: ZnPfJ!4vTb-nURv8M!JkkuAcjYLYbkiX
-      PGDATA: /pgdata
-      TZ: "UTC"
-      PGTZ: "UTC"
 
 volumes:
   pgdata: {}
-  pgdata-collector: {}
   storage: {}
   test_storage: {}

@@ -1,0 +1,179 @@
+swagger: "2.0"
+info:
+  title: Watchman service
+  description: "Watchman collects media playback reports.\n\t\tPlayback time along
+    with buffering count and duration is collected\n\t\tvia playback reports, which
+    should be sent from the client each n sec\n\t\t(with n being something reasonable
+    between 5 and 30s)\n\t"
+  version: ""
+host: watchman.na-backend.odysee.com
+consumes:
+- application/json
+- application/xml
+- application/gob
+produces:
+- application/json
+- application/xml
+- application/gob
+paths:
+  /healthz:
+    get:
+      tags:
+      - reporter
+      summary: healthz reporter
+      operationId: reporter#healthz
+      responses:
+        "200":
+          description: OK response.
+          schema:
+            type: string
+      schemes:
+      - https
+  /reports/playback:
+    post:
+      tags:
+      - reporter
+      summary: add reporter
+      operationId: reporter#add
+      parameters:
+      - name: AddRequestBody
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/ReporterAddRequestBody'
+          required:
+          - url
+          - duration
+          - position
+          - rel_position
+          - rebuf_count
+          - rebuf_duration
+          - protocol
+          - player
+          - user_id
+          - device
+      responses:
+        "201":
+          description: Created response.
+        "400":
+          description: Bad Request response.
+          schema:
+            $ref: '#/definitions/ReporterAddMultiFieldErrorResponseBody'
+            required:
+            - message
+      schemes:
+      - https
+definitions:
+  ReporterAddMultiFieldErrorResponseBody:
+    title: ReporterAddMultiFieldErrorResponseBody
+    type: object
+    properties:
+      message:
+        type: string
+        example: rebufferung duration cannot be larger than duration
+    example:
+      message: rebufferung duration cannot be larger than duration
+    required:
+    - message
+  ReporterAddRequestBody:
+    title: ReporterAddRequestBody
+    type: object
+    properties:
+      bandwidth:
+        type: integer
+        description: Client bandwidth, bit/s
+        example: 1997303752
+        format: int32
+      cache:
+        type: string
+        description: Cache status of video
+        example: miss
+        enum:
+        - local
+        - player
+        - miss
+      device:
+        type: string
+        description: Client device
+        example: ios
+        enum:
+        - ios
+        - adr
+        - web
+        - dsk
+      duration:
+        type: integer
+        description: Duration of time between event calls in ms (aiming for between
+          5s and 30s so generally 5000–30000)
+        example: 30000
+        minimum: 0
+        maximum: 60000
+      player:
+        type: string
+        description: Player server name
+        example: sg-p2
+        maxLength: 64
+      position:
+        type: integer
+        description: Current playback report stream position, ms
+        example: 13952061
+        minimum: 0
+      protocol:
+        type: string
+        description: Video delivery protocol, stb (binary stream) or HLS
+        example: hls
+        enum:
+        - stb
+        - hls
+      rebuf_count:
+        type: integer
+        description: Rebuffering events count during the interval
+        example: 2068464011
+        minimum: 0
+      rebuf_duration:
+        type: integer
+        description: Sum of total rebuffering events duration in the interval, ms
+        example: 36499
+        minimum: 0
+        maximum: 60000
+      rel_position:
+        type: integer
+        description: Relative stream position, pct, 0—100
+        example: 37
+        minimum: 0
+        maximum: 100
+      url:
+        type: string
+        description: LBRY URL (lbry://... without the protocol part)
+        example: '@veritasium#f/driverless-cars-are-already-here#1'
+        maxLength: 512
+      user_id:
+        type: string
+        description: User ID
+        example: "432521"
+        minLength: 1
+        maxLength: 45
+    example:
+      bandwidth: 431507972
+      cache: miss
+      device: web
+      duration: 30000
+      player: sg-p2
+      position: 1850104351
+      protocol: stb
+      rebuf_count: 1674309275
+      rebuf_duration: 56176
+      rel_position: 8
+      url: '@veritasium#f/driverless-cars-are-already-here#1'
+      user_id: "432521"
+    required:
+    - url
+    - duration
+    - position
+    - rel_position
+    - rebuf_count
+    - rebuf_duration
+    - protocol
+    - player
+    - user_id
+    - device

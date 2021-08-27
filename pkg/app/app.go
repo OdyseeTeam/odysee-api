@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv-player/pkg/logger"
-	env "github.com/lbryio/lbrytv/apps/environment"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -17,9 +16,8 @@ import (
 
 // App holds entities that can be used to control the web server
 type App struct {
-	Router      *mux.Router
-	Address     string
-	Environment *env.Environment
+	Router  *mux.Router
+	Address string
 
 	logger   *logrus.Logger
 	headers  map[string]string
@@ -28,11 +26,10 @@ type App struct {
 	server   *http.Server
 }
 
-type RouteInstaller func(*mux.Router, *env.Environment)
+type RouteInstaller func(*mux.Router)
 
 // Options holds basic web service settings.
 type Options struct {
-	Environment       env.Environment
 	Headers           map[string]string
 	StopWait          time.Duration
 	WriteTimeout      time.Duration
@@ -72,12 +69,6 @@ func Logger(l *logrus.Logger) Option {
 	}
 }
 
-func Environment(e env.Environment) Option {
-	return func(args *Options) {
-		args.Environment = e
-	}
-}
-
 // New returns a new App HTTP server initialized with settings from supplied Opts.
 func New(address string, setters ...Option) *App {
 	args := &Options{
@@ -97,13 +88,12 @@ func New(address string, setters ...Option) *App {
 	router := mux.NewRouter()
 
 	app := &App{
-		Address:     address,
-		Router:      router,
-		Environment: &args.Environment,
-		logger:      args.Logger,
-		headers:     args.Headers,
-		stopWait:    args.StopWait,
-		stopChan:    make(chan os.Signal),
+		Address:  address,
+		Router:   router,
+		logger:   args.Logger,
+		headers:  args.Headers,
+		stopWait: args.StopWait,
+		stopChan: make(chan os.Signal),
 		server: &http.Server{
 			Addr:              address,
 			Handler:           router,
@@ -127,7 +117,7 @@ func (a *App) headersMiddleware(next http.Handler) http.Handler {
 }
 
 func (a *App) InstallRoutes(f RouteInstaller) {
-	f(a.Router, a.Environment)
+	f(a.Router)
 }
 
 // Start starts a HTTP server and returns immediately.

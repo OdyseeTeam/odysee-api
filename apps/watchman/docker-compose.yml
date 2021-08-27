@@ -1,0 +1,41 @@
+version: "3"
+
+services:
+  watchman:
+    image: lbry/watchman:latest
+    container_name: watchman
+    restart: on-failure
+    ports:
+      - "8080:8080"
+    volumes:
+      - "./docker-data/geoip:/app/geoip:ro"
+  clickhouse:
+    image: yandex/clickhouse-server:21.3
+    container_name: clickhouse
+    restart: on-failure
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - "clickhouse:/var/lib/clickhouse"
+  grafana:
+    image: grafana/grafana:7.5.4
+    container_name: grafana
+    restart: on-failure
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_INSTALL_PLUGINS=vertamedia-clickhouse-datasource
+    volumes:
+      - "grafana:/var/lib/grafana"
+  geoipupdate:
+    image: "maxmindinc/geoipupdate:v4.7.1"
+    entrypoint:
+      ["/usr/bin/geoipupdate", "-d", "/geoip-data", "-f", "/conf/GeoIP.conf"]
+    volumes:
+      - "./docker-data/geoip-conf:/conf"
+      - "./docker-data/geoip:/geoip-data"
+
+volumes:
+  grafana: {}
+  clickhouse: {}

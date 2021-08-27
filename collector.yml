@@ -1,4 +1,0 @@
-DatabaseDSN: postgres://collector:ZnPfJ!4vTb-nURv8M!JkkuAcjYLYbkiX@localhost:5433
-Database:
-  DBName: collector
-  Options: sslmode=disable

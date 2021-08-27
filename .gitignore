@@ -8,3 +8,5 @@ coverage.*
 packrd/
 *packr.go
 secrets.env
+**/dist/
+**/docker-data/
