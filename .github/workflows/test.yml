@@ -19,6 +19,9 @@ jobs:
       - name: Set up containers
         run: docker-compose up -d lbrynet postgres
 
+      - name: Set up containers
+        run: docker-compose -f apps/watchman/docker-compose.yml up -d clickhouse geoipupdate
+
       - name: Check running containers
         run: docker ps -a
 
