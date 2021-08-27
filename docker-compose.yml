@@ -47,6 +47,5 @@ services:
 
 volumes:
   pgdata: {}
-  pgdata-collector: {}
   storage: {}
   test_storage: {}
