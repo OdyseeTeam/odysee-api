@@ -39,7 +39,6 @@ var method = "publish"
 
 const (
 	FetchSizeLimit = 6000000000
-	fetchTimeout   = 600 * time.Second
 
 	// fileFieldName refers to the POST field containing file upload
 	fileFieldName = "file"
@@ -54,9 +53,13 @@ const (
 	defaultRetryWaitMax   = 30 * time.Second
 	defaultRequestTimeout = 600 * time.Second
 	defaultRetryMax       = 3
+
+	fetchTryLimit   = 3
+	fetchTimeout    = 15 * time.Minute
+	fetchRetryDelay = time.Second
 )
 
-var ErrEmptyRemoteURL = werrors.New("empty remote url")
+var ErrEmptyRemoteURL = &Error{Err: werrors.New("empty remote url")}
 
 // copied from hashicorp/go-retryablehttp/client.go
 var (
@@ -81,6 +84,15 @@ var (
 type Handler struct {
 	UploadPath string
 }
+
+// Error reports an error and the remote URL that caused it.
+type Error struct {
+	URL string
+	Err error
+}
+
+func (e *Error) Unwrap() error { return e.Err }
+func (e *Error) Error() string { return fmt.Sprintf("%s: %q", e.Err, e.URL) }
 
 // observeFailure requires metrics.MeasureMiddleware middleware to be present on the request
 func observeFailure(d float64, kind string) {
@@ -172,9 +184,16 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	log := logger.WithFields(logrus.Fields{"user_id": user.ID, "method_handler": method})
 
+	tries := 1
+
+retry:
+	log = log.WithField("tries", tries)
+	ctx, cancel := context.WithTimeout(r.Context(), fetchTimeout)
+	defer cancel()
+
 	f, err := h.fetchFile(r, user.ID)
 	if err != nil {
-		if err == ErrEmptyRemoteURL {
+		if errors.Is(err, ErrEmptyRemoteURL) {
 			f, err = h.saveFile(r, user.ID)
 			if err != nil {
 				log.Error(err)
@@ -183,11 +202,35 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 				observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
 				return
 			}
-		} else {
+		} else if errors.Is(err, io.ErrUnexpectedEOF) {
 			w.Write(rpcerrors.NewInternalError(err).JSON())
-			observeFailure(metrics.GetDuration(r), metrics.FailureKindClient)
+			observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
 			return
+		} else {
+			tries++
+			if tries > fetchTryLimit {
+				log.WithError(err).Warn("failed to fetch remote file")
+				w.Write(rpcerrors.NewInternalError(err).JSON())
+				observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+				return
+			}
+
+			log.WithError(err).Warnf("retrying fetch remote file")
+			time.Sleep(fetchRetryDelay)
+
+			goto retry
 		}
+	}
+
+	select {
+	case <-ctx.Done():
+		log.WithError(ctx.Err()).Error("hitting timeout while retrying fetch remote file")
+		w.Write(rpcerrors.NewInternalError(ctx.Err()).JSON())
+		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+		return
+
+	default:
+		// all good, continue
 	}
 
 	defer func() {
@@ -347,12 +390,12 @@ func (h Handler) fetchFile(r *http.Request, userID int) (*os.File, error) {
 		http.NoBody,
 	)
 	if err != nil {
-		return nil, werrors.Wrap(err, "error creating request")
+		return nil, &Error{urlstring, werrors.Wrap(err, "error creating request")}
 	}
 
 	fname := path.Base(httpReq.URL.Path)
 	if fname == "/" || fname == "." || fname == "" {
-		return nil, fmt.Errorf("couldn't determine remote file name")
+		return nil, &Error{urlstring, fmt.Errorf("couldn't determine remote file name")}
 	}
 
 	resp, err := c.Do(&retryablehttp.Request{
@@ -362,30 +405,31 @@ func (h Handler) fetchFile(r *http.Request, userID int) (*os.File, error) {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("remote server returned non-OK status %v", resp.StatusCode)
+		return nil, &Error{urlstring, fmt.Errorf("remote server returned non-OK status %v", resp.StatusCode)}
 	}
 
 	defer resp.Body.Close()
 
 	f, err := h.createFile(userID, fname)
 	if err != nil {
-		return nil, err
+		return nil, &Error{urlstring, err}
 	}
 	log.Infof("processing remote file %v", fname)
 
 	numWritten, err := io.Copy(f, resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, &Error{urlstring, err}
 	}
 	if numWritten == 0 {
 		f.Close()
 		os.Remove(f.Name())
-		return f, werrors.New("remote file is empty")
+
+		return f, &Error{urlstring, werrors.New("remote file is empty")}
 	}
 	log.Infof("saved uploaded file %v (%v bytes written)", f.Name(), numWritten)
 
 	if err := f.Close(); err != nil {
-		return f, err
+		return f, &Error{urlstring, err}
 	}
 
 	return f, nil
