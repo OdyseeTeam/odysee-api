@@ -93,11 +93,10 @@ jobs:
         with:
           push: true
           context: apps/${{ steps.service.outputs.service }}/
-          repository: lbry/${{ steps.service.outputs.service }}
           tags: |
             lbry/odysee-${{ steps.service.outputs.service }}:latest
             lbry/odysee-${{ steps.service.outputs.service }}:${{ steps.version.outputs.version }}
-          dockerfile: apps/${{ steps.service.outputs.service }}/Dockerfile
+          file: apps/${{ steps.service.outputs.service }}/Dockerfile
 
       - name: Deploy watchman
         if: steps.service.outputs.service == 'watchman'
