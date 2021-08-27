@@ -69,41 +69,39 @@ jobs:
         with:
           route: POST /repos/:repository/dispatches
           repository: lbryio/lbrytv-deployment
-          event_type: deploy-odysee-api
+          event_type: deploy-odysee
           client_payload: |
             tag: ${{ steps.version.outputs.version }}
             ref: ${{ github.ref }}
             service: odysee-api
 
-      # lbrytv-collector specific section
+      # watchman-specific section
 
-      - name: Build lbrytv-collector
-        if: steps.service.outputs.service == 'collector'
-        run: |
-          go get github.com/markbates/pkger/cmd/pkger
-          make collector
+      - name: Build watchman
+        if: steps.service.outputs.service == 'watchman'
+        run: make watchman
 
-      - name: Build lbrytv-collector docker image
-        if: steps.service.outputs.service == 'collector'
+      - name: Build watchman docker image
+        if: steps.service.outputs.service == 'watchman'
         uses: docker/build-push-action@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-          repository: lbry/lbrytv-${{ steps.service.outputs.service }}
+          repository: lbry/${{ steps.service.outputs.service }}
           tags: latest,${{ steps.version.outputs.version }}
           dockerfile: apps/${{ steps.service.outputs.service }}/Dockerfile
 
-      - name: Deploy lbrytv-collector
-        if: steps.service.outputs.service == 'collector'
+      - name: Deploy watchman
+        if: steps.service.outputs.service == 'watchman'
         uses: octokit/request-action@v2.x
-        id: deploy-collector
+        id: deploy-watchman
         env:
           GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
         with:
           route: POST /repos/:repository/dispatches
           repository: lbryio/lbrytv-deployment
-          event_type: deploy-lbrytv
+          event_type: deploy-odysee
           client_payload: |
             tag: ${{ steps.version.outputs.version }}
             ref: ${{ github.ref }}
-            service: service-${{ steps.service.outputs.service }}
+            service: ${{ steps.service.outputs.service }}
