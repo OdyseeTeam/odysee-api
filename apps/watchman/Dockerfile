@@ -1,7 +1,7 @@
 FROM alpine
 EXPOSE 8080
 
-WORKDIR /app
+RUN apk add --no-cache libc6-compat
 COPY ./dist/linux_amd64/watchman /app
 
 CMD ["/app/watchman", "serve"]
