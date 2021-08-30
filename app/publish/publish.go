@@ -1,15 +1,21 @@
 package publish
 
 import (
+	"context"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"time"
 
+	"github.com/hashicorp/go-cleanhttp"
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/proxy"
 	"github.com/lbryio/lbrytv/app/query"
@@ -33,7 +39,6 @@ var method = "publish"
 
 const (
 	FetchSizeLimit = 6000000000
-	fetchTimeout   = 600 * time.Second
 
 	// fileFieldName refers to the POST field containing file upload
 	fileFieldName = "file"
@@ -42,14 +47,52 @@ const (
 	opName           = "publish"
 	fileNameParam    = "file_path"
 	remoteURLParam   = "remote_url"
+
+	// default http retries config options
+	defaultRetryWaitMin   = 5 * time.Second
+	defaultRetryWaitMax   = 30 * time.Second
+	defaultRequestTimeout = 600 * time.Second
+	defaultRetryMax       = 3
+
+	fetchTryLimit   = 3
+	fetchTimeout    = 15 * time.Minute
+	fetchRetryDelay = time.Second
 )
 
-var ErrEmptyRemoteURL = werrors.New("empty remote url")
+var ErrEmptyRemoteURL = &Error{Err: werrors.New("empty remote url")}
+
+// copied from hashicorp/go-retryablehttp/client.go
+var (
+	// A regular expression to match the error returned by net/http when the
+	// configured number of redirects is exhausted. This error isn't typed
+	// specifically so we resort to matching on the error string.
+	redirectsErrorRe = regexp.MustCompile(`stopped after \d+ redirects\z`)
+
+	// A regular expression to match the error returned by net/http when the
+	// scheme specified in the URL is invalid. This error isn't typed
+	// specifically so we resort to matching on the error string.
+	schemeErrorRe = regexp.MustCompile(`unsupported protocol scheme`)
+
+	// A regular expression to match the error returned by net/http when the
+	// it failed to resolve the host address. The error will be wrapped with
+	// the net/url error and another error, so for convenience we resort to
+	// match the error string instead.
+	lookupHostErrorRe = regexp.MustCompile(`dial tcp: lookup`)
+)
 
 // Handler has path to save uploads to
 type Handler struct {
 	UploadPath string
 }
+
+// Error reports an error and the remote URL that caused it.
+type Error struct {
+	URL string
+	Err error
+}
+
+func (e *Error) Unwrap() error { return e.Err }
+func (e *Error) Error() string { return fmt.Sprintf("%s: %q", e.Err, e.URL) }
 
 // observeFailure requires metrics.MeasureMiddleware middleware to be present on the request
 func observeFailure(d float64, kind string) {
@@ -63,6 +106,63 @@ func observeFailure(d float64, kind string) {
 func observeSuccess(d float64) {
 	metrics.ProxyE2ECallDurations.WithLabelValues(method).Observe(d)
 	metrics.ProxyE2ECallCounter.WithLabelValues(method).Inc()
+}
+
+// retryPolicy is the same as retryablehttp.DefaultRetryPolicy
+// except we log the retryable error for more verbosity and only retry
+// when connections error occured.
+func retryPolicy(ctx context.Context, resp *http.Response, err error) (bool, error) {
+	// do not retry on context.Canceled or context.DeadlineExceeded
+	if ctx.Err() != nil {
+		return false, ctx.Err()
+	}
+
+	// check for http request error
+	if err != nil {
+		if v, ok := err.(*url.Error); ok {
+			// Don't retry if the error was due to too many redirects.
+			if redirectsErrorRe.MatchString(v.Error()) {
+				return false, v
+			}
+
+			// Don't retry if the error was due to an invalid protocol scheme.
+			if schemeErrorRe.MatchString(v.Error()) {
+				return false, v
+			}
+
+			// Don't retry if the error was due to TLS cert verification failure.
+			if _, ok := v.Err.(x509.UnknownAuthorityError); ok {
+				return false, v
+			}
+
+			// Don't retry if the error was due to failure on host
+			// resolution.
+			if lookupHostErrorRe.MatchString(v.Error()) {
+				return false, v
+			}
+		}
+
+		// The error is likely recoverable so retry, but log the error
+		// anyway to get more info if unexpected errors causing issues
+		// in the future.
+		logger.Log().WithError(err).Warn("retrying http request")
+
+		return true, nil
+	}
+
+	// request is success, check the response code.
+	// We retry on 500-range responses to allow the server time to recover,
+	// as 500's are typically not permanent errors and may relate to outages
+	//  on the server side.
+	//
+	// This will catch invalid response codes as well, like 0 and 999.
+	if resp.StatusCode == 0 || (resp.StatusCode >= 500 && resp.StatusCode != 501) {
+		err := fmt.Errorf("unexpected HTTP status code %d", resp.StatusCode)
+		logger.Log().Error(err)
+		return true, err
+	}
+
+	return false, nil
 }
 
 // Handle is where HTTP upload is handled and passed on to Publisher.
@@ -84,9 +184,16 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	log := logger.WithFields(logrus.Fields{"user_id": user.ID, "method_handler": method})
 
+	tries := 1
+
+retry:
+	log = log.WithField("tries", tries)
+	ctx, cancel := context.WithTimeout(r.Context(), fetchTimeout)
+	defer cancel()
+
 	f, err := h.fetchFile(r, user.ID)
 	if err != nil {
-		if err == ErrEmptyRemoteURL {
+		if errors.Is(err, ErrEmptyRemoteURL) {
 			f, err = h.saveFile(r, user.ID)
 			if err != nil {
 				log.Error(err)
@@ -95,11 +202,35 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 				observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
 				return
 			}
-		} else {
+		} else if errors.Is(err, io.ErrUnexpectedEOF) {
 			w.Write(rpcerrors.NewInternalError(err).JSON())
-			observeFailure(metrics.GetDuration(r), metrics.FailureKindClient)
+			observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
 			return
+		} else {
+			tries++
+			if tries > fetchTryLimit {
+				log.WithError(err).Warn("failed to fetch remote file")
+				w.Write(rpcerrors.NewInternalError(err).JSON())
+				observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+				return
+			}
+
+			log.WithError(err).Warnf("retrying fetch remote file")
+			time.Sleep(fetchRetryDelay)
+
+			goto retry
 		}
+	}
+
+	select {
+	case <-ctx.Done():
+		log.WithError(ctx.Err()).Error("hitting timeout while retrying fetch remote file")
+		w.Write(rpcerrors.NewInternalError(ctx.Err()).JSON())
+		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+		return
+
+	default:
+		// all good, continue
 	}
 
 	defer func() {
@@ -109,7 +240,6 @@ func (h Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		if err := os.RemoveAll(filepath.Dir(f.Name())); err != nil {
 			monitor.ErrorToSentry(err, map[string]string{"file_path": f.Name()})
 		}
-
 	}()
 
 	var qCache cache.QueryCache
@@ -232,57 +362,74 @@ func (h Handler) createFile(userID int, origFilename string) (*os.File, error) {
 func (h Handler) fetchFile(r *http.Request, userID int) (*os.File, error) {
 	log := logger.WithFields(logrus.Fields{"user_id": userID, "method_handler": method})
 
-	err := r.ParseMultipartForm(32 << 20) // 32MB
-	if err != nil {
+	if err := r.ParseMultipartForm(32 << 20); err != nil { // 32MB
 		return nil, err
 	}
 
-	url := r.Form.Get(remoteURLParam)
-	if url == "" {
+	urlstring := r.Form.Get(remoteURLParam)
+	if urlstring == "" {
 		return nil, ErrEmptyRemoteURL
 	}
 
-	r, err = http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, werrors.Wrap(err, "error creating request")
-	}
-	fname := path.Base(r.URL.Path)
-	if fname == "/" || fname == "." || fname == "" {
-		return nil, fmt.Errorf("couldn't determine remote file name")
+	c := &retryablehttp.Client{
+		HTTPClient: &http.Client{
+			Transport: cleanhttp.DefaultPooledTransport(),
+			Timeout:   defaultRequestTimeout,
+		},
+		RetryWaitMin: defaultRetryWaitMin,
+		RetryWaitMax: defaultRetryWaitMax,
+		RetryMax:     defaultRetryMax,
+		Backoff:      retryablehttp.DefaultBackoff,
+		CheckRetry:   retryPolicy,
+		ErrorHandler: retryablehttp.PassthroughErrorHandler,
 	}
 
-	c := &http.Client{
-		Timeout: fetchTimeout,
+	httpReq, err := http.NewRequest(
+		http.MethodGet,
+		urlstring,
+		http.NoBody,
+	)
+	if err != nil {
+		return nil, &Error{urlstring, werrors.Wrap(err, "error creating request")}
 	}
-	resp, err := c.Do(r)
+
+	fname := path.Base(httpReq.URL.Path)
+	if fname == "/" || fname == "." || fname == "" {
+		return nil, &Error{urlstring, fmt.Errorf("couldn't determine remote file name")}
+	}
+
+	resp, err := c.Do(&retryablehttp.Request{
+		Request: httpReq,
+	})
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("remote server returned non-OK status %v", resp.StatusCode)
+		return nil, &Error{urlstring, fmt.Errorf("remote server returned non-OK status %v", resp.StatusCode)}
 	}
 
 	defer resp.Body.Close()
 
 	f, err := h.createFile(userID, fname)
 	if err != nil {
-		return nil, err
+		return nil, &Error{urlstring, err}
 	}
 	log.Infof("processing remote file %v", fname)
 
 	numWritten, err := io.Copy(f, resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, &Error{urlstring, err}
 	}
 	if numWritten == 0 {
 		f.Close()
 		os.Remove(f.Name())
-		return f, werrors.New("remote file is empty")
+
+		return f, &Error{urlstring, werrors.New("remote file is empty")}
 	}
 	log.Infof("saved uploaded file %v (%v bytes written)", f.Name(), numWritten)
 
 	if err := f.Close(); err != nil {
-		return f, err
+		return f, &Error{urlstring, err}
 	}
 
 	return f, nil
