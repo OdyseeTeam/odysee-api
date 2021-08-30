@@ -13,6 +13,8 @@ require (
 	github.com/gobuffalo/packr/v2 v2.7.1
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/mux v1.8.0
+	github.com/hashicorp/go-cleanhttp v0.5.1
+	github.com/hashicorp/go-retryablehttp v0.5.3
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a
 	github.com/jinzhu/gorm v1.9.9
 	github.com/jmoiron/sqlx v1.2.0
@@ -52,7 +54,6 @@ require (
 	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.6-0.20210802203754-9b21a8868e16 // indirect
-	google.golang.org/genproto v0.0.0-20210824181836-a4879c3d0e89 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
