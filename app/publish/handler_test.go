@@ -187,7 +187,7 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	var rpcResponse jsonrpc.RPCResponse
 	err = json.Unmarshal(rr.Body.Bytes(), &rpcResponse)
 	require.NoError(t, err)
-	assert.Equal(t, "unexpected EOF", rpcResponse.Error.Message)
+	assert.Equal(t, "request error: unexpected EOF", rpcResponse.Error.Message)
 	require.False(t, publisher.called)
 }
 
