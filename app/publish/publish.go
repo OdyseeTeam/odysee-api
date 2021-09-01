@@ -59,7 +59,7 @@ const (
 	fetchRetryDelay = time.Second
 )
 
-var ErrEmptyRemoteURL = &Error{Err: werrors.New("empty remote url")}
+var ErrEmptyRemoteURL = &FetchError{Err: werrors.New("empty remote url")}
 
 // copied from hashicorp/go-retryablehttp/client.go
 var (
@@ -84,15 +84,6 @@ var (
 type Handler struct {
 	UploadPath string
 }
-
-// Error reports an error and the remote URL that caused it.
-type Error struct {
-	URL string
-	Err error
-}
-
-func (e *Error) Unwrap() error { return e.Err }
-func (e *Error) Error() string { return fmt.Sprintf("%s: %q", e.Err, e.URL) }
 
 // observeFailure requires metrics.MeasureMiddleware middleware to be present on the request
 func observeFailure(d float64, kind string) {
@@ -193,32 +184,42 @@ retry:
 
 	f, err := h.fetchFile(r, user.ID)
 	if err != nil {
-		if errors.Is(err, ErrEmptyRemoteURL) {
-			f, err = h.saveFile(r, user.ID)
-			if err != nil {
-				log.Error(err)
-				monitor.ErrorToSentry(err)
-				w.Write(rpcerrors.NewInternalError(err).JSON())
-				observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
-				return
-			}
-		} else if errors.Is(err, io.ErrUnexpectedEOF) {
+		switch err.(type) {
+		case *RequestError:
 			w.Write(rpcerrors.NewInternalError(err).JSON())
 			observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
 			return
-		} else {
-			tries++
-			if tries > fetchTryLimit {
-				log.WithError(err).Warn("failed to fetch remote file")
-				w.Write(rpcerrors.NewInternalError(err).JSON())
-				observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
-				return
+
+		case *FetchError:
+			if errors.Is(err, ErrEmptyRemoteURL) {
+				f, err = h.saveFile(r, user.ID)
+				if err != nil {
+					log.Error(err)
+					monitor.ErrorToSentry(err)
+					w.Write(rpcerrors.NewInternalError(err).JSON())
+					observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+					return
+				}
+			} else {
+				tries++
+				if tries > fetchTryLimit {
+					log.WithError(err).Warn("failed to fetch remote file")
+					w.Write(rpcerrors.NewInternalError(err).JSON())
+					observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+					return
+				}
+
+				log.WithError(err).Warnf("retrying fetch remote file")
+				time.Sleep(fetchRetryDelay)
+
+				goto retry
 			}
 
-			log.WithError(err).Warnf("retrying fetch remote file")
-			time.Sleep(fetchRetryDelay)
-
-			goto retry
+		default:
+			log.WithError(err).Warn("unexpected error")
+			w.Write(rpcerrors.NewInternalError(err).JSON())
+			observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+			return
 		}
 	}
 
@@ -363,7 +364,7 @@ func (h Handler) fetchFile(r *http.Request, userID int) (*os.File, error) {
 	log := logger.WithFields(logrus.Fields{"user_id": userID, "method_handler": method})
 
 	if err := r.ParseMultipartForm(32 << 20); err != nil { // 32MB
-		return nil, err
+		return nil, &RequestError{Err: err, Msg: "invalid request payload"}
 	}
 
 	urlstring := r.Form.Get(remoteURLParam)
@@ -390,46 +391,46 @@ func (h Handler) fetchFile(r *http.Request, userID int) (*os.File, error) {
 		http.NoBody,
 	)
 	if err != nil {
-		return nil, &Error{urlstring, werrors.Wrap(err, "error creating request")}
+		return nil, &FetchError{urlstring, werrors.Wrap(err, "error creating request")}
 	}
 
 	fname := path.Base(httpReq.URL.Path)
 	if fname == "/" || fname == "." || fname == "" {
-		return nil, &Error{urlstring, fmt.Errorf("couldn't determine remote file name")}
+		return nil, &FetchError{urlstring, fmt.Errorf("couldn't determine remote file name")}
 	}
 
 	resp, err := c.Do(&retryablehttp.Request{
 		Request: httpReq,
 	})
 	if err != nil {
-		return nil, err
+		return nil, &FetchError{urlstring, err}
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, &Error{urlstring, fmt.Errorf("remote server returned non-OK status %v", resp.StatusCode)}
+		return nil, &FetchError{urlstring, fmt.Errorf("remote server returned non-OK status %v", resp.StatusCode)}
 	}
 
 	defer resp.Body.Close()
 
 	f, err := h.createFile(userID, fname)
 	if err != nil {
-		return nil, &Error{urlstring, err}
+		return nil, &FetchError{urlstring, err}
 	}
 	log.Infof("processing remote file %v", fname)
 
 	numWritten, err := io.Copy(f, resp.Body)
 	if err != nil {
-		return nil, &Error{urlstring, err}
+		return nil, &FetchError{urlstring, err}
 	}
 	if numWritten == 0 {
 		f.Close()
 		os.Remove(f.Name())
 
-		return f, &Error{urlstring, werrors.New("remote file is empty")}
+		return f, &FetchError{urlstring, werrors.New("remote file is empty")}
 	}
 	log.Infof("saved uploaded file %v (%v bytes written)", f.Name(), numWritten)
 
 	if err := f.Close(); err != nil {
-		return f, &Error{urlstring, err}
+		return f, &FetchError{urlstring, err}
 	}
 
 	return f, nil
