@@ -21,13 +21,13 @@ import (
 
 var CLI struct {
 	Serve struct {
-		Bind  string `optional name:"bind" help:"Server listening address" default:":8080"`
-		Debug bool   `optional name:"debug" help:"Log request and response bodies"`
-	} `cmd help:"Start watchman service"`
+		Bind  string `optional:"" name:"bind" help:"Server listening address" default:":8080"`
+		Debug bool   `optional:"" name:"debug" help:"Log request and response bodies"`
+	} `cmd:"" help:"Start watchman service"`
 	Generate struct {
-		Number int `required name:"number" help:"Number of records to generate"`
-		Days   int `optional name:"days" help:"Number of records to generate" default:2`
-	} `cmd help:"Generate test data"`
+		Number int `required:"" name:"number" help:"Number of records to generate"`
+		Days   int `optional:"" name:"days" help:"Number of records to generate" default:"2"`
+	} `cmd:"" help:"Generate test data"`
 }
 
 func main() {
@@ -66,7 +66,6 @@ func main() {
 }
 
 func serve(bindF string, dbgF bool) {
-
 	// Initialize the services.
 	var (
 		reporterSvc reporter.Service
