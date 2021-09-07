@@ -1,6 +1,12 @@
 package publish
 
-import "fmt"
+import (
+	"fmt"
+
+	werrors "github.com/pkg/errors"
+)
+
+var ErrEmptyRemoteURL = &FetchError{Err: werrors.New("empty remote url")}
 
 // FetchError reports an error and the remote URL that caused it.
 type FetchError struct {
@@ -18,4 +24,4 @@ type RequestError struct {
 }
 
 func (e *RequestError) Unwrap() error { return e.Err }
-func (e *RequestError) Error() string { return fmt.Sprintf("request error: %s", e.Err) }
+func (e *RequestError) Error() string { return fmt.Sprintf("request error: %q %s", e.Msg, e.Err) }

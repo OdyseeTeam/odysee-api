@@ -73,6 +73,10 @@ func TestMain(m *testing.M) {
 	dbConn, connCleanup := storage.CreateTestConn(params)
 	dbConn.SetDefaultConnection()
 
+	// override this to temp to avoid permission error when running tests on
+	// restricted environment.
+	config.Config.Override("PublishSourceDir", os.TempDir())
+
 	code := m.Run()
 
 	connCleanup()

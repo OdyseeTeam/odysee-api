@@ -23,7 +23,7 @@ func TestAddressForRequest(t *testing.T) {
 		t.Run(val, func(t *testing.T) {
 			r, _ := http.NewRequest(http.MethodGet, "", nil)
 			r.Header.Add("X-Forwarded-For", val)
-			assert.Equal(t, exp, AddressForRequest(r))
+			assert.Equal(t, exp, AddressForRequest(r.Header, r.RemoteAddr))
 		})
 	}
 }

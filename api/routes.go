@@ -22,6 +22,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
+	"github.com/tus/tusd/pkg/filestore"
+	tusd "github.com/tus/tusd/pkg/handler"
 )
 
 var logger = monitor.NewModuleLogger("api")
@@ -31,7 +33,10 @@ func emptyHandler(_ http.ResponseWriter, _ *http.Request) {}
 
 // InstallRoutes sets up global API handlers
 func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
-	upHandler := &publish.Handler{UploadPath: config.GetPublishSourceDir()}
+	uploadPath := config.GetPublishSourceDir()
+	authProvider := auth.NewIAPIProvider(sdkRouter, config.GetInternalAPIHost())
+
+	upHandler := &publish.Handler{UploadPath: uploadPath}
 	r.Use(methodTimer)
 
 	r.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
@@ -40,9 +45,9 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	r.HandleFunc("", emptyHandler)
 
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
-	v1Router.Use(defaultMiddlewares(sdkRouter, config.GetInternalAPIHost()))
+	v1Router.Use(defaultMiddlewares(sdkRouter, authProvider))
 
-	v1Router.HandleFunc("/proxy", upHandler.Handle).MatcherFunc(upHandler.CanHandle)
+	v1Router.HandleFunc("/proxy", upHandler.Handle).MatcherFunc(publish.CanHandle)
 	v1Router.HandleFunc("/proxy", proxy.Handle).Methods(http.MethodPost)
 	v1Router.HandleFunc("/proxy", emptyHandler).Methods(http.MethodOptions)
 
@@ -56,13 +61,33 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	internalRouter.Handle("/metrics", promhttp.Handler())
 
 	v2Router := r.PathPrefix("/api/v2").Subrouter()
-	v2Router.Use(defaultMiddlewares(sdkRouter, config.GetInternalAPIHost()))
+	v2Router.Use(defaultMiddlewares(sdkRouter, authProvider))
 	v2Router.HandleFunc("/status", status.GetStatusV2).Methods(http.MethodGet)
 	v2Router.HandleFunc("/status", emptyHandler).Methods(http.MethodOptions)
+
+	composer := tusd.NewStoreComposer()
+	store := filestore.FileStore{
+		Path: uploadPath,
+	}
+	store.UseIn(composer)
+	tusCfg := tusd.Config{
+		BasePath:      "/api/v2/publish/",
+		StoreComposer: composer,
+	}
+
+	tusHandler, err := publish.NewTusHandler(authProvider, tusCfg, uploadPath)
+	if err != nil {
+		logger.Log().WithError(err).Fatal(err)
+	}
+
+	tusRouter := v2Router.PathPrefix("/publish").Subrouter()
+	tusRouter.HandleFunc("/", tusHandler.PostFile).Methods(http.MethodPost)
+	tusRouter.HandleFunc("/{id}", tusHandler.HeadFile).Methods(http.MethodHead)
+	tusRouter.HandleFunc("/{id}", tusHandler.PatchFile).Methods(http.MethodPatch)
+	tusRouter.HandleFunc("/{id}/notify", tusHandler.Notify).Methods(http.MethodPost)
 }
 
-func defaultMiddlewares(rt *sdkrouter.Router, internalAPIHost string) mux.MiddlewareFunc {
-	authProvider := auth.NewIAPIProvider(rt, internalAPIHost)
+func defaultMiddlewares(rt *sdkrouter.Router, authProvider auth.Provider) mux.MiddlewareFunc {
 	memCache := cache.NewMemoryCache()
 	c := cors.New(cors.Options{
 		AllowedOrigins:   config.GetCORSDomains(),
