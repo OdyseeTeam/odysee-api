@@ -116,7 +116,7 @@ var PlaybackReport = Type("PlaybackReport", func() {
 	})
 	Attribute("bandwidth", Int32, "Client bandwidth, bit/s")
 	Attribute("device", String, "Client device", func() {
-		Enum("ios", "adr", "web", "dsk")
+		Enum("ios", "adr", "web", "dsk", "stb")
 	})
 
 	Required(
