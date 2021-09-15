@@ -2,7 +2,7 @@ version: "3.2"
 
 services:
   lbrynet:
-    image: lbry/lbrynet-tv:0.83.0
+    image: lbry/lbrynet-tv:0.101.1
     ports:
       - "5581:5279"
       - "5279:5279"
@@ -10,18 +10,15 @@ services:
       - storage:/storage
     environment:
       SDK_CONFIG: /daemon/daemon_settings.yml
-      # SDK_LBRYUM_SERVERS: wallet:50001
-      # SDK_LBRYUM_SERVERS: 54.226.124.145:50001
     labels:
       com.centurylinklabs.watchtower.enable: true
   app:
-    image: lbry/odysee-api:latest-dev
+    image: lbry/odysee-api:latest
     ports:
       - 8080:8080
     volumes:
       - storage:/storage
     environment:
-      LW_LBRYNET: http://lbrynet:5279/
       LW_DEBUG: 1
     depends_on:
       - lbrynet

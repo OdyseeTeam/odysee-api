@@ -1,14 +1,14 @@
 LbrynetServers:
-  default: http://localhost:5581/
-  lbrynet1: http://localhost:5581/
-  lbrynet2: http://localhost:5581/
+  default: http://lbrynet:5279/
+  lbrynet1: http://lbrynet:5279/
+  lbrynet2: http://lbrynet:5279/
 
 Debug: 1
 
 InternalAPIHost: https://api.lbry.com
 ProjectURL: https://lbry.tv
 
-DatabaseDSN: postgres://lbrytv:lbrytv@localhost
+DatabaseDSN: postgres://lbrytv:lbrytv@postgres
 Database:
   DBName: lbrytv
   Options: sslmode=disable

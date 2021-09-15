@@ -45,9 +45,6 @@ func init() {
 	c.Viper.SetDefault("FreeContentURL", "http://localhost:8080/content/")
 	c.Viper.SetDefault("ReflectorTimeout", int64(10))
 	c.Viper.SetDefault("RefractorTimeout", int64(10))
-
-	c.Viper.AddConfigPath(os.Getenv("LBRYTV_CONFIG_DIR"))
-	c.Viper.AddConfigPath(ProjectRoot())
 }
 
 func ProjectRoot() string {
