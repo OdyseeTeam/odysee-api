@@ -6,54 +6,19 @@ This is the API server used by [Odysee](https://odysee.com), mostly acting as a 
 
 ![Tests](https://github.com/lbryio/odysee-api/actions/workflows/test.yml/badge.svg) [![Coverage](https://img.shields.io/coveralls/github/lbryio/lbrytv.svg)](https://coveralls.io/github/lbryio/lbrytv)
 
-## Running with Docker
-
-This is the recommended method for frontend development.
-
-Make sure you have recent enough Docker and `docker-compose` installed.
-
-**1. Initialize and launch the containers**
-
-This will pull and launch SDK and postgres images, which Odysee API requires to operate.
-
-`docker-compose up app`
-
-*Note: if you're running a LBRY desktop app or lbrynet instance, you will have to either shut it down or change ports*
-
-**2. Setup up the database schema if this is your first launch**
-
-`docker-compose run app ./lbrytv db_migrate_up`
-
-**3. Clone [lbry-desktop](https://github.com/lbryio/lbry-desktop/) repo, if you don't have it**
-
-```
-cd ..
-git clone git@github.com:lbryio/lbry-desktop.git
-```
-
-**4. Launch UI in lbry-desktop repo folder**
-
-```
-LBRY_WEB_API=http://localhost:8080 yarn dev:web
-```
-
-**5. Open http://localhost:9090/ in Chrome or Firefox for best experience**
-
-## Running off the source (if you want to modify things)
-
-You still might want to use `docker` and `docker-compose` for running SDK and DB containers.
+## Running off source (the preferred way for development)
 
 **1. Launch the containers**
 
 `docker-compose up -d postgres lbrynet`
 
-*Note: if you're running a LBRY desktop app or a lbrynet instance, you will have to either shut it down or change ports*
+*Note: if you're running a LBRY desktop app or a lbrynet instance, you will have to either shut it down or change its ports*
 
 **2. Setup up the database schema if this is your first launch**
 
 `go run . db_migrate_up`
 
-**3. Generate .rsa file**
+**3. Generate RSA key file**
 
 `ssh-keygen -t rsa -f token_privkey.rsa -m pem`
 
@@ -73,6 +38,33 @@ git clone git@github.com:lbryio/lbry-desktop.git
 ```
 SDK_API_URL=http://localhost:8080 yarn dev:web
 ```
+
+## Running with Docker
+
+Make sure you have recent enough Docker and `docker-compose` installed.
+
+**1. Initialize and launch the containers**
+
+This will pull and launch SDK and postgres images, which Odysee API requires to operate.
+
+`docker-compose up app`
+
+*Note: if you're running a LBRY desktop app or lbrynet instance, you will have to either shut it down or change ports*
+
+**2. Clone [lbry-desktop](https://github.com/lbryio/lbry-desktop/) repo, if you don't have it**
+
+```
+cd ..
+git clone git@github.com:lbryio/lbry-desktop.git
+```
+
+**3. Launch UI in lbry-desktop repo folder**
+
+```
+LBRY_WEB_API=http://localhost:8080 yarn dev:web
+```
+
+**4. Open http://localhost:9090/ in Chrome or Firefox for best experience**
 
 ## Testing
 
