@@ -95,12 +95,13 @@ definitions:
       device:
         type: string
         description: Client device
-        example: ios
+        example: dsk
         enum:
         - ios
         - adr
         - web
         - dsk
+        - stb
       duration:
         type: integer
         description: Duration of time between event calls in ms (aiming for between
@@ -156,7 +157,7 @@ definitions:
     example:
       bandwidth: 431507972
       cache: miss
-      device: web
+      device: adr
       duration: 30000
       player: sg-p2
       position: 1850104351
