@@ -47,10 +47,10 @@ func Connect(url string, dbName string) error {
 
 func prepareArgs(r *reporter.PlaybackReport, addr string, ts string) ([]interface{}, error) {
 	var (
-		t     time.Time
-		err   error
-		rate  uint32
-		cache string
+		t                  time.Time
+		err                error
+		bandwidth, bitrate uint32
+		cache              string
 	)
 	if ts != "" {
 		t, err = time.Parse(time.RFC1123Z, ts)
@@ -63,7 +63,10 @@ func prepareArgs(r *reporter.PlaybackReport, addr string, ts string) ([]interfac
 	area, subarea := getArea(addr)
 
 	if r.Bandwidth != nil {
-		rate = uint32(*r.Bandwidth)
+		bandwidth = uint32(*r.Bandwidth)
+	}
+	if r.Bitrate != nil {
+		bitrate = uint32(*r.Bitrate)
 	}
 	if r.Cache != nil {
 		cache = (*r.Cache)
@@ -83,7 +86,8 @@ func prepareArgs(r *reporter.PlaybackReport, addr string, ts string) ([]interfac
 		cache,
 		r.Player,
 		r.UserID,
-		rate,
+		bandwidth,
+		bitrate,
 		r.Device,
 		area,
 		subarea,
@@ -130,7 +134,7 @@ func BatchWrite(r *reporter.PlaybackReport, addr string, ts string) error {
 }
 
 func prepareWrite(tx *sql.Tx) (*sql.Stmt, error) {
-	return tx.Prepare(prepareInsertQuery("(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+	return tx.Prepare(prepareInsertQuery("(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
 }
 
 func ping() {
@@ -146,7 +150,7 @@ func prepareInsertQuery(values string) string {
 	return fmt.Sprintf(`
 		INSERT INTO %v.playback
 			(URL, Duration, Timestamp, Position, RelPosition, RebufCount,
-				RebufDuration, Protocol, Cache, Player, UserID, Bandwidth, Device, Area, SubArea, IP)
+				RebufDuration, Protocol, Cache, Player, UserID, Bandwidth, Bitrate, Device, Area, SubArea, IP)
 		VALUES %v
 	`, database, values)
 }

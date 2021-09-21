@@ -40,16 +40,17 @@ paths:
             schema:
               $ref: '#/components/schemas/AddRequestBody'
             example:
-              bandwidth: 356512143
+              bandwidth: 64944106
+              bitrate: 13952061
               cache: miss
-              device: adr
+              device: ios
               duration: 30000
               player: sg-p2
-              position: 615768058
-              protocol: stb
-              rebuf_count: 1869209513
-              rebuf_duration: 15930
-              rel_position: 86
+              position: 1045058586
+              protocol: hls
+              rebuf_count: 2095695930
+              rebuf_duration: 38439
+              rel_position: 13
               url: '@veritasium#f/driverless-cars-are-already-here#1'
               user_id: "432521"
       responses:
@@ -71,12 +72,17 @@ components:
         bandwidth:
           type: integer
           description: Client bandwidth, bit/s
-          example: 938401497
+          example: 1390789543
+          format: int32
+        bitrate:
+          type: integer
+          description: Media bitrate, bit/s
+          example: 1028310977
           format: int32
         cache:
           type: string
           description: Cache status of video
-          example: player
+          example: local
           enum:
           - local
           - player
@@ -84,7 +90,7 @@ components:
         device:
           type: string
           description: Client device
-          example: stb
+          example: dsk
           enum:
           - ios
           - adr
@@ -106,7 +112,7 @@ components:
         position:
           type: integer
           description: Current playback report stream position, ms
-          example: 1259307073
+          example: 1479834203
           minimum: 0
         protocol:
           type: string
@@ -118,18 +124,18 @@ components:
         rebuf_count:
           type: integer
           description: Rebuffering events count during the interval
-          example: 1825042135
+          example: 938401497
           minimum: 0
         rebuf_duration:
           type: integer
           description: Sum of total rebuffering events duration in the interval, ms
-          example: 662
+          example: 9948
           minimum: 0
           maximum: 60000
         rel_position:
           type: integer
           description: Relative stream position, pct, 0—100
-          example: 43
+          example: 48
           minimum: 0
           maximum: 100
         url:
@@ -144,16 +150,17 @@ components:
           minLength: 1
           maxLength: 45
       example:
-        bandwidth: 1770612318
+        bandwidth: 896952264
+        bitrate: 856140610
         cache: player
-        device: adr
+        device: web
         duration: 30000
         player: sg-p2
-        position: 155490916
+        position: 1517669849
         protocol: stb
-        rebuf_count: 1390789543
-        rebuf_duration: 30977
-        rel_position: 78
+        rebuf_count: 1305791291
+        rebuf_duration: 5764
+        rel_position: 18
         url: '@veritasium#f/driverless-cars-are-already-here#1'
         user_id: "432521"
       required:

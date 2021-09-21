@@ -30,16 +30,17 @@ func UsageCommands() string {
 // UsageExamples produces an example of a valid invocation of the CLI tool.
 func UsageExamples() string {
 	return os.Args[0] + ` reporter add --body '{
-      "bandwidth": 356512143,
+      "bandwidth": 64944106,
+      "bitrate": 13952061,
       "cache": "miss",
-      "device": "adr",
+      "device": "ios",
       "duration": 30000,
       "player": "sg-p2",
-      "position": 615768058,
-      "protocol": "stb",
-      "rebuf_count": 1869209513,
-      "rebuf_duration": 15930,
-      "rel_position": 86,
+      "position": 1045058586,
+      "protocol": "hls",
+      "rebuf_count": 2095695930,
+      "rebuf_duration": 38439,
+      "rel_position": 13,
       "url": "@veritasium#f/driverless-cars-are-already-here#1",
       "user_id": "432521"
    }'` + "\n" +
@@ -170,16 +171,17 @@ Add implements add.
 
 Example:
     %[1]s reporter add --body '{
-      "bandwidth": 356512143,
+      "bandwidth": 64944106,
+      "bitrate": 13952061,
       "cache": "miss",
-      "device": "adr",
+      "device": "ios",
       "duration": 30000,
       "player": "sg-p2",
-      "position": 615768058,
-      "protocol": "stb",
-      "rebuf_count": 1869209513,
-      "rebuf_duration": 15930,
-      "rel_position": 86,
+      "position": 1045058586,
+      "protocol": "hls",
+      "rebuf_count": 2095695930,
+      "rebuf_duration": 38439,
+      "rel_position": 13,
       "url": "@veritasium#f/driverless-cars-are-already-here#1",
       "user_id": "432521"
    }'

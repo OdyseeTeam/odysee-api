@@ -27,7 +27,7 @@ func EnrichPlaybackReportFactory(f *factory.Factory) *factory.Factory {
 			randomdata.Alphanumeric(32),
 		), nil
 	}).Attr("Position", func(args factory.Args) (interface{}, error) {
-		return int32(randomdata.Number(0, 1000000)), nil
+		return int32(randomdata.Number(0, 1_000_000)), nil
 	}).Attr("Duration", func(args factory.Args) (interface{}, error) {
 		return int32(30000), nil
 	}).Attr("RelPosition", func(args factory.Args) (interface{}, error) {
@@ -43,7 +43,10 @@ func EnrichPlaybackReportFactory(f *factory.Factory) *factory.Factory {
 	}).Attr("UserID", func(args factory.Args) (interface{}, error) {
 		return fmt.Sprint(randomdata.Number(100000, 150000)), nil
 	}).Attr("Bandwidth", func(args factory.Args) (interface{}, error) {
-		v := int32(randomdata.Number(128000, 3000000))
+		v := int32(randomdata.Number(128000, 3_000_000))
+		return &v, nil
+	}).Attr("Bitrate", func(args factory.Args) (interface{}, error) {
+		v := int32(randomdata.Number(1_000_000, 3_000_000))
 		return &v, nil
 	}).Attr("Device", func(args factory.Args) (interface{}, error) {
 		return randomdata.StringSample("ios", "adr", "web"), nil

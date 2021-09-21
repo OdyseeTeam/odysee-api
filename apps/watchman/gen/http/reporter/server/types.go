@@ -40,6 +40,8 @@ type AddRequestBody struct {
 	UserID *string `form:"user_id,omitempty" json:"user_id,omitempty" xml:"user_id,omitempty"`
 	// Client bandwidth, bit/s
 	Bandwidth *int32 `form:"bandwidth,omitempty" json:"bandwidth,omitempty" xml:"bandwidth,omitempty"`
+	// Media bitrate, bit/s
+	Bitrate *int32 `form:"bitrate,omitempty" json:"bitrate,omitempty" xml:"bitrate,omitempty"`
 	// Client device
 	Device *string `form:"device,omitempty" json:"device,omitempty" xml:"device,omitempty"`
 }
@@ -73,6 +75,7 @@ func NewAddPlaybackReport(body *AddRequestBody) *reporter.PlaybackReport {
 		Player:        *body.Player,
 		UserID:        *body.UserID,
 		Bandwidth:     body.Bandwidth,
+		Bitrate:       body.Bitrate,
 		Device:        *body.Device,
 	}
 

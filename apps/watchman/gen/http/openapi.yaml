@@ -82,12 +82,17 @@ definitions:
       bandwidth:
         type: integer
         description: Client bandwidth, bit/s
-        example: 1997303752
+        example: 1850104351
+        format: int32
+      bitrate:
+        type: integer
+        description: Media bitrate, bit/s
+        example: 611106208
         format: int32
       cache:
         type: string
         description: Cache status of video
-        example: miss
+        example: local
         enum:
         - local
         - player
@@ -95,7 +100,7 @@ definitions:
       device:
         type: string
         description: Client device
-        example: dsk
+        example: web
         enum:
         - ios
         - adr
@@ -117,7 +122,7 @@ definitions:
       position:
         type: integer
         description: Current playback report stream position, ms
-        example: 13952061
+        example: 2068464011
         minimum: 0
       protocol:
         type: string
@@ -129,18 +134,18 @@ definitions:
       rebuf_count:
         type: integer
         description: Rebuffering events count during the interval
-        example: 2068464011
+        example: 108657605
         minimum: 0
       rebuf_duration:
         type: integer
         description: Sum of total rebuffering events duration in the interval, ms
-        example: 36499
+        example: 52192
         minimum: 0
         maximum: 60000
       rel_position:
         type: integer
         description: Relative stream position, pct, 0—100
-        example: 37
+        example: 99
         minimum: 0
         maximum: 100
       url:
@@ -155,16 +160,17 @@ definitions:
         minLength: 1
         maxLength: 45
     example:
-      bandwidth: 431507972
-      cache: miss
+      bandwidth: 1124249943
+      bitrate: 1825042135
+      cache: player
       device: adr
       duration: 30000
       player: sg-p2
-      position: 1850104351
+      position: 1501556176
       protocol: stb
-      rebuf_count: 1674309275
-      rebuf_duration: 56176
-      rel_position: 8
+      rebuf_count: 1077102125
+      rebuf_duration: 47972
+      rel_position: 14
       url: '@veritasium#f/driverless-cars-are-already-here#1'
       user_id: "432521"
     required:

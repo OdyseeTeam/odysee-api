@@ -54,6 +54,8 @@ type PlaybackReport struct {
 	UserID string
 	// Client bandwidth, bit/s
 	Bandwidth *int32
+	// Media bitrate, bit/s
+	Bitrate *int32
 	// Client device
 	Device string
 }

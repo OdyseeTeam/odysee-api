@@ -28,6 +28,7 @@ func MigrateUp(dbName string) error {
 		"Player" FixedString(16),
 		"UserID" String,
 		"Bandwidth" UInt32,
+		"Bitrate" UInt32,
 		"Device" FixedString(3),
 		"Area" FixedString(2),
 		"SubArea" FixedString(3),
