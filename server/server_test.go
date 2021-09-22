@@ -29,6 +29,10 @@ func TestMain(m *testing.M) {
 
 	defer connCleanup()
 
+	// override this to temp to avoid permission error when running tests on
+	// restricted environment.
+	config.Config.Override("PublishSourceDir", os.TempDir())
+
 	os.Exit(m.Run())
 }
 

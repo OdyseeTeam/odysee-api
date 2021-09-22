@@ -13,7 +13,7 @@ var logger = monitor.NewModuleLogger("ip")
 
 // most of this is from https://husobee.github.io/golang/ip-address/2015/12/17/remote-ip-go.html
 
-//ipRange holds the start and end of a range of ip addresses
+// ipRange holds the start and end of a range of ip addresses
 type ipRange struct {
 	start net.IP
 	end   net.IP
@@ -71,9 +71,9 @@ func IsPrivateSubnet(ipAddress net.IP) bool {
 }
 
 // AddressForRequest returns the real IP address of the request
-func AddressForRequest(r *http.Request) string {
+func AddressForRequest(headers http.Header, remoteAddr string) string {
 	for _, h := range []string{"X-Forwarded-For", "X-Real-Ip"} {
-		addresses := strings.Split(r.Header.Get(h), ",")
+		addresses := strings.Split(headers.Get(h), ",")
 		// march from right to left until we get a public address
 		// that will be the address right before our proxy.
 		for i := len(addresses) - 1; i >= 0; i-- {
@@ -88,7 +88,7 @@ func AddressForRequest(r *http.Request) string {
 		}
 	}
 
-	ipParts := strings.Split(r.RemoteAddr, ":")
+	ipParts := strings.Split(remoteAddr, ":")
 	addr := strings.Join(ipParts[:len(ipParts)-1], ":")
 
 	if addr == "[::1]" {

@@ -22,7 +22,7 @@ func FromRequest(r *http.Request) string {
 // Middleware will attach remote user IP to every request
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		remoteIP := AddressForRequest(r)
+		remoteIP := AddressForRequest(r.Header, r.RemoteAddr)
 		next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), contextKey, remoteIP)))
 	})
 }

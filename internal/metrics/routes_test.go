@@ -3,9 +3,11 @@ package metrics_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/lbryio/lbrytv/api"
+	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -48,6 +50,10 @@ func testMetricUIEvent(t *testing.T, method, name, value string) *httptest.Respo
 		q.Add("value", value)
 	}
 	req.URL.RawQuery = q.Encode()
+
+	// override this to temp to avoid permission error when running tests on
+	// restricted environment.
+	config.Config.Override("PublishSourceDir", os.TempDir())
 
 	r := mux.NewRouter()
 	api.InstallRoutes(r, nil)
