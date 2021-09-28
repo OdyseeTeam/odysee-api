@@ -102,7 +102,7 @@ This project is MIT licensed. For the full license, see [LICENSE](LICENSE).
 ## Security
 
 We take security seriously. Please contact security@lbry.io regarding any issues you may encounter.
-Our PGP key is [here](https://keybase.io/lbry/key.asc) if you need it.
+Our PGP key is [here](https://lbry.com/faq/pgp-key) if you need it.
 
 
 ## Contact
