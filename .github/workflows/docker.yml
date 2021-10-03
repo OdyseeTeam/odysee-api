@@ -53,7 +53,7 @@ jobs:
         if: steps.service.outputs.service == 'api'
         run: |
           go get github.com/gobuffalo/packr/v2/packr2@v2.7.1
-          goreleaser build --rm-dist --skip-validate
+          goreleaser --snapshot --rm-dist --skip-validate
 
       - name: Build odysee-api docker image
         if: steps.service.outputs.service == 'api'
