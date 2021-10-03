@@ -253,7 +253,7 @@ func TestNotify(t *testing.T) {
 
 		r.Header.Set(wallet.TokenHeader, "uPldrToken")
 
-		newTestMux(h, auth.Middleware(mockAuthProvider)).ServeHTTP(w, r)
+		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
 
 		respBody, err := ioutil.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
@@ -276,7 +276,7 @@ func TestNotify(t *testing.T) {
 
 		r.Header.Set(wallet.TokenHeader, "uPldrToken")
 
-		newTestMux(h, auth.Middleware(mockAuthProvider)).ServeHTTP(w, r)
+		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
 
 		respBody, err := ioutil.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
@@ -306,7 +306,7 @@ func TestNotify(t *testing.T) {
 
 		r.Header.Set(wallet.TokenHeader, "uPldrToken")
 
-		newTestMux(h, auth.Middleware(mockAuthProvider)).ServeHTTP(w, r)
+		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
 
 		response := w.Result()
 		respBody, err := ioutil.ReadAll(response.Body)
