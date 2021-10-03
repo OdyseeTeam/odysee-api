@@ -9,8 +9,8 @@ on:
       - master
 
 jobs:
-  release:
-    name: Release
+  docker:
+    name: Docker
     runs-on: ubuntu-latest
     # if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
