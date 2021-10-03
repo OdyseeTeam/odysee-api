@@ -36,8 +36,6 @@ jobs:
         id: version
         run: echo "::set-output name=version::$(git describe --tags|sed -e 's/.*\-v//')"
 
-      - run: echo "::warning ::Release ${{ steps.service.outputs.service }} v${{ steps.version.outputs.version }}"
-
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
         with:
@@ -55,7 +53,7 @@ jobs:
         if: steps.service.outputs.service == 'api'
         run: |
           go get github.com/gobuffalo/packr/v2/packr2@v2.7.1
-          goreleaser --rm-dist --snapshot
+          goreleaser build --rm-dist --snapshot
 
       - name: Build odysee-api docker image
         if: steps.service.outputs.service == 'api'
