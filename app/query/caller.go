@@ -366,17 +366,24 @@ func isErrWalletAlreadyLoaded(r *jsonrpc.RPCResponse) bool {
 	return r.Error != nil && errors.Is(lbrynet.NewWalletError(0, errors.Err(r.Error.Message)), lbrynet.ErrWalletAlreadyLoaded)
 }
 
-// Makes a shallow copy of a map, cutting the size of the lists inside it
+// cutSublistsToSize makes a copy of a map, cutting the size of the lists inside it
 // to at most num, made for declogging logs
 func cutSublistsToSize(m map[string]interface{}, num int) map[string]interface{} {
-	ret := make(map[string]interface{}, len(m))
+
+	ret := make(map[string]interface{})
 	for key, value := range m {
 		switch value.(type) {
 		case []interface{}:
-			if len(value.([]interface{})) < num {
+
+			amountSkipped := len(value.([]interface{})) - num
+			if amountSkipped <= num {
 				ret[key] = value
 			} else {
-				ret[key] = value.([]interface{})[0:num]
+				cutValue := make([]interface{}, num+1)
+				copy(cutValue, value.([]interface{})[0:num])
+
+				cutValue[num] = fmt.Sprintf("... (%d skipped)", amountSkipped)
+				ret[key] = cutValue
 			}
 		default:
 			ret[key] = value
