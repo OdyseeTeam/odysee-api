@@ -376,7 +376,7 @@ func cutSublistsToSize(m map[string]interface{}, num int) map[string]interface{}
 		case []interface{}:
 
 			amountSkipped := len(value.([]interface{})) - num
-			if amountSkipped <= num {
+			if amountSkipped <= 0 {
 				ret[key] = value
 			} else {
 				cutValue := make([]interface{}, num+1)

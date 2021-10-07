@@ -939,3 +939,20 @@ func TestCaller_LogLevels(t *testing.T) {
 	assert.Nil(t, hook.LastEntry().Data["params"])
 	assert.Equal(t, logrus.DebugLevel, e.Level)
 }
+
+func TestCaller_cutSublistsToSize(t *testing.T) {
+	mockListBig := []interface{}{"1234", "1235", "1237", "9876", "0000", "1111", "9123"}
+
+	mockParamsBig := map[string]interface{}{"channel_ids": mockListBig,
+		"include_protobuf": true, "claim_type": []interface{}{"stream"}}
+
+	mockListBigCpy := make([]interface{}, len(mockListBig))
+	copy(mockListBigCpy, mockListBig)
+
+	mockParamsBigCut := cutSublistsToSize(mockParamsBig, maxListSizeLogged)
+
+	assert.NotEqual(t, mockParamsBigCut, mockParamsBig)
+	assert.Equal(t, mockParamsBig["claim_type"], mockParamsBigCut["claim_type"])
+	assert.Equal(t, mockListBig[0:5], mockParamsBigCut["channel_ids"].([]interface{})[0:5])
+	assert.Equal(t, mockListBig, mockListBigCpy)
+}
