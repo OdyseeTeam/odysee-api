@@ -7,7 +7,7 @@ RUN apk update && \
     openssh-keygen
 
 WORKDIR /app
-COPY dist/lbrytv_linux_amd64/lbrytv /app
+COPY dist/linux_amd64/lbrytv /app
 COPY ./docker/lbrytv.yml ./config/lbrytv.yml
 COPY ./docker/launcher.sh ./
 
