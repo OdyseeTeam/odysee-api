@@ -38,18 +38,11 @@ jobs:
           go-version: ^1.16
         id: go
 
-      - name: Install GoReleaser
-        uses: goreleaser/goreleaser-action@v2
-        with:
-          install-only: true
-
       # odysee-api deployment
 
       - name: Build odysee-api
         if: steps.service.outputs.service == 'api'
-        run: |
-          go get github.com/gobuffalo/packr/v2/packr2@v2.7.1
-          goreleaser --rm-dist --snapshot
+        run: make api
 
       - name: Build odysee-api docker image
         if: steps.service.outputs.service == 'api'

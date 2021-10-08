@@ -1,4 +1,5 @@
 date := $(shell date "+%Y-%m-%d-%H-%M")
+api_version := $(shell git describe --tags --match 'watchman-v*'|sed -e 's/.*\-v//')
 watchman_version := $(shell git describe --tags --match 'watchman-v*'|sed -e 's/.*\-v//')
 git_hash := $(shell git rev-parse --short HEAD)
 
@@ -24,12 +25,7 @@ test_circleci:
 	go test -covermode=count -coverprofile=coverage.out ./...
 	goveralls -coverprofile=coverage.out -service=circle-ci -ignore=models/ -repotoken $(COVERALLS_TOKEN)
 
-release:
-	GO111MODULE=on goreleaser --rm-dist
-
-snapshot:
-	GO111MODULE=on goreleaser --snapshot --rm-dist
-
+.PHONY: clean
 clean:
 	find . -name rice-box.go | xargs rm
 	rm -rf ./dist
@@ -53,6 +49,13 @@ get_sqlboiler:
 .PHONY: models
 models: get_sqlboiler
 	sqlboiler --add-global-variants --wipe psql --no-context
+
+.PHONY: api
+api:
+	GOARCH=amd64 GOOS=linux go build \
+		-o dist/linux_amd64/lbrytv \
+		-ldflags "-X github.com/lbryio/lbrytv/version.version=$(api_version) -X github.com/lbryio/lbrytv/version.commit=$(git_hash) -X github.com/lbryio/lbrytv/apps/version.buildDate=$(date)" \
+		./cmd/
 
 watchman:
 	GOARCH=amd64 GOOS=linux go build \
