@@ -956,3 +956,45 @@ func TestCaller_cutSublistsToSize(t *testing.T) {
 	assert.Equal(t, mockListBig[0:5], mockParamsBigCut["channel_ids"].([]interface{})[0:5])
 	assert.Equal(t, mockListBig, mockListBigCpy)
 }
+
+func TestCaller_JSONRPCNotCut(t *testing.T) {
+	srv := test.MockHTTPServer(nil)
+	defer srv.Close()
+	srv.NextResponse <- `
+	{
+		"jsonrpc": "2.0",
+		"result": {
+		  "blocked": {
+			"channels": [],
+			"total": 0
+		  },
+		  "items": [
+			{
+			  "address": "bHz3LpVcuadmbK8g6VVUszF9jjH4pxG2Ct",
+			  "amount": "0.5",
+			  "canonical_url": "lbry://@lbry#3f/youtube-is-over-lbry-odysee-are-here#4"
+			}
+		  ]
+		},
+		"id": 0
+	}
+	`
+
+	c := NewCaller(srv.URL, 0)
+	c.Cache = cache.NewMemoryCache()
+
+	channelIds := []interface{}{"1234", "4321", "5678", "8765", "9999", "0000", "1111"}
+	params := map[string]interface{}{"channel_ids": channelIds, "urls": "what", "number": 1}
+
+	channelIdscpy := make([]interface{}, len(channelIds))
+	copy(channelIdscpy, channelIds)
+
+	req := jsonrpc.NewRequest("claim_search", params)
+
+	_, err := c.Call(req)
+	require.NoError(t, err)
+
+	assert.Equal(t, channelIdscpy, req.Params.(map[string]interface{})["channel_ids"])
+	assert.NotContains(t, req.Params.(map[string]interface{})["channel_ids"], "... (2 skipped)")
+	assert.Equal(t, req.Params.(map[string]interface{})["urls"], "what")
+}
