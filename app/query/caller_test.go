@@ -995,6 +995,5 @@ func TestCaller_JSONRPCNotCut(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, channelIdscpy, req.Params.(map[string]interface{})["channel_ids"])
-	assert.NotContains(t, req.Params.(map[string]interface{})["channel_ids"], "... (2 skipped)")
 	assert.Equal(t, req.Params.(map[string]interface{})["urls"], "what")
 }
