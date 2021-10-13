@@ -52,7 +52,7 @@ models: get_sqlboiler
 
 .PHONY: api
 api:
-	GOARCH=amd64 GOOS=linux go build \
+	CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build \
 		-o dist/linux_amd64/lbrytv \
 		-ldflags "-s -w -X github.com/lbryio/lbrytv/version.version=$(api_version) -X github.com/lbryio/lbrytv/version.commit=$(git_hash) -X github.com/lbryio/lbrytv/apps/version.buildDate=$(date)" \
 		.
