@@ -259,9 +259,12 @@ func (c *Caller) SendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 		"user_id":  c.userID,
 		"duration": c.Duration,
 	}
-	// Don't log query params for "sync_apply" method
+	// Don't log query params for "sync_apply" method,
+	// and also log only some entries of lists to avoid clogging
 	if q.Method() != MethodSyncApply {
-		logFields["params"] = q.Params()
+		paramMap := q.ParamsAsMap()
+		paramCut := cutSublistsToSize(paramMap, maxListSizeLogged)
+		logFields["params"] = paramCut
 	}
 	logEntry := logger.WithFields(logFields)
 
@@ -361,4 +364,30 @@ func isErrWalletNotLoaded(r *jsonrpc.RPCResponse) bool {
 
 func isErrWalletAlreadyLoaded(r *jsonrpc.RPCResponse) bool {
 	return r.Error != nil && errors.Is(lbrynet.NewWalletError(0, errors.Err(r.Error.Message)), lbrynet.ErrWalletAlreadyLoaded)
+}
+
+// cutSublistsToSize makes a copy of a map, cutting the size of the lists inside it
+// to at most num, made for declogging logs
+func cutSublistsToSize(m map[string]interface{}, num int) map[string]interface{} {
+
+	ret := make(map[string]interface{})
+	for key, value := range m {
+		switch value.(type) {
+		case []interface{}:
+
+			amountSkipped := len(value.([]interface{})) - num
+			if amountSkipped <= 0 {
+				ret[key] = value
+			} else {
+				cutValue := make([]interface{}, num+1)
+				copy(cutValue, value.([]interface{})[0:num])
+
+				cutValue[num] = fmt.Sprintf("... (%d skipped)", amountSkipped)
+				ret[key] = cutValue
+			}
+		default:
+			ret[key] = value
+		}
+	}
+	return ret
 }

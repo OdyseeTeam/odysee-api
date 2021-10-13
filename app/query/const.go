@@ -2,6 +2,7 @@ package query
 
 const (
 	cacheResolveLongerThan = 10
+	maxListSizeLogged      = 5
 
 	MethodGet              = "get"
 	MethodFileList         = "file_list"
@@ -71,7 +72,7 @@ var walletSpecificMethods = []string{
 	"channel_export",
 	"channel_import",
 	"channel_sign",
-	
+
 	"collection_list",
 	"collection_create",
 	"collection_update",
