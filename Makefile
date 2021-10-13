@@ -1,5 +1,5 @@
 date := $(shell date "+%Y-%m-%d-%H-%M")
-api_version := $(shell git describe --tags --match 'watchman-v*'|sed -e 's/.*\-v//')
+api_version := $(shell git describe --tags --match 'api-v*'|sed -e 's/.*\-v//')
 watchman_version := $(shell git describe --tags --match 'watchman-v*'|sed -e 's/.*\-v//')
 git_hash := $(shell git rev-parse --short HEAD)
 
@@ -55,7 +55,7 @@ api:
 	GOARCH=amd64 GOOS=linux go build \
 		-o dist/linux_amd64/lbrytv \
 		-ldflags "-X github.com/lbryio/lbrytv/version.version=$(api_version) -X github.com/lbryio/lbrytv/version.commit=$(git_hash) -X github.com/lbryio/lbrytv/apps/version.buildDate=$(date)" \
-		./cmd/
+		.
 
 watchman:
 	GOARCH=amd64 GOOS=linux go build \
