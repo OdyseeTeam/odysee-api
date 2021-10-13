@@ -81,10 +81,12 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	}
 
 	tusRouter := v2Router.PathPrefix("/publish").Subrouter()
+	tusRouter.Use(tusHandler.Middleware)
 	tusRouter.HandleFunc("/", tusHandler.PostFile).Methods(http.MethodPost)
 	tusRouter.HandleFunc("/{id}", tusHandler.HeadFile).Methods(http.MethodHead)
 	tusRouter.HandleFunc("/{id}", tusHandler.PatchFile).Methods(http.MethodPatch)
 	tusRouter.HandleFunc("/{id}/notify", tusHandler.Notify).Methods(http.MethodPost)
+	tusRouter.PathPrefix("/").HandlerFunc(emptyHandler).Methods(http.MethodOptions)
 }
 
 func defaultMiddlewares(rt *sdkrouter.Router, authProvider auth.Provider) mux.MiddlewareFunc {
