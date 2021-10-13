@@ -81,18 +81,24 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	}
 
 	tusRouter := v2Router.PathPrefix("/publish").Subrouter()
+	tusRouter.Use(tusHandler.Middleware)
 	tusRouter.HandleFunc("/", tusHandler.PostFile).Methods(http.MethodPost)
 	tusRouter.HandleFunc("/{id}", tusHandler.HeadFile).Methods(http.MethodHead)
 	tusRouter.HandleFunc("/{id}", tusHandler.PatchFile).Methods(http.MethodPatch)
 	tusRouter.HandleFunc("/{id}/notify", tusHandler.Notify).Methods(http.MethodPost)
+	tusRouter.PathPrefix("/").HandlerFunc(emptyHandler).Methods(http.MethodOptions)
 }
 
 func defaultMiddlewares(rt *sdkrouter.Router, authProvider auth.Provider) mux.MiddlewareFunc {
 	memCache := cache.NewMemoryCache()
+	defaultHeaders := []string{
+		wallet.TokenHeader, "X-Requested-With", "Content-Type", "Accept",
+	}
 	c := cors.New(cors.Options{
 		AllowedOrigins:   config.GetCORSDomains(),
 		AllowCredentials: true,
-		AllowedHeaders:   []string{wallet.TokenHeader, "X-Requested-With", "Content-Type", "Accept"},
+		AllowedHeaders:   append(defaultHeaders, publish.TusHeaders...),
+		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodHead},
 		MaxAge:           600,
 	})
 	logger.Log().Infof("added CORS domains: %v", config.GetCORSDomains())

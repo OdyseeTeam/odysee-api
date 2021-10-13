@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -67,15 +68,33 @@ func TestCORS(t *testing.T) {
 		"https://lbry.tv":             "",
 	}
 
-	for _, url := range []string{"/api/v1/proxy", "/api/v2/status"} {
+	defaultRequestHeaders := []string{
+		"Content-Type",
+		"X-Lbry-Auth-Token",
+	}
+
+	tusRequestHeaders := append(defaultRequestHeaders, publish.TusHeaders...)
+
+	endpoints := []struct {
+		method, path, headers string
+	}{
+		{http.MethodPost, "/api/v1/proxy", strings.Join(defaultRequestHeaders, ", ")},
+		{http.MethodPost, "/api/v2/status", strings.Join(defaultRequestHeaders, ", ")},
+		{http.MethodPost, "/api/v2/publish/", strings.Join(tusRequestHeaders, ", ")},
+		{http.MethodHead, "/api/v2/publish/1", strings.Join(tusRequestHeaders, ", ")},
+		{http.MethodPatch, "/api/v2/publish/1", strings.Join(tusRequestHeaders, ", ")},
+		{http.MethodPost, "/api/v2/publish/1/notify", strings.Join(tusRequestHeaders, ", ")},
+	}
+
+	for _, e := range endpoints {
 		for orig, chost := range cases {
-			t.Run(fmt.Sprintf("%v @ %v", url, orig), func(t *testing.T) {
-				req, err := http.NewRequest(http.MethodOptions, url, nil)
+			t.Run(fmt.Sprintf("%s%s @ %s", e.method, e.path, orig), func(t *testing.T) {
+				req, err := http.NewRequest(http.MethodOptions, e.path, nil)
 				require.NoError(t, err)
 
-				req.Header.Set("origin", orig)
-				req.Header.Set("Access-Control-Request-Headers", "content-type,x-lbry-auth-token")
-				req.Header.Set("Access-Control-Request-Method", http.MethodPost)
+				req.Header.Set("Origin", orig)
+				req.Header.Set("Access-Control-Request-Headers", e.headers)
+				req.Header.Set("Access-Control-Request-Method", e.method)
 
 				rr := httptest.NewRecorder()
 
@@ -87,7 +106,7 @@ func TestCORS(t *testing.T) {
 				if chost != "" {
 					assert.Equal(
 						t,
-						"Content-Type, X-Lbry-Auth-Token",
+						e.headers,
 						h.Get("Access-Control-Allow-Headers"),
 					)
 				}

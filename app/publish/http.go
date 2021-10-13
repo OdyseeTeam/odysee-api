@@ -28,6 +28,16 @@ const (
 	fetchRetryDelay = time.Second
 )
 
+var TusHeaders = []string{
+	"Http-Method-Override",
+	"Upload-Length",
+	"Upload-Offset",
+	"Tus-Resumable",
+	"Upload-Metadata",
+	"Upload-Defer-Length",
+	"Upload-Concat",
+}
+
 // copied from hashicorp/go-retryablehttp/client.go
 var (
 	// A regular expression to match the error returned by net/http when the
