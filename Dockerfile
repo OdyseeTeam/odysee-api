@@ -1,4 +1,4 @@
-FROM alpine
+FROM golang:alpine
 EXPOSE 8080
 EXPOSE 2112
 
