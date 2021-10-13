@@ -91,10 +91,14 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 
 func defaultMiddlewares(rt *sdkrouter.Router, authProvider auth.Provider) mux.MiddlewareFunc {
 	memCache := cache.NewMemoryCache()
+	defaultHeaders := []string{
+		wallet.TokenHeader, "X-Requested-With", "Content-Type", "Accept",
+	}
 	c := cors.New(cors.Options{
 		AllowedOrigins:   config.GetCORSDomains(),
 		AllowCredentials: true,
-		AllowedHeaders:   []string{wallet.TokenHeader, "X-Requested-With", "Content-Type", "Accept"},
+		AllowedHeaders:   append(defaultHeaders, publish.TusHeaders...),
+		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodHead},
 		MaxAge:           600,
 	})
 	logger.Log().Infof("added CORS domains: %v", config.GetCORSDomains())
