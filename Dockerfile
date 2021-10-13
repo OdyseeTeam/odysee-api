@@ -8,6 +8,7 @@ RUN apk update && \
 
 WORKDIR /app
 COPY dist/linux_amd64/lbrytv /app
+RUN chmod a+x /app/lbrytv
 COPY ./docker/lbrytv.yml ./config/lbrytv.yml
 COPY ./docker/launcher.sh ./
 
