@@ -20,9 +20,9 @@ jobs:
       - uses: actions/stale@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          stale-issue-message: "This issue hasn't seen any action in two months, please consider making progress on it or closing if no longer necassary"
-          stale-pr-message: "This pull request is stale, please consider moving forward with it, otherwise it will be closed in a week"
-          stale-issue-label: "no-issue-activity"
+          stale-pr-message: "This pull request is stale, please consider moving forward with it."
           stale-pr-label: "no-pr-activity"
-          days-before-stale: 90
-          days-before-close: 30
+          days-before-pr-stale: 45
+          days-before-pr-close: 7
+          days-before-issue-stale: "-1"
+          days-before-issue-close: "-1"
