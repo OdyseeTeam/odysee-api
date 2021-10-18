@@ -68,7 +68,7 @@ LBRY_WEB_API=http://localhost:8080 yarn dev:web
 
 ## Testing
 
-Make sure you have `lbrynet`, `postgres` and `postgres-collector` containers running and run `make test`.
+Make sure you have `lbrynet`, `postgres` and `postgres-collector` containers running and run `make prepare_test test`.
 
 ## Modifying and building a Docker image
 

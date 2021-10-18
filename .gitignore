@@ -10,3 +10,4 @@ packrd/
 secrets.env
 **/dist/
 **/docker-data/
+token_privkey.*

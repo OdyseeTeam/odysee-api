@@ -12,15 +12,15 @@ test_race:
 	go test -race -gcflags=all=-d=checkptr=0 ./...
 
 prepare_test:
-	go get golang.org/x/tools/cmd/cover
-	go get github.com/mattn/goveralls
+	cd tools && \
+		go install $(go list -tags tools -f '{{range $_, $p := .Imports}}{{$p}} {{end}}')
 	go run . db_migrate_up
 
 .PHONY: test_circleci
 test_circleci:
 	scripts/wait_for_wallet.sh
-	go get golang.org/x/tools/cmd/cover
-	go get github.com/mattn/goveralls
+	cd tools &&\
+		go install $(go list -tags tools -f '{{range $_, $p := .Imports}}{{$p}} {{end}}')
 	go run . db_migrate_up
 	go test -covermode=count -coverprofile=coverage.out ./...
 	goveralls -coverprofile=coverage.out -service=circle-ci -ignore=models/ -repotoken $(COVERALLS_TOKEN)
