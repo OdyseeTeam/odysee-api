@@ -42,6 +42,12 @@ jobs:
         run: scripts/wait_for_wallet.sh
 
       - name: Test
-        run: go test -covermode=count -coverprofile=coverage.out ./...
-      # - name: Check coverage
-      #   run: goveralls -coverprofile=coverage.out -service=circle-ci -ignore=models/ -repotoken ${{ secrets.COVERALLS_TOKEN }}
+        run: |
+          go get -u github.com/jandelgado/gcov2lcov
+          go test -covermode=count -coverprofile=coverage.out ./... && gcov2lcov -infile=coverage.out -outfile=coverage.lcov
+
+      - name: Coveralls GitHub Action
+        uses: coverallsapp/github-action@1.1.3
+        with:
+          path-to-lcov: coverage.lcov
+          github-token: ${{ secrets.GITHUB_TOKEN }}
