@@ -52,6 +52,9 @@ func NewTusHandler(authProvider auth.Provider, cfg tusd.Config, uploadPath strin
 	}
 
 	cfg.PreUploadCreateCallback = h.preCreateHook
+	// allow client to set location response protocol
+	// via X-Forwarded-Proto
+	cfg.RespectForwardedHeaders = true
 
 	handler, err := tusd.NewUnroutedHandler(cfg)
 	if err != nil {

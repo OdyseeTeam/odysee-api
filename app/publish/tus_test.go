@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -23,6 +24,8 @@ import (
 	"github.com/tus/tusd/pkg/filestore"
 	tusd "github.com/tus/tusd/pkg/handler"
 )
+
+const tusVersion = "1.0.0"
 
 func newTusTestCfg(uploadPath string) tusd.Config {
 	composer := tusd.NewStoreComposer()
@@ -89,6 +92,7 @@ func newTestMux(h *TusHandler, mwf ...mux.MiddlewareFunc) *mux.Router {
 	for _, fn := range mwf {
 		testRouter.Use(fn)
 	}
+	testRouter.Use(h.Middleware)
 
 	testRouter.HandleFunc("/", h.PostFile).Methods(http.MethodPost)
 	testRouter.HandleFunc("/{id}", h.HeadFile).Methods(http.MethodHead)
@@ -107,6 +111,7 @@ func newPartialUpload(t *testing.T, h *TusHandler) string {
 
 	r.Header.Set(wallet.TokenHeader, "uPldrToken")
 	r.Header.Set("Upload-Length", fmt.Sprintf("%d", len(testData)))
+	r.Header.Set("Tus-Resumable", tusVersion)
 
 	w := httptest.NewRecorder()
 	newTestMux(h).ServeHTTP(w, r)
@@ -126,6 +131,7 @@ func newFinalUpload(t *testing.T, h *TusHandler) string {
 	r.Header.Set(wallet.TokenHeader, "uPldrToken")
 	r.Header.Set("Content-Type", "application/offset+octet-stream")
 	r.Header.Set("Upload-Offset", "0")
+	r.Header.Set("Tus-Resumable", tusVersion)
 
 	w := httptest.NewRecorder()
 	newTestMux(h).ServeHTTP(w, r)
@@ -232,6 +238,8 @@ func TestNotify(t *testing.T) {
 		r, err := http.NewRequest(http.MethodPost, tr.notify(77), nil)
 		assert.Nil(t, err)
 
+		r.Header.Set("Tus-Resumable", tusVersion)
+
 		newTestMux(h).ServeHTTP(w, r)
 
 		respBody, err := ioutil.ReadAll(w.Result().Body)
@@ -252,6 +260,7 @@ func TestNotify(t *testing.T) {
 		assert.Nil(t, err)
 
 		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set("Tus-Resumable", tusVersion)
 
 		newTestMux(h, auth.Middleware(mockAuthProvider)).ServeHTTP(w, r)
 
@@ -275,6 +284,7 @@ func TestNotify(t *testing.T) {
 		assert.Nil(t, err)
 
 		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set("Tus-Resumable", tusVersion)
 
 		newTestMux(h, auth.Middleware(mockAuthProvider)).ServeHTTP(w, r)
 
@@ -305,6 +315,7 @@ func TestNotify(t *testing.T) {
 		assert.Nil(t, err)
 
 		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set("Tus-Resumable", tusVersion)
 
 		newTestMux(h, auth.Middleware(mockAuthProvider)).ServeHTTP(w, r)
 
@@ -344,11 +355,66 @@ func TestTus(t *testing.T) {
 		assert.Nil(t, err)
 
 		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set("Tus-Resumable", tusVersion)
 
 		newTestMux(h).ServeHTTP(w, r)
 
 		resp := w.Result()
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	t.Run("WithoutTusVersionHeader", func(t *testing.T) {
+		t.Parallel()
+
+		h := newTestTusHandler(t)
+		w := httptest.NewRecorder()
+
+		testData := []byte("test file")
+		r, err := http.NewRequest(http.MethodPost, tr.root(), bytes.NewReader(testData))
+		assert.Nil(t, err)
+
+		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set("Upload-Length", fmt.Sprintf("%d", len(testData)))
+
+		newTestMux(h).ServeHTTP(w, r)
+
+		resp := w.Result()
+		assert.Equal(t, http.StatusPreconditionFailed, resp.StatusCode)
+
+		wantBody := "unsupported version\n"
+		gotBody, err := ioutil.ReadAll(resp.Body)
+		assert.Nil(t, err)
+		assert.Equal(t, wantBody, string(gotBody))
+	})
+
+	t.Run("WithForwardProto", func(t *testing.T) {
+		t.Parallel()
+
+		wantProto := "https"
+
+		h := newTestTusHandler(t)
+		w := httptest.NewRecorder()
+
+		testData := []byte("test file")
+		r, err := http.NewRequest(http.MethodPost, tr.root(), bytes.NewReader(testData))
+		assert.Nil(t, err)
+
+		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set("Upload-Length", fmt.Sprintf("%d", len(testData)))
+		r.Header.Set("Tus-Resumable", tusVersion)
+		r.Header.Set("X-Forwarded-Proto", wantProto)
+
+		newTestMux(h).ServeHTTP(w, r)
+
+		resp := w.Result()
+		assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+		location := resp.Header.Get("location")
+		assert.NotEmpty(t, location)
+
+		u, err := url.Parse(location)
+		assert.Nil(t, err)
+		assert.Equal(t, wantProto, u.Scheme)
 	})
 
 	t.Run("CreateUpload", func(t *testing.T) {
@@ -363,6 +429,7 @@ func TestTus(t *testing.T) {
 
 		r.Header.Set(wallet.TokenHeader, "uPldrToken")
 		r.Header.Set("Upload-Length", fmt.Sprintf("%d", len(testData)))
+		r.Header.Set("Tus-Resumable", tusVersion)
 
 		newTestMux(h).ServeHTTP(w, r)
 
@@ -386,6 +453,7 @@ func TestTus(t *testing.T) {
 		r.Header.Set(wallet.TokenHeader, "uPldrToken")
 		r.Header.Set("Content-Type", "application/offset+octet-stream")
 		r.Header.Set("Upload-Offset", "0")
+		r.Header.Set("Tus-Resumable", tusVersion)
 
 		newTestMux(h).ServeHTTP(w, r)
 
@@ -405,6 +473,7 @@ func TestTus(t *testing.T) {
 		assert.Nil(t, err)
 
 		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set("Tus-Resumable", tusVersion)
 
 		newTestMux(h).ServeHTTP(w, r)
 
@@ -423,6 +492,7 @@ func TestTus(t *testing.T) {
 		assert.Nil(t, err)
 
 		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set("Tus-Resumable", tusVersion)
 
 		newTestMux(h).ServeHTTP(w, r)
 
