@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"reflect"
 
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/proxy"
@@ -153,7 +154,14 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filepath := info.Storage["path"]
+	filepath, ok := info.Storage["Path"]
+	if !ok || filepath == "" { // shouldn't happen but check regardless
+		err := fmt.Errorf("couldn't find file path in storage")
+		log.WithError(err).Errorf("file path property not found in storage info: %v", reflect.ValueOf(info.Storage).MapKeys())
+		w.Write(rpcerrors.ErrorToJSON(err))
+		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+		return
+	}
 
 	c := getCaller(sdkrouter.GetSDKAddress(user), filepath, user.ID, qCache)
 
