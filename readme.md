@@ -1,6 +1,6 @@
 # API Server for Odysee
 
-⚠️ If you are looking for the UI code, that lives here: https://github.com/lbryio/lbry-desktop. ⚠️
+⚠️ If you are looking for the UI code, that lives here: https://github.com/OdyseeTeam/odysee-frontend. ⚠️
 
 This is the API server used by [Odysee](https://odysee.com), mostly acting as a bridge between web and the blockchain.
 
