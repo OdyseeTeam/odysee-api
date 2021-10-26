@@ -166,8 +166,7 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 
 	origUploadPath, ok := info.Storage["Path"]
 	if !ok || origUploadPath == "" { // shouldn't happen but check regardless
-		err := fmt.Errorf("couldn't find file path in storage")
-		log.WithError(err).Errorf("file path property not found in storage info: %v", reflect.ValueOf(info.Storage).MapKeys())
+		log.Errorf("file path property not found in storage info: %v", reflect.ValueOf(info.Storage).MapKeys())
 		w.Write(rpcerrors.ErrorToJSON(err))
 		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
 		return
