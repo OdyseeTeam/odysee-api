@@ -102,7 +102,9 @@ func newTestMux(h *TusHandler, mwf ...mux.MiddlewareFunc) *mux.Router {
 	return testRouter
 }
 
-func newPartialUpload(t *testing.T, h *TusHandler) string {
+type headers func() (string, string)
+
+func newPartialUpload(t *testing.T, h *TusHandler, opts ...headers) string {
 	t.Helper()
 
 	testData := []byte("test file")
@@ -113,6 +115,10 @@ func newPartialUpload(t *testing.T, h *TusHandler) string {
 	r.Header.Set("Upload-Length", fmt.Sprintf("%d", len(testData)))
 	r.Header.Set("Tus-Resumable", tusVersion)
 
+	for _, opt := range opts {
+		r.Header.Set(opt())
+	}
+
 	w := httptest.NewRecorder()
 	newTestMux(h).ServeHTTP(w, r)
 
@@ -121,8 +127,8 @@ func newPartialUpload(t *testing.T, h *TusHandler) string {
 	return resp.Header.Get("location")
 }
 
-func newFinalUpload(t *testing.T, h *TusHandler) string {
-	loc := newPartialUpload(t, h)
+func newFinalUpload(t *testing.T, h *TusHandler, opts ...headers) string {
+	loc := newPartialUpload(t, h, opts...)
 
 	testData := []byte("test file")
 	r, err := http.NewRequest(http.MethodPatch, loc, bytes.NewReader(testData))
@@ -306,7 +312,9 @@ func TestNotify(t *testing.T) {
 		h := newTestTusHandler(t)
 		w := httptest.NewRecorder()
 
-		loc := newFinalUpload(t, h)
+		loc := newFinalUpload(t, h, func() (string, string) {
+			return "Upload-Metadata", "filename ZHVtbXkubWQ="
+		})
 
 		r, err := http.NewRequest(
 			http.MethodPost, loc+"/notify",
@@ -328,6 +336,33 @@ func TestNotify(t *testing.T) {
 		f, err := os.Stat(filepath.Join(os.TempDir(), path.Base(loc)))
 		assert.Nil(t, f)
 		assert.NotNil(t, err)
+	})
+
+	t.Run("WithoutUploadMetadata", func(t *testing.T) {
+		t.Parallel()
+
+		h := newTestTusHandler(t)
+		w := httptest.NewRecorder()
+
+		loc := newFinalUpload(t, h)
+
+		r, err := http.NewRequest(
+			http.MethodPost, loc+"/notify",
+			strings.NewReader(expectedStreamCreateRequest),
+		)
+		assert.Nil(t, err)
+
+		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set("Tus-Resumable", tusVersion)
+
+		newTestMux(h, auth.Middleware(mockAuthProvider)).ServeHTTP(w, r)
+
+		respBody, err := ioutil.ReadAll(w.Result().Body)
+		assert.Nil(t, err)
+
+		wantErrMsg := "file metadata is required"
+		gotErrMsg := test.StrToRes(t, string(respBody)).Error.Message
+		assert.Equal(t, wantErrMsg, gotErrMsg)
 	})
 }
 

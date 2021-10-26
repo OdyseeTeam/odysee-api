@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
+	"strconv"
 
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/proxy"
@@ -141,6 +143,55 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// uploadMD holds uploaded file metadata sent by client when it first
+	// start the upload sequence.
+	uploadMD := info.MetaData
+	if len(uploadMD) == 0 {
+		err := fmt.Errorf("file metadata is required")
+		log.Error(err.Error())
+		w.Write(rpcerrors.ErrorToJSON(err))
+		observeFailure(metrics.GetDuration(r), metrics.FailureKindClient)
+		return
+	}
+
+	origUploadName, ok := uploadMD["filename"]
+	if !ok || origUploadName == "" {
+		err := fmt.Errorf("file name is required")
+		log.Error(err.Error())
+		w.Write(rpcerrors.ErrorToJSON(err))
+		observeFailure(metrics.GetDuration(r), metrics.FailureKindClient)
+		return
+
+	}
+
+	origUploadPath, ok := info.Storage["Path"]
+	if !ok || origUploadPath == "" { // shouldn't happen but check regardless
+		log.Errorf("file path property not found in storage info: %v", reflect.ValueOf(info.Storage).MapKeys())
+		w.Write(rpcerrors.ErrorToJSON(err))
+		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+		return
+	}
+
+	// ignore the file name and rename the uploaded file to the new location
+	// with name based on the value from upload metadata.
+	dir, _ := filepath.Split(origUploadPath)
+
+	dstDir := filepath.Join(dir, strconv.Itoa(user.ID))
+	if err := os.MkdirAll(dstDir, os.ModePerm); err != nil {
+		log.WithError(err).Errorf("failed to create directory: %s", dstDir)
+		w.Write(rpcerrors.ErrorToJSON(err))
+		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+		return
+	}
+
+	dstFilepath := filepath.Join(dstDir, origUploadName)
+	if err := os.Rename(origUploadPath, dstFilepath); err != nil {
+		log.WithError(err).Errorf("failed to rename uploaded file to: %s", dstFilepath)
+		w.Write(rpcerrors.ErrorToJSON(err))
+		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+		return
+	}
+
 	// upload is completed, notify it to lbrynet server
 	var qCache cache.QueryCache
 	if cache.IsOnRequest(r) {
@@ -154,16 +205,7 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filepath, ok := info.Storage["Path"]
-	if !ok || filepath == "" { // shouldn't happen but check regardless
-		err := fmt.Errorf("couldn't find file path in storage")
-		log.WithError(err).Errorf("file path property not found in storage info: %v", reflect.ValueOf(info.Storage).MapKeys())
-		w.Write(rpcerrors.ErrorToJSON(err))
-		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
-		return
-	}
-
-	c := getCaller(sdkrouter.GetSDKAddress(user), filepath, user.ID, qCache)
+	c := getCaller(sdkrouter.GetSDKAddress(user), dstFilepath, user.ID, qCache)
 
 	op := metrics.StartOperation("sdk", "call_publish")
 	rpcRes, err := c.Call(&rpcReq)
@@ -191,11 +233,18 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// remove the file from local server
-	terminatableUpload := h.composer.Terminater.AsTerminatableUpload(upload)
-	if err := terminatableUpload.Terminate(r.Context()); err != nil {
+	// NOTE: DO NOT use store.Terminate to remove the uploaded files from tusd package
+	// as it will fail since we rename the file previously.
+	infoFile := fmt.Sprintf("%s.info",
+		filepath.Join(dir, info.ID),
+	)
+	if err := os.Remove(infoFile); err != nil {
+		log.WithError(err).Error("failed to remove upload info file")
+		monitor.ErrorToSentry(err, map[string]string{"info_file": infoFile})
+	}
+	if err := os.RemoveAll(dstDir); err != nil {
 		log.WithError(err).Error("failed to remove file")
-		monitor.ErrorToSentry(err, map[string]string{"file_path": filepath})
+		monitor.ErrorToSentry(err, map[string]string{"file_path": dstFilepath})
 	}
 
 	w.Write(serialized)
