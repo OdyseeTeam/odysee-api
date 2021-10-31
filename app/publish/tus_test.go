@@ -97,6 +97,7 @@ func newTestMux(h *TusHandler, mwf ...mux.MiddlewareFunc) *mux.Router {
 	testRouter.HandleFunc("/", h.PostFile).Methods(http.MethodPost)
 	testRouter.HandleFunc("/{id}", h.HeadFile).Methods(http.MethodHead)
 	testRouter.HandleFunc("/{id}", h.PatchFile).Methods(http.MethodPatch)
+	testRouter.HandleFunc("/{id}", h.DelFile).Methods(http.MethodDelete)
 	testRouter.HandleFunc("/{id}/notify", h.Notify).Methods(http.MethodPost)
 
 	return testRouter
@@ -494,6 +495,30 @@ func TestTus(t *testing.T) {
 
 		resp := w.Result()
 		assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+	})
+
+	t.Run("DeleteUpload", func(t *testing.T) {
+		t.Parallel()
+
+		h := newTestTusHandler(t)
+		w := httptest.NewRecorder()
+
+		loc := newPartialUpload(t, h)
+
+		r, err := http.NewRequest(http.MethodDelete, loc, http.NoBody)
+		assert.Nil(t, err)
+
+		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set("Tus-Resumable", tusVersion)
+
+		newTestMux(h).ServeHTTP(w, r)
+
+		resp := w.Result()
+		assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+		f, err := os.Stat(filepath.Join(os.TempDir(), path.Base(loc)))
+		assert.Nil(t, f)
+		assert.NotNil(t, err)
 	})
 
 	t.Run("QueryFile", func(t *testing.T) {

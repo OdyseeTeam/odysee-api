@@ -83,6 +83,7 @@ func TestCORS(t *testing.T) {
 		{http.MethodPost, "/api/v2/publish/", strings.Join(tusRequestHeaders, ", ")},
 		{http.MethodHead, "/api/v2/publish/1", strings.Join(tusRequestHeaders, ", ")},
 		{http.MethodPatch, "/api/v2/publish/1", strings.Join(tusRequestHeaders, ", ")},
+		{http.MethodDelete, "/api/v2/publish/1", strings.Join(tusRequestHeaders, ", ")},
 		{http.MethodPost, "/api/v2/publish/1/notify", strings.Join(tusRequestHeaders, ", ")},
 	}
 

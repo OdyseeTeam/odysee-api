@@ -85,6 +85,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	tusRouter.HandleFunc("/", tusHandler.PostFile).Methods(http.MethodPost)
 	tusRouter.HandleFunc("/{id}", tusHandler.HeadFile).Methods(http.MethodHead)
 	tusRouter.HandleFunc("/{id}", tusHandler.PatchFile).Methods(http.MethodPatch)
+	tusRouter.HandleFunc("/{id}", tusHandler.DelFile).Methods(http.MethodDelete)
 	tusRouter.HandleFunc("/{id}/notify", tusHandler.Notify).Methods(http.MethodPost)
 	tusRouter.PathPrefix("/").HandlerFunc(emptyHandler).Methods(http.MethodOptions)
 }
@@ -98,7 +99,7 @@ func defaultMiddlewares(rt *sdkrouter.Router, authProvider auth.Provider) mux.Mi
 		AllowedOrigins:   config.GetCORSDomains(),
 		AllowCredentials: true,
 		AllowedHeaders:   append(defaultHeaders, publish.TusHeaders...),
-		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodHead},
+		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodHead, http.MethodDelete},
 		MaxAge:           600,
 	})
 	logger.Log().Infof("added CORS domains: %v", config.GetCORSDomains())
