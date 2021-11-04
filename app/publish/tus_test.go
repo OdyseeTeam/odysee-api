@@ -44,7 +44,7 @@ func newTusTestCfg(uploadPath string) tusd.Config {
 func newTestTusHandler(t *testing.T) *TusHandler {
 	t.Helper()
 
-	uploadPath := os.TempDir()
+	uploadPath := t.TempDir()
 
 	h, err := NewTusHandler(
 		mockAuthProvider,
@@ -159,14 +159,14 @@ func TestNewTusHandler(t *testing.T) {
 		{
 			name: "WithExistingDirectory",
 			fn: func() (auth.Provider, tusd.Config, string) {
-				uploadPath := os.TempDir()
+				uploadPath := t.TempDir()
 				return mockAuthProvider, newTusTestCfg(uploadPath), uploadPath
 			},
 		},
 		{
 			name: "WithNewDirectory",
 			fn: func() (auth.Provider, tusd.Config, string) {
-				uploadPath := filepath.Join(os.TempDir(), "new_dir")
+				uploadPath := filepath.Join(t.TempDir(), "new_dir")
 				return mockAuthProvider, newTusTestCfg(uploadPath), uploadPath
 			},
 		},
@@ -193,7 +193,7 @@ func TestNewTusHandler(t *testing.T) {
 		{
 			name: "WithNilAuthProvider",
 			fn: func() (auth.Provider, tusd.Config, string) {
-				uploadPath := os.TempDir()
+				uploadPath := t.TempDir()
 				return nil, newTusTestCfg(uploadPath), uploadPath
 			},
 		},
@@ -283,9 +283,16 @@ func TestNotify(t *testing.T) {
 	t.Run("UploadInProgress", func(t *testing.T) {
 		t.Parallel()
 
-		h := newTestTusHandler(t)
-		w := httptest.NewRecorder()
+		uploadPath := t.TempDir()
 
+		h, err := NewTusHandler(
+			mockAuthProvider,
+			newTusTestCfg(uploadPath),
+			uploadPath,
+		)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
 		loc := newPartialUpload(t, h)
 
 		r, err := http.NewRequest(http.MethodPost, loc+"/notify", http.NoBody)
@@ -303,7 +310,7 @@ func TestNotify(t *testing.T) {
 		gotErrMsg := test.StrToRes(t, string(respBody)).Error.Message
 		assert.Equal(t, wantErrMsg, gotErrMsg)
 
-		f, err := os.Stat(filepath.Join(os.TempDir(), path.Base(loc)))
+		f, err := os.Stat(filepath.Join(uploadPath, path.Base(loc)))
 		assert.Nil(t, err)
 		assert.NotNil(t, f)
 	})
@@ -335,7 +342,7 @@ func TestNotify(t *testing.T) {
 
 		test.AssertEqualJSON(t, expectedStreamCreateResponse, respBody)
 
-		f, err := os.Stat(filepath.Join(os.TempDir(), path.Base(loc)))
+		f, err := os.Stat(filepath.Join(t.TempDir(), path.Base(loc)))
 		assert.Nil(t, f)
 		assert.NotNil(t, err)
 	})
@@ -378,7 +385,7 @@ func TestTus(t *testing.T) {
 			return nil, fmt.Errorf("failed to authorize")
 		}
 
-		uploadPath := os.TempDir()
+		uploadPath := t.TempDir()
 		h, err := NewTusHandler(
 			errAuthFn,
 			newTusTestCfg(uploadPath),
