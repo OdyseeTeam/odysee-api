@@ -172,11 +172,11 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ignore the file name and rename the uploaded file to the new location
+	// rename the uploaded file to the new location
 	// with name based on the value from upload metadata.
-	dir, _ := filepath.Split(origUploadPath)
+	dir := filepath.Dir(origUploadPath)
 
-	dstDir := filepath.Join(dir, strconv.Itoa(user.ID))
+	dstDir := filepath.Join(dir, strconv.Itoa(user.ID), info.ID)
 	if err := os.MkdirAll(dstDir, os.ModePerm); err != nil {
 		log.WithError(err).Errorf("failed to create directory: %s", dstDir)
 		w.Write(rpcerrors.ErrorToJSON(err))

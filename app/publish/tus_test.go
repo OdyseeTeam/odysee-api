@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -23,16 +24,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tus/tusd/pkg/filestore"
 	tusd "github.com/tus/tusd/pkg/handler"
+	"github.com/tus/tusd/pkg/memorylocker"
 )
 
 const tusVersion = "1.0.0"
 
 func newTusTestCfg(uploadPath string) tusd.Config {
 	composer := tusd.NewStoreComposer()
-	store := filestore.FileStore{
-		Path: uploadPath,
-	}
+	store := filestore.New(uploadPath)
 	store.UseIn(composer)
+	locker := memorylocker.New()
+	locker.UseIn(composer)
 	return tusd.Config{
 		BasePath:      "/api/v2/publish/",
 		StoreComposer: composer,
@@ -42,7 +44,7 @@ func newTusTestCfg(uploadPath string) tusd.Config {
 func newTestTusHandler(t *testing.T) *TusHandler {
 	t.Helper()
 
-	uploadPath := os.TempDir()
+	uploadPath := t.TempDir()
 
 	h, err := NewTusHandler(
 		mockAuthProvider,
@@ -158,14 +160,14 @@ func TestNewTusHandler(t *testing.T) {
 		{
 			name: "WithExistingDirectory",
 			fn: func() (auth.Provider, tusd.Config, string) {
-				uploadPath := os.TempDir()
+				uploadPath := t.TempDir()
 				return mockAuthProvider, newTusTestCfg(uploadPath), uploadPath
 			},
 		},
 		{
 			name: "WithNewDirectory",
 			fn: func() (auth.Provider, tusd.Config, string) {
-				uploadPath := filepath.Join(os.TempDir(), "new_dir")
+				uploadPath := filepath.Join(t.TempDir(), "new_dir")
 				return mockAuthProvider, newTusTestCfg(uploadPath), uploadPath
 			},
 		},
@@ -192,7 +194,7 @@ func TestNewTusHandler(t *testing.T) {
 		{
 			name: "WithNilAuthProvider",
 			fn: func() (auth.Provider, tusd.Config, string) {
-				uploadPath := os.TempDir()
+				uploadPath := t.TempDir()
 				return nil, newTusTestCfg(uploadPath), uploadPath
 			},
 		},
@@ -282,9 +284,16 @@ func TestNotify(t *testing.T) {
 	t.Run("UploadInProgress", func(t *testing.T) {
 		t.Parallel()
 
-		h := newTestTusHandler(t)
-		w := httptest.NewRecorder()
+		uploadPath := t.TempDir()
 
+		h, err := NewTusHandler(
+			mockAuthProvider,
+			newTusTestCfg(uploadPath),
+			uploadPath,
+		)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
 		loc := newPartialUpload(t, h)
 
 		r, err := http.NewRequest(http.MethodPost, loc+"/notify", http.NoBody)
@@ -302,7 +311,7 @@ func TestNotify(t *testing.T) {
 		gotErrMsg := test.StrToRes(t, string(respBody)).Error.Message
 		assert.Equal(t, wantErrMsg, gotErrMsg)
 
-		f, err := os.Stat(filepath.Join(os.TempDir(), path.Base(loc)))
+		f, err := os.Stat(filepath.Join(uploadPath, path.Base(loc)))
 		assert.Nil(t, err)
 		assert.NotNil(t, f)
 	})
@@ -334,7 +343,7 @@ func TestNotify(t *testing.T) {
 
 		test.AssertEqualJSON(t, expectedStreamCreateResponse, respBody)
 
-		f, err := os.Stat(filepath.Join(os.TempDir(), path.Base(loc)))
+		f, err := os.Stat(filepath.Join(t.TempDir(), path.Base(loc)))
 		assert.Nil(t, f)
 		assert.NotNil(t, err)
 	})
@@ -377,7 +386,7 @@ func TestTus(t *testing.T) {
 			return nil, fmt.Errorf("failed to authorize")
 		}
 
-		uploadPath := os.TempDir()
+		uploadPath := t.TempDir()
 		h, err := NewTusHandler(
 			errAuthFn,
 			newTusTestCfg(uploadPath),
@@ -478,23 +487,75 @@ func TestTus(t *testing.T) {
 		t.Parallel()
 
 		h := newTestTusHandler(t)
-		w := httptest.NewRecorder()
 
-		loc := newPartialUpload(t, h)
+		loc := newPartialUpload(t, h, func() (string, string) {
+			return "Upload-Length", "3"
+		})
 
-		testData := []byte("test file")
-		r, err := http.NewRequest(http.MethodPatch, loc, bytes.NewReader(testData))
-		assert.Nil(t, err)
+		tests := []struct {
+			name           string
+			offset         int
+			wantStatusCode int
+		}{
+			{"ValidOffset", 0, http.StatusNoContent},
+			{"MissmatchOffset", 4, http.StatusConflict},
+		}
 
-		r.Header.Set(wallet.TokenHeader, "uPldrToken")
-		r.Header.Set("Content-Type", "application/offset+octet-stream")
-		r.Header.Set("Upload-Offset", "0")
-		r.Header.Set("Tus-Resumable", tusVersion)
+		testData := []byte("foo")
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				w := httptest.NewRecorder()
+				r, err := http.NewRequest(http.MethodPatch, loc, bytes.NewReader(testData))
+				assert.Nil(t, err)
 
-		newTestMux(h).ServeHTTP(w, r)
+				r.Header.Set(wallet.TokenHeader, "uPldrToken")
+				r.Header.Set("Content-Type", "application/offset+octet-stream")
+				r.Header.Set("Upload-Offset", strconv.Itoa(test.offset))
+				r.Header.Set("Tus-Resumable", tusVersion)
 
-		resp := w.Result()
-		assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+				newTestMux(h).ServeHTTP(w, r)
+
+				resp := w.Result()
+				assert.Equal(t, test.wantStatusCode, resp.StatusCode)
+			})
+		}
+	})
+
+	t.Run("ResumeWithChunks", func(t *testing.T) {
+		t.Parallel()
+
+		h := newTestTusHandler(t)
+
+		loc := newPartialUpload(t, h, func() (string, string) {
+			return "Upload-Length", "6"
+		})
+
+		testData := []byte("foobar")
+		b := bytes.NewReader(testData)
+
+		const chunkSize = 2
+		for i := 0; i < b.Len(); i += chunkSize {
+			t.Run(fmt.Sprintf("PatchOffset-%d", i), func(t *testing.T) {
+				buf := make([]byte, chunkSize)
+				if _, err := b.ReadAt(buf, int64(i)); err != nil {
+					t.Fatal(err)
+				}
+
+				w := httptest.NewRecorder()
+				r, err := http.NewRequest(http.MethodPatch, loc, bytes.NewReader(buf))
+				assert.Nil(t, err)
+
+				r.Header.Set(wallet.TokenHeader, "uPldrToken")
+				r.Header.Set("Content-Type", "application/offset+octet-stream")
+				r.Header.Set("Upload-Offset", strconv.Itoa(i))
+				r.Header.Set("Tus-Resumable", tusVersion)
+
+				newTestMux(h).ServeHTTP(w, r)
+
+				resp := w.Result()
+				assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+			})
+		}
 	})
 
 	t.Run("DeleteUpload", func(t *testing.T) {
