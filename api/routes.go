@@ -24,6 +24,7 @@ import (
 	"github.com/rs/cors"
 	"github.com/tus/tusd/pkg/filestore"
 	tusd "github.com/tus/tusd/pkg/handler"
+	"github.com/tus/tusd/pkg/memorylocker"
 )
 
 var logger = monitor.NewModuleLogger("api")
@@ -66,10 +67,11 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	v2Router.HandleFunc("/status", emptyHandler).Methods(http.MethodOptions)
 
 	composer := tusd.NewStoreComposer()
-	store := filestore.FileStore{
-		Path: uploadPath,
-	}
+	store := filestore.New(uploadPath)
 	store.UseIn(composer)
+	locker := memorylocker.New()
+	locker.UseIn(composer)
+
 	tusCfg := tusd.Config{
 		BasePath:      "/api/v2/publish/",
 		StoreComposer: composer,
