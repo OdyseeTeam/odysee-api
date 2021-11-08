@@ -22,9 +22,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
+	"github.com/tus/tusd/pkg/filelocker"
 	"github.com/tus/tusd/pkg/filestore"
 	tusd "github.com/tus/tusd/pkg/handler"
-	"github.com/tus/tusd/pkg/memorylocker"
 )
 
 const tusVersion = "1.0.0"
@@ -33,7 +33,7 @@ func newTusTestCfg(uploadPath string) tusd.Config {
 	composer := tusd.NewStoreComposer()
 	store := filestore.New(uploadPath)
 	store.UseIn(composer)
-	locker := memorylocker.New()
+	locker := filelocker.New(uploadPath)
 	locker.UseIn(composer)
 	return tusd.Config{
 		BasePath:      "/api/v2/publish/",

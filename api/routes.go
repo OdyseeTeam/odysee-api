@@ -22,9 +22,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
+	"github.com/tus/tusd/pkg/filelocker"
 	"github.com/tus/tusd/pkg/filestore"
 	tusd "github.com/tus/tusd/pkg/handler"
-	"github.com/tus/tusd/pkg/memorylocker"
 )
 
 var logger = monitor.NewModuleLogger("api")
@@ -69,7 +69,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	composer := tusd.NewStoreComposer()
 	store := filestore.New(uploadPath)
 	store.UseIn(composer)
-	locker := memorylocker.New()
+	locker := filelocker.New(uploadPath)
 	locker.UseIn(composer)
 
 	tusCfg := tusd.Config{
