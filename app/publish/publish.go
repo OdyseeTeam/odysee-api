@@ -162,7 +162,7 @@ retry:
 		}
 	}()
 
-	var qCache cache.QueryCache
+	var qCache *cache.Cache
 	if cache.IsOnRequest(r) {
 		qCache = cache.FromRequest(r)
 	}
@@ -207,7 +207,7 @@ retry:
 	observeSuccess(metrics.GetDuration(r))
 }
 
-func getCaller(sdkAddress, filename string, userID int, qCache cache.QueryCache) *query.Caller {
+func getCaller(sdkAddress, filename string, userID int, qCache *cache.Cache) *query.Caller {
 	c := query.NewCaller(sdkAddress, userID)
 	c.Cache = qCache
 	c.AddPreflightHook(query.AllMethodsHook, func(_ *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {

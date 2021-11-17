@@ -7,6 +7,7 @@ require (
 	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/alecthomas/kong v0.2.16
 	github.com/bluele/factory-go v0.0.1
+	github.com/dgraph-io/ristretto v0.1.0
 	github.com/getsentry/sentry-go v0.6.1
 	github.com/gobuffalo/logger v1.0.3 // indirect
 	github.com/gobuffalo/packd v1.0.0 // indirect
@@ -50,6 +51,7 @@ require (
 	goa.design/plugins/v3 v3.4.3
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
 	golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d // indirect
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.6-0.20210802203754-9b21a8868e16 // indirect

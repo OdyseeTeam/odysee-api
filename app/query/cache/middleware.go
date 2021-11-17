@@ -13,21 +13,21 @@ func IsOnRequest(r *http.Request) bool {
 	return r.Context().Value(ContextKey) != nil
 }
 
-func FromRequest(r *http.Request) QueryCache {
+func FromRequest(r *http.Request) *Cache {
 	v := r.Context().Value(ContextKey)
 	if v == nil {
 		panic("cache.Middleware is required")
 	}
-	return v.(QueryCache)
+	return v.(*Cache)
 }
 
-func AddToRequest(c QueryCache, fn http.HandlerFunc) http.HandlerFunc {
+func AddToRequest(c *Cache, fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fn(w, r.Clone(context.WithValue(r.Context(), ContextKey, c)))
 	}
 }
 
-func Middleware(c QueryCache) mux.MiddlewareFunc {
+func Middleware(c *Cache) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return AddToRequest(c, next.ServeHTTP)
 	}

@@ -93,7 +93,10 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 }
 
 func defaultMiddlewares(rt *sdkrouter.Router, authProvider auth.Provider) mux.MiddlewareFunc {
-	memCache := cache.NewMemoryCache()
+	queryCache, err := cache.New(cache.DefaultConfig())
+	if err != nil {
+		panic(err)
+	}
 	defaultHeaders := []string{
 		wallet.TokenHeader, "X-Requested-With", "Content-Type", "Accept",
 	}
@@ -112,7 +115,7 @@ func defaultMiddlewares(rt *sdkrouter.Router, authProvider auth.Provider) mux.Mi
 		ip.Middleware,
 		sdkrouter.Middleware(rt),
 		auth.Middleware(authProvider),
-		cache.Middleware(memCache),
+		cache.Middleware(queryCache),
 	)
 }
 

@@ -118,7 +118,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		sdkAddress = rt.RandomServer().Address
 	}
 
-	var qCache cache.QueryCache
+	var qCache *cache.Cache
 	if cache.IsOnRequest(r) {
 		qCache = cache.FromRequest(r)
 	}
