@@ -1,7 +1,6 @@
 package query
 
 import (
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -70,8 +69,8 @@ type Caller struct {
 	preflightHooks  []hookEntry
 	postflightHooks []hookEntry
 
-	// Cache stores cachable queries to improve performance
-	Cache cache.QueryCache
+	// Cache stores cacheable queries to improve performance
+	Cache *cache.Cache
 
 	Duration float64
 
@@ -80,12 +79,12 @@ type Caller struct {
 }
 
 func NewCaller(endpoint string, userID int) *Caller {
-	c := &Caller{
+	caller := &Caller{
 		endpoint: endpoint,
 		userID:   userID,
 	}
-	c.addDefaultHooks()
-	return c
+	caller.addDefaultHooks()
+	return caller
 }
 
 func (c *Caller) newRPCClient(timeout time.Duration) jsonrpc.RPCClient {
@@ -136,7 +135,6 @@ func (c *Caller) AddPostflightHook(method string, hf Hook, name string) {
 }
 
 func (c *Caller) addDefaultHooks() {
-	c.AddPreflightHook("", fromCache, builtinHookName)
 	c.AddPreflightHook("status", getStatusResponse, builtinHookName)
 	c.AddPreflightHook("get", preflightHookGet, builtinHookName)
 }
@@ -194,14 +192,23 @@ func (c *Caller) Call(req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 	}
 
 	if res == nil {
-		res, err = c.SendQuery(q)
+		// Attempt to retrieve the result from cache, retrieving and setting it if it's missing,
+		// and only send the query directly if it's still missing after the cache call somehow.
+		var ires interface{}
+		retriever := func() (interface{}, error) { return c.SendQuery(q) }
+		if q.IsCacheable() && c.Cache != nil {
+			ires, err = c.Cache.Retrieve(q.Method(), q.Params(), retriever)
+			if err != nil {
+				return nil, rpcerrors.NewSDKError(err)
+			}
+			res, _ = ires.(*jsonrpc.RPCResponse)
+		}
+		if res == nil {
+			res, err = c.SendQuery(q)
+		}
 		if err != nil {
 			return nil, rpcerrors.NewSDKError(err)
 		}
-	}
-
-	if isCacheable(q, res) {
-		c.Cache.Save(q.Method(), q.Params(), res)
 	}
 
 	return res, nil
@@ -296,22 +303,9 @@ func (c *Caller) SendQuery(q *Query) (*jsonrpc.RPCResponse, error) {
 	return r, err
 }
 
-// isCacheable returns true if this query can be cached
-func isCacheable(q *Query, res *jsonrpc.RPCResponse) bool {
-	if res.Error != nil {
-		return false
-	}
-	if q.Method() == MethodResolve && q.Params() != nil {
-		paramsMap := q.Params().(map[string]interface{})
-		if urls, ok := paramsMap[ParamUrls].([]interface{}); ok {
-			if len(urls) > cacheResolveLongerThan {
-				return true
-			}
-		}
-	} else if q.Method() == MethodClaimSearch {
-		return true
-	}
-	return false
+// IsCacheable returns true if this query can be cached.
+func (q *Query) IsCacheable() bool {
+	return q.Method() == MethodResolve || q.Method() == MethodClaimSearch
 }
 
 func getLogLevel(m string) logrus.Level {
@@ -323,39 +317,6 @@ func getLogLevel(m string) logrus.Level {
 
 func isMatchingHook(m string, hook hookEntry) bool {
 	return hook.method == "" || hook.method == m || strings.HasPrefix(m, hook.method)
-}
-
-// fromCache returns cached response or nil in case it's a miss
-func fromCache(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
-	if c.Cache == nil {
-		return nil, nil
-	}
-
-	cached := c.Cache.Retrieve(hctx.Query.Method(), hctx.Query.Params())
-	if cached == nil {
-		metrics.ProxyQueryCacheMissCount.WithLabelValues(hctx.Query.Method()).Inc()
-		return nil, nil
-	}
-
-	s, err := json.Marshal(cached)
-	if err != nil {
-		metrics.ProxyQueryCacheErrorCount.WithLabelValues(hctx.Query.Method()).Inc()
-		logger.Log().Errorf("error marshalling cached response")
-		return nil, nil
-	}
-
-	response := hctx.Query.newResponse()
-
-	err = json.Unmarshal(s, &response)
-	if err != nil {
-		metrics.ProxyQueryCacheErrorCount.WithLabelValues(hctx.Query.Method()).Inc()
-		logger.Log().Errorf("error unmarshalling cached response")
-		return nil, nil
-	}
-
-	metrics.ProxyQueryCacheHitCount.WithLabelValues(hctx.Query.Method()).Inc()
-	logger.WithFields(logrus.Fields{"method": hctx.Query.Method()}).Debug("cached query")
-	return response, nil
 }
 
 func isErrWalletNotLoaded(r *jsonrpc.RPCResponse) bool {

@@ -2,88 +2,125 @@ package cache
 
 import (
 	"crypto/sha256"
-	"encoding/gob"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 
-	"github.com/patrickmn/go-cache"
+	"github.com/dgraph-io/ristretto"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/singleflight"
 )
+
+type Retriever func() (interface{}, error)
+
+type CacheConfig struct {
+	size             int64
+	ristrettoMetrics bool
+}
+
+// Cache manages SDK query responses.
+type Cache struct {
+	*CacheConfig
+	cache *ristretto.Cache
+	sf    *singleflight.Group
+}
 
 var cacheLogger = monitor.NewModuleLogger("cache")
 
-// QueryCache caches Query responses
-type QueryCache interface {
-	Save(method string, params interface{}, r interface{})
-	Retrieve(method string, params interface{}) interface{}
-	Count() int
-
-	getKey(method string, params interface{}) (string, error)
-	flush()
+func DefaultConfig() *CacheConfig {
+	return &CacheConfig{
+		size: 5 << 30, //  5GB
+	}
 }
 
-// memoryCache stores the cache in memory
-type memoryCache struct {
-	c *cache.Cache
-}
-
-func NewMemoryCache() memoryCache {
-	return memoryCache{c: cache.New(5*time.Minute, 15*time.Minute)}
-}
-
-// Save puts a response object into cache, making it available for a later retrieval by method and query params
-func (s memoryCache) Save(method string, params interface{}, r interface{}) {
-	l := cacheLogger.WithFields(logrus.Fields{"method": method})
-	cacheKey, err := s.getKey(method, params)
+func New(config *CacheConfig) (*Cache, error) {
+	rc, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 1e7,
+		MaxCost:     config.size,
+		BufferItems: 64, // number of keys per Get buffer
+		Metrics:     config.ristrettoMetrics,
+	})
 	if err != nil {
-		l.Errorf("unable to produce key for params: %v", params)
-	} else {
-		l.Debug("saved query result")
+		return nil, err
 	}
-	s.c.Set(cacheKey, r, cache.DefaultExpiration)
+	c := Cache{
+		CacheConfig: config,
+		cache:       rc,
+		sf:          &singleflight.Group{},
+	}
+	return &c, nil
 }
 
-// Retrieve earlier saved server response by method and query params
-func (s memoryCache) Retrieve(method string, params interface{}) interface{} {
-	l := cacheLogger.WithFields(logrus.Fields{"method": method})
-	cacheKey, err := s.getKey(method, params)
+func (c *CacheConfig) Size(size int64) *CacheConfig {
+	c.size = size
+	return c
+}
+
+// Retrieve earlier saved server response by method and query params.
+func (c *Cache) Retrieve(method string, params interface{}, fn Retriever) (interface{}, error) {
+	k, err := c.hash(method, params)
+	l := cacheLogger.WithFields(logrus.Fields{"key": k})
+
 	if err != nil {
-		l.Errorf("unable to produce key for params: %v", params)
-		return nil
+		l.Error("unable to produce cache key", "params", params, "err", err)
+		return nil, err
 	}
-	cachedResponse, ok := s.c.Get(cacheKey)
-	if ok {
-		l.Debug("query result found in cache")
-	}
-	return cachedResponse
-}
-
-func (s memoryCache) getKey(method string, params interface{}) (key string, err error) {
-	var paramsSuffix string
-
-	if params != nil {
-		h := sha256.New()
-		enc := gob.NewEncoder(h)
-		err = enc.Encode(fmt.Sprintf("%v", params))
-		if err != nil {
-			return "", err
+	res, ok := c.cache.Get(k)
+	if !ok {
+		metrics.ProxyQueryCacheMissCount.WithLabelValues(method).Inc()
+		l.Debug("cache miss")
+		if fn == nil {
+			return nil, nil
 		}
-		paramsSuffix = hex.EncodeToString(h.Sum(nil))
-	} else {
-		paramsSuffix = "nil"
+		res, err, _ = c.sf.Do(k, fn)
+		if err != nil {
+			l.Error("retriever failed", "err", err)
+			return nil, err
+		}
+		enc, err := json.Marshal(res)
+		if err != nil {
+			l.Error("failed to measure response size for cache", "err", err)
+			return nil, err
+		}
+		l.WithFields(logrus.Fields{"size": len(enc)}).Debug("caching value")
+		c.cache.SetWithTTL(k, res, int64(len(enc)), 3*time.Minute)
+		return res, err
+	}
+	metrics.ProxyQueryCacheHitCount.WithLabelValues(method).Inc()
+	l.Debug("cache hit")
+	return res, nil
+}
+
+func (c *Cache) hash(method string, params interface{}) (string, error) {
+	if params == nil {
+		return fmt.Sprintf("%v|nil", method), nil
+	}
+	h := sha256.New()
+	enc, err := json.Marshal(params)
+	if err != nil {
+		return "", err
+	}
+	_, err = h.Write(enc)
+	if err != nil {
+		return "", err
 	}
 
-	return fmt.Sprintf("%v|%v", method, paramsSuffix), err
+	return fmt.Sprintf("%v|%v", method, hex.EncodeToString(h.Sum(nil))), nil
 }
 
-func (s memoryCache) flush() {
-	s.c.Flush()
+func (c *Cache) Flush() {
+	c.cache.Clear()
 }
 
-// Count returns the total number of non-expired items stored in cache
-func (s memoryCache) Count() int {
-	return s.c.ItemCount()
+func (c *Cache) Wait() {
+	c.cache.Wait()
+}
+
+// count returns the number of non-expired items stored in cache.
+func (c *Cache) count() uint64 {
+	return c.cache.Metrics.KeysAdded() - c.cache.Metrics.KeysEvicted()
 }

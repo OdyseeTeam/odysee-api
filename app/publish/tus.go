@@ -193,7 +193,7 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// upload is completed, notify it to lbrynet server
-	var qCache cache.QueryCache
+	var qCache *cache.Cache
 	if cache.IsOnRequest(r) {
 		qCache = cache.FromRequest(r)
 	}

@@ -365,6 +365,7 @@ func TestCaller_CloneWithoutHook(t *testing.T) {
 }
 
 func TestCaller_CallCachingResponses(t *testing.T) {
+	var err error
 	srv := test.MockHTTPServer(nil)
 	defer srv.Close()
 	srv.NextResponse <- `
@@ -388,15 +389,19 @@ func TestCaller_CallCachingResponses(t *testing.T) {
 	`
 
 	c := NewCaller(srv.URL, 0)
-	c.Cache = cache.NewMemoryCache()
+	c.Cache, err = cache.New(cache.DefaultConfig())
+	require.NoError(t, err)
 	rpcResponse, err := c.Call(jsonrpc.NewRequest("claim_search", map[string]interface{}{"urls": "what"}))
 	require.NoError(t, err)
 	assert.Nil(t, rpcResponse.Error)
-	cResp := c.Cache.Retrieve("claim_search", map[string]interface{}{"urls": "what"}).(*jsonrpc.RPCResponse)
-	assert.NotNil(t, cResp.Result)
+	c.Cache.Wait()
+	cResp, err := c.Cache.Retrieve("claim_search", map[string]interface{}{"urls": "what"}, nil)
+	require.NoError(t, err)
+	assert.NotNil(t, cResp.(*jsonrpc.RPCResponse).Result)
 }
 
 func TestCaller_CallNotCachingErrors(t *testing.T) {
+	var err error
 	srv := test.MockHTTPServer(nil)
 	defer srv.Close()
 	srv.NextResponse <- `
@@ -410,11 +415,14 @@ func TestCaller_CallNotCachingErrors(t *testing.T) {
 		}`
 
 	c := NewCaller(srv.URL, 0)
-	c.Cache = cache.NewMemoryCache()
+	c.Cache, err = cache.New(cache.DefaultConfig())
+	require.NoError(t, err)
 	rpcResponse, err := c.Call(jsonrpc.NewRequest("claim_search", map[string]interface{}{"urls": "what"}))
 	require.NoError(t, err)
 	assert.Equal(t, rpcResponse.Error.Code, -32000)
-	assert.Nil(t, c.Cache.Retrieve("claim_search", map[string]interface{}{"urls": "what"}))
+	cResp, err := c.Cache.Retrieve("claim_search", map[string]interface{}{"urls": "what"}, nil)
+	require.NoError(t, err)
+	assert.Nil(t, cResp)
 }
 
 func TestCaller_CallSDKError(t *testing.T) {
@@ -958,6 +966,7 @@ func TestCaller_cutSublistsToSize(t *testing.T) {
 }
 
 func TestCaller_JSONRPCNotCut(t *testing.T) {
+	var err error
 	srv := test.MockHTTPServer(nil)
 	defer srv.Close()
 	srv.NextResponse <- `
@@ -981,7 +990,8 @@ func TestCaller_JSONRPCNotCut(t *testing.T) {
 	`
 
 	c := NewCaller(srv.URL, 0)
-	c.Cache = cache.NewMemoryCache()
+	c.Cache, err = cache.New(cache.DefaultConfig())
+	require.NoError(t, err)
 
 	channelIds := []interface{}{"1234", "4321", "5678", "8765", "9999", "0000", "1111"}
 	params := map[string]interface{}{"channel_ids": channelIds, "urls": "what", "number": 1}
@@ -991,7 +1001,7 @@ func TestCaller_JSONRPCNotCut(t *testing.T) {
 
 	req := jsonrpc.NewRequest("claim_search", params)
 
-	_, err := c.Call(req)
+	_, err = c.Call(req)
 	require.NoError(t, err)
 
 	assert.Equal(t, channelIdscpy, req.Params.(map[string]interface{})["channel_ids"])

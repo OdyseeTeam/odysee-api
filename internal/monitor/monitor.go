@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/version"
 
 	"github.com/sirupsen/logrus"
@@ -33,8 +34,7 @@ func init() {
 }
 
 func isProduction() bool {
-	// config.IsProduction()
-	return true
+	return config.IsProduction()
 }
 
 func LogMode() string {

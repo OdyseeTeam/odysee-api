@@ -127,7 +127,7 @@ func GetStatusV2(w http.ResponseWriter, r *http.Request) {
 
 	var (
 		userID        int
-		qCache        cache.QueryCache
+		qCache        *cache.Cache
 		lbrynetServer *models.LbrynetServer
 	)
 	rt := sdkrouter.New(config.GetLbrynetServers())
