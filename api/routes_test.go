@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -110,6 +111,10 @@ func TestCORS(t *testing.T) {
 						e.headers,
 						h.Get("Access-Control-Allow-Headers"),
 					)
+
+					gotPreflightDuration, err := strconv.Atoi(h.Get("Access-Control-Max-Age"))
+					require.NoError(t, err)
+					assert.Equal(t, preflightDuration, gotPreflightDuration)
 				}
 			})
 		}
