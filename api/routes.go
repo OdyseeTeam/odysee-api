@@ -27,6 +27,8 @@ import (
 	tusd "github.com/tus/tusd/pkg/handler"
 )
 
+const preflightDuration = 86400
+
 var logger = monitor.NewModuleLogger("api")
 
 // emptyHandler can be used when you just need to let middlewares do their job and no actual response is needed.
@@ -105,7 +107,7 @@ func defaultMiddlewares(rt *sdkrouter.Router, authProvider auth.Provider) mux.Mi
 		AllowCredentials: true,
 		AllowedHeaders:   append(defaultHeaders, publish.TusHeaders...),
 		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodHead, http.MethodDelete},
-		MaxAge:           600,
+		MaxAge:           preflightDuration,
 	})
 	logger.Log().Infof("added CORS domains: %v", config.GetCORSDomains())
 
