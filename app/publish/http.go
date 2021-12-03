@@ -23,7 +23,7 @@ const (
 	defaultRequestTimeout = 600 * time.Second
 	defaultRetryMax       = 3
 
-	fetchTryLimit   = 3
+	fetchTryLimit   = 5
 	fetchTimeout    = 15 * time.Minute
 	fetchRetryDelay = time.Second
 )
