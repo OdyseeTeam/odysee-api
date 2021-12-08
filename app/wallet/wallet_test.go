@@ -188,6 +188,7 @@ func TestGetUserWithWallet_CachedUser(t *testing.T) {
 
 	assert.Equal(t, metricValue, metrics.GetCounterValue(metrics.AuthTokenCacheHits))
 
+	currentCache.cache.Wait()
 	u, err = GetUserWithSDKServer(rt, url, token, "")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)

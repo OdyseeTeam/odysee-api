@@ -420,7 +420,10 @@ func TestCaller_CallNotCachingErrors(t *testing.T) {
 	rpcResponse, err := c.Call(jsonrpc.NewRequest("claim_search", map[string]interface{}{"urls": "what"}))
 	require.NoError(t, err)
 	assert.Equal(t, rpcResponse.Error.Code, -32000)
-	cResp, err := c.Cache.Retrieve("claim_search", map[string]interface{}{"urls": "what"}, nil)
+	cResp, err := c.Cache.Retrieve(
+		"claim_search",
+		map[string]interface{}{"urls": "what"},
+		func() (interface{}, error) { return nil, nil })
 	require.NoError(t, err)
 	assert.Nil(t, cResp)
 }
