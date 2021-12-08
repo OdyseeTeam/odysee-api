@@ -7,7 +7,13 @@ import (
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/models"
 
-	gocache "github.com/patrickmn/go-cache"
+	"github.com/dgraph-io/ristretto"
+	"golang.org/x/sync/singleflight"
+)
+
+const (
+	ttlUnconfirmed = 15 * time.Second
+	ttlConfirmed   = 15 * time.Minute
 )
 
 var (
@@ -17,7 +23,8 @@ var (
 
 // tokenCache stores the cache in memory
 type tokenCache struct {
-	cache *gocache.Cache
+	cache *ristretto.Cache
+	sf    *singleflight.Group
 }
 
 func init() {
@@ -25,28 +32,49 @@ func init() {
 }
 
 func NewTokenCache(timeout time.Duration) *tokenCache {
-	return &tokenCache{cache: gocache.New(timeout, 45*time.Minute)}
+	rc, _ := ristretto.NewCache(&ristretto.Config{
+		MaxCost:     1 << 30,
+		Metrics:     true,
+		NumCounters: 1e7,
+		BufferItems: 64,
+	})
+	return &tokenCache{
+		cache: rc,
+		sf:    &singleflight.Group{},
+	}
 }
 
 func SetTokenCache(c *tokenCache) {
 	currentCache = c
 }
 
-func (c *tokenCache) set(token string, user *models.User) {
-	c.cache.Set(token, *user, gocache.DefaultExpiration)
-}
-
-func (c *tokenCache) get(token string) *models.User {
-	obj, ok := c.cache.Get(token)
+func (c *tokenCache) get(token string, retreiver func() (interface{}, error)) (*models.User, error) {
+	var err error
+	cachedUser, ok := c.cache.Get(token)
 	if !ok {
 		metrics.AuthTokenCacheMisses.Inc()
-		return nil
+		cachedUser, err, _ = c.sf.Do(token, retreiver)
+		if err != nil {
+			return nil, err
+		}
+		var ttl time.Duration
+		if cachedUser == nil {
+			ttl = ttlUnconfirmed
+		} else {
+			ttl = ttlConfirmed
+		}
+		c.cache.SetWithTTL(token, cachedUser, 1, ttl)
+	} else {
+		metrics.AuthTokenCacheHits.Inc()
 	}
-	metrics.AuthTokenCacheHits.Inc()
-	user := obj.(models.User)
-	return &user
+
+	if cachedUser == nil {
+		return nil, nil
+	}
+	user := cachedUser.(*models.User)
+	return user, nil
 }
 
 func (c *tokenCache) flush() {
-	c.cache.Flush()
+	c.cache.Clear()
 }

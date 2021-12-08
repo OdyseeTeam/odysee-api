@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -61,7 +62,7 @@ func (c *CacheConfig) Size(size int64) *CacheConfig {
 }
 
 // Retrieve earlier saved server response by method and query params.
-func (c *Cache) Retrieve(method string, params interface{}, fn Retriever) (interface{}, error) {
+func (c *Cache) Retrieve(method string, params interface{}, retriever Retriever) (interface{}, error) {
 	k, err := c.hash(method, params)
 	l := cacheLogger.WithFields(logrus.Fields{"key": k})
 
@@ -73,10 +74,10 @@ func (c *Cache) Retrieve(method string, params interface{}, fn Retriever) (inter
 	if !ok {
 		metrics.ProxyQueryCacheMissCount.WithLabelValues(method).Inc()
 		l.Debug("cache miss")
-		if fn == nil {
-			return nil, nil
+		if retriever == nil {
+			return nil, errors.New("retriever is nil")
 		}
-		res, err, _ = c.sf.Do(k, fn)
+		res, err, _ = c.sf.Do(k, retriever)
 		if err != nil {
 			l.Error("retriever failed", "err", err)
 			return nil, err

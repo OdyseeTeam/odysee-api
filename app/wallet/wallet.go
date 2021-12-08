@@ -43,47 +43,49 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 	var localUser *models.User
 	log := logger.WithFields(logrus.Fields{monitor.TokenF: token, "ip": metaRemoteIP})
 
-	if cachedUser := currentCache.get(token); cachedUser != nil {
-		log.Debugf("user found in cache")
-		return cachedUser, nil
-	}
-
-	remoteUser, err := getRemoteUser(internalAPIHost, token, metaRemoteIP)
-	if err != nil {
-		log.Error(err)
-		return nil, err
-	}
-	if !remoteUser.HasVerifiedEmail {
-		return nil, nil
-	}
-
-	log.Data["remote_user_id"] = remoteUser.ID
-	log.Data["has_email"] = remoteUser.HasVerifiedEmail
-	log.Debugf("user authenticated")
-
-	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancelFn()
-
-	err = inTx(ctx, storage.Conn.DB.DB, func(tx *sql.Tx) error {
-		localUser, err = getOrCreateLocalUser(tx, remoteUser.ID, log)
+	user, err := currentCache.get(token, func() (interface{}, error) {
+		remoteUser, err := getRemoteUser(internalAPIHost, token, metaRemoteIP)
 		if err != nil {
-			return err
+			log.Error(err)
+			return nil, err
+		}
+		if !remoteUser.HasVerifiedEmail {
+			return nil, nil
 		}
 
-		if localUser.LbrynetServerID.IsZero() {
-			err := assignSDKServerToUser(tx, localUser, rt.LeastLoaded(), log)
+		log.Data["remote_user_id"] = remoteUser.ID
+		log.Data["has_email"] = remoteUser.HasVerifiedEmail
+		log.Debugf("user authenticated")
+
+		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelFn()
+
+		err = inTx(ctx, storage.Conn.DB.DB, func(tx *sql.Tx) error {
+			localUser, err = getOrCreateLocalUser(tx, remoteUser.ID, log)
 			if err != nil {
 				return err
 			}
+
+			if localUser.LbrynetServerID.IsZero() {
+				err := assignSDKServerToUser(tx, localUser, rt.LeastLoaded(), log)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
 		}
-		return nil
+
+		return localUser, nil
 	})
 
-	if err == nil && localUser != nil {
-		currentCache.set(token, localUser)
-	}
+	// if err == nil && localUser != nil {
+	// 	currentCache.set(token, localUser)
+	// }
 
-	return localUser, err
+	return user, err
 }
 
 func inTx(ctx context.Context, db *sql.DB, f func(tx *sql.Tx) error) error {
