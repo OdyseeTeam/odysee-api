@@ -14,6 +14,8 @@ import (
 )
 
 func TestCache(t *testing.T) {
+	cacheLogger.Disable()
+
 	var (
 		res jsonrpc.RPCResponse
 		req jsonrpc.RPCRequest
@@ -55,11 +57,14 @@ func TestCache(t *testing.T) {
 	}
 	wg.Wait()
 
+	c.cache.Wait()
 	assert.EqualValues(t, 1, c.count())
 	assert.EqualValues(t, 1, retrievals)
 }
 
 func TestCacheNoError(t *testing.T) {
+	cacheLogger.Disable()
+
 	var (
 		res jsonrpc.RPCResponse
 		req jsonrpc.RPCRequest
@@ -95,6 +100,7 @@ func TestCacheNoError(t *testing.T) {
 	}
 	wg.Wait()
 
+	c.cache.Wait()
 	assert.EqualValues(t, 0, c.count())
 	assert.EqualValues(t, 1, retrievals)
 }
