@@ -58,7 +58,7 @@ func TestCache(t *testing.T) {
 	wg.Wait()
 
 	c.cache.Wait()
-	assert.EqualValues(t, 1, c.count())
+	assert.EqualValues(t, 1, c.cache.Metrics.KeysAdded())
 	assert.EqualValues(t, 1, retrievals)
 }
 
@@ -101,6 +101,6 @@ func TestCacheNoError(t *testing.T) {
 	wg.Wait()
 
 	c.cache.Wait()
-	assert.EqualValues(t, 0, c.count())
+	assert.EqualValues(t, 0, c.cache.Metrics.KeysAdded())
 	assert.EqualValues(t, 1, retrievals)
 }
