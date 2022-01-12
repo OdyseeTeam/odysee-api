@@ -10,6 +10,7 @@ import (
 
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/ybbus/jsonrpc"
 
 	"github.com/dgraph-io/ristretto"
 	"github.com/sirupsen/logrus"
@@ -82,6 +83,13 @@ func (c *Cache) Retrieve(method string, params interface{}, retriever Retriever)
 			l.Error("retriever failed", "err", err)
 			return nil, err
 		}
+
+		resp, ok := res.(*jsonrpc.RPCResponse)
+		if !ok || resp.Error != nil {
+			l.Debug("rpc error reponse received, not caching")
+			return res, nil
+		}
+
 		enc, err := json.Marshal(res)
 		if err != nil {
 			l.Error("failed to measure response size for cache", "err", err)
@@ -89,7 +97,7 @@ func (c *Cache) Retrieve(method string, params interface{}, retriever Retriever)
 		}
 		l.WithFields(logrus.Fields{"size": len(enc)}).Debug("caching value")
 		c.cache.SetWithTTL(k, res, int64(len(enc)), 3*time.Minute)
-		return res, err
+		return res, nil
 	}
 	metrics.ProxyQueryCacheHitCount.WithLabelValues(method).Inc()
 	l.Debug("cache hit")
