@@ -2,7 +2,7 @@ version: "3.2"
 
 services:
   lbrynet:
-    image: lbry/lbrynet-tv:0.101.1
+    image: odyseeteam/lbrynet-tv:0.101.1
     ports:
       - "5581:5279"
       - "5279:5279"
@@ -13,7 +13,7 @@ services:
     labels:
       com.centurylinklabs.watchtower.enable: true
   app:
-    image: lbry/odysee-api:latest
+    image: odyseeteam/odysee-api:latest
     ports:
       - 8080:8080
     volumes:

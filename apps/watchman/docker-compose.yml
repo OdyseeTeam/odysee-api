@@ -2,7 +2,7 @@ version: "3"
 
 services:
   watchman:
-    image: lbry/watchman:latest
+    image: odyseeteam/watchman:latest
     container_name: watchman
     restart: on-failure
     ports:

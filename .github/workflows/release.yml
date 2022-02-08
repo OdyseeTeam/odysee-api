@@ -57,6 +57,7 @@ jobs:
           push: true
           context: .
           tags: |
+            odyseeteam/odysee-${{ steps.service.outputs.service }}:latest
             odyseeteam/odysee-${{ steps.service.outputs.service }}:${{ steps.version.outputs.version }}
 
       - name: Deploy odysee-api
@@ -87,8 +88,8 @@ jobs:
           push: true
           context: apps/${{ steps.service.outputs.service }}/
           tags: |
-            lbry/odysee-${{ steps.service.outputs.service }}:latest
-            lbry/odysee-${{ steps.service.outputs.service }}:${{ steps.version.outputs.version }}
+            odyseeteam/${{ steps.service.outputs.service }}:latest
+            odyseeteam/${{ steps.service.outputs.service }}:${{ steps.version.outputs.version }}
           file: apps/${{ steps.service.outputs.service }}/Dockerfile
 
       - name: Deploy watchman

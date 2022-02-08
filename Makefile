@@ -64,7 +64,7 @@ watchman:
 		./apps/watchman/cmd/watchman/
 
 watchman_image:
-	docker build -t lbry/odysee-watchman:$(watchman_version) ./apps/watchman
+	docker build -t odyseeteam/watchman:$(watchman_version) ./apps/watchman
 
 watchman_design:
 	goa gen github.com/lbryio/lbrytv/apps/watchman/design -o apps/watchman
