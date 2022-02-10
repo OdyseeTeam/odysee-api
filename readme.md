@@ -72,7 +72,7 @@ Make sure you have `lbrynet`, `postgres` and `postgres-collector` containers run
 
 ## Modifying and building a Docker image
 
-First, make sure you have Go 1.15+
+First, make sure you have Go 1.16+
 
 - Ubuntu: https://launchpad.net/~longsleep/+archive/ubuntu/golang-backports or https://github.com/golang/go/wiki/Ubuntu
 - OSX: `brew install go`
