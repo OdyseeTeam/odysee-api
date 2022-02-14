@@ -37,7 +37,6 @@ func emptyHandler(_ http.ResponseWriter, _ *http.Request) {}
 // InstallRoutes sets up global API handlers
 func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	uploadPath := config.GetPublishSourceDir()
-	authProvider := auth.NewIAPIProvider(sdkRouter, config.GetInternalAPIHost())
 
 	upHandler := &publish.Handler{UploadPath: uploadPath}
 	r.Use(methodTimer)
@@ -48,7 +47,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	r.HandleFunc("", emptyHandler)
 
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
-	v1Router.Use(defaultMiddlewares(sdkRouter, authProvider))
+	v1Router.Use(defaultMiddlewares(sdkRouter, config.GetInternalAPIHost()))
 
 	v1Router.HandleFunc("/proxy", upHandler.Handle).MatcherFunc(publish.CanHandle)
 	v1Router.HandleFunc("/proxy", proxy.Handle).Methods(http.MethodPost)
@@ -64,7 +63,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	internalRouter.Handle("/metrics", promhttp.Handler())
 
 	v2Router := r.PathPrefix("/api/v2").Subrouter()
-	v2Router.Use(defaultMiddlewares(sdkRouter, authProvider))
+	v2Router.Use(defaultMiddlewares(sdkRouter, config.GetInternalAPIHost()))
 	v2Router.HandleFunc("/status", status.GetStatusV2).Methods(http.MethodGet)
 	v2Router.HandleFunc("/status", emptyHandler).Methods(http.MethodOptions)
 
@@ -79,7 +78,8 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 		StoreComposer: composer,
 	}
 
-	tusHandler, err := publish.NewTusHandler(authProvider, tusCfg, uploadPath)
+	oAuthProvider := auth.NewOauthProvider(sdkRouter, config.GetInternalAPIHost())
+	tusHandler, err := publish.NewTusHandler(oAuthProvider, tusCfg, uploadPath)
 	if err != nil {
 		logger.Log().WithError(err).Fatal(err)
 	}
@@ -94,11 +94,13 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	tusRouter.PathPrefix("/").HandlerFunc(emptyHandler).Methods(http.MethodOptions)
 }
 
-func defaultMiddlewares(rt *sdkrouter.Router, authProvider auth.Provider) mux.MiddlewareFunc {
+func defaultMiddlewares(rt *sdkrouter.Router, internalAPIHost string) mux.MiddlewareFunc {
 	queryCache, err := cache.New(cache.DefaultConfig())
 	if err != nil {
 		panic(err)
 	}
+	legacyProvider := auth.NewIAPIProvider(rt, internalAPIHost)
+	oAuthProvider := auth.NewOauthProvider(rt, internalAPIHost)
 	defaultHeaders := []string{
 		wallet.TokenHeader, wallet.AuthorizationHeader, "X-Requested-With", "Content-Type", "Accept",
 	}
