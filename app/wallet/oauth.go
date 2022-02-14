@@ -52,11 +52,6 @@ func GetOauthUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, tokenStrin
 
 	log := logger.WithFields(logrus.Fields{"idp_user": userInfo.Sub, "ip": metaRemoteIP})
 
-	if cachedUser := currentCache.get(userInfo.Sub); cachedUser != nil {
-		log.Debugf("user found in cache")
-		return cachedUser, nil
-	}
-
 	//Check if we have the user by IDP ID first
 	user, err := GetDBUserG(ByIDPID(userInfo.Sub))
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -120,10 +115,6 @@ func GetOauthUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, tokenStrin
 
 		return nil
 	})
-
-	if err == nil && localUser != nil {
-		currentCache.set(tokenString, localUser)
-	}
 
 	return localUser, err
 }

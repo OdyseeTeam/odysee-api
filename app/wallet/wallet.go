@@ -45,11 +45,6 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 	var localUser *models.User
 	log := logger.WithFields(logrus.Fields{monitor.TokenF: token, "ip": metaRemoteIP})
 
-	if cachedUser := currentCache.get(token); cachedUser != nil {
-		log.Debugf("user found in cache")
-		return cachedUser, nil
-	}
-
 	remoteUser, err := getRemoteUserLegacy(internalAPIHost, token, metaRemoteIP)
 	if err != nil {
 		log.Error(err)
@@ -80,10 +75,6 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 		}
 		return nil
 	})
-
-	if err == nil && localUser != nil {
-		currentCache.set(token, localUser)
-	}
 
 	return localUser, err
 }
