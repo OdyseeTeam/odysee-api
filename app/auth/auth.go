@@ -42,9 +42,9 @@ type Provider func(token, metaRemoteIP string) (*models.User, error)
 // NewIAPIProvider authenticates a user by hitting internal-api with the auth token
 // and matching the response to a local user. If auth is successful, the user will have a
 // lbrynet server assigned and a wallet that's created and ready to use.
-func NewIAPIProvider(rt *sdkrouter.Router, internalAPIHost string) Provider {
+func NewIAPIProvider(router *sdkrouter.Router, internalAPIHost string) Provider {
 	return func(token, metaRemoteIP string) (*models.User, error) {
-		return wallet.GetUserWithSDKServer(rt, internalAPIHost, token, metaRemoteIP)
+		return wallet.GetUserWithSDKServer(router, internalAPIHost, token, metaRemoteIP)
 	}
 }
 
@@ -54,8 +54,12 @@ func NewIAPIProvider(rt *sdkrouter.Router, internalAPIHost string) Provider {
 // user id and use that to create the known wallet id, save it along with the user id
 // to the user in question. If auth is successful, the user will have a
 // lbrynet server assigned and a wallet that's created and ready to use.
-func NewOauthProvider(rt *sdkrouter.Router, internalAPIHost string) Provider {
+func NewOauthProvider(oauthProviderURL string, clientID string, iapiURL string, router *sdkrouter.Router) Provider {
+	auther, err := wallet.NewOauthAuthenticator(oauthProviderURL, clientID, iapiURL, router)
+	if err != nil {
+		panic(err)
+	}
 	return func(token, metaRemoteIP string) (*models.User, error) {
-		return wallet.GetOauthUserWithSDKServer(rt, internalAPIHost, token, metaRemoteIP)
+		return auther.Authenticate(token, metaRemoteIP)
 	}
 }

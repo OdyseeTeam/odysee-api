@@ -18,34 +18,69 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const oauthClientID = "odysee-apis"
-const oauthProviderUrl = "https://sso.odysee.com/auth/realms/Users"
-
-var verifier *oidc.IDTokenVerifier
-
-func init() {
-	provider, err := oidc.NewProvider(context.Background(), oauthProviderUrl)
-	if err != nil {
-		panic(err)
-	}
-	verifier = provider.Verifier(&oidc.Config{ClientID: oauthClientID})
+type OauthAuthenticator struct {
+	iapiURL, clientID string
+	router            *sdkrouter.Router
+	verifier          *oidc.IDTokenVerifier
 }
 
-// GetOauthUserWithSDKServer gets user by internal-apis auth token. If the user does not have a
+// UserInfo contains all claim information included in the access token.
+type UserInfo struct {
+	Acr               string              `mapstructure:"acr"`
+	AllowedOrigins    []string            `json:"allowed-origins"`
+	Aud               []string            `mapstructure:"aud"`
+	Azp               string              `mapstructure:"azp"`
+	Email             string              `mapstructure:"email"`
+	EmailVerified     bool                `mapstructure:"email_verified"`
+	Exp               int64               `mapstructure:"exp"`
+	FamilyName        string              `mapstructure:"family_name"`
+	GivenName         string              `mapstructure:"given_name"`
+	Iat               int64               `mapstructure:"iat"`
+	Iss               string              `mapstructure:"iss"`
+	Jti               string              `mapstructure:"jti"`
+	Name              string              `mapstructure:"name"`
+	PreferredUsername string              `mapstructure:"preferred_username"`
+	RealmAccess       map[string][]string `mapstructure:"realm_access"`
+	//ResourceAccess    map[string]map[string][]string `mapstructure:"resource_access"`
+	ResourceAccess struct {
+		OdyseeApis struct {
+			Roles []string `mapstructure:"roles"`
+		} `mapstructure:"odysee-apis"`
+	} `mapstructure:"resource_access"`
+	Scope        string `mapstructure:"scope"`
+	SessionState string `mapstructure:"session_state"`
+	Sid          string `mapstructure:"sid"`
+	Sub          string `mapstructure:"sub"`
+	Typ          string `mapstructure:"typ"`
+}
+
+func NewOauthAuthenticator(oauthProviderURL, clientID, iapiURL string, router *sdkrouter.Router) (*OauthAuthenticator, error) {
+	provider, err := oidc.NewProvider(context.Background(), oauthProviderURL)
+	if err != nil {
+		return nil, err
+	}
+	return &OauthAuthenticator{
+		iapiURL:  iapiURL,
+		router:   router,
+		verifier: provider.Verifier(&oidc.Config{ClientID: clientID}),
+	}, nil
+}
+
+// Authenticate gets user by internal-apis oauth token. If the user does not have a
 // wallet yet, they are assigned an SDK and a wallet is created for them on that SDK.
-func GetOauthUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, tokenString, metaRemoteIP string) (*models.User, error) {
+func (a *OauthAuthenticator) Authenticate(tokenString, metaRemoteIP string) (*models.User, error) {
 	var localUser *models.User
 	if !strings.HasPrefix(tokenString, "Bearer ") {
 		return nil, errors.Err("token passed must be Bearer token")
 	}
 	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
-	userInfo, err := extractUserInfo(tokenString)
+	userInfo, err := a.extractUserInfo(tokenString)
 	if err != nil {
 		return nil, err
 	}
 
 	// Todo - Would be really nice to change provider to access the http request to get and validate more information
-	err = checkAuthorization(userInfo)
+	err = a.checkAuthorization(userInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +98,7 @@ func GetOauthUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, tokenStrin
 	}
 
 	// No mention of it recorded in the DB, so get the internal-apis user ID via remote user
-	remoteUser, err := getRemoteUser(internalAPIHost, oauth2.StaticTokenSource(&oauth2.Token{AccessToken: tokenString}), metaRemoteIP)
+	remoteUser, err := getRemoteUser(a.iapiURL, oauth2.StaticTokenSource(&oauth2.Token{AccessToken: tokenString}), metaRemoteIP)
 	if err != nil {
 		/*  For now keep the same process, where if we fail to get a remote user, authentication fails.
 		We don't have to check for verified email since IDP already confirmed via OAuth2. This should
@@ -107,7 +142,7 @@ func GetOauthUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, tokenStrin
 		}
 
 		if localUser.LbrynetServerID.IsZero() {
-			err := assignSDKServerToUser(tx, localUser, rt.LeastLoaded(), log)
+			err := assignSDKServerToUser(tx, localUser, a.router.LeastLoaded(), log)
 			if err != nil {
 				return err
 			}
@@ -119,10 +154,10 @@ func GetOauthUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, tokenStrin
 	return localUser, err
 }
 
-func checkAuthorization(info *UserInfo) error {
+func (a *OauthAuthenticator) checkAuthorization(info *UserInfo) error {
 	audienceRespected := false
 	for _, aud := range info.Aud {
-		if aud == oauthClientID {
+		if aud == a.clientID {
 			audienceRespected = true
 		}
 	}
@@ -144,40 +179,10 @@ func checkAuthorization(info *UserInfo) error {
 	return nil
 }
 
-// UserInfo contains all claim information included in the access token.
-type UserInfo struct {
-	Acr               string              `mapstructure:"acr"`
-	AllowedOrigins    []string            `json:"allowed-origins"`
-	Aud               []string            `mapstructure:"aud"`
-	Azp               string              `mapstructure:"azp"`
-	Email             string              `mapstructure:"email"`
-	EmailVerified     bool                `mapstructure:"email_verified"`
-	Exp               int64               `mapstructure:"exp"`
-	FamilyName        string              `mapstructure:"family_name"`
-	GivenName         string              `mapstructure:"given_name"`
-	Iat               int64               `mapstructure:"iat"`
-	Iss               string              `mapstructure:"iss"`
-	Jti               string              `mapstructure:"jti"`
-	Name              string              `mapstructure:"name"`
-	PreferredUsername string              `mapstructure:"preferred_username"`
-	RealmAccess       map[string][]string `mapstructure:"realm_access"`
-	//ResourceAccess    map[string]map[string][]string `mapstructure:"resource_access"`
-	ResourceAccess struct {
-		OdyseeApis struct {
-			Roles []string `mapstructure:"roles"`
-		} `mapstructure:"odysee-apis"`
-	} `mapstructure:"resource_access"`
-	Scope        string `mapstructure:"scope"`
-	SessionState string `mapstructure:"session_state"`
-	Sid          string `mapstructure:"sid"`
-	Sub          string `mapstructure:"sub"`
-	Typ          string `mapstructure:"typ"`
-}
-
-func extractUserInfo(tokenString string) (*UserInfo, error) {
+func (a *OauthAuthenticator) extractUserInfo(tokenString string) (*UserInfo, error) {
 	userInfo := &UserInfo{}
 
-	t, err := verifier.Verify(context.Background(), tokenString)
+	t, err := a.verifier.Verify(context.Background(), tokenString)
 	if err != nil {
 		return nil, errors.Err(err)
 	}

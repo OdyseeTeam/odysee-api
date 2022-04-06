@@ -29,7 +29,7 @@ func getRemoteUserLegacy(url, token string, remoteIP string) (remoteUser, error)
 
 	start := time.Now()
 	r, err := c.UserHasVerifiedEmail()
-	duration := time.Now().Sub(start).Seconds()
+	duration := time.Since(start).Seconds()
 
 	if err != nil {
 		if errors.As(err, &lbryinc.APIError{}) {
@@ -61,7 +61,7 @@ func getRemoteUser(url string, token oauth2.TokenSource, remoteIP string) (remot
 
 	start := time.Now()
 	r, err := c.UserHasVerifiedEmail()
-	duration := time.Now().Sub(start).Seconds()
+	duration := time.Since(start).Seconds()
 
 	if err != nil {
 		if errors.As(err, &lbryinc.APIError{}) {

@@ -65,6 +65,22 @@ func GetInternalAPIHost() string {
 	return Config.Viper.GetString("InternalAPIHost")
 }
 
+// GetOauthProviderURL returns the address of OAuth provider
+func GetOauthProviderURL() string {
+	return Config.Viper.GetStringMapString("oauth")["providerurl"]
+}
+
+// GetOauthClientID returns the address of OAuth client ID
+func GetOauthClientID() string {
+	return Config.Viper.GetStringMapString("oauth")["clientid"]
+}
+
+// GetOauthTokenURL returns the address of OAuth token retrieval endpoint
+func GetOauthTokenURL() string {
+	cfg := Config.Viper.GetStringMapString("oauth")
+	return cfg["providerurl"] + cfg["tokenpath"]
+}
+
 // GetDatabase returns postgresql database server connection config
 func GetDatabase() cfg.DBConfig {
 	return Config.GetDatabase()

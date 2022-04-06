@@ -19,6 +19,7 @@ require (
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a
 	github.com/jinzhu/gorm v1.9.9
 	github.com/jmoiron/sqlx v1.2.0
+	github.com/joho/godotenv v1.4.0 // indirect
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20210808180919-55dceeaa4eae
 	github.com/lbryio/lbrytv-player v0.7.12
