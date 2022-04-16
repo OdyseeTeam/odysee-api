@@ -16,6 +16,7 @@ import (
 
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/wallet"
+	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/test"
 	"github.com/lbryio/lbrytv/models"
@@ -153,6 +154,8 @@ func newFinalUpload(t *testing.T, h *TusHandler, opts ...headers) string {
 func TestNewTusHandler(t *testing.T) {
 	t.Parallel()
 
+	auther := auth.NewOauthProvider(config.GetOauthProviderURL(), config.GetOauthClientID(), config.GetInternalAPIHost(), nil)
+
 	successTestCases := []struct {
 		name string
 		fn   func() (auth.Provider, tusd.Config, string)
@@ -161,14 +164,14 @@ func TestNewTusHandler(t *testing.T) {
 			name: "WithExistingDirectory",
 			fn: func() (auth.Provider, tusd.Config, string) {
 				uploadPath := t.TempDir()
-				return mockAuthProvider, newTusTestCfg(uploadPath), uploadPath
+				return auther, newTusTestCfg(uploadPath), uploadPath
 			},
 		},
 		{
 			name: "WithNewDirectory",
 			fn: func() (auth.Provider, tusd.Config, string) {
 				uploadPath := filepath.Join(t.TempDir(), "new_dir")
-				return mockAuthProvider, newTusTestCfg(uploadPath), uploadPath
+				return auther, newTusTestCfg(uploadPath), uploadPath
 			},
 		},
 	}
@@ -210,7 +213,7 @@ func TestNewTusHandler(t *testing.T) {
 					}
 				})
 				uploadPath := filepath.Join("test_dir", "new_dir")
-				return mockAuthProvider, newTusTestCfg(uploadPath), uploadPath
+				return auther, newTusTestCfg(uploadPath), uploadPath
 			},
 			wantErr: os.ErrPermission,
 		},
