@@ -184,7 +184,7 @@ retry:
 	}
 	if params["claim_id"] != nil {
 		rpcReq.Method = query.MethodStreamUpdate
-		params["name"] = ""
+		delete(params, "name")
 		params["replace"] = true
 		rpcReq.Params = params
 	}

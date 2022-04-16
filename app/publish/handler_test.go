@@ -80,7 +80,7 @@ func TestHandler_StreamUpdate(t *testing.T) {
 	expectedPath := path.Join(os.TempDir(), "20404", ".+", "lbry_auto_test_file")
 	assert.Regexp(t, expectedPath, publisher.queryParams["file_path"].(string))
 	assert.Equal(t, sdkrouter.WalletID(20404), publisher.queryParams["wallet_id"].(string))
-	assert.Empty(t, publisher.queryParams["name"].(string))
+	assert.NotContains(t, "name", publisher.queryParams)
 	assert.True(t, publisher.queryParams["replace"].(bool))
 	assert.Equal(t, "f6d2070225511eeb8a1c33f1d4bdb76e22716547", publisher.queryParams["claim_id"].(string))
 
