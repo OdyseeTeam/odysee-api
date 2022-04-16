@@ -4,25 +4,27 @@ const (
 	cacheResolveLongerThan = 10
 	maxListSizeLogged      = 5
 
-	MethodGet              = "get"
-	MethodFileList         = "file_list"
 	MethodAccountList      = "account_list"
-	MethodStatus           = "status"
-	MethodResolve          = "resolve"
 	MethodClaimSearch      = "claim_search"
+	MethodCommentReactList = "comment_react_list"
+	MethodFileList         = "file_list"
+	MethodGet              = "get"
+	MethodPublish          = "publish"
 	MethodPurchaseCreate   = "purchase_create"
+	MethodResolve          = "resolve"
+	MethodStatus           = "status"
+	MethodStreamUpdate     = "stream_update"
+	MethodSyncApply        = "sync_apply"
 	MethodWalletBalance    = "wallet_balance"
 	MethodWalletSend       = "wallet_send"
-	MethodSyncApply        = "sync_apply"
-	MethodCommentReactList = "comment_react_list"
 
-	ParamStreamingUrl    = "streaming_url"
-	ParamPurchaseReceipt = "purchase_receipt"
 	ParamAccountID       = "account_id"
-	ParamWalletID        = "wallet_id"
-	ParamUrls            = "urls"
-	ParamNewSDKServer    = "new_sdk_server"
 	ParamChannelID       = "channel_id"
+	ParamNewSDKServer    = "new_sdk_server"
+	ParamPurchaseReceipt = "purchase_receipt"
+	ParamStreamingUrl    = "streaming_url"
+	ParamUrls            = "urls"
+	ParamWalletID        = "wallet_id"
 )
 
 var forbiddenParams = []string{ParamAccountID, ParamNewSDKServer}
@@ -54,7 +56,7 @@ var walletSpecificMethods = []string{
 	"resolve",
 	"claim_search",
 
-	"publish",
+	MethodPublish,
 
 	"address_unused",
 	"address_list",
@@ -91,7 +93,7 @@ var walletSpecificMethods = []string{
 	"stream_abandon",
 	"stream_create",
 	"stream_list",
-	"stream_update",
+	MethodStreamUpdate,
 	"stream_repost",
 
 	"support_abandon",
