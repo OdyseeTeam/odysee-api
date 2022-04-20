@@ -35,8 +35,6 @@ var logger = monitor.NewModuleLogger("publish")
 var method = "publish"
 
 const (
-	FetchSizeLimit = 6000000000
-
 	// fileFieldName refers to the POST field containing file upload
 	fileFieldName = "file"
 	// jsonRPCFieldName is a name of the POST field containing JSONRPC request accompanying the uploaded file
