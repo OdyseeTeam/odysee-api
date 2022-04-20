@@ -43,7 +43,7 @@ jobs:
 
       - name: Test
         run: |
-          go get -u github.com/jandelgado/gcov2lcov
+          go install github.com/jandelgado/gcov2lcov@latest
           go test -covermode=count -coverprofile=coverage.out ./... && gcov2lcov -infile=coverage.out -outfile=coverage.lcov
 
       - name: Coveralls GitHub Action
