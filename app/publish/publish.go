@@ -35,8 +35,6 @@ var logger = monitor.NewModuleLogger("publish")
 var method = "publish"
 
 const (
-	FetchSizeLimit = 6000000000
-
 	// fileFieldName refers to the POST field containing file upload
 	fileFieldName = "file"
 	// jsonRPCFieldName is a name of the POST field containing JSONRPC request accompanying the uploaded file
@@ -170,12 +168,24 @@ retry:
 	var rpcReq *jsonrpc.RPCRequest
 	err = json.Unmarshal([]byte(r.FormValue(jsonRPCFieldName)), &rpcReq)
 	if err != nil {
-		w.Write(rpcerrors.NewJSONParseError(err).JSON())
+		w.Write(rpcerrors.NewInvalidParamsError(err).JSON())
 		observeFailure(metrics.GetDuration(r), metrics.FailureKindClientJSON)
 		return
 	}
 
 	c := getCaller(sdkrouter.GetSDKAddress(user), f.Name(), user.ID, qCache)
+
+	params, ok := rpcReq.Params.(map[string]interface{})
+	if !ok {
+		w.Write(rpcerrors.NewInvalidParamsError(werrors.New("cannot parse params")).JSON())
+		return
+	}
+	if params["claim_id"] != nil {
+		rpcReq.Method = query.MethodStreamUpdate
+		delete(params, "name")
+		params["replace"] = true
+		rpcReq.Params = params
+	}
 
 	op := metrics.StartOperation("sdk", "call_publish")
 	rpcRes, err := c.Call(rpcReq)

@@ -40,6 +40,55 @@ func CreatePublishRequest(t *testing.T, data []byte, extra ...FormParam) *http.R
 	return req
 }
 
+// GenerateUpdateRequest creates and returns a HTTP request providing data for the updating endpoint.
+func GenerateUpdateRequest(t *testing.T, data []byte, extra ...FormParam) *http.Request {
+	readSeeker := bytes.NewReader(data)
+	body := &bytes.Buffer{}
+
+	writer := multipart.NewWriter(body)
+
+	fileBody, err := writer.CreateFormFile(fileFieldName, "lbry_auto_test_file")
+	require.NoError(t, err)
+	_, err = io.Copy(fileBody, readSeeker)
+	require.NoError(t, err)
+
+	extra = append([]FormParam{{jsonRPCFieldName, testPublishUpdateRequest}}, extra...)
+	for _, kv := range extra {
+		fld, err := writer.CreateFormField(kv[0])
+		require.NoError(t, err)
+		fld.Write([]byte(kv[1]))
+	}
+
+	writer.Close()
+
+	req, err := http.NewRequest("POST", "/api/v1/proxy", bytes.NewReader(body.Bytes()))
+	require.NoError(t, err)
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	return req
+}
+
+var testPublishUpdateRequest = `
+{
+    "id": 1567580184168,
+    "jsonrpc": "2.0",
+    "method": "publish",
+    "params": {
+        "name": "test",
+        "title": "test",
+        "description": "test description",
+        "bid": "0.10000000",
+        "languages": [
+            "en"
+        ],
+        "tags": [],
+        "thumbnail_url": "http://smallmedia.com/thumbnail.jpg",
+        "license": "None",
+        "release_time": 1567580184,
+		"claim_id": "f6d2070225511eeb8a1c33f1d4bdb76e22716547"
+    }
+}`
+
 var expectedStreamCreateRequest = `
 {
     "id": 1567580184168,
@@ -87,7 +136,7 @@ var expectedStreamCreateResponse = `
 		{
 		  "address": "mhPFLtT7YzmNfMuQYr4PQXAJdtaTKWRLFy",
 		  "amount": "1.0",
-		  "claim_id": "5cfb92c3e6a80aedee5282c3f64b565bc6965562",
+		  "claim_id": "f6d2070225511eeb8a1c33f1d4bdb76e22716547",
 		  "claim_op": "create",
 		  "confirmations": -2,
 		  "height": -2,

@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/lbryio/lbrytv/app/auth"
+	"github.com/lbryio/lbrytv/app/query"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/internal/test"
@@ -26,10 +27,65 @@ import (
 )
 
 type DummyPublisher struct {
-	called   bool
-	filePath string
-	walletID string
-	rawQuery string
+	called      bool
+	filePath    string
+	walletID    string
+	rawQuery    string
+	query       *jsonrpc.RPCRequest
+	queryParams map[string]interface{}
+}
+
+func TestHandler_StreamUpdate(t *testing.T) {
+	r := GenerateUpdateRequest(t, []byte("test file"))
+	r.Header.Set(wallet.TokenHeader, "uPldrToken")
+
+	publisher := &DummyPublisher{}
+
+	reqChan := test.ReqChan()
+	ts := test.MockHTTPServer(reqChan)
+	go func() {
+		req := <-reqChan
+		publisher.called = true
+		r := test.StrToReq(t, req.Body)
+		params, ok := r.Params.(map[string]interface{})
+		require.True(t, ok)
+		publisher.query = r
+		publisher.queryParams = params
+		ts.NextResponse <- expectedStreamCreateResponse
+	}()
+
+	handler := &Handler{UploadPath: os.TempDir()}
+
+	provider := func(token, _ string) (*models.User, error) {
+		var u *models.User
+		if token == "uPldrToken" {
+			u = &models.User{ID: 20404}
+			u.R = u.R.NewStruct()
+			u.R.LbrynetServer = &models.LbrynetServer{Address: ts.URL}
+		}
+		return u, nil
+	}
+
+	rr := httptest.NewRecorder()
+	auth.Middleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
+	response := rr.Result()
+	respBody, err := ioutil.ReadAll(response.Body)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusOK, response.StatusCode)
+	test.AssertEqualJSON(t, expectedStreamCreateResponse, respBody)
+
+	require.True(t, publisher.called)
+	require.Equal(t, query.MethodStreamUpdate, publisher.query.Method)
+	expectedPath := path.Join(os.TempDir(), "20404", ".+", "lbry_auto_test_file")
+	assert.Regexp(t, expectedPath, publisher.queryParams["file_path"].(string))
+	assert.Equal(t, sdkrouter.WalletID(20404), publisher.queryParams["wallet_id"].(string))
+	assert.NotContains(t, "name", publisher.queryParams)
+	assert.True(t, publisher.queryParams["replace"].(bool))
+	assert.Equal(t, "f6d2070225511eeb8a1c33f1d4bdb76e22716547", publisher.queryParams["claim_id"].(string))
+
+	_, err = os.Stat(publisher.filePath)
+	assert.True(t, os.IsNotExist(err))
 }
 
 func TestUploadHandler(t *testing.T) {
