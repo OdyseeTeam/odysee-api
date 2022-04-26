@@ -44,6 +44,10 @@ jobs:
         run: scripts/wait_for_wallet.sh
 
       - name: Test
+        env:
+          OAUTH_TEST_CLIENT_SECRET: ${{ secrets.OAUTH_TEST_CLIENT_SECRET }}
+          OAUTH_TEST_USERNAME: ${{ secrets.OAUTH_TEST_USERNAME }}
+          OAUTH_TEST_PASSWORD: ${{ secrets.OAUTH_TEST_PASSWORD }}
         run: |
           go install github.com/jandelgado/gcov2lcov@latest
           go test -covermode=count -coverprofile=coverage.out ./... && gcov2lcov -infile=coverage.out -outfile=coverage.lcov
