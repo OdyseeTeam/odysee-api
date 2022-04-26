@@ -18,6 +18,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const TokenPrefix = "Bearer "
+
 type OauthAuthenticator struct {
 	iapiURL, clientID string
 	router            *sdkrouter.Router
@@ -59,8 +61,12 @@ func NewOauthAuthenticator(oauthProviderURL, clientID, iapiURL string, router *s
 	if err != nil {
 		return nil, err
 	}
+	if clientID == "" {
+		return nil, errors.Err("clientID cannot be empty")
+	}
 	return &OauthAuthenticator{
 		iapiURL:  iapiURL,
+		clientID: clientID,
 		router:   router,
 		verifier: provider.Verifier(&oidc.Config{ClientID: clientID}),
 	}, nil
@@ -70,10 +76,10 @@ func NewOauthAuthenticator(oauthProviderURL, clientID, iapiURL string, router *s
 // wallet yet, they are assigned an SDK and a wallet is created for them on that SDK.
 func (a *OauthAuthenticator) Authenticate(tokenString, metaRemoteIP string) (*models.User, error) {
 	var localUser *models.User
-	if !strings.HasPrefix(tokenString, "Bearer ") {
+	if !strings.HasPrefix(tokenString, TokenPrefix) {
 		return nil, errors.Err("token passed must be Bearer token")
 	}
-	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+	tokenString = strings.TrimPrefix(tokenString, TokenPrefix)
 	userInfo, err := a.extractUserInfo(tokenString)
 	if err != nil {
 		return nil, err

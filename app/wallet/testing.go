@@ -8,30 +8,47 @@ import (
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/clientcredentials"
 )
 
 const (
-	envClientID     = "OAUTH_TEST_CLIENT_ID"
-	envClientSecret = "OAUTH_TEST_CLIENT_SECRET"
-)
+	TestClientID = "ci-tester"
 
-var ErrTestCredentialsMissing = fmt.Errorf("test oauth client env vars %s and %s are missing", envClientID, envClientSecret)
+	envClientSecret = "OAUTH_TEST_CLIENT_SECRET"
+	envUsername     = "OAUTH_TEST_USERNAME"
+	envPassword     = "OAUTH_TEST_PASSWORD"
+
+	msgMissingEnv = "test oauth client env var %s is not set"
+)
 
 // GetTestToken is for easily retrieving tokens that can be used in tests utilizing authentication subsystem.
 func GetTestToken() (*oauth2.Token, error) {
-	clientID := os.Getenv(envClientID)
 	clientSecret := os.Getenv(envClientSecret)
-	if clientID == "" || clientSecret == "" {
-		return nil, ErrTestCredentialsMissing
+	username := os.Getenv(envUsername)
+	password := os.Getenv(envPassword)
+	if clientSecret == "" {
+		return nil, fmt.Errorf(msgMissingEnv, envClientSecret)
+	}
+	if username == "" {
+		return nil, fmt.Errorf(msgMissingEnv, envUsername)
+	}
+	if password == "" {
+		return nil, fmt.Errorf(msgMissingEnv, envPassword)
 	}
 
 	ctx := context.Background()
-	conf := &clientcredentials.Config{
-		ClientID:     clientID,
+	conf := &oauth2.Config{
+		// ClientID:     config.GetOauthClientID(),
+		ClientID:     TestClientID,
 		ClientSecret: clientSecret,
-		TokenURL:     config.GetOauthTokenURL(),
+		Endpoint:     oauth2.Endpoint{TokenURL: config.GetOauthTokenURL()},
 	}
+	return conf.PasswordCredentialsToken(ctx, username, password)
+}
 
-	return conf.Token(ctx)
+func GetTestTokenHeader() (string, error) {
+	t, err := GetTestToken()
+	if err != nil {
+		return "", err
+	}
+	return TokenPrefix + t.AccessToken, nil
 }

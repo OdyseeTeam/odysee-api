@@ -28,7 +28,7 @@ func TestOauthAuthenticatorAuthenticate(t *testing.T) {
 	token, err := GetTestToken()
 	require.NoError(t, err, errors.Unwrap(err))
 
-	u, err := auther.Authenticate(token.AccessToken, "")
+	u, err := auther.Authenticate("Bearer "+token.AccessToken, "")
 	require.NoError(t, err, errors.Unwrap(err))
 
 	count, err := models.Users(models.UserWhere.ID.EQ(u.ID)).CountG()
@@ -48,7 +48,7 @@ func TestOauthAuthenticatorAuthenticate(t *testing.T) {
 	require.Equal(t, u.LbrynetServerID.Int, sdk.ID)
 
 	// now fetch it all back from the db
-	u2, err := auther.Authenticate(token.AccessToken, "")
+	u2, err := auther.Authenticate("Bearer "+token.AccessToken, "")
 	require.NoError(t, err, errors.Unwrap(err))
 	require.NotNil(t, u2)
 
@@ -76,6 +76,4 @@ func TestGetTestToken(t *testing.T) {
 	remoteUser, err := getRemoteUser(auther.iapiURL, oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token.AccessToken}), "")
 	require.NoError(t, err)
 	require.Greater(t, remoteUser.ID, 0)
-
-	require.Falsef(t, true, "%+v", token)
 }

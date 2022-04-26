@@ -30,7 +30,7 @@ type result struct {
 func FromRequest(r *http.Request) (*models.User, error) {
 	v := r.Context().Value(contextKey)
 	if v == nil {
-		return nil, errors.Err("auth.Middleware is required")
+		return nil, errors.Err("auth middleware is required")
 	}
 	res := v.(result)
 	return res.user, res.err

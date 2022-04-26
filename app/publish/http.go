@@ -117,7 +117,7 @@ func retryPolicy(ctx context.Context, resp *http.Response, err error) (bool, err
 // userFromRequest attempts to validate the request and return authorized user
 // if the request contains valid user access token.
 func userFromRequest(provider auth.Provider, headers http.Header, remoteAddr string) (*models.User, error) {
-	if token, ok := headers[wallet.TokenHeader]; ok {
+	if token, ok := headers[wallet.LegacyTokenHeader]; ok {
 		addr := ip.AddressForRequest(headers, remoteAddr)
 		return provider(token[0], addr)
 	}

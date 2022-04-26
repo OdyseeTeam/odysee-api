@@ -40,7 +40,7 @@ func LegacyMiddleware(provider Provider) mux.MiddlewareFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user, err := FromRequest(r)
 			if user == nil && err != nil {
-				if token, ok := r.Header[wallet.TokenHeader]; ok {
+				if token, ok := r.Header[wallet.LegacyTokenHeader]; ok {
 					addr := ip.FromRequest(r)
 					user, err = provider(token[0], addr)
 					if err != nil {

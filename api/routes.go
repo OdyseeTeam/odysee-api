@@ -102,7 +102,7 @@ func defaultMiddlewares(oauthProvider, legacyProvider auth.Provider, router *sdk
 		panic(err)
 	}
 	defaultHeaders := []string{
-		wallet.TokenHeader, wallet.AuthorizationHeader, "X-Requested-With", "Content-Type", "Accept",
+		wallet.LegacyTokenHeader, wallet.AuthorizationHeader, "X-Requested-With", "Content-Type", "Accept",
 	}
 	c := cors.New(cors.Options{
 		AllowedOrigins:   config.GetCORSDomains(),

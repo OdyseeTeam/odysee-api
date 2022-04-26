@@ -115,7 +115,7 @@ func newPartialUpload(t *testing.T, h *TusHandler, opts ...headers) string {
 	r, err := http.NewRequest(http.MethodPost, tr.root(), bytes.NewReader(testData))
 	assert.Nil(t, err)
 
-	r.Header.Set(wallet.TokenHeader, "uPldrToken")
+	r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 	r.Header.Set("Upload-Length", fmt.Sprintf("%d", len(testData)))
 	r.Header.Set("Tus-Resumable", tusVersion)
 
@@ -138,7 +138,7 @@ func newFinalUpload(t *testing.T, h *TusHandler, opts ...headers) string {
 	r, err := http.NewRequest(http.MethodPatch, loc, bytes.NewReader(testData))
 	assert.Nil(t, err)
 
-	r.Header.Set(wallet.TokenHeader, "uPldrToken")
+	r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 	r.Header.Set("Content-Type", "application/offset+octet-stream")
 	r.Header.Set("Upload-Offset", "0")
 	r.Header.Set("Tus-Resumable", tusVersion)
@@ -257,7 +257,7 @@ func TestNotify(t *testing.T) {
 		respBody, err := ioutil.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
 
-		wantErrMsg := "auth.Middleware is required"
+		wantErrMsg := "auth middleware is required"
 		gotErrMsg := test.StrToRes(t, string(respBody)).Error.Message
 		assert.Equal(t, wantErrMsg, gotErrMsg)
 	})
@@ -271,10 +271,10 @@ func TestNotify(t *testing.T) {
 		r, err := http.NewRequest(http.MethodPost, tr.notify(404), nil)
 		assert.Nil(t, err)
 
-		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 		r.Header.Set("Tus-Resumable", tusVersion)
 
-		newTestMux(h, auth.Middleware(mockAuthProvider)).ServeHTTP(w, r)
+		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
 
 		respBody, err := ioutil.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
@@ -302,10 +302,10 @@ func TestNotify(t *testing.T) {
 		r, err := http.NewRequest(http.MethodPost, loc+"/notify", http.NoBody)
 		assert.Nil(t, err)
 
-		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 		r.Header.Set("Tus-Resumable", tusVersion)
 
-		newTestMux(h, auth.Middleware(mockAuthProvider)).ServeHTTP(w, r)
+		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
 
 		respBody, err := ioutil.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
@@ -335,10 +335,10 @@ func TestNotify(t *testing.T) {
 		)
 		assert.Nil(t, err)
 
-		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 		r.Header.Set("Tus-Resumable", tusVersion)
 
-		newTestMux(h, auth.Middleware(mockAuthProvider)).ServeHTTP(w, r)
+		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
 
 		response := w.Result()
 		respBody, err := ioutil.ReadAll(response.Body)
@@ -365,10 +365,10 @@ func TestNotify(t *testing.T) {
 		)
 		assert.Nil(t, err)
 
-		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 		r.Header.Set("Tus-Resumable", tusVersion)
 
-		newTestMux(h, auth.Middleware(mockAuthProvider)).ServeHTTP(w, r)
+		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
 
 		respBody, err := ioutil.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
@@ -402,7 +402,7 @@ func TestTus(t *testing.T) {
 		r, err := http.NewRequest(http.MethodPost, tr.root(), http.NoBody)
 		assert.Nil(t, err)
 
-		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 		r.Header.Set("Tus-Resumable", tusVersion)
 
 		newTestMux(h).ServeHTTP(w, r)
@@ -421,7 +421,7 @@ func TestTus(t *testing.T) {
 		r, err := http.NewRequest(http.MethodPost, tr.root(), bytes.NewReader(testData))
 		assert.Nil(t, err)
 
-		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 		r.Header.Set("Upload-Length", fmt.Sprintf("%d", len(testData)))
 
 		newTestMux(h).ServeHTTP(w, r)
@@ -447,7 +447,7 @@ func TestTus(t *testing.T) {
 		r, err := http.NewRequest(http.MethodPost, tr.root(), bytes.NewReader(testData))
 		assert.Nil(t, err)
 
-		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 		r.Header.Set("Upload-Length", fmt.Sprintf("%d", len(testData)))
 		r.Header.Set("Tus-Resumable", tusVersion)
 		r.Header.Set("X-Forwarded-Proto", wantProto)
@@ -475,7 +475,7 @@ func TestTus(t *testing.T) {
 		r, err := http.NewRequest(http.MethodPost, tr.root(), bytes.NewReader(testData))
 		assert.Nil(t, err)
 
-		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 		r.Header.Set("Upload-Length", fmt.Sprintf("%d", len(testData)))
 		r.Header.Set("Tus-Resumable", tusVersion)
 
@@ -511,7 +511,7 @@ func TestTus(t *testing.T) {
 				r, err := http.NewRequest(http.MethodPatch, loc, bytes.NewReader(testData))
 				assert.Nil(t, err)
 
-				r.Header.Set(wallet.TokenHeader, "uPldrToken")
+				r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 				r.Header.Set("Content-Type", "application/offset+octet-stream")
 				r.Header.Set("Upload-Offset", strconv.Itoa(test.offset))
 				r.Header.Set("Tus-Resumable", tusVersion)
@@ -548,7 +548,7 @@ func TestTus(t *testing.T) {
 				r, err := http.NewRequest(http.MethodPatch, loc, bytes.NewReader(buf))
 				assert.Nil(t, err)
 
-				r.Header.Set(wallet.TokenHeader, "uPldrToken")
+				r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 				r.Header.Set("Content-Type", "application/offset+octet-stream")
 				r.Header.Set("Upload-Offset", strconv.Itoa(i))
 				r.Header.Set("Tus-Resumable", tusVersion)
@@ -572,7 +572,7 @@ func TestTus(t *testing.T) {
 		r, err := http.NewRequest(http.MethodDelete, loc, http.NoBody)
 		assert.Nil(t, err)
 
-		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 		r.Header.Set("Tus-Resumable", tusVersion)
 
 		newTestMux(h).ServeHTTP(w, r)
@@ -596,7 +596,7 @@ func TestTus(t *testing.T) {
 		r, err := http.NewRequest(http.MethodHead, loc, http.NoBody)
 		assert.Nil(t, err)
 
-		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 		r.Header.Set("Tus-Resumable", tusVersion)
 
 		newTestMux(h).ServeHTTP(w, r)
@@ -615,7 +615,7 @@ func TestTus(t *testing.T) {
 		r, err := http.NewRequest(http.MethodHead, tr.withID(404), http.NoBody)
 		assert.Nil(t, err)
 
-		r.Header.Set(wallet.TokenHeader, "uPldrToken")
+		r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 		r.Header.Set("Tus-Resumable", tusVersion)
 
 		newTestMux(h).ServeHTTP(w, r)

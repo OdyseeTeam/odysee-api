@@ -61,7 +61,7 @@ func TestProxyDontAuthRelaxedMethods(t *testing.T) {
 
 	r, err := http.NewRequest("POST", "", bytes.NewBuffer(raw))
 	require.NoError(t, err)
-	r.Header.Set(wallet.TokenHeader, "abc")
+	r.Header.Set(wallet.LegacyTokenHeader, "abc")
 
 	rr := httptest.NewRecorder()
 	rt := sdkrouter.New(config.GetLbrynetServers())

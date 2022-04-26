@@ -29,9 +29,9 @@ var logger = monitor.NewModuleLogger("wallet")
 
 func DisableLogger() { logger.Disable() } // for testing
 
-// TokenHeader is the name of HTTP header which is supplied by client and should contain internal-api auth_token.
+// LegacyTokenHeader is the name of HTTP header which is supplied by client and should contain internal-api auth_token.
 const (
-	TokenHeader         = "X-Lbry-Auth-Token"
+	LegacyTokenHeader   = "X-Lbry-Auth-Token"
 	AuthorizationHeader = "Authorization"
 
 	pgUniqueConstraintViolation   = "23505"

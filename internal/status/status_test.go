@@ -122,7 +122,7 @@ func TestGetStatusV2_Authenticated(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	r, _ := http.NewRequest("GET", "", nil)
-	r.Header.Add(wallet.TokenHeader, "anystringwilldo")
+	r.Header.Add(wallet.LegacyTokenHeader, "anystringwilldo")
 	rt := sdkrouter.New(config.GetLbrynetServers())
 	handler := middleware.Apply(
 		middleware.Chain(
