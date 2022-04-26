@@ -67,7 +67,7 @@ func TestHandler_StreamUpdate(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	auth.Middleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
+	auth.LegacyMiddleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
 	response := rr.Result()
 	respBody, err := ioutil.ReadAll(response.Body)
 	require.NoError(t, err)
