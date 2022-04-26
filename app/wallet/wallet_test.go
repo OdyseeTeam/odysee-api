@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Pallinder/go-randomdata"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/errors"
@@ -93,7 +94,7 @@ func TestGetUserWithWallet_NewUser(t *testing.T) {
 	// now assign the user a new server thats set in the db
 	//      rand.Intn(99999),
 	sdk := &models.LbrynetServer{
-		Name:    "testing",
+		Name:    randomdata.Alphanumeric(12),
 		Address: "test.test.test.test",
 	}
 	err = u.SetLbrynetServerG(true, sdk)
