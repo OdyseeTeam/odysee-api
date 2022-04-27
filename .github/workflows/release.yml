@@ -20,7 +20,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
         with:
+          ref: ${{ github.event.workflow_run.head_branch }}
           fetch-depth: 0
+
+      - run: git branch
 
       - name: Retrieve release details
         id: release
@@ -36,9 +39,9 @@ jobs:
             echo "::endgroup::"
 
       - name: Set up Go 1.17
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
-          go-version: ^1.17
+          go-version: '>=1.17 <1.18'
         id: go
 
       - name: Login to DockerHub
