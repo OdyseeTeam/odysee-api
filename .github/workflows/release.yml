@@ -22,20 +22,23 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get service name
-        id: service
-        run: echo "::set-output name=service::$(git describe --tags|sed -e 's/\-v.*//')"
+      - name: Retrieve release details
+        id: release
+        run: |
+          echo "::set-output name=service::$(git describe --tags|sed -e 's/\-v.*//')"
+          echo "::set-output name=version::$(git describe --tags|sed -e 's/.*\-v//')"
 
-      - name: Get service version
-        id: version
-        run: echo "::set-output name=version::$(git describe --tags|sed -e 's/.*\-v//')"
+      - name: Release details
+        run: |
+            echo "::group::${{ steps.release.outputs.app }}"
+            echo "version ${{ steps.release.outputs.version }"
+            echo "env ${{ github.ref }}"
+            echo "::endgroup::"
 
-      - run: echo "::warning ::Release ${{ steps.service.outputs.service }} v${{ steps.version.outputs.version }}"
-
-      - name: Set up Go 1.x
+      - name: Set up Go 1.17
         uses: actions/setup-go@v2
         with:
-          go-version: ^1.16
+          go-version: ^1.17
         id: go
 
       - name: Login to DockerHub
@@ -47,21 +50,21 @@ jobs:
       # odysee-api deployment
 
       - name: Build odysee-api
-        if: steps.service.outputs.service == 'api'
+        if: steps.release.outputs.app == 'api'
         run: make api
 
       - name: Build and push odysee-api docker image
-        if: steps.service.outputs.service == 'api'
+        if: steps.release.outputs.app == 'api'
         uses: docker/build-push-action@v2
         with:
           push: true
           context: .
           tags: |
-            odyseeteam/odysee-${{ steps.service.outputs.service }}:latest
-            odyseeteam/odysee-${{ steps.service.outputs.service }}:${{ steps.version.outputs.version }}
+            odyseeteam/odysee-${{ steps.release.outputs.app }}:latest
+            odyseeteam/odysee-${{ steps.release.outputs.app }}:${{ steps.release.outputs.version }}
 
       - name: Deploy odysee-api
-        if: steps.service.outputs.service == 'api'
+        if: steps.release.outputs.app == 'api'
         uses: octokit/request-action@v2.x
         id: deploy-odysee-api
         env:
@@ -71,29 +74,29 @@ jobs:
           repository: odyseeteam/misc-deployment
           event_type: deploy-odysee
           client_payload: |
-            tag: ${{ steps.version.outputs.version }}
+            tag: ${{ steps.release.outputs.version }}
             ref: ${{ github.ref }}
             service: odysee-api
 
       # Watchman deployment
 
       - name: Build watchman
-        if: steps.service.outputs.service == 'watchman'
+        if: steps.release.outputs.app == 'watchman'
         run: make watchman
 
       - name: Build watchman docker image
-        if: steps.service.outputs.service == 'watchman'
+        if: steps.release.outputs.app == 'watchman'
         uses: docker/build-push-action@v2
         with:
           push: true
-          context: apps/${{ steps.service.outputs.service }}/
+          context: apps/${{ steps.release.outputs.app }}/
           tags: |
-            odyseeteam/${{ steps.service.outputs.service }}:latest
-            odyseeteam/${{ steps.service.outputs.service }}:${{ steps.version.outputs.version }}
-          file: apps/${{ steps.service.outputs.service }}/Dockerfile
+            odyseeteam/${{ steps.release.outputs.app }}:latest
+            odyseeteam/${{ steps.release.outputs.app }}:${{ steps.release.outputs.version }}
+          file: apps/${{ steps.release.outputs.app }}/Dockerfile
 
       - name: Deploy watchman
-        if: steps.service.outputs.service == 'watchman'
+        if: steps.release.outputs.app == 'watchman'
         uses: octokit/request-action@v2.x
         id: deploy-watchman
         env:
@@ -103,6 +106,6 @@ jobs:
           repository: lbryio/lbrytv-deployment
           event_type: deploy-odysee
           client_payload: |
-            tag: ${{ steps.version.outputs.version }}
+            tag: ${{ steps.release.outputs.version }}
             ref: ${{ github.ref }}
-            service: ${{ steps.service.outputs.service }}
+            service: ${{ steps.release.outputs.app }}
