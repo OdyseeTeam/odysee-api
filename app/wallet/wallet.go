@@ -61,7 +61,7 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelFn()
 
-	err = inTx(ctx, storage.Conn.DB.DB, func(tx *sql.Tx) error {
+	err = inTx(ctx, storage.DB, func(tx *sql.Tx) error {
 		localUser, err = getOrCreateLocalUser(tx, models.User{ID: remoteUser.ID}, log)
 		if err != nil {
 			return err

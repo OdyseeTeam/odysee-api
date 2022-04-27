@@ -12,28 +12,24 @@ import (
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/storage"
+	"github.com/lbryio/lbrytv/pkg/migrator"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
-	dbConfig := config.GetDatabase()
-	params := storage.ConnParams{
-		Connection: dbConfig.Connection,
-		DBName:     dbConfig.DBName,
-		Options:    dbConfig.Options,
+	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
+	if err != nil {
+		panic(err)
 	}
-	c, connCleanup := storage.CreateTestConn(params)
-	c.SetDefaultConnection()
-
-	defer connCleanup()
-
+	storage.SetDB(db)
 	// override this to temp to avoid permission error when running tests on
 	// restricted environment.
 	config.Config.Override("PublishSourceDir", os.TempDir())
-
-	os.Exit(m.Run())
+	code := m.Run()
+	dbCleanup()
+	os.Exit(code)
 }
 
 func randomServer(r *sdkrouter.Router) *Server {

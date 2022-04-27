@@ -141,7 +141,7 @@ func (a *OauthAuthenticator) Authenticate(tokenString, metaRemoteIP string) (*mo
 	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelFn()
 
-	err = inTx(ctx, storage.Conn.DB.DB, func(tx *sql.Tx) error {
+	err = inTx(ctx, storage.DB, func(tx *sql.Tx) error {
 		localUser, err = getOrCreateLocalUser(tx, models.User{ID: remoteUser.ID, IdpID: null.StringFrom(userInfo.Sub)}, log)
 		if err != nil {
 			return err

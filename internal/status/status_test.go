@@ -17,6 +17,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/test"
 	"github.com/lbryio/lbrytv/models"
+	"github.com/lbryio/lbrytv/pkg/migrator"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,19 +27,13 @@ func TestMain(m *testing.M) {
 	// These tests requires an environment close to production setup, i.e. no loading from the config
 	config.Override("LbrynetServers", map[string]string{})
 	defer config.RestoreOverridden()
-
-	dbConfig := config.GetDatabase()
-	params := storage.ConnParams{
-		Connection: dbConfig.Connection,
-		DBName:     dbConfig.DBName,
-		Options:    dbConfig.Options,
+	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
+	if err != nil {
+		panic(err)
 	}
-	c, connCleanup := storage.CreateTestConn(params)
-	c.SetDefaultConnection()
-
+	storage.SetDB(db)
 	code := m.Run()
-	connCleanup()
-
+	dbCleanup()
 	os.Exit(code)
 }
 

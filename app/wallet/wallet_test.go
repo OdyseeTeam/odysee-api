@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Pallinder/go-randomdata"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/errors"
@@ -19,7 +18,9 @@ import (
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/test"
 	"github.com/lbryio/lbrytv/models"
+	"github.com/lbryio/lbrytv/pkg/migrator"
 
+	"github.com/Pallinder/go-randomdata"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,23 +32,18 @@ import (
 const dummyUserID = 751365
 
 func TestMain(m *testing.M) {
-	dbConfig := config.GetDatabase()
-	params := storage.ConnParams{
-		Connection: dbConfig.Connection,
-		DBName:     dbConfig.DBName,
-		Options:    dbConfig.Options,
+	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
+	if err != nil {
+		panic(err)
 	}
-	dbConn, connCleanup := storage.CreateTestConn(params)
-	dbConn.SetDefaultConnection()
-
+	storage.SetDB(db)
 	code := m.Run()
-
-	connCleanup()
+	dbCleanup()
 	os.Exit(code)
 }
 
 func setupTest() {
-	storage.Conn.Truncate([]string{"users"})
+	storage.Migrator.Truncate([]string{models.TableNames.Users})
 	currentCache.flush()
 }
 
@@ -196,7 +192,7 @@ func TestGetUserWithWallet_ExistingUserWithoutSDKGetsAssignedOneOnRetrieve(t *te
 	defer func() { srv.DeleteG() }()
 
 	u := &models.User{ID: userID}
-	err := u.Insert(storage.Conn.DB, boil.Infer())
+	err := u.Insert(storage.DB, boil.Infer())
 	require.NoError(t, err)
 	assert.False(t, u.CreatedAt.IsZero())
 
@@ -369,11 +365,11 @@ func TestCreateWalletLoadWallet(t *testing.T) {
 }
 
 func TestCreateDBUser_ConcurrentDuplicateUser(t *testing.T) {
-	storage.Conn.Truncate([]string{models.TableNames.Users})
+	setupTest()
 
 	id := 123
 	user := &models.User{ID: id}
-	err := user.Insert(storage.Conn.DB.DB, boil.Infer())
+	err := user.Insert(storage.DB, boil.Infer())
 	require.NoError(t, err)
 
 	// we want the very first getDBUser() call in getOrCreateLocalUser() to return no results to
@@ -382,7 +378,7 @@ func TestCreateDBUser_ConcurrentDuplicateUser(t *testing.T) {
 
 	mockExecutor := &firstQueryNoResults{}
 
-	err = inTx(context.Background(), storage.Conn.DB.DB, func(tx *sql.Tx) error {
+	err = inTx(context.Background(), storage.DB, func(tx *sql.Tx) error {
 		mockExecutor.ex = tx
 		_, err := getOrCreateLocalUser(mockExecutor, models.User{ID: id}, logger.Log())
 		return err
@@ -392,11 +388,11 @@ func TestCreateDBUser_ConcurrentDuplicateUser(t *testing.T) {
 }
 
 func TestCreateDBUser_ConcurrentDuplicateUserIDP(t *testing.T) {
-	storage.Conn.Truncate([]string{models.TableNames.Users})
+	setupTest()
 
 	id := null.StringFrom("my-idp-id")
 	user := &models.User{IdpID: id}
-	err := user.Insert(storage.Conn.DB.DB, boil.Infer())
+	err := user.Insert(storage.DB, boil.Infer())
 	require.NoError(t, err)
 
 	// we want the very first getDBUser() call in getOrCreateLocalUser() to return no results to
@@ -405,7 +401,7 @@ func TestCreateDBUser_ConcurrentDuplicateUserIDP(t *testing.T) {
 
 	mockExecutor := &firstQueryNoResults{}
 
-	err = inTx(context.Background(), storage.Conn.DB.DB, func(tx *sql.Tx) error {
+	err = inTx(context.Background(), storage.DB, func(tx *sql.Tx) error {
 		mockExecutor.ex = tx
 		_, err := getOrCreateLocalUser(mockExecutor, models.User{IdpID: id}, logger.Log())
 		return err

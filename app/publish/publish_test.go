@@ -12,6 +12,7 @@ import (
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/test"
+	"github.com/lbryio/lbrytv/pkg/migrator"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,14 +26,12 @@ func copyToDocker(t *testing.T, fileName string) {
 }
 
 func TestLbrynetPublisher(t *testing.T) {
-	dbConfig := config.GetDatabase()
-	c, connCleanup := storage.CreateTestConn(storage.ConnParams{
-		Connection: dbConfig.Connection,
-		DBName:     dbConfig.DBName,
-		Options:    dbConfig.Options,
-	})
-	defer connCleanup()
-	c.SetDefaultConnection()
+	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
+	if err != nil {
+		panic(err)
+	}
+	storage.SetDB(db)
+	dbCleanup()
 
 	data := []byte("test file")
 	f, err := ioutil.TempFile(os.TempDir(), "*")

@@ -3,9 +3,11 @@ package cmd
 import (
 	"strconv"
 
+	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/storage"
-	"github.com/sirupsen/logrus"
+	"github.com/lbryio/lbrytv/pkg/migrator"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -15,16 +17,24 @@ func init() {
 
 var dbMigrateUp = &cobra.Command{
 	Use:   "db_migrate_up",
-	Short: "Apply unapplied database migrations",
+	Short: "Apply database migrations",
 	Run: func(cmd *cobra.Command, args []string) {
-		var nrMigrations int64
+		var max int
 		if len(args) > 0 {
 			var err error
-			nrMigrations, err = strconv.ParseInt(args[0], 10, 32)
+			max, err = strconv.Atoi(args[0])
 			if err != nil {
 				logrus.Error("non integer passed as argument to migration")
 			}
 		}
-		storage.Conn.MigrateUp(int(nrMigrations))
+
+		dbConfig := config.GetDatabase()
+		db, err := migrator.ConnectDB(migrator.DefaultDBConfig().DSN(dbConfig.Connection).Name(dbConfig.DBName).NoMigration(), storage.MigrationsFS)
+		if err != nil {
+			panic(err)
+		}
+		defer db.Close()
+		m := migrator.New(db, storage.MigrationsFS)
+		m.MigrateUp(max)
 	},
 }

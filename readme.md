@@ -6,6 +6,14 @@ This is the API server used by [Odysee](https://odysee.com), mostly acting as a 
 
 ![Tests](https://github.com/OdyseeTeam/odysee-api/actions/workflows/test.yml/badge.svg) [![Coverage Status](https://coveralls.io/repos/github/OdyseeTeam/odysee-api/badge.svg?branch=master)](https://coveralls.io/github/OdyseeTeam/odysee-api?branch=master)
 
+## Required tools
+
+```
+go install github.com/volatiletech/sqlboiler
+go install github.com/volatiletech/sqlboiler/drivers/sqlboiler-psql
+
+```
+
 ## Running off source (the preferred way for development)
 
 **1. Launch the containers**
@@ -72,7 +80,7 @@ Make sure you have `lbrynet`, `postgres` and `postgres-collector` containers run
 
 ## Modifying and building a Docker image
 
-First, make sure you have Go 1.16+
+First, make sure you have Go 1.17 installed.
 
 - Ubuntu: https://launchpad.net/~longsleep/+archive/ubuntu/golang-backports or https://github.com/golang/go/wiki/Ubuntu
 - OSX: `brew install go`
