@@ -47,7 +47,7 @@ paths:
               duration: 30000
               player: sg-p2
               position: 1045058586
-              protocol: hls
+              protocol: lvs
               rebuf_count: 2095695930
               rebuf_duration: 38439
               rel_position: 13
@@ -116,11 +116,13 @@ components:
           minimum: 0
         protocol:
           type: string
-          description: Video delivery protocol, stb (binary stream) or HLS
-          example: stb
+          description: Standard binary stream (`stb`), HLS (`hls`) or live stream
+            (`lvs`)
+          example: hls
           enum:
           - stb
           - hls
+          - lvs
         rebuf_count:
           type: integer
           description: Rebuffering events count during the interval
@@ -157,7 +159,7 @@ components:
         duration: 30000
         player: sg-p2
         position: 1517669849
-        protocol: stb
+        protocol: lvs
         rebuf_count: 1305791291
         rebuf_duration: 5764
         rel_position: 18

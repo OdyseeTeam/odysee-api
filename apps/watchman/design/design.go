@@ -96,8 +96,9 @@ var PlaybackReport = Type("PlaybackReport", func() {
 		Maximum(60000)
 	})
 
-	Attribute("protocol", String, "Video delivery protocol, stb (binary stream) or HLS", func() {
-		Enum("stb", "hls")
+	Attribute("protocol", String, "Video delivery protocol", func() {
+		Description("Standard binary stream (`stb`), HLS (`hls`) or live stream (`lvs`)")
+		Enum("stb", "hls", "lvs")
 	})
 
 	Attribute("cache", String, "Cache status of video", func() {

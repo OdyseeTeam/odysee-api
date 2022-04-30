@@ -44,7 +44,7 @@ type PlaybackReport struct {
 	RebufCount int32
 	// Sum of total rebuffering events duration in the interval, ms
 	RebufDuration int32
-	// Video delivery protocol, stb (binary stream) or HLS
+	// Standard binary stream (`stb`), HLS (`hls`) or live stream (`lvs`)
 	Protocol string
 	// Cache status of video
 	Cache *string
