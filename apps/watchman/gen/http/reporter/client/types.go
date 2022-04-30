@@ -28,7 +28,7 @@ type AddRequestBody struct {
 	RebufCount int32 `form:"rebuf_count" json:"rebuf_count" xml:"rebuf_count"`
 	// Sum of total rebuffering events duration in the interval, ms
 	RebufDuration int32 `form:"rebuf_duration" json:"rebuf_duration" xml:"rebuf_duration"`
-	// Video delivery protocol, stb (binary stream) or HLS
+	// Standard binary stream (`stb`), HLS (`hls`) or live stream (`lvs`)
 	Protocol string `form:"protocol" json:"protocol" xml:"protocol"`
 	// Cache status of video
 	Cache *string `form:"cache,omitempty" json:"cache,omitempty" xml:"cache,omitempty"`

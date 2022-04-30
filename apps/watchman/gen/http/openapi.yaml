@@ -126,11 +126,12 @@ definitions:
         minimum: 0
       protocol:
         type: string
-        description: Video delivery protocol, stb (binary stream) or HLS
-        example: hls
+        description: Standard binary stream (`stb`), HLS (`hls`) or live stream (`lvs`)
+        example: stb
         enum:
         - stb
         - hls
+        - lvs
       rebuf_count:
         type: integer
         description: Rebuffering events count during the interval
@@ -167,7 +168,7 @@ definitions:
       duration: 30000
       player: sg-p2
       position: 1501556176
-      protocol: stb
+      protocol: lvs
       rebuf_count: 1077102125
       rebuf_duration: 47972
       rel_position: 14

@@ -30,7 +30,7 @@ type AddRequestBody struct {
 	RebufCount *int32 `form:"rebuf_count,omitempty" json:"rebuf_count,omitempty" xml:"rebuf_count,omitempty"`
 	// Sum of total rebuffering events duration in the interval, ms
 	RebufDuration *int32 `form:"rebuf_duration,omitempty" json:"rebuf_duration,omitempty" xml:"rebuf_duration,omitempty"`
-	// Video delivery protocol, stb (binary stream) or HLS
+	// Standard binary stream (`stb`), HLS (`hls`) or live stream (`lvs`)
 	Protocol *string `form:"protocol,omitempty" json:"protocol,omitempty" xml:"protocol,omitempty"`
 	// Cache status of video
 	Cache *string `form:"cache,omitempty" json:"cache,omitempty" xml:"cache,omitempty"`
@@ -160,8 +160,8 @@ func ValidateAddRequestBody(body *AddRequestBody) (err error) {
 		}
 	}
 	if body.Protocol != nil {
-		if !(*body.Protocol == "stb" || *body.Protocol == "hls") {
-			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.protocol", *body.Protocol, []interface{}{"stb", "hls"}))
+		if !(*body.Protocol == "stb" || *body.Protocol == "hls" || *body.Protocol == "lvs") {
+			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.protocol", *body.Protocol, []interface{}{"stb", "hls", "lvs"}))
 		}
 	}
 	if body.Cache != nil {
