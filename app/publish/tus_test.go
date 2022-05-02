@@ -34,18 +34,6 @@ import (
 
 const tusVersion = "1.0.0"
 
-func TestMain(m *testing.M) {
-	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
-	if err != nil {
-		panic(err)
-	}
-	storage.SetDB(db)
-	config.Override("LbrynetServers", "")
-	code := m.Run()
-	dbCleanup()
-	os.Exit(code)
-}
-
 func newTusTestCfg(uploadPath string) tusd.Config {
 	composer := tusd.NewStoreComposer()
 	store := filestore.New(uploadPath)
@@ -420,14 +408,18 @@ func TestNotify(t *testing.T) {
 }
 
 func TestTus(t *testing.T) {
-	t.Parallel()
+	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
+	if err != nil {
+		panic(err)
+	}
+	storage.SetDB(db)
+	config.Override("LbrynetServers", "")
+	defer dbCleanup()
 
 	token, err := wallet.GetTestTokenHeader()
 	require.NoError(t, err)
 
 	t.Run("FailedToAuthorize", func(t *testing.T) {
-		t.Parallel()
-
 		errAuthFn := func(token, ip string) (*models.User, error) {
 			return nil, fmt.Errorf("failed to authorize")
 		}
@@ -456,8 +448,6 @@ func TestTus(t *testing.T) {
 	})
 
 	t.Run("WithoutTusVersionHeader", func(t *testing.T) {
-		t.Parallel()
-
 		h := newTestTusHandlerWithOauth(t)
 		w := httptest.NewRecorder()
 
@@ -483,8 +473,6 @@ func TestTus(t *testing.T) {
 	})
 
 	t.Run("WithForwardProto", func(t *testing.T) {
-		t.Parallel()
-
 		wantProto := "https"
 
 		h := newTestTusHandler(t)
@@ -513,8 +501,6 @@ func TestTus(t *testing.T) {
 	})
 
 	t.Run("CreateUpload", func(t *testing.T) {
-		t.Parallel()
-
 		h := newTestTusHandlerWithOauth(t)
 		w := httptest.NewRecorder()
 
@@ -534,8 +520,6 @@ func TestTus(t *testing.T) {
 	})
 
 	t.Run("ResumeUpload", func(t *testing.T) {
-		t.Parallel()
-
 		h := newTestTusHandlerWithOauth(t)
 
 		loc := newPartialUpload(t, h, func() (string, string) {
@@ -572,8 +556,6 @@ func TestTus(t *testing.T) {
 	})
 
 	t.Run("ResumeWithChunks", func(t *testing.T) {
-		t.Parallel()
-
 		h := newTestTusHandlerWithOauth(t)
 
 		loc := newPartialUpload(t, h, func() (string, string) {
@@ -609,8 +591,6 @@ func TestTus(t *testing.T) {
 	})
 
 	t.Run("DeleteUpload", func(t *testing.T) {
-		t.Parallel()
-
 		h := newTestTusHandlerWithOauth(t)
 		w := httptest.NewRecorder()
 
@@ -633,8 +613,6 @@ func TestTus(t *testing.T) {
 	})
 
 	t.Run("QueryFile", func(t *testing.T) {
-		t.Parallel()
-
 		h := newTestTusHandlerWithOauth(t)
 		w := httptest.NewRecorder()
 
@@ -655,8 +633,6 @@ func TestTus(t *testing.T) {
 	})
 
 	t.Run("QueryNonExistentFile", func(t *testing.T) {
-		t.Parallel()
-
 		h := newTestTusHandlerWithOauth(t)
 		w := httptest.NewRecorder()
 		_ = newPartialUpload(t, h)
