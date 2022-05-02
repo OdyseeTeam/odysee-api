@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -136,7 +137,7 @@ func GetLbrynetServers() map[string]string {
 	} else {
 		servers, err := models.LbrynetServers().AllG()
 		if err != nil {
-			panic("Could not retrieve lbrynet server list from db and config is not set.")
+			panic(fmt.Sprintf("Could not retrieve lbrynet server list from db: %s", err))
 		}
 		if len(servers) == 0 {
 			panic("There are no servers listed in the db and config is not set.")
