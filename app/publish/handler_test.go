@@ -37,7 +37,7 @@ type DummyPublisher struct {
 
 func TestHandler_StreamUpdate(t *testing.T) {
 	r := GenerateUpdateRequest(t, []byte("test file"))
-	r.Header.Set(wallet.TokenHeader, "uPldrToken")
+	r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 
 	publisher := &DummyPublisher{}
 
@@ -67,7 +67,7 @@ func TestHandler_StreamUpdate(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	auth.Middleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
+	auth.LegacyMiddleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
 	response := rr.Result()
 	respBody, err := ioutil.ReadAll(response.Body)
 	require.NoError(t, err)
@@ -90,7 +90,7 @@ func TestHandler_StreamUpdate(t *testing.T) {
 
 func TestUploadHandler(t *testing.T) {
 	r := CreatePublishRequest(t, []byte("test file"))
-	r.Header.Set(wallet.TokenHeader, "uPldrToken")
+	r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 
 	publisher := &DummyPublisher{}
 
@@ -121,7 +121,7 @@ func TestUploadHandler(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	auth.Middleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
+	auth.LegacyMiddleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
 	response := rr.Result()
 	respBody, err := ioutil.ReadAll(response.Body)
 	require.NoError(t, err)
@@ -143,7 +143,7 @@ func TestUploadHandler(t *testing.T) {
 func TestHandler_NoAuthMiddleware(t *testing.T) {
 	r, err := http.NewRequest("POST", "/api/v1/proxy", &bytes.Buffer{})
 	require.NoError(t, err)
-	r.Header.Set(wallet.TokenHeader, "uPldrToken")
+	r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 
 	handler := &Handler{UploadPath: os.TempDir()}
 
@@ -151,12 +151,12 @@ func TestHandler_NoAuthMiddleware(t *testing.T) {
 	handler.Handle(rr, r)
 	respBody, err := ioutil.ReadAll(rr.Result().Body)
 	require.NoError(t, err)
-	assert.Equal(t, "auth.Middleware is required", test.StrToRes(t, string(respBody)).Error.Message)
+	assert.Equal(t, "auth middleware is required", test.StrToRes(t, string(respBody)).Error.Message)
 }
 
 func TestHandler_NoSDKAddress(t *testing.T) {
 	r := CreatePublishRequest(t, []byte("test file"))
-	r.Header.Set(wallet.TokenHeader, "x")
+	r.Header.Set(wallet.LegacyTokenHeader, "x")
 	rr := httptest.NewRecorder()
 
 	handler := &Handler{UploadPath: os.TempDir()}
@@ -164,7 +164,7 @@ func TestHandler_NoSDKAddress(t *testing.T) {
 		return &models.User{ID: 20404}, nil
 	}
 
-	auth.Middleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
+	auth.LegacyMiddleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
 	response := rr.Result()
 	respBody, err := ioutil.ReadAll(response.Body)
 	require.NoError(t, err)
@@ -187,7 +187,7 @@ func TestHandler_AuthRequired(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	auth.Middleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
+	auth.LegacyMiddleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
 	response := rr.Result()
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
@@ -218,7 +218,7 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	req, err := http.NewRequest("POST", "/", bytes.NewReader(body.Bytes()))
 	require.NoError(t, err)
 
-	req.Header.Set(wallet.TokenHeader, "uPldrToken")
+	req.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	publisher := &DummyPublisher{}
@@ -235,7 +235,7 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	auth.Middleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, req)
+	auth.LegacyMiddleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, req)
 	response := rr.Result()
 
 	require.False(t, publisher.called)

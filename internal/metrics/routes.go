@@ -21,13 +21,16 @@ func TrackUIMetric(w http.ResponseWriter, req *http.Request) {
 	resp["name"] = metricName
 
 	switch metricName {
-	case "buffer":
-		UIBufferCount.Inc()
 	case "time_to_start":
-		UITimeToStart.Observe(cast.ToFloat64(req.FormValue("value")))
+		player := req.FormValue("player")
+		if len(player) > 64 {
+			code = http.StatusBadRequest
+			resp["error"] = "invalid player value"
+		}
+		UITimeToStart.WithLabelValues(player).Observe(cast.ToFloat64(req.FormValue("value")))
 	default:
 		code = http.StatusBadRequest
-		resp["error"] = "Invalid metric name"
+		resp["error"] = "invalid metric name"
 	}
 
 	w.WriteHeader(code)

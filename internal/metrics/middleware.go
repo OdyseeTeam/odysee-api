@@ -21,11 +21,11 @@ func MeasureMiddleware() mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			t := StartTimer()
-			Logger.Log().Debugf("timer %p started", t)
+			Logger.Log().Debugf("timer %s started", t.String())
 			rc := r.Clone(context.WithValue(r.Context(), timerContextKey, t))
 			defer func() {
 				t.Stop()
-				Logger.Log().Debugf("timer %p stopped (%.6fs)", t, t.Duration)
+				Logger.Log().Debugf("timer %s stopped (%.6fs)", t.String(), t.Duration())
 			}()
 
 			next.ServeHTTP(w, rc)

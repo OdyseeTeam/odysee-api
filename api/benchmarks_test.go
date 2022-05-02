@@ -21,6 +21,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/responses"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/models"
+	"github.com/lbryio/lbrytv/pkg/migrator"
 
 	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"
@@ -64,27 +65,21 @@ func launchAuthenticatingAPIServer() *httptest.Server {
 }
 
 func TestMain(m *testing.M) {
-	dbConfig := config.GetDatabase()
-	params := storage.ConnParams{
-		Connection: dbConfig.Connection,
-		DBName:     dbConfig.DBName,
-		Options:    dbConfig.Options,
+	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
+	if err != nil {
+		panic(err)
 	}
-	dbConn, connCleanup := storage.CreateTestConn(params)
-	dbConn.SetDefaultConnection()
-
-	// override this to temp to avoid permission error when running tests on
+	storage.SetDB(db)
+	// Overriding this to temp to avoid permission error when running tests on
 	// restricted environment.
 	config.Config.Override("PublishSourceDir", os.TempDir())
-
 	code := m.Run()
-
-	connCleanup()
+	dbCleanup()
 	os.Exit(code)
 }
 
 func setupDBTables() {
-	storage.Conn.Truncate([]string{"users"})
+	storage.Migrator.Truncate([]string{"users"})
 }
 
 func BenchmarkWalletCommands(b *testing.B) {

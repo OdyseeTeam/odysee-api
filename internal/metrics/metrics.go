@@ -20,6 +20,7 @@ const (
 
 	LabelSource   = "source"
 	LabelInstance = "instance"
+	LabelPlayer   = "player"
 
 	LabelNameType  = "type"
 	LabelValuePaid = "paid"
@@ -182,13 +183,13 @@ var (
 		Name:      "buffer_count",
 		Help:      "Video buffer events",
 	})
-	UITimeToStart = promauto.NewHistogram(prometheus.HistogramOpts{
+	UITimeToStart = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: nsUI,
 		Subsystem: "content",
 		Name:      "time_to_start",
 		Help:      "How long it takes the video to start",
 		Buckets:   []float64{0.1, 0.25, 0.5, 1, 2, 4, 8, 16, 32},
-	})
+	}, []string{LabelPlayer})
 
 	LbrytvCallDurations = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{

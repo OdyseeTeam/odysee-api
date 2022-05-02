@@ -16,7 +16,7 @@ import (
 
 func TestCache(t *testing.T) {
 	setupTest()
-	user, err := getOrCreateLocalUser(boil.GetDB(), dummyUserID, logger.Log())
+	user, err := getOrCreateLocalUser(boil.GetDB(), models.User{ID: dummyUserID}, logger.Log())
 	require.NoError(t, err)
 	srv := test.RandServerAddress(t)
 	rt := sdkrouter.New(map[string]string{"a": srv})

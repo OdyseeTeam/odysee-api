@@ -16,6 +16,8 @@ import (
 	"github.com/lbryio/lbrytv/internal/middleware"
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/test"
+	"github.com/lbryio/lbrytv/models"
+	"github.com/lbryio/lbrytv/pkg/migrator"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
@@ -28,24 +30,18 @@ const testSetupWait = 200 * time.Millisecond
 
 func TestMain(m *testing.M) {
 	rand.Seed(time.Now().UnixNano())
-
-	dbConfig := config.GetDatabase()
-	params := storage.ConnParams{
-		Connection: dbConfig.Connection,
-		DBName:     dbConfig.DBName,
-		Options:    dbConfig.Options,
+	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
+	if err != nil {
+		panic(err)
 	}
-	dbConn, connCleanup := storage.CreateTestConn(params)
-	dbConn.SetDefaultConnection()
-
+	storage.SetDB(db)
 	code := m.Run()
-
-	connCleanup()
+	dbCleanup()
 	os.Exit(code)
 }
 
 func testFuncSetup() {
-	storage.Conn.Truncate([]string{"users"})
+	storage.Migrator.Truncate([]string{models.TableNames.Users})
 	time.Sleep(testSetupWait)
 }
 

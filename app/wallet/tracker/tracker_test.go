@@ -17,6 +17,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/storage"
 	"github.com/lbryio/lbrytv/internal/test"
 	"github.com/lbryio/lbrytv/models"
+	"github.com/lbryio/lbrytv/pkg/migrator"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
@@ -31,23 +32,24 @@ import (
 func TestMain(m *testing.M) {
 	rand.Seed(time.Now().UnixNano())
 
-	dbConfig := config.GetDatabase()
-	params := storage.ConnParams{
-		Connection: dbConfig.Connection,
-		DBName:     dbConfig.DBName,
-		Options:    dbConfig.Options + "&TimeZone=UTC",
+	// dbConfig := config.GetDatabase()
+	// params := storage.ConnParams{
+	// 	Connection: dbConfig.Connection,
+	// 	DBName:     dbConfig.DBName,
+	// 	Options:    dbConfig.Options + "&TimeZone=UTC",
+	// }
+	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
+	if err != nil {
+		panic(err)
 	}
-	dbConn, connCleanup := storage.CreateTestConn(params)
-	dbConn.SetDefaultConnection()
-
+	storage.SetDB(db)
 	code := m.Run()
-
-	connCleanup()
+	dbCleanup()
 	os.Exit(code)
 }
 
 func TestTouch(t *testing.T) {
-	storage.Conn.Truncate([]string{models.TableNames.Users, models.TableNames.LbrynetServers})
+	storage.Migrator.Truncate([]string{models.TableNames.Users, models.TableNames.LbrynetServers})
 	// create user
 	u := &models.User{ID: rand.Intn(99999)}
 	err := u.InsertG(boil.Infer())
@@ -80,7 +82,7 @@ func TestTouch(t *testing.T) {
 }
 
 func TestUnload(t *testing.T) {
-	storage.Conn.Truncate([]string{models.TableNames.Users, models.TableNames.LbrynetServers})
+	storage.Migrator.Truncate([]string{models.TableNames.Users, models.TableNames.LbrynetServers})
 	reqChan := test.ReqChan()
 	ts := test.MockHTTPServer(reqChan)
 	defer ts.Close()
@@ -113,7 +115,7 @@ func TestUnload(t *testing.T) {
 }
 
 func TestUnload_E2E(t *testing.T) {
-	storage.Conn.Truncate([]string{models.TableNames.Users, models.TableNames.LbrynetServers})
+	storage.Migrator.Truncate([]string{models.TableNames.Users, models.TableNames.LbrynetServers})
 	address := test.RandServerAddress(t)
 	// create models
 	l := &models.LbrynetServer{ID: rand.Intn(99999), Name: "xyz", Address: address}
@@ -153,13 +155,45 @@ func TestUnload_E2E(t *testing.T) {
 	assert.True(t, isWalletLoaded(t, c, sdkrouter.WalletID(u.ID)))
 }
 
-func TestMiddleware(t *testing.T) {
+func TestLegacyMiddleware(t *testing.T) {
 	r, err := http.NewRequest("GET", "/api/v1/proxy", nil)
 	require.NoError(t, err)
 	r.Header.Add("X-Lbry-Auth-Token", "auth me")
 
 	authProvider := func(token, ip string) (*models.User, error) {
 		return &models.User{ID: 994}, nil
+	}
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("hello"))
+	}
+
+	rr := httptest.NewRecorder()
+	hook := logrusTest.NewLocal(GetLogger().Entry.Logger)
+	GetLogger().Entry.Logger.SetLevel(logrus.TraceLevel)
+
+	auth.LegacyMiddleware(authProvider)(
+		Middleware(boil.GetDB())(
+			http.HandlerFunc(handler),
+		),
+	).ServeHTTP(rr, r)
+	body, err := ioutil.ReadAll(rr.Result().Body)
+	require.NoError(t, err)
+	assert.Equal(t, string(body), "hello")
+
+	assert.Equal(t, 1, len(hook.Entries), "unexpected log entry")
+	assert.Equal(t, logrus.TraceLevel, hook.LastEntry().Level)
+	assert.Equal(t, "touched user", hook.LastEntry().Message)
+	assert.Equal(t, 994, hook.LastEntry().Data["user_id"])
+}
+
+func TestMiddleware(t *testing.T) {
+	r, err := http.NewRequest("GET", "/api/v1/proxy", nil)
+	require.NoError(t, err)
+	r.Header.Add("Authorization", "auth me")
+
+	authProvider := func(token, ip string) (*models.User, error) {
+		return &models.User{ID: 994, IdpID: null.StringFrom("my-idp-id")}, nil
 	}
 
 	handler := func(w http.ResponseWriter, r *http.Request) {

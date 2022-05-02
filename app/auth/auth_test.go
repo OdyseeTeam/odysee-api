@@ -17,19 +17,20 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/volatiletech/null"
 )
 
 func TestMiddleware_AuthSuccess(t *testing.T) {
 	r, err := http.NewRequest("GET", "/api/proxy", nil)
 	require.NoError(t, err)
-	r.Header.Set(wallet.TokenHeader, "secret-token")
+	r.Header.Set(wallet.AuthorizationHeader, "secret-token")
 	r.Header.Set("X-Forwarded-For", "8.8.8.8")
 
 	var receivedRemoteIP string
 	provider := func(token, ip string) (*models.User, error) {
 		receivedRemoteIP = ip
 		if token == "secret-token" {
-			return &models.User{ID: 16595}, nil
+			return &models.User{ID: 16595, IdpID: null.StringFrom("my-random-idp-id")}, nil
 		}
 		return nil, nil
 	}
@@ -46,10 +47,37 @@ func TestMiddleware_AuthSuccess(t *testing.T) {
 	assert.Equal(t, "8.8.8.8", receivedRemoteIP)
 }
 
-func TestMiddleware_AuthFailure(t *testing.T) {
+func TestLegacyMiddleware_AuthSuccess(t *testing.T) {
 	r, err := http.NewRequest("GET", "/api/proxy", nil)
 	require.NoError(t, err)
-	r.Header.Set(wallet.TokenHeader, "wrong-token")
+	r.Header.Set(wallet.LegacyTokenHeader, "secret-token")
+	r.Header.Set("X-Forwarded-For", "8.8.8.8")
+
+	var receivedRemoteIP string
+	provider := func(token, ip string) (*models.User, error) {
+		receivedRemoteIP = ip
+		if token == "secret-token" {
+			return &models.User{ID: 16595}, nil
+		}
+		return nil, nil
+	}
+
+	rr := httptest.NewRecorder()
+	middleware.Apply(middleware.Chain(
+		ip.Middleware, LegacyMiddleware(provider),
+	), authChecker).ServeHTTP(rr, r)
+
+	response := rr.Result()
+	body, err := ioutil.ReadAll(response.Body)
+	require.NoError(t, err)
+	assert.Equal(t, "16595", string(body))
+	assert.Equal(t, "8.8.8.8", receivedRemoteIP)
+}
+
+func TestLegacyMiddleware_AuthFailure(t *testing.T) {
+	r, err := http.NewRequest("GET", "/api/proxy", nil)
+	require.NoError(t, err)
+	r.Header.Set(wallet.LegacyTokenHeader, "wrong-token")
 	rr := httptest.NewRecorder()
 
 	provider := func(token, ip string) (*models.User, error) {
@@ -58,7 +86,7 @@ func TestMiddleware_AuthFailure(t *testing.T) {
 		}
 		return nil, nil
 	}
-	middleware.Apply(Middleware(provider), authChecker).ServeHTTP(rr, r)
+	middleware.Apply(LegacyMiddleware(provider), authChecker).ServeHTTP(rr, r)
 
 	response := rr.Result()
 	body, err := ioutil.ReadAll(response.Body)
@@ -67,7 +95,7 @@ func TestMiddleware_AuthFailure(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, response.StatusCode)
 }
 
-func TestMiddleware_NoAuthInfo(t *testing.T) {
+func TestLegacyMiddleware_NoAuthInfo(t *testing.T) {
 	r, err := http.NewRequest("GET", "/api/proxy", nil)
 	require.NoError(t, err)
 	rr := httptest.NewRecorder()
@@ -78,7 +106,7 @@ func TestMiddleware_NoAuthInfo(t *testing.T) {
 		}
 		return nil, nil
 	}
-	middleware.Apply(Middleware(provider), authChecker).ServeHTTP(rr, r)
+	middleware.Apply(LegacyMiddleware(provider), authChecker).ServeHTTP(rr, r)
 
 	response := rr.Result()
 	body, err := ioutil.ReadAll(response.Body)
@@ -87,16 +115,16 @@ func TestMiddleware_NoAuthInfo(t *testing.T) {
 	assert.Equal(t, "no auth info", string(body))
 }
 
-func TestMiddleware_Error(t *testing.T) {
+func TestLegacyMiddleware_Error(t *testing.T) {
 	r, err := http.NewRequest("GET", "/api/proxy", nil)
-	r.Header.Set(wallet.TokenHeader, "any-token")
+	r.Header.Set(wallet.LegacyTokenHeader, "any-token")
 	require.NoError(t, err)
 	rr := httptest.NewRecorder()
 
 	provider := func(token, ip string) (*models.User, error) {
 		return nil, errors.Base("something broke")
 	}
-	middleware.Apply(Middleware(provider), authChecker).ServeHTTP(rr, r)
+	middleware.Apply(LegacyMiddleware(provider), authChecker).ServeHTTP(rr, r)
 
 	response := rr.Result()
 	body, err := ioutil.ReadAll(response.Body)
@@ -126,7 +154,7 @@ func TestFromRequestFail(t *testing.T) {
 	user, err := FromRequest(r)
 	assert.Nil(t, user)
 	assert.Error(t, err)
-	assert.Equal(t, "auth.Middleware is required", err.Error())
+	assert.Equal(t, "auth middleware is required", err.Error())
 }
 
 func authChecker(w http.ResponseWriter, r *http.Request) {

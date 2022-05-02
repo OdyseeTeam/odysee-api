@@ -30,7 +30,7 @@ type result struct {
 func FromRequest(r *http.Request) (*models.User, error) {
 	v := r.Context().Value(contextKey)
 	if v == nil {
-		return nil, errors.Err("auth.Middleware is required")
+		return nil, errors.Err("auth middleware is required")
 	}
 	res := v.(result)
 	return res.user, res.err
@@ -42,8 +42,24 @@ type Provider func(token, metaRemoteIP string) (*models.User, error)
 // NewIAPIProvider authenticates a user by hitting internal-api with the auth token
 // and matching the response to a local user. If auth is successful, the user will have a
 // lbrynet server assigned and a wallet that's created and ready to use.
-func NewIAPIProvider(rt *sdkrouter.Router, internalAPIHost string) Provider {
+func NewIAPIProvider(router *sdkrouter.Router, internalAPIHost string) Provider {
 	return func(token, metaRemoteIP string) (*models.User, error) {
-		return wallet.GetUserWithSDKServer(rt, internalAPIHost, token, metaRemoteIP)
+		return wallet.GetUserWithSDKServer(router, internalAPIHost, token, metaRemoteIP)
+	}
+}
+
+// NewOauthProvider authenticates a user by validating the access token passed in the
+// authorization header. If the keycloak user id is stored locally then that user will
+// be returned. If not then we reach out to internal-apis to get the internal-apis
+// user id and use that to create the known wallet id, save it along with the user id
+// to the user in question. If auth is successful, the user will have a
+// lbrynet server assigned and a wallet that's created and ready to use.
+func NewOauthProvider(oauthProviderURL string, clientID string, iapiURL string, router *sdkrouter.Router) Provider {
+	auther, err := wallet.NewOauthAuthenticator(oauthProviderURL, clientID, iapiURL, router)
+	if err != nil {
+		panic(err)
+	}
+	return func(token, metaRemoteIP string) (*models.User, error) {
+		return auther.Authenticate(token, metaRemoteIP)
 	}
 }

@@ -5,8 +5,13 @@ LbrynetServers:
 
 Debug: 1
 
-InternalAPIHost: https://api.lbry.com
-ProjectURL: https://lbry.tv
+InternalAPIHost: https://api.odysee.com
+ProjectURL: https://odysee.com
+
+OAuth:
+  ClientID: odysee-apis
+  ProviderURL: https://sso.odysee.com/auth/realms/Users
+  TokenPath: /protocol/openid-connect/token
 
 DatabaseDSN: postgres://lbrytv:lbrytv@localhost
 Database:

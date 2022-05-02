@@ -1,0 +1,166 @@
+name: Test & Release
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+  pull_request:
+    branches:
+      - master
+      - dev
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    env:
+      GOROOT: /usr/local/go
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up containers
+        run: docker-compose up -d lbrynet postgres
+
+      - name: Set up containers
+        run: docker-compose -f apps/watchman/docker-compose.yml up -d clickhouse geoipupdate
+
+      - name: Check running containers
+        run: docker ps -a
+
+      - name: Set up Go 1.17
+        uses: actions/setup-go@v3
+        with:
+          go-version: '>=1.17 <1.18'
+        id: go
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Prepare for tests
+        run: make prepare_test
+
+      - name: Wait for wallet init
+        run: scripts/wait_for_wallet.sh
+
+      - name: Test
+        env:
+          OAUTH_TEST_CLIENT_SECRET: ${{ secrets.OAUTH_TEST_CLIENT_SECRET }}
+          OAUTH_TEST_USERNAME: ${{ secrets.OAUTH_TEST_USERNAME }}
+          OAUTH_TEST_PASSWORD: ${{ secrets.OAUTH_TEST_PASSWORD }}
+        run: |
+          go install github.com/jandelgado/gcov2lcov@latest
+          go test -covermode=count -coverprofile=coverage.out ./... && gcov2lcov -infile=coverage.out -outfile=coverage.lcov
+
+      - name: Coveralls GitHub Action
+        uses: coverallsapp/github-action@1.1.3
+        with:
+          path-to-lcov: coverage.lcov
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  release:
+    name: release
+    needs: test
+    # if: github.event.workflow_run.head_branch == 'master' || github.event.workflow_run.head_branch == 'dev'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    env:
+      GOROOT: /usr/local/go
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - run: git branch
+
+      - name: Retrieve release details
+        id: release
+        run: |
+          echo "::set-output name=app::$(git describe --tags|sed -e 's/\-v.*//')"
+          echo "::set-output name=version::$(git describe --tags|sed -e 's/.*\-v//')"
+
+      - name: Release details
+        run: |
+            echo "::group::${{ steps.release.outputs.app }}"
+            echo "version ${{ steps.release.outputs.version }}"
+            echo "env ${{ github.ref }}"
+            echo "::endgroup::"
+
+      - name: Set up Go 1.17
+        uses: actions/setup-go@v3
+        with:
+          go-version: '>=1.17 <1.18'
+        id: go
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # odysee-api deployment
+
+      - name: Build odysee-api
+        if: steps.release.outputs.app == 'api'
+        run: make api
+
+      - name: Build and push odysee-api docker image
+        if: steps.release.outputs.app == 'api'
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          context: .
+          tags: |
+            odyseeteam/odysee-${{ steps.release.outputs.app }}:latest
+            odyseeteam/odysee-${{ steps.release.outputs.app }}:${{ steps.release.outputs.version }}
+
+      - name: Deploy odysee-api
+        if: steps.release.outputs.app == 'api'
+        uses: octokit/request-action@v2.x
+        id: deploy-odysee-api
+        env:
+          GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
+        with:
+          route: POST /repos/:repository/dispatches
+          repository: odyseeteam/misc-deployment
+          event_type: deploy-odysee
+          client_payload: |
+            tag: ${{ steps.release.outputs.version }}
+            ref: ${{ github.ref }}
+            service: odysee-api
+
+      # Watchman deployment
+
+      - name: Build watchman
+        if: steps.release.outputs.app == 'watchman'
+        run: make watchman
+
+      - name: Build watchman docker image
+        if: steps.release.outputs.app == 'watchman'
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          context: apps/${{ steps.release.outputs.app }}/
+          tags: |
+            odyseeteam/${{ steps.release.outputs.app }}:latest
+            odyseeteam/${{ steps.release.outputs.app }}:${{ steps.release.outputs.version }}
+          file: apps/${{ steps.release.outputs.app }}/Dockerfile
+
+      - name: Deploy watchman
+        if: steps.release.outputs.app == 'watchman'
+        uses: octokit/request-action@v2.x
+        id: deploy-watchman
+        env:
+          GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
+        with:
+          route: POST /repos/:repository/dispatches
+          repository: lbryio/lbrytv-deployment
+          event_type: deploy-odysee
+          client_payload: |
+            tag: ${{ steps.release.outputs.version }}
+            ref: ${{ github.ref }}
+            service: ${{ steps.release.outputs.app }}
