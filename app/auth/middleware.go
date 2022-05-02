@@ -15,19 +15,20 @@ import (
 )
 
 // Middleware tries to authenticate user using request header
-func Middleware(provider Provider) mux.MiddlewareFunc {
+func Middleware(auther Authenticator) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var user *models.User
-			var err error
-			if token, ok := r.Header[wallet.AuthorizationHeader]; ok {
-				addr := ip.FromRequest(r)
-				user, err = provider(token[0], addr)
-				if err != nil {
-					logger.WithFields(logrus.Fields{"ip": addr}).Debugf("error authenticating user")
-				}
-			} else {
-				err = errors.Err(ErrNoAuthInfo)
+			token, err := auther.GetTokenFromRequest(r)
+			if err != nil {
+				logger.Log().Debugf("cannot retrieve token from request: %s", err)
+				next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), contextKey, result{user, err})))
+				return
+			}
+			addr := ip.FromRequest(r)
+			user, err = auther.Authenticate(token, addr)
+			if err != nil {
+				logger.WithFields(logrus.Fields{"ip": addr}).Debugf("error authenticating user: %s", err)
 			}
 			next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), contextKey, result{user, err})))
 		})
@@ -47,7 +48,7 @@ func LegacyMiddleware(provider Provider) mux.MiddlewareFunc {
 						logger.WithFields(logrus.Fields{"ip": addr}).Debugf("error authenticating user")
 					}
 				} else {
-					err = errors.Err(ErrNoAuthInfo)
+					err = errors.Err(wallet.ErrNoAuthInfo)
 				}
 			}
 			next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), contextKey, result{user, err})))
@@ -56,7 +57,7 @@ func LegacyMiddleware(provider Provider) mux.MiddlewareFunc {
 }
 
 // NilMiddleware is useful when you need to test your logic without involving real authentication
-var NilMiddleware = Middleware(nilProvider)
+var NilMiddleware = LegacyMiddleware(nilProvider)
 
 // MiddlewareWithProvider is useful when you want to
 func MiddlewareWithProvider(rt *sdkrouter.Router, internalAPIHost string) mux.MiddlewareFunc {

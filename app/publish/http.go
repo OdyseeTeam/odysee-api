@@ -8,12 +8,6 @@ import (
 	"net/url"
 	"regexp"
 	"time"
-
-	"github.com/lbryio/lbrytv/app/auth"
-	"github.com/lbryio/lbrytv/app/wallet"
-	"github.com/lbryio/lbrytv/internal/errors"
-	"github.com/lbryio/lbrytv/internal/ip"
-	"github.com/lbryio/lbrytv/models"
 )
 
 const (
@@ -112,14 +106,4 @@ func retryPolicy(ctx context.Context, resp *http.Response, err error) (bool, err
 	}
 
 	return false, nil
-}
-
-// userFromRequest attempts to validate the request and return authorized user
-// if the request contains valid user access token.
-func userFromRequest(provider auth.Provider, headers http.Header, remoteAddr string) (*models.User, error) {
-	if token, ok := headers[wallet.LegacyTokenHeader]; ok {
-		addr := ip.AddressForRequest(headers, remoteAddr)
-		return provider(token[0], addr)
-	}
-	return nil, errors.Err(auth.ErrNoAuthInfo)
 }

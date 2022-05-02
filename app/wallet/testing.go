@@ -3,9 +3,12 @@ package wallet
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"
+	"github.com/lbryio/lbrytv/models"
+	"github.com/volatiletech/null"
 
 	"golang.org/x/oauth2"
 )
@@ -19,6 +22,26 @@ const (
 
 	msgMissingEnv = "test oauth client env var %s is not set"
 )
+
+type TestAnyAuthenticator struct{}
+
+func (a *TestAnyAuthenticator) Authenticate(token, ip string) (*models.User, error) {
+	return &models.User{ID: 994, IdpID: null.StringFrom("my-idp-id")}, nil
+}
+
+func (a *TestAnyAuthenticator) GetTokenFromRequest(r *http.Request) (string, error) {
+	return "", nil
+}
+
+type TestMissingTokenAuthenticator struct{}
+
+func (a *TestMissingTokenAuthenticator) Authenticate(token, ip string) (*models.User, error) {
+	return nil, nil
+}
+
+func (a *TestMissingTokenAuthenticator) GetTokenFromRequest(r *http.Request) (string, error) {
+	return "", ErrNoAuthInfo
+}
 
 // GetTestToken is for easily retrieving tokens that can be used in tests utilizing authentication subsystem.
 func GetTestToken() (*oauth2.Token, error) {

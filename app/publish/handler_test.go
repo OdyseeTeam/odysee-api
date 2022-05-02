@@ -37,7 +37,7 @@ type DummyPublisher struct {
 
 func TestHandler_StreamUpdate(t *testing.T) {
 	r := GenerateUpdateRequest(t, []byte("test file"))
-	r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
+	r.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
 
 	publisher := &DummyPublisher{}
 
@@ -58,7 +58,7 @@ func TestHandler_StreamUpdate(t *testing.T) {
 
 	provider := func(token, _ string) (*models.User, error) {
 		var u *models.User
-		if token == "uPldrToken" {
+		if token == "legacyAuthToken123" {
 			u = &models.User{ID: 20404}
 			u.R = u.R.NewStruct()
 			u.R.LbrynetServer = &models.LbrynetServer{Address: ts.URL}
@@ -90,7 +90,7 @@ func TestHandler_StreamUpdate(t *testing.T) {
 
 func TestUploadHandler(t *testing.T) {
 	r := CreatePublishRequest(t, []byte("test file"))
-	r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
+	r.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
 
 	publisher := &DummyPublisher{}
 
@@ -112,7 +112,7 @@ func TestUploadHandler(t *testing.T) {
 
 	provider := func(token, ip string) (*models.User, error) {
 		var u *models.User
-		if token == "uPldrToken" {
+		if token == "legacyAuthToken123" {
 			u = &models.User{ID: 20404}
 			u.R = u.R.NewStruct()
 			u.R.LbrynetServer = &models.LbrynetServer{Address: ts.URL}
@@ -143,7 +143,7 @@ func TestUploadHandler(t *testing.T) {
 func TestHandler_NoAuthMiddleware(t *testing.T) {
 	r, err := http.NewRequest("POST", "/api/v1/proxy", &bytes.Buffer{})
 	require.NoError(t, err)
-	r.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
+	r.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
 
 	handler := &Handler{UploadPath: os.TempDir()}
 
@@ -180,7 +180,7 @@ func TestHandler_AuthRequired(t *testing.T) {
 	handler := &Handler{UploadPath: os.TempDir()}
 
 	provider := func(token, ip string) (*models.User, error) {
-		if token == "uPldrToken" {
+		if token == "legacyAuthToken123" {
 			return &models.User{ID: 20404}, nil
 		}
 		return nil, nil
@@ -218,7 +218,7 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	req, err := http.NewRequest("POST", "/", bytes.NewReader(body.Bytes()))
 	require.NoError(t, err)
 
-	req.Header.Set(wallet.LegacyTokenHeader, "uPldrToken")
+	req.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	publisher := &DummyPublisher{}
@@ -226,7 +226,7 @@ func TestUploadHandlerSystemError(t *testing.T) {
 
 	provider := func(token, ip string) (*models.User, error) {
 		var u *models.User
-		if token == "uPldrToken" {
+		if token == "legacyAuthToken123" {
 			u = &models.User{ID: 20404}
 			u.R = u.R.NewStruct()
 			u.R.LbrynetServer = &models.LbrynetServer{Address: "whatever"}

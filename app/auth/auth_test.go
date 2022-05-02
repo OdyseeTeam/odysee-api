@@ -20,31 +20,41 @@ import (
 	"github.com/volatiletech/null"
 )
 
+// auther, err := wallet.NewOauthAuthenticator(oauthProviderURL, clientID, iapiURL, router)
+type dummyAuther struct {
+	remoteIP string
+}
+
+func (a *dummyAuther) Authenticate(token, ip string) (*models.User, error) {
+	a.remoteIP = ip
+	if token == "secret-token" {
+		return &models.User{ID: 16595, IdpID: null.StringFrom("my-random-idp-id")}, nil
+	}
+	return nil, nil
+}
+
+func (a *dummyAuther) GetTokenFromRequest(r *http.Request) (string, error) {
+	return "secret-token", nil
+}
+
 func TestMiddleware_AuthSuccess(t *testing.T) {
 	r, err := http.NewRequest("GET", "/api/proxy", nil)
 	require.NoError(t, err)
 	r.Header.Set(wallet.AuthorizationHeader, "secret-token")
 	r.Header.Set("X-Forwarded-For", "8.8.8.8")
 
-	var receivedRemoteIP string
-	provider := func(token, ip string) (*models.User, error) {
-		receivedRemoteIP = ip
-		if token == "secret-token" {
-			return &models.User{ID: 16595, IdpID: null.StringFrom("my-random-idp-id")}, nil
-		}
-		return nil, nil
-	}
+	auther := &dummyAuther{}
 
 	rr := httptest.NewRecorder()
 	middleware.Apply(middleware.Chain(
-		ip.Middleware, Middleware(provider),
+		ip.Middleware, Middleware(auther),
 	), authChecker).ServeHTTP(rr, r)
 
 	response := rr.Result()
 	body, err := ioutil.ReadAll(response.Body)
 	require.NoError(t, err)
 	assert.Equal(t, "16595", string(body))
-	assert.Equal(t, "8.8.8.8", receivedRemoteIP)
+	assert.Equal(t, "8.8.8.8", auther.remoteIP)
 }
 
 func TestLegacyMiddleware_AuthSuccess(t *testing.T) {
@@ -165,7 +175,7 @@ func authChecker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if errors.Is(err, ErrNoAuthInfo) {
+	if errors.Is(err, wallet.ErrNoAuthInfo) {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("no auth info"))
 	} else if user != nil {

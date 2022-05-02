@@ -28,10 +28,10 @@ type tokenCache struct {
 }
 
 func init() {
-	SetTokenCache(NewTokenCache(10 * time.Minute))
+	SetTokenCache(NewTokenCache())
 }
 
-func NewTokenCache(timeout time.Duration) *tokenCache {
+func NewTokenCache() *tokenCache {
 	rc, _ := ristretto.NewCache(&ristretto.Config{
 		MaxCost:     1 << 30,
 		Metrics:     true,

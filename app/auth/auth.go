@@ -13,8 +13,6 @@ import (
 var (
 	logger      = monitor.NewModuleLogger("auth")
 	nilProvider = func(token, ip string) (*models.User, error) { return nil, nil }
-
-	ErrNoAuthInfo = errors.Base("authentication token missing")
 )
 
 type ctxKey int
@@ -38,6 +36,11 @@ func FromRequest(r *http.Request) (*models.User, error) {
 
 // Provider tries to authenticate using the provided auth token
 type Provider func(token, metaRemoteIP string) (*models.User, error)
+
+type Authenticator interface {
+	Authenticate(token, metaRemoteIP string) (*models.User, error)
+	GetTokenFromRequest(r *http.Request) (string, error)
+}
 
 // NewIAPIProvider authenticates a user by hitting internal-api with the auth token
 // and matching the response to a local user. If auth is successful, the user will have a
