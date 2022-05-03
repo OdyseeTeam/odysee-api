@@ -107,7 +107,7 @@ var PlaybackReport = Type("PlaybackReport", func() {
 
 	Attribute("player", String, "Player server name", func() {
 		Example("sg-p2")
-		MaxLength(64)
+		MaxLength(16)
 	})
 
 	Attribute("user_id", String, "User ID", func() {

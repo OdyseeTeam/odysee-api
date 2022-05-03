@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
@@ -17,8 +18,7 @@ var (
 	conn        *sql.DB
 	database    string
 	batchWriter *BatchWriter
-	repBatch    []*reporter.PlaybackReport
-	repChan     chan *reporter.PlaybackReport
+	playerRe    = regexp.MustCompile(`,.*$`)
 )
 
 func Connect(url string, dbName string) error {
@@ -33,8 +33,6 @@ func Connect(url string, dbName string) error {
 	}
 
 	go ping()
-
-	repChan = make(chan *reporter.PlaybackReport, 20000)
 
 	MigrateUp(dbName)
 
@@ -73,6 +71,7 @@ func prepareArgs(r *reporter.PlaybackReport, addr string, ts string) ([]interfac
 	} else {
 		cache = "miss"
 	}
+	r.Player = playerRe.ReplaceAllLiteralString(r.Player, "")
 
 	return []interface{}{
 		r.URL,
@@ -122,7 +121,10 @@ func WriteOne(r *reporter.PlaybackReport, addr string, ts string) error {
 		return errors.Wrap(err, "cannot prepare")
 	}
 	defer stmt.Close()
-	Write(stmt, r, addr, ts)
+
+	if err := Write(stmt, r, addr, ts); err != nil {
+		return errors.Wrap(err, "cannot exec")
+	}
 	if err := tx.Commit(); err != nil {
 		return errors.Wrap(err, "cannot commit")
 	}

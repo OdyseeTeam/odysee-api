@@ -3,6 +3,7 @@ package olapdb
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -60,4 +61,29 @@ func (s *olapdbSuite) TestWriteOne() {
 	err = rows.Scan(&url, &duration)
 	s.Require().NoError(err)
 	s.Equal(r.Duration, duration)
+}
+
+func (s *olapdbSuite) TestWriteGarbled() {
+	r := PlaybackReportFactory.MustCreate().(*reporter.PlaybackReport)
+	cleanPlayer := r.Player
+	r.Player += ", some-nonsense-at-the-end-abcbcbdagadwsedaddff"
+	ts := time.Now().Format(time.RFC1123Z)
+	err := WriteOne(r, randomdata.StringSample(randomdata.IpV4Address(), randomdata.IpV6Address()), ts)
+	s.Require().NoError(err)
+
+	var (
+		url      string
+		duration int32
+		player   string
+	)
+	rows, err := conn.Query(fmt.Sprintf("select URL, Duration, Player from %s.playback where URL = ?", database), r.URL)
+	s.Require().NoError(err)
+	defer rows.Close()
+	rows.Next()
+	err = rows.Scan(&url, &duration, &player)
+	s.Require().NoError(err)
+	s.Equal(r.Duration, duration)
+	s.Equal(r.URL, url)
+	s.Equal(r.URL, url)
+	s.Equal(cleanPlayer, strings.Trim(player, "\x00"))
 }

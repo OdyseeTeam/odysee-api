@@ -91,6 +91,7 @@ func (b *BatchWriter) writeBatch() error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	defer func() { b.batch = [][]interface{}{} }()
 
 	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
@@ -116,7 +117,6 @@ func (b *BatchWriter) writeBatch() error {
 		return errors.Wrap(err, "cannot commit")
 	}
 
-	b.batch = [][]interface{}{}
 	return nil
 }
 
