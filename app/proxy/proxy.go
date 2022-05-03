@@ -18,6 +18,7 @@ import (
 	"github.com/lbryio/lbrytv/app/query/cache"
 	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
+	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/internal/audit"
 	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/lbryio/lbrytv/internal/ip"
@@ -187,7 +188,7 @@ func GetAuthError(user *models.User, err error) error {
 		return nil
 	}
 
-	if errors.Is(err, auth.ErrNoAuthInfo) {
+	if errors.Is(err, wallet.ErrNoAuthInfo) {
 		return rpcerrors.NewAuthRequiredError()
 	} else if err != nil {
 		return rpcerrors.NewForbiddenError(err)

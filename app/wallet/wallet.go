@@ -23,6 +23,8 @@ import (
 	"github.com/volatiletech/sqlboiler/queries/qm"
 )
 
+var ErrNoAuthInfo = errors.Base("authentication token missing")
+
 const opName = "wallet"
 
 var logger = monitor.NewModuleLogger("wallet")
@@ -45,38 +47,42 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 	var localUser *models.User
 	log := logger.WithFields(logrus.Fields{monitor.TokenF: token, "ip": metaRemoteIP})
 
-	remoteUser, err := getRemoteUserLegacy(internalAPIHost, token, metaRemoteIP)
-	if err != nil {
-		log.Error(err)
-		return nil, err
-	}
-	if !remoteUser.HasVerifiedEmail {
-		return nil, nil
-	}
-
-	log.Data["remote_user_id"] = remoteUser.ID
-	log.Data["has_email"] = remoteUser.HasVerifiedEmail
-	log.Debugf("user authenticated")
-
-	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancelFn()
-
-	err = inTx(ctx, storage.DB, func(tx *sql.Tx) error {
-		localUser, err = getOrCreateLocalUser(tx, models.User{ID: remoteUser.ID}, log)
+	user, err := currentCache.get(token, func() (interface{}, error) {
+		remoteUser, err := getRemoteUserLegacy(internalAPIHost, token, metaRemoteIP)
 		if err != nil {
-			return err
+			log.Error(err)
+			return nil, err
+		}
+		if !remoteUser.HasVerifiedEmail {
+			return nil, nil
 		}
 
-		if localUser.LbrynetServerID.IsZero() {
-			err := assignSDKServerToUser(tx, localUser, rt.LeastLoaded(), log)
+		log.Data["remote_user_id"] = remoteUser.ID
+		log.Data["has_email"] = remoteUser.HasVerifiedEmail
+		log.Debugf("user authenticated")
+
+		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelFn()
+
+		err = inTx(ctx, storage.DB, func(tx *sql.Tx) error {
+			localUser, err = getOrCreateLocalUser(tx, models.User{ID: remoteUser.ID}, log)
 			if err != nil {
 				return err
 			}
-		}
-		return nil
+
+			if localUser.LbrynetServerID.IsZero() {
+				err := assignSDKServerToUser(tx, localUser, rt.LeastLoaded(), log)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+
+		return localUser, err
 	})
 
-	return localUser, err
+	return user, err
 }
 
 func inTx(ctx context.Context, db *sql.DB, f func(tx *sql.Tx) error) error {

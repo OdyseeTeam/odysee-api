@@ -192,11 +192,7 @@ func TestMiddleware(t *testing.T) {
 	require.NoError(t, err)
 	r.Header.Add("Authorization", "auth me")
 
-	authProvider := func(token, ip string) (*models.User, error) {
-		return &models.User{ID: 994, IdpID: null.StringFrom("my-idp-id")}, nil
-	}
-
-	handler := func(w http.ResponseWriter, r *http.Request) {
+	handler := func(w http.ResponseWriter, _ *http.Request) {
 		w.Write([]byte("hello"))
 	}
 
@@ -204,7 +200,7 @@ func TestMiddleware(t *testing.T) {
 	hook := logrusTest.NewLocal(GetLogger().Entry.Logger)
 	GetLogger().Entry.Logger.SetLevel(logrus.TraceLevel)
 
-	auth.Middleware(authProvider)(
+	auth.Middleware(&wallet.TestAnyAuthenticator{})(
 		Middleware(boil.GetDB())(
 			http.HandlerFunc(handler),
 		),

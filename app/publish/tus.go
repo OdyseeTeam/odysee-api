@@ -14,7 +14,9 @@ import (
 	"github.com/lbryio/lbrytv/app/query/cache"
 	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
+	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/internal/errors"
+	"github.com/lbryio/lbrytv/internal/ip"
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
@@ -36,14 +38,20 @@ type TusHandler struct {
 	logger       monitor.ModuleLogger
 	composer     *tusd.StoreComposer
 	authProvider auth.Provider
+	auther       auth.Authenticator
 }
 
 // NewTusHandler creates a new publish handler.
-func NewTusHandler(authProvider auth.Provider, cfg tusd.Config, uploadPath string) (*TusHandler, error) {
+// Auther is required because of the way tus handles http requests, see preCreateHook.
+// TODO: Remove auth.Provider after legacy tokens go away.
+func NewTusHandler(auther auth.Authenticator, provider auth.Provider, cfg tusd.Config, uploadPath string) (*TusHandler, error) {
 	h := &TusHandler{}
 
-	if authProvider == nil {
-		return nil, fmt.Errorf("auth provider cannot be nil")
+	if auther == nil {
+		return nil, fmt.Errorf("authenticator is required")
+	}
+	if provider == nil {
+		return nil, fmt.Errorf("legacy auth provider is required")
 	}
 
 	defaultUploadPath := "./uploads"
@@ -66,7 +74,8 @@ func NewTusHandler(authProvider auth.Provider, cfg tusd.Config, uploadPath strin
 
 	h.UnroutedHandler = handler
 	h.logger = monitor.NewModuleLogger(module)
-	h.authProvider = authProvider
+	h.authProvider = provider
+	h.auther = auther
 	h.composer = cfg.StoreComposer
 
 	return h, nil
@@ -280,15 +289,41 @@ func (h *TusHandler) preCreateHook(hook tusd.HookEvent) error {
 	)
 
 	r := hook.HTTPRequest
-	user, err := userFromRequest(h.authProvider, r.Header, r.RemoteAddr)
+	hr := &http.Request{
+		Header: r.Header,
+	}
+	token, err := h.auther.GetTokenFromRequest(hr)
+	if errors.Is(err, wallet.ErrNoAuthInfo) {
+		// TODO: Remove this pathway after legacy tokens go away.
+		if token, ok := r.Header[wallet.LegacyTokenHeader]; ok {
+			addr := ip.AddressForRequest(r.Header, r.RemoteAddr)
+			user, err := h.authProvider(token[0], addr)
+			if err != nil {
+				log.WithError(err).Info("error authenticating user")
+				return err
+			}
+			if user == nil {
+				err := wallet.ErrNoAuthInfo
+				log.WithError(err).Info("unauthorized user")
+				return err
+			}
+			return nil
+		}
+		return errors.Err(wallet.ErrNoAuthInfo)
+	} else if err != nil {
+		return err
+	}
+
+	user, err := h.auther.Authenticate(token, ip.AddressForRequest(r.Header, r.RemoteAddr))
 	if err != nil {
 		log.WithError(err).Info("error authenticating user")
 		return err
 	}
 	if user == nil {
-		err := auth.ErrNoAuthInfo
+		err := wallet.ErrNoAuthInfo
 		log.WithError(err).Info("unauthorized user")
 		return err
 	}
+
 	return nil
 }

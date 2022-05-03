@@ -39,7 +39,7 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		c := wallet.NewTokenCache(config.GetTokenCacheTimeout())
+		c := wallet.NewTokenCache()
 		wallet.SetTokenCache(c)
 
 		// ServeUntilShutdown is blocking, should be last

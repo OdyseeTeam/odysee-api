@@ -3,6 +3,7 @@ package wallet
 import (
 	"context"
 	"database/sql"
+	"net/http"
 	"strings"
 	"time"
 
@@ -158,6 +159,13 @@ func (a *OauthAuthenticator) Authenticate(tokenString, metaRemoteIP string) (*mo
 	})
 
 	return localUser, err
+}
+
+func (a *OauthAuthenticator) GetTokenFromRequest(r *http.Request) (string, error) {
+	if t, ok := r.Header[AuthorizationHeader]; ok {
+		return t[0], nil
+	}
+	return "", ErrNoAuthInfo
 }
 
 func (a *OauthAuthenticator) checkAuthorization(info *UserInfo) error {

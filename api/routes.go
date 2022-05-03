@@ -39,8 +39,12 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	uploadPath := config.GetPublishSourceDir()
 
 	upHandler := &publish.Handler{UploadPath: uploadPath}
+	oauthAuther, err := wallet.NewOauthAuthenticator(
+		config.GetOauthProviderURL(), config.GetOauthClientID(), config.GetInternalAPIHost(), sdkRouter)
+	if err != nil {
+		panic(err)
+	}
 	legacyProvider := auth.NewIAPIProvider(sdkRouter, config.GetInternalAPIHost())
-	oAuthProvider := auth.NewOauthProvider(config.GetOauthProviderURL(), config.GetOauthClientID(), config.GetInternalAPIHost(), sdkRouter)
 
 	r.Use(methodTimer)
 
@@ -50,7 +54,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	r.HandleFunc("", emptyHandler)
 
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
-	v1Router.Use(defaultMiddlewares(oAuthProvider, legacyProvider, sdkRouter))
+	v1Router.Use(defaultMiddlewares(oauthAuther, legacyProvider, sdkRouter))
 
 	v1Router.HandleFunc("/proxy", upHandler.Handle).MatcherFunc(publish.CanHandle)
 	v1Router.HandleFunc("/proxy", proxy.Handle).Methods(http.MethodPost)
@@ -66,7 +70,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	internalRouter.Handle("/metrics", promhttp.Handler())
 
 	v2Router := r.PathPrefix("/api/v2").Subrouter()
-	v2Router.Use(defaultMiddlewares(oAuthProvider, legacyProvider, sdkRouter))
+	v2Router.Use(defaultMiddlewares(oauthAuther, legacyProvider, sdkRouter))
 	v2Router.HandleFunc("/status", status.GetStatusV2).Methods(http.MethodGet)
 	v2Router.HandleFunc("/status", emptyHandler).Methods(http.MethodOptions)
 
@@ -81,7 +85,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 		StoreComposer: composer,
 	}
 
-	tusHandler, err := publish.NewTusHandler(oAuthProvider, tusCfg, uploadPath)
+	tusHandler, err := publish.NewTusHandler(oauthAuther, legacyProvider, tusCfg, uploadPath)
 	if err != nil {
 		logger.Log().WithError(err).Fatal(err)
 	}
@@ -96,7 +100,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	tusRouter.PathPrefix("/").HandlerFunc(emptyHandler).Methods(http.MethodOptions)
 }
 
-func defaultMiddlewares(oauthProvider, legacyProvider auth.Provider, router *sdkrouter.Router) mux.MiddlewareFunc {
+func defaultMiddlewares(oauthAuther auth.Authenticator, legacyProvider auth.Provider, router *sdkrouter.Router) mux.MiddlewareFunc {
 	queryCache, err := cache.New(cache.DefaultConfig())
 	if err != nil {
 		panic(err)
@@ -118,7 +122,7 @@ func defaultMiddlewares(oauthProvider, legacyProvider auth.Provider, router *sdk
 		c.Handler,
 		ip.Middleware,
 		sdkrouter.Middleware(router),
-		auth.Middleware(oauthProvider), // Will pass forward user/error to next
+		auth.Middleware(oauthAuther), // Will pass forward user/error to next
 		auth.LegacyMiddleware(legacyProvider),
 		cache.Middleware(queryCache),
 	)
