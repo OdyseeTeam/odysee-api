@@ -170,8 +170,8 @@ func ValidateAddRequestBody(body *AddRequestBody) (err error) {
 		}
 	}
 	if body.Player != nil {
-		if utf8.RuneCountInString(*body.Player) > 64 {
-			err = goa.MergeErrors(err, goa.InvalidLengthError("body.player", *body.Player, utf8.RuneCountInString(*body.Player), 64, false))
+		if utf8.RuneCountInString(*body.Player) > 128 {
+			err = goa.MergeErrors(err, goa.InvalidLengthError("body.player", *body.Player, utf8.RuneCountInString(*body.Player), 128, false))
 		}
 	}
 	if body.UserID != nil {

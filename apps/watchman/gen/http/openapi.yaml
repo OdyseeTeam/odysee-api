@@ -118,7 +118,7 @@ definitions:
         type: string
         description: Player server name
         example: sg-p2
-        maxLength: 64
+        maxLength: 128
       position:
         type: integer
         description: Current playback report stream position, ms

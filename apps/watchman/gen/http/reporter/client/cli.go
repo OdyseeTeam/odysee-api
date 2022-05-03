@@ -61,8 +61,8 @@ func BuildAddPayload(reporterAddBody string) (*reporter.PlaybackReport, error) {
 				err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.cache", *body.Cache, []interface{}{"local", "player", "miss"}))
 			}
 		}
-		if utf8.RuneCountInString(body.Player) > 64 {
-			err = goa.MergeErrors(err, goa.InvalidLengthError("body.player", body.Player, utf8.RuneCountInString(body.Player), 64, false))
+		if utf8.RuneCountInString(body.Player) > 128 {
+			err = goa.MergeErrors(err, goa.InvalidLengthError("body.player", body.Player, utf8.RuneCountInString(body.Player), 128, false))
 		}
 		if utf8.RuneCountInString(body.UserID) < 1 {
 			err = goa.MergeErrors(err, goa.InvalidLengthError("body.user_id", body.UserID, utf8.RuneCountInString(body.UserID), 1, true))
