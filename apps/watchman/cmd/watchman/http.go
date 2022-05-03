@@ -11,6 +11,7 @@ import (
 	"github.com/lbryio/lbrytv/apps/watchman"
 	reportersvr "github.com/lbryio/lbrytv/apps/watchman/gen/http/reporter/server"
 	reporter "github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	goahttp "goa.design/goa/v3/http"
 	httpmdlwr "goa.design/goa/v3/http/middleware"
@@ -45,6 +46,9 @@ func handleHTTPServer(ctx context.Context, addr string, reporterEndpoints *repor
 		mux = goahttp.NewMuxer()
 	}
 
+	watchman.RegisterMetrics()
+	mux.Handle(http.MethodGet, "/internal/metrics", promhttp.Handler().ServeHTTP)
+
 	// Wrap the endpoints with the transport specific layers. The generated
 	// server packages contains code generated from the design which maps
 	// the service input and output data structures to HTTP requests and
@@ -73,6 +77,7 @@ func handleHTTPServer(ctx context.Context, addr string, reporterEndpoints *repor
 	{
 		handler = httpmdlwr.Log(adapter)(handler)
 		handler = httpmdlwr.RequestID()(handler)
+		handler = watchman.ObserveResponse()(handler)
 	}
 
 	// Start HTTP server using default configuration, change the code to

@@ -107,7 +107,9 @@ var PlaybackReport = Type("PlaybackReport", func() {
 
 	Attribute("player", String, "Player server name", func() {
 		Example("sg-p2")
-		MaxLength(16)
+		// This is trimmed at the DB level so we don't lose data
+		// when client proxies decide to insert their stuff into player headers.
+		MaxLength(128)
 	})
 
 	Attribute("user_id", String, "User ID", func() {
