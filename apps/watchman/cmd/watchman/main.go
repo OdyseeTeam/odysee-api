@@ -61,6 +61,7 @@ func main() {
 	case "generate":
 		generate(CLI.Generate.Number, CLI.Generate.Days)
 	default:
+		fmt.Println("WTF")
 		log.Log.Fatal(ctx.Command())
 	}
 }

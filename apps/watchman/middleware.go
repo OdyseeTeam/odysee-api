@@ -4,12 +4,27 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"strconv"
+	"time"
+
+	hmw "goa.design/goa/v3/http/middleware"
 )
 
 type ctxKey int
 
 const RemoteAddressKey ctxKey = iota + 1
 
+// ObserveResponse returns a middleware that observes HTTP request processing times and response codes.
+func ObserveResponse() func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			started := time.Now()
+			rw := hmw.CaptureResponse(w)
+			h.ServeHTTP(rw, r)
+			httpResponses.WithLabelValues("playback", strconv.Itoa(rw.StatusCode)).Observe(time.Since(started).Seconds())
+		})
+	}
+}
 func RemoteAddressMiddleware() func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
