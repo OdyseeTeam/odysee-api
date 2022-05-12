@@ -14,12 +14,12 @@ jobs:
   test:
     name: test
     runs-on: ubuntu-latest
-    env:
-      GOROOT: /usr/local/go
+#    env:
+#      GOROOT: /usr/local/go
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up containers
         run: docker-compose up -d lbrynet postgres
@@ -33,7 +33,7 @@ jobs:
       - name: Set up Go 1.17
         uses: actions/setup-go@v3
         with:
-          go-version: '>=1.17 <1.18'
+          go-version: '1.17.x'
         id: go
 
       - name: Run go vet

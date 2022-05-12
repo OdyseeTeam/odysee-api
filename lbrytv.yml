@@ -5,6 +5,10 @@ LbrynetServers:
 
 Debug: 1
 
+BaseContentURL: https://player.odycdn.com/api
+FreeContentURL: https://player.odycdn.com/api/v4/streams/free/
+PaidContentURL: https://player.odycdn.com/api/v3/streams/paid/
+
 InternalAPIHost: https://api.odysee.com
 ProjectURL: https://odysee.com
 
@@ -18,7 +22,7 @@ Database:
   DBName: lbrytv
   Options: sslmode=disable
 
-PublishSourceDir: /storage/published
+PublishSourceDir: /storage/publish
 BlobFilesDir: /storage/lbrynet/blobfiles
 
 ReflectorAddress: reflector.lbry.com:5566
@@ -33,9 +37,6 @@ PaidTokenPrivKey: token_privkey.rsa
 
 LbrynetXServer: http://sdk.lbry.tech:5279/api
 LbrynetXPercentage: 50
-
-FreeContentURL: https://cdn.lbryplayer.xyz/api/v4/streams/free/
-PaidContentURL: https://cdn.lbryplayer.xyz/api/v3/streams/paid/
 
 CORSDomains:
   - http://localhost:1337
