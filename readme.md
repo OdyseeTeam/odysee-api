@@ -1,4 +1,4 @@
-# API Server for Odysee
+# API Server for Odysee 
 
 ⚠️ If you are looking for the UI code, that lives here: https://github.com/OdyseeTeam/odysee-frontend. ⚠️
 
