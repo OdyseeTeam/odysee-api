@@ -22,11 +22,11 @@ import (
 var logger = monitor.NewModuleLogger("status")
 
 var PlayerServers = []string{
-	"https://player1.lbryplayer.xyz",
-	"https://player2.lbryplayer.xyz",
-	"https://player3.lbryplayer.xyz",
-	"https://player4.lbryplayer.xyz",
-	"https://player6.lbryplayer.xyz",
+	"https://use-p1.odycdn.com",
+	"https://use-p2.odycdn.com",
+	"https://use-p3.odycdn.com",
+	"https://player.odycdn.com",
+	"https://eu-p1.odycdn.com",
 }
 
 var (
