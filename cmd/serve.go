@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/lbryio/lbrytv-player/pkg/paid"
+	"github.com/OdyseeTeam/player-server/pkg/paid"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"

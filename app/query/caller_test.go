@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/lbrytv-player/pkg/paid"
+	"github.com/OdyseeTeam/player-server/pkg/paid"
 	"github.com/lbryio/lbrytv/app/query/cache"
 	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/app/sdkrouter"

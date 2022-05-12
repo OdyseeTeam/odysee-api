@@ -9,7 +9,7 @@ import (
 
 	"github.com/lbryio/lbrytv/internal/errors"
 
-	"github.com/lbryio/lbrytv-player/pkg/paid"
+	"github.com/OdyseeTeam/player-server/pkg/paid"
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 	"github.com/lbryio/lbrytv/internal/metrics"
 

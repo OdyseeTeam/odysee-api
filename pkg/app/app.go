@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/lbryio/lbrytv-player/pkg/logger"
+	"github.com/OdyseeTeam/player-server/pkg/logger"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
