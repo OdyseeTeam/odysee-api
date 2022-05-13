@@ -11,6 +11,7 @@ import (
 
 	"github.com/lbryio/lbrytv/app/auth"
 	"github.com/lbryio/lbrytv/app/proxy"
+	"github.com/lbryio/lbrytv/app/query"
 	"github.com/lbryio/lbrytv/app/query/cache"
 	"github.com/lbryio/lbrytv/app/rpcerrors"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
@@ -22,6 +23,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/responses"
 
 	"github.com/gorilla/mux"
+	werrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	tusd "github.com/tus/tusd/pkg/handler"
 	"github.com/ybbus/jsonrpc"
@@ -207,17 +209,30 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 		qCache = cache.FromRequest(r)
 	}
 
-	var rpcReq jsonrpc.RPCRequest
+	var rpcReq *jsonrpc.RPCRequest
 	if err := json.NewDecoder(r.Body).Decode(&rpcReq); err != nil {
 		w.Write(rpcerrors.NewJSONParseError(err).JSON())
 		observeFailure(metrics.GetDuration(r), metrics.FailureKindClientJSON)
 		return
 	}
 
+	rpcparams, ok := rpcReq.Params.(map[string]interface{})
+	if !ok {
+		w.Write(rpcerrors.NewInvalidParamsError(werrors.New("cannot parse params")).JSON())
+		return
+	}
+
+	if rpcparams["claim_id"] != nil {
+		rpcReq.Method = query.MethodStreamUpdate
+		delete(rpcparams, "name")
+		rpcparams["replace"] = true
+		rpcReq.Params = rpcparams
+	}
+
 	c := getCaller(sdkrouter.GetSDKAddress(user), dstFilepath, user.ID, qCache)
 
 	op := metrics.StartOperation("sdk", "call_publish")
-	rpcRes, err := c.Call(&rpcReq)
+	rpcRes, err := c.Call(rpcReq)
 	op.End()
 	if err != nil {
 		monitor.ErrorToSentry(
