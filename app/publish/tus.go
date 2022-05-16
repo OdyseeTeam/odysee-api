@@ -21,6 +21,7 @@ import (
 	"github.com/lbryio/lbrytv/internal/metrics"
 	"github.com/lbryio/lbrytv/internal/monitor"
 	"github.com/lbryio/lbrytv/internal/responses"
+	"github.com/lbryio/lbrytv/models"
 
 	"github.com/gorilla/mux"
 	werrors "github.com/pkg/errors"
@@ -37,6 +38,7 @@ const module = "publish.tus"
 type TusHandler struct {
 	*tusd.UnroutedHandler
 
+	uploadPath   string
 	logger       monitor.ModuleLogger
 	composer     *tusd.StoreComposer
 	authProvider auth.Provider
@@ -45,6 +47,7 @@ type TusHandler struct {
 
 // NewTusHandler creates a new publish handler.
 // Auther is required because of the way tus handles http requests, see preCreateHook.
+// Provider is a temporary mechanism for supporting authentication with legacy tokens.
 // TODO: Remove auth.Provider after legacy tokens go away.
 func NewTusHandler(auther auth.Authenticator, provider auth.Provider, cfg tusd.Config, uploadPath string) (*TusHandler, error) {
 	h := &TusHandler{}
@@ -63,6 +66,7 @@ func NewTusHandler(auther auth.Authenticator, provider auth.Provider, cfg tusd.C
 	if err := os.MkdirAll(uploadPath, os.ModePerm); err != nil {
 		return nil, err
 	}
+	h.uploadPath = uploadPath
 
 	cfg.PreUploadCreateCallback = h.preCreateHook
 	// allow client to set location response protocol
@@ -91,7 +95,7 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 
-	user, err := auth.FromRequest(r)
+	user, err := h.multiAuthUser(r)
 	if authErr := proxy.GetAuthError(user, err); authErr != nil {
 		log.WithError(authErr).Error("failed to authorize user")
 		w.Write(rpcerrors.ErrorToJSON(authErr))
@@ -297,17 +301,16 @@ func (h TusHandler) lockUpload(id string) (tusd.Lock, error) {
 //
 // see: https://github.com/tus/tusd/pull/342
 func (h *TusHandler) preCreateHook(hook tusd.HookEvent) error {
-	log := h.logger.WithFields(
-		logrus.Fields{
-			"method_handler": "preCreateHook",
-		},
-	)
-
-	r := hook.HTTPRequest
-	hr := &http.Request{
-		Header: r.Header,
+	r := &http.Request{
+		Header: hook.HTTPRequest.Header,
 	}
-	token, err := h.auther.GetTokenFromRequest(hr)
+	_, err := h.multiAuthUser(r)
+	return err
+}
+
+func (h *TusHandler) multiAuthUser(r *http.Request) (*models.User, error) {
+	log := h.logger.Log()
+	token, err := h.auther.GetTokenFromRequest(r)
 	if errors.Is(err, wallet.ErrNoAuthInfo) {
 		// TODO: Remove this pathway after legacy tokens go away.
 		if token, ok := r.Header[wallet.LegacyTokenHeader]; ok {
@@ -315,30 +318,29 @@ func (h *TusHandler) preCreateHook(hook tusd.HookEvent) error {
 			user, err := h.authProvider(token[0], addr)
 			if err != nil {
 				log.WithError(err).Info("error authenticating user")
-				return err
+				return nil, err
 			}
 			if user == nil {
 				err := wallet.ErrNoAuthInfo
 				log.WithError(err).Info("unauthorized user")
-				return err
+				return nil, err
 			}
-			return nil
+			return user, nil
 		}
-		return errors.Err(wallet.ErrNoAuthInfo)
+		return nil, errors.Err(wallet.ErrNoAuthInfo)
 	} else if err != nil {
-		return err
+		return nil, err
 	}
 
 	user, err := h.auther.Authenticate(token, ip.AddressForRequest(r.Header, r.RemoteAddr))
 	if err != nil {
 		log.WithError(err).Info("error authenticating user")
-		return err
+		return nil, err
 	}
 	if user == nil {
 		err := wallet.ErrNoAuthInfo
 		log.WithError(err).Info("unauthorized user")
-		return err
+		return nil, err
 	}
-
-	return nil
+	return user, nil
 }

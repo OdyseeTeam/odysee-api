@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/lbryio/lbrytv/app/auth"
+	"github.com/lbryio/lbrytv/app/query"
 	"github.com/lbryio/lbrytv/app/sdkrouter"
 	"github.com/lbryio/lbrytv/app/wallet"
 	"github.com/lbryio/lbrytv/apps/lbrytv/config"
@@ -61,13 +62,25 @@ func newTestTusHandler(t *testing.T) *TusHandler {
 	return h
 }
 
-func newTestTusHandlerWithOauth(t *testing.T) *TusHandler {
-	t.Helper()
+func newTestTusHandlerWithOauth(t *testing.T, reqChan chan *test.Request) *TusHandler {
+	if reqChan == nil {
+		reqChan = test.ReqChan()
+	}
+	ts := test.MockHTTPServer(reqChan)
 
 	uploadPath := t.TempDir()
 	rt := sdkrouter.New(config.GetLbrynetServers())
-	auther, err := wallet.NewOauthAuthenticator(config.GetOauthProviderURL(), config.GetOauthClientID(), config.GetInternalAPIHost(), rt)
+	oAuther, err := wallet.NewOauthAuthenticator(config.GetOauthProviderURL(), config.GetOauthClientID(), config.GetInternalAPIHost(), rt)
+	auther := wallet.NewPostProcessAuthenticator(oAuther, func(u *models.User) (*models.User, error) {
+		u.R = u.R.NewStruct()
+		u.R.LbrynetServer = &models.LbrynetServer{Address: ts.URL}
+		return u, nil
+	})
 	require.NoError(t, err)
+
+	go func() {
+		ts.NextResponse <- expectedPublishResponse
+	}()
 
 	h, err := NewTusHandler(
 		auther,
@@ -106,7 +119,7 @@ func mockAuthProvider(token, ip string) (*models.User, error) {
 		u.R.LbrynetServer = &models.LbrynetServer{Address: ts.URL}
 	}
 	go func() {
-		ts.NextResponse <- expectedStreamCreateResponse
+		ts.NextResponse <- expectedPublishResponse
 	}()
 	return u, nil
 }
@@ -129,21 +142,22 @@ func newTestMux(h *TusHandler, mwf ...mux.MiddlewareFunc) *mux.Router {
 	return testRouter
 }
 
-type headers func() (string, string)
+type header struct {
+	key, value string
+}
 
-func newPartialUpload(t *testing.T, h *TusHandler, opts ...headers) string {
+func newPartialUpload(t *testing.T, h *TusHandler, headers ...header) string {
 	t.Helper()
 
 	testData := []byte("test file")
 	r, err := http.NewRequest(http.MethodPost, tr.root(), bytes.NewReader(testData))
 	assert.Nil(t, err)
 
-	r.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
 	r.Header.Set("Upload-Length", fmt.Sprintf("%d", len(testData)))
 	r.Header.Set("Tus-Resumable", tusVersion)
 
-	for _, opt := range opts {
-		r.Header.Set(opt())
+	for _, h := range headers {
+		r.Header.Set(h.key, h.value)
 	}
 
 	w := httptest.NewRecorder()
@@ -154,14 +168,13 @@ func newPartialUpload(t *testing.T, h *TusHandler, opts ...headers) string {
 	return resp.Header.Get("location")
 }
 
-func newFinalUpload(t *testing.T, h *TusHandler, opts ...headers) string {
-	loc := newPartialUpload(t, h, opts...)
+func newFinalUpload(t *testing.T, h *TusHandler, headers ...header) string {
+	loc := newPartialUpload(t, h, headers...)
 
 	testData := []byte("test file")
 	r, err := http.NewRequest(http.MethodPatch, loc, bytes.NewReader(testData))
 	assert.Nil(t, err)
 
-	r.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
 	r.Header.Set("Content-Type", "application/offset+octet-stream")
 	r.Header.Set("Upload-Offset", "0")
 	r.Header.Set("Tus-Resumable", tusVersion)
@@ -175,8 +188,6 @@ func newFinalUpload(t *testing.T, h *TusHandler, opts ...headers) string {
 }
 
 func TestNewTusHandler(t *testing.T) {
-	t.Parallel()
-
 	auther, err := wallet.NewOauthAuthenticator(config.GetOauthProviderURL(), config.GetOauthClientID(), config.GetInternalAPIHost(), nil)
 	require.NoError(t, err)
 
@@ -263,45 +274,28 @@ func TestNewTusHandler(t *testing.T) {
 }
 
 func TestNotify(t *testing.T) {
-	t.Parallel()
+	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
+	if err != nil {
+		panic(err)
+	}
+	storage.SetDB(db)
+	config.Override("LbrynetServers", "")
+	defer dbCleanup()
 
-	auther, err := wallet.NewOauthAuthenticator(config.GetOauthProviderURL(), config.GetOauthClientID(), config.GetInternalAPIHost(), nil)
+	token, err := wallet.GetTestTokenHeader()
 	require.NoError(t, err)
 
-	t.Run("WithNoMiddleware", func(t *testing.T) {
-		t.Parallel()
-
-		h := newTestTusHandler(t)
-		w := httptest.NewRecorder()
-
-		r, err := http.NewRequest(http.MethodPost, tr.notify(77), nil)
-		assert.Nil(t, err)
-
-		r.Header.Set("Tus-Resumable", tusVersion)
-
-		newTestMux(h).ServeHTTP(w, r)
-
-		respBody, err := ioutil.ReadAll(w.Result().Body)
-		assert.Nil(t, err)
-
-		wantErrMsg := "auth middleware is required"
-		gotErrMsg := test.StrToRes(t, string(respBody)).Error.Message
-		assert.Equal(t, wantErrMsg, gotErrMsg)
-	})
-
 	t.Run("FileNotExist", func(t *testing.T) {
-		t.Parallel()
-
-		h := newTestTusHandler(t)
+		h := newTestTusHandlerWithOauth(t, nil)
 		w := httptest.NewRecorder()
 
 		r, err := http.NewRequest(http.MethodPost, tr.notify(404), nil)
 		assert.Nil(t, err)
 
-		r.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
+		r.Header.Set(wallet.AuthorizationHeader, token)
 		r.Header.Set("Tus-Resumable", tusVersion)
 
-		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
+		newTestMux(h).ServeHTTP(w, r)
 
 		respBody, err := ioutil.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
@@ -312,28 +306,17 @@ func TestNotify(t *testing.T) {
 	})
 
 	t.Run("UploadInProgress", func(t *testing.T) {
-		t.Parallel()
-
-		uploadPath := t.TempDir()
-
-		h, err := NewTusHandler(
-			auther,
-			mockAuthProvider,
-			newTusTestCfg(uploadPath),
-			uploadPath,
-		)
-		assert.Nil(t, err)
-
+		h := newTestTusHandlerWithOauth(t, nil)
 		w := httptest.NewRecorder()
-		loc := newPartialUpload(t, h)
+		loc := newPartialUpload(t, h, header{wallet.AuthorizationHeader, token})
 
 		r, err := http.NewRequest(http.MethodPost, loc+"/notify", http.NoBody)
 		assert.Nil(t, err)
 
-		r.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
+		r.Header.Set(wallet.AuthorizationHeader, token)
 		r.Header.Set("Tus-Resumable", tusVersion)
 
-		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
+		newTestMux(h).ServeHTTP(w, r)
 
 		respBody, err := ioutil.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
@@ -342,61 +325,99 @@ func TestNotify(t *testing.T) {
 		gotErrMsg := test.StrToRes(t, string(respBody)).Error.Message
 		assert.Equal(t, wantErrMsg, gotErrMsg)
 
-		f, err := os.Stat(filepath.Join(uploadPath, path.Base(loc)))
+		f, err := os.Stat(filepath.Join(h.uploadPath, path.Base(loc)))
 		assert.Nil(t, err)
 		assert.NotNil(t, f)
 	})
 
 	t.Run("UploadCompleted", func(t *testing.T) {
-		t.Parallel()
-
-		h := newTestTusHandler(t)
+		h := newTestTusHandlerWithOauth(t, nil)
 		w := httptest.NewRecorder()
 
-		loc := newFinalUpload(t, h, func() (string, string) {
-			return "Upload-Metadata", "filename ZHVtbXkubWQ="
-		})
+		loc := newFinalUpload(t, h,
+			header{"Upload-Metadata", "filename ZHVtbXkubWQ="},
+			header{wallet.AuthorizationHeader, token},
+		)
 
 		r, err := http.NewRequest(
 			http.MethodPost, loc+"/notify",
-			strings.NewReader(expectedStreamCreateRequest),
+			strings.NewReader(testPublishUpdateRequest),
 		)
 		assert.Nil(t, err)
 
-		r.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
+		r.Header.Set(wallet.AuthorizationHeader, token)
 		r.Header.Set("Tus-Resumable", tusVersion)
 
-		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
+		newTestMux(h).ServeHTTP(w, r)
 
 		response := w.Result()
 		respBody, err := ioutil.ReadAll(response.Body)
 		assert.Nil(t, err)
 
-		test.AssertEqualJSON(t, expectedStreamCreateResponse, respBody)
+		test.AssertEqualJSON(t, expectedPublishResponse, respBody)
 
 		f, err := os.Stat(filepath.Join(t.TempDir(), path.Base(loc)))
 		assert.Nil(t, f)
 		assert.NotNil(t, err)
 	})
 
-	t.Run("WithoutUploadMetadata", func(t *testing.T) {
-		t.Parallel()
-
-		h := newTestTusHandler(t)
+	t.Run("UpdateCompleted", func(t *testing.T) {
+		reqChan := test.ReqChan()
+		h := newTestTusHandlerWithOauth(t, reqChan)
 		w := httptest.NewRecorder()
 
-		loc := newFinalUpload(t, h)
+		loc := newFinalUpload(t, h,
+			header{"Upload-Metadata", "filename ZHVtbXkubWQ="},
+			header{wallet.AuthorizationHeader, token},
+		)
 
 		r, err := http.NewRequest(
 			http.MethodPost, loc+"/notify",
-			strings.NewReader(expectedStreamCreateRequest),
+			strings.NewReader(testPublishUpdateRequest),
 		)
 		assert.Nil(t, err)
 
-		r.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
+		r.Header.Set(wallet.AuthorizationHeader, token)
 		r.Header.Set("Tus-Resumable", tusVersion)
 
-		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
+		newTestMux(h).ServeHTTP(w, r)
+
+		response := w.Result()
+		respBody, err := ioutil.ReadAll(response.Body)
+		assert.Nil(t, err)
+
+		test.AssertEqualJSON(t, expectedPublishResponse, respBody)
+
+		f, err := os.Stat(filepath.Join(t.TempDir(), path.Base(loc)))
+		assert.Nil(t, f)
+		assert.NotNil(t, err)
+
+		req := <-reqChan
+		rpcReq := test.StrToReq(t, req.Body)
+		params, ok := rpcReq.Params.(map[string]interface{})
+		require.True(t, ok)
+		require.Equal(t, query.MethodStreamUpdate, rpcReq.Method)
+		assert.NotContains(t, "name", params)
+		assert.True(t, params["replace"].(bool))
+		assert.Equal(t, "f6d2070225511eeb8a1c33f1d4bdb76e22716547", params["claim_id"].(string))
+	})
+
+	t.Run("WithoutUploadMetadata", func(t *testing.T) {
+		h := newTestTusHandlerWithOauth(t, nil)
+		w := httptest.NewRecorder()
+
+		loc := newFinalUpload(t, h, header{wallet.AuthorizationHeader, token})
+
+		r, err := http.NewRequest(
+			http.MethodPost, loc+"/notify",
+			strings.NewReader(testPublishRequest),
+		)
+		assert.Nil(t, err)
+
+		r.Header.Set(wallet.AuthorizationHeader, token)
+		r.Header.Set("Tus-Resumable", tusVersion)
+
+		newTestMux(h).ServeHTTP(w, r)
 
 		respBody, err := ioutil.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
@@ -438,7 +459,7 @@ func TestTus(t *testing.T) {
 		r, err := http.NewRequest(http.MethodPost, tr.root(), http.NoBody)
 		assert.Nil(t, err)
 
-		r.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
+		r.Header.Set(wallet.AuthorizationHeader, token)
 		r.Header.Set("Tus-Resumable", tusVersion)
 
 		newTestMux(h).ServeHTTP(w, r)
@@ -448,17 +469,14 @@ func TestTus(t *testing.T) {
 	})
 
 	t.Run("WithoutTusVersionHeader", func(t *testing.T) {
-		h := newTestTusHandlerWithOauth(t)
+		h := newTestTusHandlerWithOauth(t, nil)
 		w := httptest.NewRecorder()
 
 		testData := []byte("test file")
 		r, err := http.NewRequest(http.MethodPost, tr.root(), bytes.NewReader(testData))
 		assert.Nil(t, err)
 
-		token, err := wallet.GetTestTokenHeader()
-		require.NoError(t, err)
 		r.Header.Set(wallet.AuthorizationHeader, token)
-
 		r.Header.Set("Upload-Length", fmt.Sprintf("%d", len(testData)))
 
 		newTestMux(h).ServeHTTP(w, r)
@@ -482,7 +500,7 @@ func TestTus(t *testing.T) {
 		r, err := http.NewRequest(http.MethodPost, tr.root(), bytes.NewReader(testData))
 		assert.Nil(t, err)
 
-		r.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
+		r.Header.Set(wallet.AuthorizationHeader, token)
 		r.Header.Set("Upload-Length", fmt.Sprintf("%d", len(testData)))
 		r.Header.Set("Tus-Resumable", tusVersion)
 		r.Header.Set("X-Forwarded-Proto", wantProto)
@@ -501,7 +519,7 @@ func TestTus(t *testing.T) {
 	})
 
 	t.Run("CreateUpload", func(t *testing.T) {
-		h := newTestTusHandlerWithOauth(t)
+		h := newTestTusHandlerWithOauth(t, nil)
 		w := httptest.NewRecorder()
 
 		testData := []byte("test file")
@@ -520,11 +538,12 @@ func TestTus(t *testing.T) {
 	})
 
 	t.Run("ResumeUpload", func(t *testing.T) {
-		h := newTestTusHandlerWithOauth(t)
+		h := newTestTusHandlerWithOauth(t, nil)
 
-		loc := newPartialUpload(t, h, func() (string, string) {
-			return "Upload-Length", "3"
-		})
+		loc := newPartialUpload(t, h,
+			header{"Upload-Length", "3"},
+			header{wallet.AuthorizationHeader, token},
+		)
 
 		tests := []struct {
 			name           string
@@ -556,11 +575,12 @@ func TestTus(t *testing.T) {
 	})
 
 	t.Run("ResumeWithChunks", func(t *testing.T) {
-		h := newTestTusHandlerWithOauth(t)
+		h := newTestTusHandlerWithOauth(t, nil)
 
-		loc := newPartialUpload(t, h, func() (string, string) {
-			return "Upload-Length", "6"
-		})
+		loc := newPartialUpload(t, h,
+			header{"Upload-Length", "6"},
+			header{wallet.AuthorizationHeader, token},
+		)
 
 		testData := []byte("foobar")
 		b := bytes.NewReader(testData)
@@ -591,10 +611,10 @@ func TestTus(t *testing.T) {
 	})
 
 	t.Run("DeleteUpload", func(t *testing.T) {
-		h := newTestTusHandlerWithOauth(t)
+		h := newTestTusHandlerWithOauth(t, nil)
 		w := httptest.NewRecorder()
 
-		loc := newPartialUpload(t, h)
+		loc := newPartialUpload(t, h, header{wallet.AuthorizationHeader, token})
 
 		r, err := http.NewRequest(http.MethodDelete, loc, http.NoBody)
 		assert.Nil(t, err)
@@ -613,10 +633,10 @@ func TestTus(t *testing.T) {
 	})
 
 	t.Run("QueryFile", func(t *testing.T) {
-		h := newTestTusHandlerWithOauth(t)
+		h := newTestTusHandlerWithOauth(t, nil)
 		w := httptest.NewRecorder()
 
-		loc := newPartialUpload(t, h)
+		loc := newPartialUpload(t, h, header{wallet.AuthorizationHeader, token})
 
 		r, err := http.NewRequest(http.MethodHead, loc, http.NoBody)
 		assert.Nil(t, err)
@@ -633,9 +653,9 @@ func TestTus(t *testing.T) {
 	})
 
 	t.Run("QueryNonExistentFile", func(t *testing.T) {
-		h := newTestTusHandlerWithOauth(t)
+		h := newTestTusHandlerWithOauth(t, nil)
 		w := httptest.NewRecorder()
-		_ = newPartialUpload(t, h)
+		_ = newPartialUpload(t, h, header{wallet.AuthorizationHeader, token})
 
 		r, err := http.NewRequest(http.MethodHead, tr.withID(404), http.NoBody)
 		assert.Nil(t, err)
@@ -654,12 +674,172 @@ func TestTus(t *testing.T) {
 }
 
 // TODO: Remove this after legacy tokens go away.
+
+func TestNotifyLegacy(t *testing.T) {
+	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
+	if err != nil {
+		panic(err)
+	}
+	storage.SetDB(db)
+	config.Override("LbrynetServers", "")
+	defer dbCleanup()
+
+	auther, err := wallet.NewOauthAuthenticator(config.GetOauthProviderURL(), config.GetOauthClientID(), config.GetInternalAPIHost(), nil)
+	require.NoError(t, err)
+
+	t.Run("FileNotExist", func(t *testing.T) {
+		h := newTestTusHandlerWithOauth(t, nil)
+		w := httptest.NewRecorder()
+
+		r, err := http.NewRequest(http.MethodPost, tr.notify(404), nil)
+		assert.Nil(t, err)
+
+		r.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
+		r.Header.Set("Tus-Resumable", tusVersion)
+
+		newTestMux(h).ServeHTTP(w, r)
+
+		respBody, err := ioutil.ReadAll(w.Result().Body)
+		assert.Nil(t, err)
+
+		wantErrMsg := "no such file or directory"
+		gotErrMsg := test.StrToRes(t, string(respBody)).Error.Message
+		assert.Contains(t, gotErrMsg, wantErrMsg)
+	})
+
+	t.Run("UploadInProgress", func(t *testing.T) {
+		uploadPath := t.TempDir()
+
+		h, err := NewTusHandler(
+			auther,
+			mockAuthProvider,
+			newTusTestCfg(uploadPath),
+			uploadPath,
+		)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		loc := newPartialUpload(t, h, header{wallet.LegacyTokenHeader, "legacyAuthToken123"})
+
+		r, err := http.NewRequest(http.MethodPost, loc+"/notify", http.NoBody)
+		assert.Nil(t, err)
+
+		r.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
+		r.Header.Set("Tus-Resumable", tusVersion)
+
+		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
+
+		respBody, err := ioutil.ReadAll(w.Result().Body)
+		assert.Nil(t, err)
+
+		wantErrMsg := "upload is still in process"
+		gotErrMsg := test.StrToRes(t, string(respBody)).Error.Message
+		assert.Equal(t, wantErrMsg, gotErrMsg)
+
+		f, err := os.Stat(filepath.Join(uploadPath, path.Base(loc)))
+		assert.Nil(t, err)
+		assert.NotNil(t, f)
+	})
+
+	t.Run("UploadCompleted", func(t *testing.T) {
+		h := newTestTusHandlerWithOauth(t, nil)
+		w := httptest.NewRecorder()
+
+		loc := newFinalUpload(t, h,
+			header{"Upload-Metadata", "filename ZHVtbXkubWQ="},
+			header{wallet.LegacyTokenHeader, "legacyAuthToken123"},
+		)
+
+		r, err := http.NewRequest(
+			http.MethodPost, loc+"/notify",
+			strings.NewReader(testPublishRequest),
+		)
+		assert.Nil(t, err)
+
+		r.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
+		r.Header.Set("Tus-Resumable", tusVersion)
+
+		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
+
+		response := w.Result()
+		respBody, err := ioutil.ReadAll(response.Body)
+		assert.Nil(t, err)
+
+		test.AssertEqualJSON(t, expectedPublishResponse, respBody)
+
+		f, err := os.Stat(filepath.Join(t.TempDir(), path.Base(loc)))
+		assert.Nil(t, f)
+		assert.NotNil(t, err)
+	})
+
+	t.Run("UpdateCompleted", func(t *testing.T) {
+		h := newTestTusHandlerWithOauth(t, nil)
+		w := httptest.NewRecorder()
+
+		loc := newFinalUpload(t, h,
+			header{"Upload-Metadata", "filename ZHVtbXkubWQ="},
+			header{wallet.LegacyTokenHeader, "legacyAuthToken123"},
+		)
+
+		r, err := http.NewRequest(
+			http.MethodPost, loc+"/notify",
+			strings.NewReader(testPublishUpdateRequest),
+		)
+		assert.Nil(t, err)
+
+		r.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
+		r.Header.Set("Tus-Resumable", tusVersion)
+
+		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
+
+		response := w.Result()
+		respBody, err := ioutil.ReadAll(response.Body)
+		assert.Nil(t, err)
+
+		test.AssertEqualJSON(t, expectedPublishResponse, respBody)
+
+		f, err := os.Stat(filepath.Join(t.TempDir(), path.Base(loc)))
+		assert.Nil(t, f)
+		assert.NotNil(t, err)
+	})
+
+	t.Run("WithoutUploadMetadata", func(t *testing.T) {
+		h := newTestTusHandlerWithOauth(t, nil)
+		w := httptest.NewRecorder()
+
+		loc := newFinalUpload(t, h, header{wallet.LegacyTokenHeader, "legacyAuthToken123"})
+
+		r, err := http.NewRequest(
+			http.MethodPost, loc+"/notify",
+			strings.NewReader(testPublishRequest),
+		)
+		assert.Nil(t, err)
+
+		r.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
+		r.Header.Set("Tus-Resumable", tusVersion)
+
+		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
+
+		respBody, err := ioutil.ReadAll(w.Result().Body)
+		assert.Nil(t, err)
+
+		wantErrMsg := "file metadata is required"
+		gotErrMsg := test.StrToRes(t, string(respBody)).Error.Message
+		assert.Equal(t, wantErrMsg, gotErrMsg)
+	})
+}
+
+// TODO: This is for testing legacy token authentication. Remove this after legacy tokens go away.
 func TestTusLegacyToken(t *testing.T) {
-	t.Parallel()
+	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
+	if err != nil {
+		panic(err)
+	}
+	storage.SetDB(db)
+	config.Override("LbrynetServers", "")
+	defer dbCleanup()
 
 	t.Run("FailedToAuthorize", func(t *testing.T) {
-		t.Parallel()
-
 		errAuthFn := func(token, ip string) (*models.User, error) {
 			return nil, fmt.Errorf("failed to authorize")
 		}
@@ -688,9 +868,7 @@ func TestTusLegacyToken(t *testing.T) {
 	})
 
 	t.Run("WithoutTusVersionHeader", func(t *testing.T) {
-		t.Parallel()
-
-		h := newTestTusHandler(t)
+		h := newTestTusHandlerWithOauth(t, nil)
 		w := httptest.NewRecorder()
 
 		testData := []byte("test file")
@@ -712,11 +890,9 @@ func TestTusLegacyToken(t *testing.T) {
 	})
 
 	t.Run("WithForwardProto", func(t *testing.T) {
-		t.Parallel()
-
 		wantProto := "https"
 
-		h := newTestTusHandler(t)
+		h := newTestTusHandlerWithOauth(t, nil)
 		w := httptest.NewRecorder()
 
 		testData := []byte("test file")
@@ -742,9 +918,7 @@ func TestTusLegacyToken(t *testing.T) {
 	})
 
 	t.Run("CreateUpload", func(t *testing.T) {
-		t.Parallel()
-
-		h := newTestTusHandler(t)
+		h := newTestTusHandlerWithOauth(t, nil)
 		w := httptest.NewRecorder()
 
 		testData := []byte("test file")
@@ -763,13 +937,12 @@ func TestTusLegacyToken(t *testing.T) {
 	})
 
 	t.Run("ResumeUpload", func(t *testing.T) {
-		t.Parallel()
+		h := newTestTusHandlerWithOauth(t, nil)
 
-		h := newTestTusHandler(t)
-
-		loc := newPartialUpload(t, h, func() (string, string) {
-			return "Upload-Length", "3"
-		})
+		loc := newPartialUpload(t, h,
+			header{"Upload-Length", "3"},
+			header{wallet.LegacyTokenHeader, "legacyAuthToken123"},
+		)
 
 		tests := []struct {
 			name           string
@@ -801,13 +974,12 @@ func TestTusLegacyToken(t *testing.T) {
 	})
 
 	t.Run("ResumeWithChunks", func(t *testing.T) {
-		t.Parallel()
+		h := newTestTusHandlerWithOauth(t, nil)
 
-		h := newTestTusHandler(t)
-
-		loc := newPartialUpload(t, h, func() (string, string) {
-			return "Upload-Length", "6"
-		})
+		loc := newPartialUpload(t, h,
+			header{"Upload-Length", "6"},
+			header{wallet.LegacyTokenHeader, "legacyAuthToken123"},
+		)
 
 		testData := []byte("foobar")
 		b := bytes.NewReader(testData)
@@ -838,12 +1010,10 @@ func TestTusLegacyToken(t *testing.T) {
 	})
 
 	t.Run("DeleteUpload", func(t *testing.T) {
-		t.Parallel()
-
-		h := newTestTusHandler(t)
+		h := newTestTusHandlerWithOauth(t, nil)
 		w := httptest.NewRecorder()
 
-		loc := newPartialUpload(t, h)
+		loc := newPartialUpload(t, h, header{wallet.LegacyTokenHeader, "legacyAuthToken123"})
 
 		r, err := http.NewRequest(http.MethodDelete, loc, http.NoBody)
 		assert.Nil(t, err)
@@ -862,12 +1032,10 @@ func TestTusLegacyToken(t *testing.T) {
 	})
 
 	t.Run("QueryFile", func(t *testing.T) {
-		t.Parallel()
-
-		h := newTestTusHandler(t)
+		h := newTestTusHandlerWithOauth(t, nil)
 		w := httptest.NewRecorder()
 
-		loc := newPartialUpload(t, h)
+		loc := newPartialUpload(t, h, header{wallet.LegacyTokenHeader, "legacyAuthToken123"})
 
 		r, err := http.NewRequest(http.MethodHead, loc, http.NoBody)
 		assert.Nil(t, err)
@@ -882,11 +1050,9 @@ func TestTusLegacyToken(t *testing.T) {
 	})
 
 	t.Run("QueryNonExistentFile", func(t *testing.T) {
-		t.Parallel()
-
-		h := newTestTusHandler(t)
+		h := newTestTusHandlerWithOauth(t, nil)
 		w := httptest.NewRecorder()
-		_ = newPartialUpload(t, h)
+		_ = newPartialUpload(t, h, header{wallet.LegacyTokenHeader, "legacyAuthToken123"})
 
 		r, err := http.NewRequest(http.MethodHead, tr.withID(404), http.NoBody)
 		assert.Nil(t, err)

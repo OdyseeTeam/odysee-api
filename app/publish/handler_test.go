@@ -51,7 +51,7 @@ func TestHandler_StreamUpdate(t *testing.T) {
 		require.True(t, ok)
 		publisher.query = r
 		publisher.queryParams = params
-		ts.NextResponse <- expectedStreamCreateResponse
+		ts.NextResponse <- expectedPublishResponse
 	}()
 
 	handler := &Handler{UploadPath: os.TempDir()}
@@ -73,7 +73,7 @@ func TestHandler_StreamUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
-	test.AssertEqualJSON(t, expectedStreamCreateResponse, respBody)
+	test.AssertEqualJSON(t, expectedPublishResponse, respBody)
 
 	require.True(t, publisher.called)
 	require.Equal(t, query.MethodStreamUpdate, publisher.query.Method)
@@ -105,7 +105,7 @@ func TestUploadHandler(t *testing.T) {
 		publisher.filePath = params["file_path"].(string)
 		publisher.walletID = params["wallet_id"].(string)
 		publisher.rawQuery = req.Body
-		ts.NextResponse <- expectedStreamCreateResponse
+		ts.NextResponse <- expectedPublishResponse
 	}()
 
 	handler := &Handler{UploadPath: os.TempDir()}
@@ -127,13 +127,13 @@ func TestUploadHandler(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
-	test.AssertEqualJSON(t, expectedStreamCreateResponse, respBody)
+	test.AssertEqualJSON(t, expectedPublishResponse, respBody)
 
 	require.True(t, publisher.called)
 	expectedPath := path.Join(os.TempDir(), "20404", ".+", "lbry_auto_test_file")
 	assert.Regexp(t, expectedPath, publisher.filePath)
 	assert.Equal(t, sdkrouter.WalletID(20404), publisher.walletID)
-	expectedReq := fmt.Sprintf(expectedStreamCreateRequest, sdkrouter.WalletID(20404), publisher.filePath)
+	expectedReq := fmt.Sprintf(testPublishRequest, sdkrouter.WalletID(20404), publisher.filePath)
 	test.AssertEqualJSON(t, expectedReq, publisher.rawQuery)
 
 	_, err = os.Stat(publisher.filePath)
@@ -211,7 +211,7 @@ func TestUploadHandlerSystemError(t *testing.T) {
 
 	jsonPayload, err := writer.CreateFormField(jsonRPCFieldName)
 	require.NoError(t, err)
-	jsonPayload.Write([]byte(fmt.Sprintf(expectedStreamCreateRequest, sdkrouter.WalletID(20404), "arst")))
+	jsonPayload.Write([]byte(fmt.Sprintf(testPublishRequest, sdkrouter.WalletID(20404), "arst")))
 
 	// <--- Not calling writer.Close() here to create an unexpected EOF
 

@@ -24,7 +24,7 @@ func CreatePublishRequest(t *testing.T, data []byte, extra ...FormParam) *http.R
 	_, err = io.Copy(fileBody, readSeeker)
 	require.NoError(t, err)
 
-	extra = append([]FormParam{{jsonRPCFieldName, expectedStreamCreateRequest}}, extra...)
+	extra = append([]FormParam{{jsonRPCFieldName, testPublishRequest}}, extra...)
 	for _, kv := range extra {
 		fld, err := writer.CreateFormField(kv[0])
 		require.NoError(t, err)
@@ -89,11 +89,11 @@ var testPublishUpdateRequest = `
     }
 }`
 
-var expectedStreamCreateRequest = `
+var testPublishRequest = `
 {
     "id": 1567580184168,
     "jsonrpc": "2.0",
-    "method": "stream_create",
+    "method": "publish",
     "params": {
         "name": "test",
         "title": "test",
@@ -111,7 +111,7 @@ var expectedStreamCreateRequest = `
     }
 }`
 
-var expectedStreamCreateResponse = `
+var expectedPublishResponse = `
 {
 	"id": 0,
 	"jsonrpc": "2.0",

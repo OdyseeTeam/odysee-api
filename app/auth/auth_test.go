@@ -20,7 +20,6 @@ import (
 	"github.com/volatiletech/null"
 )
 
-// auther, err := wallet.NewOauthAuthenticator(oauthProviderURL, clientID, iapiURL, router)
 type dummyAuther struct {
 	remoteIP string
 }

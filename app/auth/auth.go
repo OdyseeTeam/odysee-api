@@ -24,6 +24,11 @@ type result struct {
 	err  error
 }
 
+type Authenticator interface {
+	Authenticate(token, metaRemoteIP string) (*models.User, error)
+	GetTokenFromRequest(r *http.Request) (string, error)
+}
+
 // FromRequest retrieves user from http.Request that went through our Middleware
 func FromRequest(r *http.Request) (*models.User, error) {
 	v := r.Context().Value(contextKey)
@@ -36,11 +41,6 @@ func FromRequest(r *http.Request) (*models.User, error) {
 
 // Provider tries to authenticate using the provided auth token
 type Provider func(token, metaRemoteIP string) (*models.User, error)
-
-type Authenticator interface {
-	Authenticate(token, metaRemoteIP string) (*models.User, error)
-	GetTokenFromRequest(r *http.Request) (string, error)
-}
 
 // NewIAPIProvider authenticates a user by hitting internal-api with the auth token
 // and matching the response to a local user. If auth is successful, the user will have a
