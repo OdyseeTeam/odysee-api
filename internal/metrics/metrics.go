@@ -36,6 +36,10 @@ const (
 	FailureKindInternal         = "internal"
 	FailureKindLbrynetXMismatch = "xmismatch"
 
+	PublishLockFailure         = "publish_lock"
+	PublishUploadObjectFailure = "publish_upload_object"
+	PublishUploadIncomplete    = "publish_upload_incomplete"
+
 	GroupControl      = "control"
 	GroupExperimental = "experimental"
 )

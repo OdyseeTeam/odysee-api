@@ -32,7 +32,7 @@ import (
 
 var logger = monitor.NewModuleLogger("publish")
 
-var method = "publish"
+const method = "publish"
 
 const (
 	// fileFieldName refers to the POST field containing file upload

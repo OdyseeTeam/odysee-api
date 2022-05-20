@@ -43,7 +43,7 @@ func TestStartAndServeUntilShutdown(t *testing.T) {
 
 	url := fmt.Sprintf("http://%v/", server.Address())
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	response, err := http.Get(url)
 	if err != nil {
 		t.Fatal(err)

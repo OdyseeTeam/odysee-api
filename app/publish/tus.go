@@ -126,7 +126,7 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.WithError(err).Error("failed to acquire file lock")
 			w.Write(rpcerrors.NewInternalError(err).JSON())
-			observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+			observeFailure(metrics.GetDuration(r), metrics.PublishLockFailure)
 			return
 		}
 		defer lock.Unlock()
@@ -136,7 +136,7 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.WithError(err).Error("failed to get upload object")
 		w.Write(rpcerrors.NewInternalError(err).JSON())
-		observeFailure(metrics.GetDuration(r), metrics.FailureKindClient)
+		observeFailure(metrics.GetDuration(r), metrics.PublishUploadObjectFailure)
 		return
 	}
 
@@ -144,7 +144,7 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.WithError(err).Error("failed to get upload info")
 		w.Write(rpcerrors.NewInternalError(err).JSON())
-		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+		observeFailure(metrics.GetDuration(r), metrics.PublishUploadObjectFailure)
 		return
 	}
 
@@ -154,7 +154,7 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 		err := fmt.Errorf("upload is still in process")
 		log.WithError(err).Error("file incomplete")
 		w.Write(rpcerrors.ErrorToJSON(err))
-		observeFailure(metrics.GetDuration(r), metrics.FailureKindClient)
+		observeFailure(metrics.GetDuration(r), metrics.PublishUploadIncomplete)
 		return
 	}
 
@@ -237,7 +237,7 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 
 	op := metrics.StartOperation("sdk", "call_publish")
 	rpcRes, err := c.Call(rpcReq)
-	op.End()
+	defer op.End()
 	if err != nil {
 		monitor.ErrorToSentry(
 			fmt.Errorf("error calling publish: %v", err),

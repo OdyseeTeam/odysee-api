@@ -144,13 +144,18 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	metrics.ProxyCallCounter.WithLabelValues(rpcReq.Method, c.Endpoint(), origin).Inc()
 
 	if err != nil {
-		monitor.ErrorToSentry(err, map[string]string{"request": fmt.Sprintf("%+v", rpcReq), "response": fmt.Sprintf("%+v", rpcRes)})
 		writeResponse(w, rpcerrors.ToJSON(err))
 
-		logger.Log().Errorf("error calling lbrynet: %v, request: %+v", err, rpcReq)
+		// Ignore legacy call errors
+		if errors.Is(err, rpcerrors.ErrAuthRequired) && rpcReq.Method == query.MethodGet {
+			return
+		}
+
+		monitor.ErrorToSentry(err, map[string]string{"request": fmt.Sprintf("%+v", rpcReq), "response": fmt.Sprintf("%+v", rpcRes)})
 		observeFailure(metrics.GetDuration(r), rpcReq.Method, metrics.FailureKindNet)
 		metrics.ProxyCallFailedDurations.WithLabelValues(rpcReq.Method, c.Endpoint(), origin, metrics.FailureKindNet).Observe(c.Duration)
 		metrics.ProxyCallFailedCounter.WithLabelValues(rpcReq.Method, c.Endpoint(), origin, metrics.FailureKindNet).Inc()
+		logger.Log().Errorf("error calling lbrynet: %v, request: %+v", err, rpcReq)
 		return
 	}
 
