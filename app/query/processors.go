@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lbryio/lbrytv/internal/errors"
+	"github.com/OdyseeTeam/odysee-api/internal/errors"
 
+	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/internal/metrics"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
-	"github.com/lbryio/lbrytv/apps/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/metrics"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 

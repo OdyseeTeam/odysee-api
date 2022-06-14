@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lbryio/lbrytv/internal/metrics"
-	"github.com/lbryio/lbrytv/internal/monitor"
-	"github.com/lbryio/lbrytv/models"
+	"github.com/OdyseeTeam/odysee-api/internal/metrics"
+	"github.com/OdyseeTeam/odysee-api/internal/monitor"
+	"github.com/OdyseeTeam/odysee-api/models"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 )

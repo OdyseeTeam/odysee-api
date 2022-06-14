@@ -14,12 +14,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lbryio/lbrytv/app/auth"
-	"github.com/lbryio/lbrytv/app/query"
-	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/app/wallet"
-	"github.com/lbryio/lbrytv/internal/test"
-	"github.com/lbryio/lbrytv/models"
+	"github.com/OdyseeTeam/odysee-api/app/auth"
+	"github.com/OdyseeTeam/odysee-api/app/query"
+	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
+	"github.com/OdyseeTeam/odysee-api/app/wallet"
+	"github.com/OdyseeTeam/odysee-api/internal/test"
+	"github.com/OdyseeTeam/odysee-api/models"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -1,10 +1,9 @@
-module github.com/lbryio/lbrytv
+module github.com/OdyseeTeam/odysee-api
 
 go 1.17
 
 require (
 	github.com/ClickHouse/clickhouse-go v1.4.5
-	github.com/OdyseeTeam/player-server v0.7.13-0.20220512134656-6091b00c7735
 	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/alecthomas/kong v0.2.17
 	github.com/bluele/factory-go v0.0.1
@@ -16,7 +15,7 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.5.4
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
-	github.com/lbryio/lbry.go/v2 v2.7.2-0.20220504162735-e5ab0f883edf
+	github.com/lbryio/lbry.go/v2 v2.7.1
 	github.com/lib/pq v1.10.4
 	github.com/nsf/jsondiff v0.0.0-20190712045011-8443391ee9b6
 	github.com/oschwald/geoip2-golang v1.5.0
@@ -120,3 +119,5 @@ require (
 )
 
 replace github.com/floostack/transcoder => github.com/andybeletsky/transcoder v1.2.0
+
+replace github.com/lbryio/lbry.go/v2 => github.com/andybeletsky/lbry.go/v2 v2.7.2-0.20220504162735-e5ab0f883edf

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/lbrytv/internal/test"
-	"github.com/lbryio/lbrytv/models"
+	"github.com/OdyseeTeam/odysee-api/internal/test"
+	"github.com/OdyseeTeam/odysee-api/models"
 
 	"github.com/sirupsen/logrus"
 	"github.com/volatiletech/sqlboiler/boil"

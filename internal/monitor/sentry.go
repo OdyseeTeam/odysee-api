@@ -1,7 +1,7 @@
 package monitor
 
 import (
-	"github.com/lbryio/lbrytv/internal/responses"
+	"github.com/OdyseeTeam/odysee-api/internal/responses"
 
 	"github.com/getsentry/sentry-go"
 )

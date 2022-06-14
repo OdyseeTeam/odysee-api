@@ -158,7 +158,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
         with:
           route: POST /repos/:repository/dispatches
-          repository: lbryio/lbrytv-deployment
+          repository: OdyseeTeam/misc-deployment
           event_type: deploy-odysee
           client_payload: |
             tag: ${{ steps.release.outputs.version }}

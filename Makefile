@@ -54,20 +54,20 @@ models: get_sqlboiler
 api:
 	CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build \
 		-o dist/linux_amd64/lbrytv \
-		-ldflags "-s -w -X github.com/lbryio/lbrytv/version.version=$(api_version) -X github.com/lbryio/lbrytv/version.commit=$(git_hash) -X github.com/lbryio/lbrytv/apps/version.buildDate=$(date)" \
+		-ldflags "-s -w -X github.com/OdyseeTeam/odysee-api/version.version=$(api_version) -X github.com/OdyseeTeam/odysee-api/version.commit=$(git_hash) -X github.com/OdyseeTeam/odysee-api/apps/version.buildDate=$(date)" \
 		.
 
 watchman:
 	GOARCH=amd64 GOOS=linux go build \
 		-o apps/watchman/dist/linux_amd64/watchman \
-		-ldflags "-s -w -X github.com/lbryio/lbrytv/version.version=$(watchman_version) -X github.com/lbryio/lbrytv/version.commit=$(git_hash) -X github.com/lbryio/lbrytv/apps/version.buildDate=$(date)" \
+		-ldflags "-s -w -X github.com/OdyseeTeam/odysee-api/version.version=$(watchman_version) -X github.com/OdyseeTeam/odysee-api/version.commit=$(git_hash) -X github.com/OdyseeTeam/odysee-api/apps/version.buildDate=$(date)" \
 		./apps/watchman/cmd/watchman/
 
 watchman_image:
 	docker build -t odyseeteam/watchman:$(watchman_version) ./apps/watchman
 
 watchman_design:
-	goa gen github.com/lbryio/lbrytv/apps/watchman/design -o apps/watchman
+	goa gen github.com/OdyseeTeam/odysee-api/apps/watchman/design -o apps/watchman
 
 watchman_example:
-	goa example github.com/lbryio/lbrytv/apps/watchman/design -o apps/watchman
+	goa example github.com/OdyseeTeam/odysee-api/apps/watchman/design -o apps/watchman

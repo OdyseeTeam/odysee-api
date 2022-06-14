@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/sirupsen/logrus"
 
 	"github.com/lib/pq"

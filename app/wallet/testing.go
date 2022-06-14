@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/lbryio/lbrytv/apps/lbrytv/config"
-	"github.com/lbryio/lbrytv/models"
+	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/volatiletech/null"
 
 	"golang.org/x/oauth2"

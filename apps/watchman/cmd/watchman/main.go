@@ -10,11 +10,11 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/lbryio/lbrytv/apps/watchman"
-	"github.com/lbryio/lbrytv/apps/watchman/config"
-	"github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
-	"github.com/lbryio/lbrytv/apps/watchman/log"
-	"github.com/lbryio/lbrytv/apps/watchman/olapdb"
+	"github.com/OdyseeTeam/odysee-api/apps/watchman"
+	"github.com/OdyseeTeam/odysee-api/apps/watchman/config"
+	"github.com/OdyseeTeam/odysee-api/apps/watchman/gen/reporter"
+	"github.com/OdyseeTeam/odysee-api/apps/watchman/log"
+	"github.com/OdyseeTeam/odysee-api/apps/watchman/olapdb"
 
 	"github.com/alecthomas/kong"
 )

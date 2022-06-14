@@ -5,7 +5,7 @@ import (
 	"embed"
 	"fmt"
 
-	"github.com/lbryio/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/config"
 )
 
 type DBConfig struct {

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 )
 
 var logger = monitor.NewModuleLogger("ip")

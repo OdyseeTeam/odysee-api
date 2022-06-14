@@ -3,9 +3,9 @@ package rpcerrors
 import (
 	"encoding/json"
 
-	"github.com/lbryio/lbrytv/internal/errors"
-	"github.com/lbryio/lbrytv/internal/monitor"
-	"github.com/lbryio/lbrytv/internal/responses"
+	"github.com/OdyseeTeam/odysee-api/internal/errors"
+	"github.com/OdyseeTeam/odysee-api/internal/monitor"
+	"github.com/OdyseeTeam/odysee-api/internal/responses"
 	"github.com/ybbus/jsonrpc"
 )
 

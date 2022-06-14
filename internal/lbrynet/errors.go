@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/lbryio/lbrytv/internal/errors"
+	"github.com/OdyseeTeam/odysee-api/internal/errors"
 )
 
 type WalletError struct {

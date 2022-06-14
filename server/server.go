@@ -8,9 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/lbryio/lbrytv/api"
-	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/OdyseeTeam/odysee-api/api"
+	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
+	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 
 	"github.com/gorilla/mux"
 )

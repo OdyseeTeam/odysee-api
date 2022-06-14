@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
-	"github.com/lbryio/lbrytv/apps/watchman/log"
+	"github.com/OdyseeTeam/odysee-api/apps/watchman/gen/reporter"
+	"github.com/OdyseeTeam/odysee-api/apps/watchman/log"
 	"github.com/pkg/errors"
 
 	_ "github.com/ClickHouse/clickhouse-go"

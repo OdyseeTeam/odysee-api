@@ -1,8 +1,8 @@
 package monitor
 
 import (
-	"github.com/lbryio/lbrytv/apps/lbrytv/config"
-	"github.com/lbryio/lbrytv/version"
+	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/version"
 
 	"github.com/sirupsen/logrus"
 )

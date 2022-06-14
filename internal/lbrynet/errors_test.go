@@ -3,7 +3,7 @@ package lbrynet
 import (
 	"testing"
 
-	"github.com/lbryio/lbrytv/internal/errors"
+	"github.com/OdyseeTeam/odysee-api/internal/errors"
 
 	"github.com/stretchr/testify/assert"
 )

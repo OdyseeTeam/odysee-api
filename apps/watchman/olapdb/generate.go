@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lbryio/lbrytv/apps/watchman/gen/http/reporter/client"
-	"github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
-	"github.com/lbryio/lbrytv/apps/watchman/log"
+	"github.com/OdyseeTeam/odysee-api/apps/watchman/gen/http/reporter/client"
+	"github.com/OdyseeTeam/odysee-api/apps/watchman/gen/reporter"
+	"github.com/OdyseeTeam/odysee-api/apps/watchman/log"
 
 	"github.com/Pallinder/go-randomdata"
 	"github.com/bluele/factory-go/factory"

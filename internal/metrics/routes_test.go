@@ -6,9 +6,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/OdyseeTeam/odysee-api/api"
+	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
 	"github.com/Pallinder/go-randomdata"
-	"github.com/lbryio/lbrytv/api"
-	"github.com/lbryio/lbrytv/apps/lbrytv/config"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"

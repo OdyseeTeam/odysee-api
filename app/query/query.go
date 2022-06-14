@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lbryio/lbrytv/app/rpcerrors"
-	"github.com/lbryio/lbrytv/internal/errors"
-	"github.com/lbryio/lbrytv/internal/monitor"
+	"github.com/OdyseeTeam/odysee-api/app/rpcerrors"
+	"github.com/OdyseeTeam/odysee-api/internal/errors"
+	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 
 	"github.com/ybbus/jsonrpc"
 )

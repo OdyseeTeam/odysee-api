@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/apps/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/storage"
-	"github.com/lbryio/lbrytv/pkg/migrator"
+	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
+	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/internal/storage"
+	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -3,7 +3,7 @@
 // HTTP request path constructors for the reporter service.
 //
 // Command:
-// $ goa gen github.com/lbryio/lbrytv/apps/watchman/design -o apps/watchman
+// $ goa gen github.com/OdyseeTeam/odysee-api/apps/watchman/design -o apps/watchman
 
 package client
 

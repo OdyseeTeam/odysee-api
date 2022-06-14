@@ -4,10 +4,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/internal/metrics"
-	"github.com/lbryio/lbrytv/internal/test"
-	"github.com/lbryio/lbrytv/models"
+	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
+	"github.com/OdyseeTeam/odysee-api/internal/metrics"
+	"github.com/OdyseeTeam/odysee-api/internal/test"
+	"github.com/OdyseeTeam/odysee-api/models"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -7,11 +7,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/lbryio/lbrytv/app/auth"
-	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/app/wallet"
-	"github.com/lbryio/lbrytv/apps/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/middleware"
+	"github.com/OdyseeTeam/odysee-api/app/auth"
+	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
+	"github.com/OdyseeTeam/odysee-api/app/wallet"
+	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/internal/middleware"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

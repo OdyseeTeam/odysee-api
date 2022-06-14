@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/internal/errors"
-	"github.com/lbryio/lbrytv/internal/lbrynet"
-	"github.com/lbryio/lbrytv/internal/metrics"
-	"github.com/lbryio/lbrytv/internal/monitor"
-	"github.com/lbryio/lbrytv/internal/storage"
-	"github.com/lbryio/lbrytv/models"
+	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
+	"github.com/OdyseeTeam/odysee-api/internal/errors"
+	"github.com/OdyseeTeam/odysee-api/internal/lbrynet"
+	"github.com/OdyseeTeam/odysee-api/internal/metrics"
+	"github.com/OdyseeTeam/odysee-api/internal/monitor"
+	"github.com/OdyseeTeam/odysee-api/internal/storage"
+	"github.com/OdyseeTeam/odysee-api/models"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 

@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/lbrytv/app/query"
-	"github.com/lbryio/lbrytv/apps/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/test"
+	"github.com/OdyseeTeam/odysee-api/app/query"
+	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/internal/test"
 
 	logrusTest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"

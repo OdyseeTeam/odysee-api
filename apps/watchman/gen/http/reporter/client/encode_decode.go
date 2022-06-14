@@ -3,7 +3,7 @@
 // reporter HTTP client encoders and decoders
 //
 // Command:
-// $ goa gen github.com/lbryio/lbrytv/apps/watchman/design -o apps/watchman
+// $ goa gen github.com/OdyseeTeam/odysee-api/apps/watchman/design -o apps/watchman
 
 package client
 
@@ -14,7 +14,7 @@ import (
 	"net/http"
 	"net/url"
 
-	reporter "github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
+	reporter "github.com/OdyseeTeam/odysee-api/apps/watchman/gen/reporter"
 	goahttp "goa.design/goa/v3/http"
 )
 

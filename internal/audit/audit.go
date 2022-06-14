@@ -1,8 +1,8 @@
 package audit
 
 import (
-	"github.com/lbryio/lbrytv/internal/monitor"
-	"github.com/lbryio/lbrytv/models"
+	"github.com/OdyseeTeam/odysee-api/internal/monitor"
+	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/volatiletech/null"
 	"github.com/volatiletech/sqlboiler/boil"
 )

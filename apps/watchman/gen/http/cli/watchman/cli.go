@@ -3,7 +3,7 @@
 // watchman HTTP client CLI support package
 //
 // Command:
-// $ goa gen github.com/lbryio/lbrytv/apps/watchman/design -o apps/watchman
+// $ goa gen github.com/OdyseeTeam/odysee-api/apps/watchman/design -o apps/watchman
 
 package cli
 
@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"os"
 
-	reporterc "github.com/lbryio/lbrytv/apps/watchman/gen/http/reporter/client"
+	reporterc "github.com/OdyseeTeam/odysee-api/apps/watchman/gen/http/reporter/client"
 	goahttp "goa.design/goa/v3/http"
 	goa "goa.design/goa/v3/pkg"
 )
@@ -167,7 +167,7 @@ func reporterAddUsage() {
 	fmt.Fprintf(os.Stderr, `%[1]s [flags] reporter add -body JSON
 
 Add implements add.
-    -body JSON: 
+    -body JSON:
 
 Example:
     %[1]s reporter add --body '{
