@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/lbryio/lbrytv/internal/errors"
+	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/ybbus/jsonrpc"
 )
 

@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/internal/errors"
-	"github.com/lbryio/lbrytv/internal/storage"
-	"github.com/lbryio/lbrytv/models"
+	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
+	"github.com/OdyseeTeam/odysee-api/internal/errors"
+	"github.com/OdyseeTeam/odysee-api/internal/storage"
+	"github.com/OdyseeTeam/odysee-api/models"
 
 	"github.com/coreos/go-oidc"
 	"github.com/sirupsen/logrus"

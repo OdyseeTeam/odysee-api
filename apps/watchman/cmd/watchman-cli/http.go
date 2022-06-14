@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	cli "github.com/lbryio/lbrytv/apps/watchman/gen/http/cli/watchman"
+	cli "github.com/OdyseeTeam/odysee-api/apps/watchman/gen/http/cli/watchman"
 	goahttp "goa.design/goa/v3/http"
 	goa "goa.design/goa/v3/pkg"
 )

@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/lbryio/lbrytv/apps/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
 
 	"github.com/ybbus/jsonrpc"
 )

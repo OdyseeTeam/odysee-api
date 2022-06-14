@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/lbryio/lbrytv/internal/metrics"
+	"github.com/OdyseeTeam/odysee-api/internal/metrics"
 
 	"github.com/lbryio/lbry.go/v2/extras/lbryinc"
 

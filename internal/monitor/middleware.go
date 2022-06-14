@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/lbryio/lbrytv/internal/errors"
-	"github.com/lbryio/lbrytv/internal/responses"
+	"github.com/OdyseeTeam/odysee-api/internal/errors"
+	"github.com/OdyseeTeam/odysee-api/internal/responses"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/sirupsen/logrus"

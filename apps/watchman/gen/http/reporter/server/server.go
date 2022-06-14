@@ -3,7 +3,7 @@
 // reporter HTTP server
 //
 // Command:
-// $ goa gen github.com/lbryio/lbrytv/apps/watchman/design -o apps/watchman
+// $ goa gen github.com/OdyseeTeam/odysee-api/apps/watchman/design -o apps/watchman
 
 package server
 
@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"regexp"
 
-	reporter "github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
+	reporter "github.com/OdyseeTeam/odysee-api/apps/watchman/gen/reporter"
 	goahttp "goa.design/goa/v3/http"
 	goa "goa.design/goa/v3/pkg"
 	"goa.design/plugins/v3/cors"

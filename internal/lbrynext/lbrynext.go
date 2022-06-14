@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/OdyseeTeam/odysee-api/app/query"
+	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/internal/metrics"
+	"github.com/OdyseeTeam/odysee-api/internal/monitor"
+	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/getsentry/sentry-go"
-	"github.com/lbryio/lbrytv/app/query"
-	"github.com/lbryio/lbrytv/apps/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/metrics"
-	"github.com/lbryio/lbrytv/internal/monitor"
-	"github.com/lbryio/lbrytv/internal/test"
 
 	"github.com/ybbus/jsonrpc"
 )

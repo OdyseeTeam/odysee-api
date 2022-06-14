@@ -10,11 +10,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/OdyseeTeam/odysee-api/app/publish"
+	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
+	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/internal/middleware"
 	"github.com/gorilla/mux"
-	"github.com/lbryio/lbrytv/app/publish"
-	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/apps/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/middleware"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

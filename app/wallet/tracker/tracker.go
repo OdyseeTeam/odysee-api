@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/lbryio/lbrytv/app/auth"
-	"github.com/lbryio/lbrytv/app/wallet"
-	"github.com/lbryio/lbrytv/internal/errors"
-	"github.com/lbryio/lbrytv/internal/monitor"
-	"github.com/lbryio/lbrytv/models"
+	"github.com/OdyseeTeam/odysee-api/app/auth"
+	"github.com/OdyseeTeam/odysee-api/app/wallet"
+	"github.com/OdyseeTeam/odysee-api/internal/errors"
+	"github.com/OdyseeTeam/odysee-api/internal/monitor"
+	"github.com/OdyseeTeam/odysee-api/models"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"

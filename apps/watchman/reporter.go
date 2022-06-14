@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 
-	reporter "github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
-	"github.com/lbryio/lbrytv/apps/watchman/olapdb"
+	reporter "github.com/OdyseeTeam/odysee-api/apps/watchman/gen/reporter"
+	"github.com/OdyseeTeam/odysee-api/apps/watchman/olapdb"
 
 	"go.uber.org/zap"
 )

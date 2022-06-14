@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/OdyseeTeam/odysee-api/apps/watchman/gen/reporter"
+	"github.com/OdyseeTeam/odysee-api/apps/watchman/log"
 	"github.com/Pallinder/go-randomdata"
-	"github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
-	"github.com/lbryio/lbrytv/apps/watchman/log"
 	"github.com/stretchr/testify/suite"
 )
 

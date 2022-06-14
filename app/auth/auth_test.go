@@ -9,11 +9,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/lbryio/lbrytv/app/wallet"
-	"github.com/lbryio/lbrytv/internal/errors"
-	"github.com/lbryio/lbrytv/internal/ip"
-	"github.com/lbryio/lbrytv/internal/middleware"
-	"github.com/lbryio/lbrytv/models"
+	"github.com/OdyseeTeam/odysee-api/app/wallet"
+	"github.com/OdyseeTeam/odysee-api/internal/errors"
+	"github.com/OdyseeTeam/odysee-api/internal/ip"
+	"github.com/OdyseeTeam/odysee-api/internal/middleware"
+	"github.com/OdyseeTeam/odysee-api/models"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

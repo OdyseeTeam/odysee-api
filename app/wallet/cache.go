@@ -3,9 +3,9 @@ package wallet
 import (
 	"time"
 
-	"github.com/lbryio/lbrytv/internal/metrics"
-	"github.com/lbryio/lbrytv/internal/monitor"
-	"github.com/lbryio/lbrytv/models"
+	"github.com/OdyseeTeam/odysee-api/internal/metrics"
+	"github.com/OdyseeTeam/odysee-api/internal/monitor"
+	"github.com/OdyseeTeam/odysee-api/models"
 
 	"github.com/dgraph-io/ristretto"
 	"golang.org/x/sync/singleflight"

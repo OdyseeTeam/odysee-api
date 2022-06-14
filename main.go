@@ -4,12 +4,12 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/lbryio/lbrytv/apps/lbrytv/config"
-	"github.com/lbryio/lbrytv/cmd"
-	"github.com/lbryio/lbrytv/internal/monitor"
-	"github.com/lbryio/lbrytv/internal/storage"
-	"github.com/lbryio/lbrytv/pkg/migrator"
-	"github.com/lbryio/lbrytv/version"
+	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/cmd"
+	"github.com/OdyseeTeam/odysee-api/internal/monitor"
+	"github.com/OdyseeTeam/odysee-api/internal/storage"
+	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
+	"github.com/OdyseeTeam/odysee-api/version"
 
 	"github.com/getsentry/sentry-go"
 )

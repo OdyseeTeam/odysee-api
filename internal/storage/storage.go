@@ -5,8 +5,8 @@ import (
 	"embed"
 	"time"
 
-	"github.com/lbryio/lbrytv/internal/metrics"
-	"github.com/lbryio/lbrytv/pkg/migrator"
+	"github.com/OdyseeTeam/odysee-api/internal/metrics"
+	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
 	"github.com/volatiletech/sqlboiler/boil"
 )
 

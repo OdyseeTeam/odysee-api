@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/gorilla/mux"
-	"github.com/lbryio/lbrytv/internal/errors"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

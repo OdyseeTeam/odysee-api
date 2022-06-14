@@ -4,11 +4,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/lbryio/lbrytv/apps/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/storage"
-	"github.com/lbryio/lbrytv/internal/test"
-	"github.com/lbryio/lbrytv/models"
-	"github.com/lbryio/lbrytv/pkg/migrator"
+	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/internal/storage"
+	"github.com/OdyseeTeam/odysee-api/internal/test"
+	"github.com/OdyseeTeam/odysee-api/models"
+	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
 
 	"github.com/stretchr/testify/assert"
 )

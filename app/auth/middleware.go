@@ -4,11 +4,11 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/app/wallet"
-	"github.com/lbryio/lbrytv/internal/errors"
-	"github.com/lbryio/lbrytv/internal/ip"
-	"github.com/lbryio/lbrytv/models"
+	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
+	"github.com/OdyseeTeam/odysee-api/app/wallet"
+	"github.com/OdyseeTeam/odysee-api/internal/errors"
+	"github.com/OdyseeTeam/odysee-api/internal/ip"
+	"github.com/OdyseeTeam/odysee-api/models"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"

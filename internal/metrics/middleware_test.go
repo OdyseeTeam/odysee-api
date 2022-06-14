@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lbryio/lbrytv/internal/middleware"
+	"github.com/OdyseeTeam/odysee-api/internal/middleware"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"

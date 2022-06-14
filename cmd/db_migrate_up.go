@@ -3,9 +3,9 @@ package cmd
 import (
 	"strconv"
 
-	"github.com/lbryio/lbrytv/apps/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/storage"
-	"github.com/lbryio/lbrytv/pkg/migrator"
+	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/internal/storage"
+	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

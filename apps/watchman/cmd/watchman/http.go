@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lbryio/lbrytv/apps/watchman"
-	reportersvr "github.com/lbryio/lbrytv/apps/watchman/gen/http/reporter/server"
-	reporter "github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
+	"github.com/OdyseeTeam/odysee-api/apps/watchman"
+	reportersvr "github.com/OdyseeTeam/odysee-api/apps/watchman/gen/http/reporter/server"
+	reporter "github.com/OdyseeTeam/odysee-api/apps/watchman/gen/reporter"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	goahttp "goa.design/goa/v3/http"

@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/OdyseeTeam/odysee-api/app/query/cache"
+	"github.com/OdyseeTeam/odysee-api/app/rpcerrors"
+	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
+	"github.com/OdyseeTeam/odysee-api/app/wallet"
+	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/internal/errors"
+	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
-	"github.com/lbryio/lbrytv/app/query/cache"
-	"github.com/lbryio/lbrytv/app/rpcerrors"
-	"github.com/lbryio/lbrytv/app/sdkrouter"
-	"github.com/lbryio/lbrytv/app/wallet"
-	"github.com/lbryio/lbrytv/apps/lbrytv/config"
-	"github.com/lbryio/lbrytv/internal/errors"
-	"github.com/lbryio/lbrytv/internal/test"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 

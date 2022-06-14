@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	cfg "github.com/lbryio/lbrytv/config"
-	"github.com/lbryio/lbrytv/models"
+	cfg "github.com/OdyseeTeam/odysee-api/config"
+	"github.com/OdyseeTeam/odysee-api/models"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cast"

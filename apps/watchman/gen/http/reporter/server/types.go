@@ -3,14 +3,14 @@
 // reporter HTTP server types
 //
 // Command:
-// $ goa gen github.com/lbryio/lbrytv/apps/watchman/design -o apps/watchman
+// $ goa gen github.com/OdyseeTeam/odysee-api/apps/watchman/design -o apps/watchman
 
 package server
 
 import (
 	"unicode/utf8"
 
-	reporter "github.com/lbryio/lbrytv/apps/watchman/gen/reporter"
+	reporter "github.com/OdyseeTeam/odysee-api/apps/watchman/gen/reporter"
 	goa "goa.design/goa/v3/pkg"
 )
 
