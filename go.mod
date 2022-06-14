@@ -30,14 +30,14 @@ require (
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/viper v1.8.1
 	github.com/stretchr/testify v1.7.1
-	github.com/tus/tusd v1.6.0
+	github.com/tus/tusd v1.9.0
 	github.com/volatiletech/null v8.0.0+incompatible
 	github.com/volatiletech/sqlboiler v3.4.0+incompatible
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	go.uber.org/zap v1.17.0
 	goa.design/goa/v3 v3.5.2
 	goa.design/plugins/v3 v3.4.3
-	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c
+	golang.org/x/oauth2 v0.0.0-20220309155454-6242fa91716a
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )
 
@@ -64,7 +64,6 @@ require (
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
-	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
