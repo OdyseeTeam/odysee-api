@@ -278,12 +278,16 @@ func Create(serverAddress string, userID int) error {
 
 	log := logger.WithFields(logrus.Fields{"user_id": userID, "sdk": serverAddress})
 
+	if errors.Is(err, lbrynet.ErrWalletAlreadyLoaded) {
+		return nil
+	}
+
 	if errors.Is(err, lbrynet.ErrWalletExists) {
 		log.Warn(err.Error())
 		return nil
 	}
 
-	if errors.Is(err, lbrynet.ErrWalletNeedsLoading) {
+	if errors.Is(err, lbrynet.ErrWalletNotLoaded) {
 		log.Info(err.Error())
 		err = LoadWallet(serverAddress, userID)
 		if err != nil {
@@ -308,7 +312,7 @@ func createWallet(addr string, userID int) error {
 	_, err := ljsonrpc.NewClient(addr).WalletCreate(sdkrouter.WalletID(userID), &ljsonrpc.WalletCreateOpts{
 		SkipOnStartup: true, CreateAccount: true, SingleKey: true})
 	if err != nil {
-		return lbrynet.NewWalletError(userID, err)
+		return lbrynet.NewWalletError(err)
 	}
 	logger.WithFields(logrus.Fields{"user_id": userID, "sdk": addr}).Info("wallet created")
 	return nil
@@ -324,7 +328,7 @@ func LoadWallet(addr string, userID int) error {
 
 	_, err := ljsonrpc.NewClient(addr).WalletAdd(sdkrouter.WalletID(userID))
 	if err != nil {
-		return lbrynet.NewWalletError(userID, err)
+		return lbrynet.NewWalletError(err)
 	}
 	logger.WithFields(logrus.Fields{"user_id": userID, "sdk": addr}).Info("wallet loaded")
 	return nil
@@ -337,7 +341,7 @@ func LoadWallet(addr string, userID int) error {
 func UnloadWallet(addr string, userID int) error {
 	_, err := ljsonrpc.NewClient(addr).WalletRemove(sdkrouter.WalletID(userID))
 	if err != nil {
-		return lbrynet.NewWalletError(userID, err)
+		return lbrynet.NewWalletError(err)
 	}
 	logger.WithFields(logrus.Fields{"user_id": userID, "sdk": addr}).Info("wallet unloaded")
 	return nil

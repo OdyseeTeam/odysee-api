@@ -73,6 +73,7 @@ func TestMain(m *testing.M) {
 	// Overriding this to temp to avoid permission error when running tests on
 	// restricted environment.
 	config.Config.Override("PublishSourceDir", os.TempDir())
+	defer config.RestoreOverridden()
 	code := m.Run()
 	dbCleanup()
 	os.Exit(code)

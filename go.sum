@@ -80,8 +80,8 @@ github.com/Masterminds/goutils v1.1.0/go.mod h1:8cTjp+g8YejhMuvIA5y2vz3BpJxksy86
 github.com/Masterminds/semver v1.5.0/go.mod h1:MB6lktGJrhw8PrUyiEoblNEGEQ+RzHPF078ddwwvV3Y=
 github.com/Masterminds/sprig v2.22.0+incompatible/go.mod h1:y6hNFY5UBTIWBxnzTeuNhlNS5hqE0NB0E6fgfo2Br3o=
 github.com/OdyseeTeam/gody-cdn v1.0.3/go.mod h1:c4hzKnl6YtR2tnFFbjiL8en4gs6iUG7W4mA6SS4UU4w=
-github.com/OdyseeTeam/player-server v0.7.13-0.20220512134656-6091b00c7735 h1:9Op62OcAhrCopSLkSC5Ljtz4CQ+NW4zo0hx7CfcgZ3M=
-github.com/OdyseeTeam/player-server v0.7.13-0.20220512134656-6091b00c7735/go.mod h1:e/SohZtFNlBcdUtk1CGfbMWfLfpMHrUzL9dQm1/0zbA=
+github.com/OdyseeTeam/player-server v0.8.0 h1:DKUTUQWbU/zb3KDbS/ycimwIN77DA3SfUbfA4W/xa0g=
+github.com/OdyseeTeam/player-server v0.8.0/go.mod h1:5/yT0ywDnRp4/CkwZyBNO/xqs9v0HeTqPvqxAbYV9VU=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/Pallinder/go-randomdata v1.2.0 h1:DZ41wBchNRb/0GfsePLiSwb0PHZmT67XY00lCDlaYPg=
 github.com/Pallinder/go-randomdata v1.2.0/go.mod h1:yHmJgulpD2Nfrm0cR9tI/+oAgRqCQQixsA8HyRZfV9Y=
@@ -109,8 +109,8 @@ github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4/go.mod h1:ybxpYRF
 github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d/go.mod h1:rBZYJk541a8SKzHPHnH3zbiI+7dagKZ0cgpgrD7Fyho=
 github.com/andreyvit/diff v0.0.0-20170406064948-c7f18ee00883/go.mod h1:rCTlJbsFo29Kk6CurOXKm700vrz8f0KW0JNfpkRJY/8=
 github.com/andybalholm/brotli v1.0.0/go.mod h1:loMXtMfwqflxFJPmdbJO0a3KNoPuLBgiu3qAvBg8x/Y=
-github.com/andybeletsky/lbry.go/v2 v2.7.2-0.20220504162735-e5ab0f883edf h1:SmSw8DnRgxV9+ggNzPzoZIrYnEbgZo582R3RM4/1xEM=
-github.com/andybeletsky/lbry.go/v2 v2.7.2-0.20220504162735-e5ab0f883edf/go.mod h1:pDyZ7yZzb8tMKwvp9lNCqNqyW6ROepvaJ4YkBj8vwKg=
+github.com/andybeletsky/lbry.go/v2 v2.7.2-0.20220614174946-e19facdded3c h1:hzK/FaOvLQppbgQjbdAFAQ19/3Ii/rSwca6XKFAqOeA=
+github.com/andybeletsky/lbry.go/v2 v2.7.2-0.20220614174946-e19facdded3c/go.mod h1:YsNY6a6g2Edl14sBUgXx71c6TyoOm8jDvkzcoNHLSXE=
 github.com/andybeletsky/transcoder v1.2.0/go.mod h1:lT+f8NEGaHP6AVeYLicas0EI0+TforD+DRuLziJg6bY=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
@@ -771,7 +771,7 @@ github.com/lbryio/lbryschema.go v0.0.0-20190602173230-6d2f69a36f46/go.mod h1:dAz
 github.com/lbryio/ozzo-validation v0.0.0-20170323141101-d1008ad1fd04/go.mod h1:fbG/dzobG8r95KzMwckXiLMHfFjZaBRQqC9hPs2XAQ4=
 github.com/lbryio/reflector.go v1.1.3-0.20220209235713-2f7d67794f93/go.mod h1:cZiYNUXunmQglfXChBVuOvqLfWBaBKJsdsf+tMTy840=
 github.com/lbryio/reflector.go v1.1.3-0.20220502213236-c211f83ba732/go.mod h1:1qPA9bv8iVoFJrUKAPumJHy5k0S74n3GjIdq9o8rNkk=
-github.com/lbryio/reflector.go v1.1.3-0.20220504171420-4e80f91a57f5/go.mod h1:5i/+TEBbu7tYE42K9IH3UmFp2Yz75SfpJT8Z1ztVv1g=
+github.com/lbryio/reflector.go v1.1.3-0.20220512140100-a1c2e92ca368/go.mod h1:5i/+TEBbu7tYE42K9IH3UmFp2Yz75SfpJT8Z1ztVv1g=
 github.com/lbryio/transcoder v0.15.1-0.20220511173705-eb3bf61b6f11/go.mod h1:9tIWYieXV3vmpelhCovJrNn9SCZXEqTkAQOH1qOt7uQ=
 github.com/lbryio/types v0.0.0-20190422033210-321fb2abda9c/go.mod h1:CG3wsDv5BiVYQd5i1Jp7wGsaVyjZTJshqXeWMVKsISE=
 github.com/lbryio/types v0.0.0-20201019032447-f0b4476ef386/go.mod h1:CG3wsDv5BiVYQd5i1Jp7wGsaVyjZTJshqXeWMVKsISE=

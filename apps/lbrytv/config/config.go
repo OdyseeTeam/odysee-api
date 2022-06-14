@@ -176,7 +176,6 @@ func GetRPCTimeout(method string) *time.Duration {
 		if t, ok := ts[method]; ok {
 			d := cast.ToDuration(t)
 			return &d
-
 		}
 	}
 	return nil

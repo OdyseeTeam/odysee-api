@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/OdyseeTeam/player-server/pkg/logger"
-
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
