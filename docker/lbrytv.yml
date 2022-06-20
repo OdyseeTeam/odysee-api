@@ -13,6 +13,11 @@ Database:
   DBName: lbrytv
   Options: sslmode=disable
 
+OAuth:
+  ClientID: odysee-apis
+  ProviderURL: https://sso.odysee.com/auth/realms/Users
+  TokenPath: /protocol/openid-connect/token
+
 PublishSourceDir: /storage/published
 BlobFilesDir: /storage/lbrynet/blobfiles
 
