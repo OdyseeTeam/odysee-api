@@ -2,7 +2,7 @@ version: "3.2"
 
 services:
   lbrynet:
-    image: odyseeteam/lbrynet-tv:0.109.0
+    image: odyseeteam/lbrynet-tv:0.101.2
     ports:
       - "5581:5279"
       - "5279:5279"
