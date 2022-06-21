@@ -80,8 +80,8 @@ github.com/Masterminds/goutils v1.1.0/go.mod h1:8cTjp+g8YejhMuvIA5y2vz3BpJxksy86
 github.com/Masterminds/semver v1.5.0/go.mod h1:MB6lktGJrhw8PrUyiEoblNEGEQ+RzHPF078ddwwvV3Y=
 github.com/Masterminds/sprig v2.22.0+incompatible/go.mod h1:y6hNFY5UBTIWBxnzTeuNhlNS5hqE0NB0E6fgfo2Br3o=
 github.com/OdyseeTeam/gody-cdn v1.0.3/go.mod h1:c4hzKnl6YtR2tnFFbjiL8en4gs6iUG7W4mA6SS4UU4w=
-github.com/OdyseeTeam/player-server v0.7.13-0.20220512134656-6091b00c7735 h1:9Op62OcAhrCopSLkSC5Ljtz4CQ+NW4zo0hx7CfcgZ3M=
-github.com/OdyseeTeam/player-server v0.7.13-0.20220512134656-6091b00c7735/go.mod h1:e/SohZtFNlBcdUtk1CGfbMWfLfpMHrUzL9dQm1/0zbA=
+github.com/OdyseeTeam/player-server v0.8.0 h1:DKUTUQWbU/zb3KDbS/ycimwIN77DA3SfUbfA4W/xa0g=
+github.com/OdyseeTeam/player-server v0.8.0/go.mod h1:5/yT0ywDnRp4/CkwZyBNO/xqs9v0HeTqPvqxAbYV9VU=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/Pallinder/go-randomdata v1.2.0 h1:DZ41wBchNRb/0GfsePLiSwb0PHZmT67XY00lCDlaYPg=
 github.com/Pallinder/go-randomdata v1.2.0/go.mod h1:yHmJgulpD2Nfrm0cR9tI/+oAgRqCQQixsA8HyRZfV9Y=
@@ -109,8 +109,6 @@ github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4/go.mod h1:ybxpYRF
 github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d/go.mod h1:rBZYJk541a8SKzHPHnH3zbiI+7dagKZ0cgpgrD7Fyho=
 github.com/andreyvit/diff v0.0.0-20170406064948-c7f18ee00883/go.mod h1:rCTlJbsFo29Kk6CurOXKm700vrz8f0KW0JNfpkRJY/8=
 github.com/andybalholm/brotli v1.0.0/go.mod h1:loMXtMfwqflxFJPmdbJO0a3KNoPuLBgiu3qAvBg8x/Y=
-github.com/andybeletsky/lbry.go/v2 v2.7.2-0.20220504162735-e5ab0f883edf h1:SmSw8DnRgxV9+ggNzPzoZIrYnEbgZo582R3RM4/1xEM=
-github.com/andybeletsky/lbry.go/v2 v2.7.2-0.20220504162735-e5ab0f883edf/go.mod h1:pDyZ7yZzb8tMKwvp9lNCqNqyW6ROepvaJ4YkBj8vwKg=
 github.com/andybeletsky/transcoder v1.2.0/go.mod h1:lT+f8NEGaHP6AVeYLicas0EI0+TforD+DRuLziJg6bY=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
@@ -766,12 +764,17 @@ github.com/lbryio/errors.go v0.0.0-20180223142025-ad03d3cc6a5c/go.mod h1:muH7wpU
 github.com/lbryio/lbry.go v1.1.1-0.20190825202001-8fa28d3d656f/go.mod h1:JtyI30bU51rm0LZ/po3mQuzf++14OWb6kR/6mMRAmKU=
 github.com/lbryio/lbry.go v1.1.2 h1:Dyxc+glT/rVWJwHfIf7vjlPYYbjzrQz5ARmJd5Hp69c=
 github.com/lbryio/lbry.go v1.1.2/go.mod h1:JtyI30bU51rm0LZ/po3mQuzf++14OWb6kR/6mMRAmKU=
+github.com/lbryio/lbry.go/v2 v2.7.2-0.20210416195322-6516df1418e3/go.mod h1:I1q8W9fwU+t0IWNiprPgE1SorWQwcO6ser0nzP3L5Pk=
+github.com/lbryio/lbry.go/v2 v2.7.2-0.20220208210038-a0391bec7915/go.mod h1:K7IAMJMjDisynAcDkDdZHbZeWth6sTLl66xh+uJqtGg=
+github.com/lbryio/lbry.go/v2 v2.7.2-0.20220321182539-d0aeb0c22b22/go.mod h1:K7IAMJMjDisynAcDkDdZHbZeWth6sTLl66xh+uJqtGg=
+github.com/lbryio/lbry.go/v2 v2.7.2-0.20220504162735-e5ab0f883edf h1:6/DpgWXREbJaiSgFlBCAzapFd6+NBTqOIIpuimVK5fM=
+github.com/lbryio/lbry.go/v2 v2.7.2-0.20220504162735-e5ab0f883edf/go.mod h1:pDyZ7yZzb8tMKwvp9lNCqNqyW6ROepvaJ4YkBj8vwKg=
 github.com/lbryio/lbryschema.go v0.0.0-20190428231007-c54836bca002/go.mod h1:dAzPCBj3CKKWBGYBZxK6tKBP5SCgY2tqd9SnQd/OyKo=
 github.com/lbryio/lbryschema.go v0.0.0-20190602173230-6d2f69a36f46/go.mod h1:dAzPCBj3CKKWBGYBZxK6tKBP5SCgY2tqd9SnQd/OyKo=
 github.com/lbryio/ozzo-validation v0.0.0-20170323141101-d1008ad1fd04/go.mod h1:fbG/dzobG8r95KzMwckXiLMHfFjZaBRQqC9hPs2XAQ4=
 github.com/lbryio/reflector.go v1.1.3-0.20220209235713-2f7d67794f93/go.mod h1:cZiYNUXunmQglfXChBVuOvqLfWBaBKJsdsf+tMTy840=
 github.com/lbryio/reflector.go v1.1.3-0.20220502213236-c211f83ba732/go.mod h1:1qPA9bv8iVoFJrUKAPumJHy5k0S74n3GjIdq9o8rNkk=
-github.com/lbryio/reflector.go v1.1.3-0.20220504171420-4e80f91a57f5/go.mod h1:5i/+TEBbu7tYE42K9IH3UmFp2Yz75SfpJT8Z1ztVv1g=
+github.com/lbryio/reflector.go v1.1.3-0.20220512140100-a1c2e92ca368/go.mod h1:5i/+TEBbu7tYE42K9IH3UmFp2Yz75SfpJT8Z1ztVv1g=
 github.com/lbryio/transcoder v0.15.1-0.20220511173705-eb3bf61b6f11/go.mod h1:9tIWYieXV3vmpelhCovJrNn9SCZXEqTkAQOH1qOt7uQ=
 github.com/lbryio/types v0.0.0-20190422033210-321fb2abda9c/go.mod h1:CG3wsDv5BiVYQd5i1Jp7wGsaVyjZTJshqXeWMVKsISE=
 github.com/lbryio/types v0.0.0-20201019032447-f0b4476ef386/go.mod h1:CG3wsDv5BiVYQd5i1Jp7wGsaVyjZTJshqXeWMVKsISE=
@@ -942,6 +945,7 @@ github.com/olekukonko/tablewriter v0.0.5/go.mod h1:hPp6KlRPjbx+hW8ykQs1w3UBbZlj6
 github.com/olivere/elastic/v7 v7.0.22/go.mod h1:VDexNy9NjmtAkrjNoI7tImv7FR4tf5zUA3ickqu5Pc8=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
+github.com/onsi/ginkgo v1.10.2/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.10.3/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.12.1/go.mod h1:zj2OWP4+oCPe1qIXoGWkgMRwljMUYCdkwsT2108oapk=
 github.com/onsi/ginkgo v1.14.0/go.mod h1:iSB4RoI2tjJc9BBv4NKIKWKya62Rps+oPG/Lv9klQyY=
@@ -1552,6 +1556,7 @@ golang.org/x/sys v0.0.0-20190924154521-2837fb4f24fe/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20191001151750-bb3f8db39f24/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20191005200804-aed5e4c7ecf9/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20191008105621-543471e840be/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20191009170203-06d7bd2c5f4f/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20191026070338-33540a1f6037/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20191112214154-59a1497f0cea/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20191120155948-bd437916bb0e/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
