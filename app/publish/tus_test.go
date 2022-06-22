@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -24,23 +25,44 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
+	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
+	"github.com/OdyseeTeam/odysee-api/pkg/testservices"
+	"github.com/go-redis/redis/v8"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tus/tusd/pkg/filelocker"
 	"github.com/tus/tusd/pkg/filestore"
+	"github.com/tus/tusd/pkg/handler"
 	tusd "github.com/tus/tusd/pkg/handler"
 )
 
 const tusVersion = "1.0.0"
 
+var redisOpts *redis.Options
+
+func TestMain(m *testing.M) {
+	var err error
+	var teardown testservices.Teardown
+	redisOpts, teardown, err = testservices.Redis()
+	if err != nil {
+		log.Fatalf("failed to init redis: %s", err)
+	}
+
+	code := m.Run()
+	if err := teardown(); err != nil {
+		log.Print(err)
+	}
+	os.Exit(code)
+}
+
 func newTusTestCfg(uploadPath string) tusd.Config {
 	composer := tusd.NewStoreComposer()
 	store := filestore.New(uploadPath)
 	store.UseIn(composer)
-	locker := filelocker.New(uploadPath)
+	locker, _ := redislocker.New(redisOpts)
 	locker.UseIn(composer)
+
 	return tusd.Config{
 		BasePath:      "/api/v2/publish/",
 		StoreComposer: composer,
@@ -300,7 +322,7 @@ func TestNotify(t *testing.T) {
 		respBody, err := ioutil.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
 
-		wantErrMsg := "no such file or directory"
+		wantErrMsg := handler.ErrNotFound.Error()
 		gotErrMsg := test.StrToRes(t, string(respBody)).Error.Message
 		assert.Contains(t, gotErrMsg, wantErrMsg)
 	})
@@ -702,7 +724,7 @@ func TestNotifyLegacy(t *testing.T) {
 		respBody, err := ioutil.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
 
-		wantErrMsg := "no such file or directory"
+		wantErrMsg := handler.ErrNotFound.Error()
 		gotErrMsg := test.StrToRes(t, string(respBody)).Error.Message
 		assert.Contains(t, gotErrMsg, wantErrMsg)
 	})

@@ -9,6 +9,7 @@ import (
 
 	cfg "github.com/OdyseeTeam/odysee-api/config"
 	"github.com/OdyseeTeam/odysee-api/models"
+	"github.com/go-redis/redis/v8"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
@@ -80,6 +81,15 @@ func GetOauthClientID() string {
 func GetOauthTokenURL() string {
 	cfg := Config.Viper.GetStringMapString("oauth")
 	return cfg["providerurl"] + cfg["tokenpath"]
+}
+
+// GetRedisOpts returns the address of OAuth client ID
+func GetRedisOpts() (*redis.Options, error) {
+	opts, err := redis.ParseURL(Config.Viper.GetString("redis"))
+	if err != nil {
+		return nil, err
+	}
+	return opts, nil
 }
 
 // GetDatabase returns postgresql database server connection config
