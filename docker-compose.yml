@@ -25,6 +25,18 @@ services:
       - postgres
     labels:
       com.centurylinklabs.watchtower.enable: true
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    command: >
+      --requirepass odyredis --appendonly yes
+    labels:
+      com.centurylinklabs.watchtower.enable: false
+    restart: unless-stopped
   postgres:
     image: postgres:11-alpine
     command:
@@ -45,4 +57,4 @@ services:
 volumes:
   pgdata: {}
   storage: {}
-  test_storage: {}
+  redis-data: {}
