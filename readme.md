@@ -4,7 +4,7 @@
 
 This is the API server used by [Odysee](https://odysee.com), mostly acting as a bridge between web and the blockchain.
 
-![Tests](https://github.com/OdyseeTeam/odysee-api/actions/workflows/test.yml/badge.svg) [![Coverage Status](https://coveralls.io/repos/github/OdyseeTeam/odysee-api/badge.svg?branch=master)](https://coveralls.io/github/OdyseeTeam/odysee-api?branch=master)
+![Tests](https://github.com/OdyseeTeam/odysee-api/actions/workflows/test-release.yml/badge.svg) [![Coverage Status](https://coveralls.io/repos/github/OdyseeTeam/odysee-api/badge.svg?branch=master)](https://coveralls.io/github/OdyseeTeam/odysee-api?branch=master)
 
 ## Required tools
 
