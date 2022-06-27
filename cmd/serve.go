@@ -11,6 +11,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/app/wallet"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
 	"github.com/OdyseeTeam/odysee-api/server"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
 
@@ -41,6 +42,8 @@ var rootCmd = &cobra.Command{
 		}
 		c := wallet.NewTokenCache()
 		wallet.SetTokenCache(c)
+
+		redislocker.RegisterMetrics()
 
 		// ServeUntilShutdown is blocking, should be last
 		s.ServeUntilShutdown()

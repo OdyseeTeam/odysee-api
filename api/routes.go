@@ -17,12 +17,12 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/middleware"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/internal/status"
+	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
 
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
-	"github.com/tus/tusd/pkg/filelocker"
 	"github.com/tus/tusd/pkg/filestore"
 	tusd "github.com/tus/tusd/pkg/handler"
 )
@@ -77,7 +77,15 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	composer := tusd.NewStoreComposer()
 	store := filestore.New(uploadPath)
 	store.UseIn(composer)
-	locker := filelocker.New(uploadPath)
+
+	redisOpts, err := config.GetRedisOpts()
+	if err != nil {
+		panic(err)
+	}
+	locker, err := redislocker.New(redisOpts)
+	if err != nil {
+		logger.Log().WithError(err).Fatal("cannot start redislocker")
+	}
 	locker.UseIn(composer)
 
 	tusCfg := tusd.Config{

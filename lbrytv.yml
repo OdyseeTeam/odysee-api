@@ -36,7 +36,7 @@ RefractorTimeout: 120
 PaidTokenPrivKey: token_privkey.rsa
 
 LbrynetXServer: http://sdk.lbry.tech:5279/api
-LbrynetXPercentage: 50
+LbrynetXPercentage: 0
 
 CORSDomains:
   - http://localhost:1337
@@ -47,3 +47,5 @@ RPCTimeouts:
   txo_list: 4m
   transaction_list: 4m
   publish: 4m
+
+Redis: redis://:odyredis@localhost:6379/1
