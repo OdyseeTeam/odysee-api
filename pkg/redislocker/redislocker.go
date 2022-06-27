@@ -32,7 +32,6 @@ func New(redisOpts *goredislib.Options) (*Locker, error) {
 	}
 	pool := goredis.NewPool(client)
 	rs := redsync.New(pool)
-
 	return &Locker{rs}, nil
 }
 
@@ -48,14 +47,18 @@ func (locker *Locker) UseIn(composer *handler.StoreComposer) {
 
 func (l lock) Lock() error {
 	if err := l.mutex.Lock(); err != nil {
+		fileLockedErrors.Inc()
 		return fmt.Errorf("%w: file %s: %s", handler.ErrFileLocked, l.name, err)
 	}
+	locked.Inc()
 	return nil
 }
 
 func (l lock) Unlock() error {
 	if ok, err := l.mutex.Unlock(); !ok || err != nil {
+		unlockErrors.Inc()
 		return fmt.Errorf("cannot unlock file %s: %w", l.name, err)
 	}
+	unlocked.Inc()
 	return nil
 }
