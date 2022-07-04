@@ -124,6 +124,10 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 	if h.composer.UsesLocker {
 		lock, err := h.lockUpload(id)
 		if err != nil {
+			monitor.ErrorToSentry(err, map[string]string{
+				"upload_id": id,
+				"user_id":   strconv.Itoa(user.ID),
+			})
 			log.WithError(err).Error("failed to acquire file lock")
 			w.Write(rpcerrors.NewInternalError(err).JSON())
 			observeFailure(metrics.GetDuration(r), metrics.PublishLockFailure)
