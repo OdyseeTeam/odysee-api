@@ -9,7 +9,6 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/internal/storage"
 	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
-	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
 	"github.com/OdyseeTeam/odysee-api/version"
 
 	"github.com/getsentry/sentry-go"
@@ -33,8 +32,6 @@ func main() {
 	defer db.Close()
 	storage.SetDB(db)
 	go storage.WatchMetrics(10 * time.Second)
-
-	redislocker.RegisterMetrics()
 
 	cmd.Execute()
 }
