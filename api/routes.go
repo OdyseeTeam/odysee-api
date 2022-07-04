@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/auth"
@@ -32,6 +33,8 @@ import (
 const preflightDuration = 86400
 
 var logger = monitor.NewModuleLogger("api")
+
+var onceMetrics sync.Once
 
 // emptyHandler can be used when you just need to let middlewares do their job and no actual response is needed.
 func emptyHandler(_ http.ResponseWriter, _ *http.Request) {}
@@ -99,8 +102,12 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	if err != nil {
 		logger.Log().WithError(err).Fatal(err)
 	}
-	collector := prometheuscollector.New(tusHandler.Metrics)
-	prometheus.MustRegister(collector)
+
+	onceMetrics.Do(func() {
+		redislocker.RegisterMetrics()
+		collector := prometheuscollector.New(tusHandler.Metrics)
+		prometheus.MustRegister(collector)
+	})
 
 	tusRouter := v2Router.PathPrefix("/publish").Subrouter()
 	tusRouter.Use(tusHandler.Middleware)
