@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	lockTimeout = 120 * time.Second
+	lockTimeout = 100 * time.Second
 )
 
 type Locker struct {
