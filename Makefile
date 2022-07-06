@@ -43,8 +43,8 @@ retag:
 	git tag $(tag)
 
 get_sqlboiler:
-	go get -u -t github.com/volatiletech/sqlboiler@v3.4.0
-	go get -u -t github.com/volatiletech/sqlboiler/drivers/sqlboiler-psql@v3.4.0
+	go install github.com/volatiletech/sqlboiler
+	go install github.com/volatiletech/sqlboiler/drivers/sqlboiler-psql
 
 .PHONY: models
 models: get_sqlboiler
