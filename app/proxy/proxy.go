@@ -139,9 +139,9 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	lbrynext.InstallHooks(c)
 	c.Cache = qCache
 
+	metrics.ProxyCallCounter.WithLabelValues(rpcReq.Method, c.Endpoint(), origin).Inc()
 	rpcRes, err := c.Call(rpcReq)
 	metrics.ProxyCallDurations.WithLabelValues(rpcReq.Method, c.Endpoint(), origin).Observe(c.Duration)
-	metrics.ProxyCallCounter.WithLabelValues(rpcReq.Method, c.Endpoint(), origin).Inc()
 
 	if err != nil {
 		writeResponse(w, rpcerrors.ToJSON(err))
