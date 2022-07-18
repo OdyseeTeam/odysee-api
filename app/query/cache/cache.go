@@ -35,7 +35,7 @@ var cacheLogger = monitor.NewModuleLogger("cache")
 
 func DefaultConfig() *CacheConfig {
 	return &CacheConfig{
-		size: 5 << 30, //  5GB
+		size: 10 << 30, //  5GB
 	}
 }
 
