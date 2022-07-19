@@ -32,7 +32,7 @@ func (a *dummyAuther) Authenticate(token, ip string) (*models.User, error) {
 	return nil, nil
 }
 
-func (a *dummyAuther) GetTokenFromRequest(r *http.Request) (string, error) {
+func (a *dummyAuther) GetTokenFromHeader(_ http.Header) (string, error) {
 	return "secret-token", nil
 }
 

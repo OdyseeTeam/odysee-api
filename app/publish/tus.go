@@ -32,6 +32,17 @@ import (
 
 const module = "publish.tus"
 
+type preparedQuery struct {
+	request  *jsonrpc.RPCRequest
+	fileInfo tusd.FileInfo
+}
+
+type completedQuery struct {
+	response *jsonrpc.RPCResponse
+	err      error
+	fileInfo tusd.FileInfo
+}
+
 // TusHandler handle media publishing on odysee-api, it implements TUS
 // specifications to support resumable file upload and extends the handler to
 // support fetching media from remote url.
@@ -43,6 +54,9 @@ type TusHandler struct {
 	composer     *tusd.StoreComposer
 	authProvider auth.Provider
 	auther       auth.Authenticator
+
+	preparedQueries  chan preparedQuery
+	completedQueries chan completedQuery
 }
 
 // NewTusHandler creates a new publish handler.
@@ -73,6 +87,11 @@ func NewTusHandler(auther auth.Authenticator, provider auth.Provider, cfg tusd.C
 	// via X-Forwarded-Proto
 	cfg.RespectForwardedHeaders = true
 
+	cfg.NotifyCompleteUploads = true
+	cfg.NotifyCreatedUploads = true
+	cfg.NotifyTerminatedUploads = true
+	cfg.NotifyUploadProgress = true
+
 	handler, err := tusd.NewUnroutedHandler(cfg)
 	if err != nil {
 		return nil, err
@@ -83,6 +102,7 @@ func NewTusHandler(auther auth.Authenticator, provider auth.Provider, cfg tusd.C
 	h.authProvider = provider
 	h.auther = auther
 	h.composer = cfg.StoreComposer
+	h.preparedQueries = make(chan preparedQuery)
 
 	return h, nil
 }
@@ -95,7 +115,7 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 
-	user, err := h.multiAuthUser(r)
+	user, err := h.multiAuthUser(r.Header, r.RemoteAddr)
 	if authErr := proxy.GetAuthError(user, err); authErr != nil {
 		log.WithError(authErr).Error("failed to authorize user")
 		w.Write(rpcerrors.ErrorToJSON(authErr))
@@ -155,8 +175,8 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 	// NOTE: don't use info.IsFinal as it's not reflect the upload
 	// completion at all
 	if info.Offset != info.Size { // upload is not yet completed
-		err := fmt.Errorf("upload is still in process")
-		log.WithError(err).Error("file incomplete")
+		err := fmt.Errorf("incomplete upload")
+		log.WithError(err).Error("incomplete upload")
 		w.Write(rpcerrors.ErrorToJSON(err))
 		observeFailure(metrics.GetDuration(r), metrics.PublishUploadIncomplete)
 		return
@@ -239,9 +259,21 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 
 	c := getCaller(sdkrouter.GetSDKAddress(user), dstFilepath, user.ID, qCache)
 
+	h.preparedQueries <- preparedQuery{
+		request:  rpcReq,
+		fileInfo: info,
+	}
+
 	op := metrics.StartOperation("sdk", "call_publish")
 	rpcRes, err := c.Call(rpcReq)
 	defer op.End()
+
+	h.completedQueries <- completedQuery{
+		response: rpcRes,
+		err:      err,
+		fileInfo: info,
+	}
+
 	if err != nil {
 		monitor.ErrorToSentry(
 			fmt.Errorf("error calling publish: %v", err),
@@ -305,20 +337,17 @@ func (h TusHandler) lockUpload(id string) (tusd.Lock, error) {
 //
 // see: https://github.com/tus/tusd/pull/342
 func (h *TusHandler) preCreateHook(hook tusd.HookEvent) error {
-	r := &http.Request{
-		Header: hook.HTTPRequest.Header,
-	}
-	_, err := h.multiAuthUser(r)
+	_, err := h.multiAuthUser(hook.HTTPRequest.Header, hook.HTTPRequest.RemoteAddr)
 	return err
 }
 
-func (h *TusHandler) multiAuthUser(r *http.Request) (*models.User, error) {
+func (h *TusHandler) multiAuthUser(header http.Header, remoteAddr string) (*models.User, error) {
 	log := h.logger.Log()
-	token, err := h.auther.GetTokenFromRequest(r)
+	token, err := h.auther.GetTokenFromHeader(header)
 	if errors.Is(err, wallet.ErrNoAuthInfo) {
 		// TODO: Remove this pathway after legacy tokens go away.
-		if token, ok := r.Header[wallet.LegacyTokenHeader]; ok {
-			addr := ip.AddressForRequest(r.Header, r.RemoteAddr)
+		if token, ok := header[wallet.LegacyTokenHeader]; ok {
+			addr := ip.AddressForRequest(header, remoteAddr)
 			user, err := h.authProvider(token[0], addr)
 			if err != nil {
 				log.WithError(err).Info("error authenticating user")
@@ -336,7 +365,7 @@ func (h *TusHandler) multiAuthUser(r *http.Request) (*models.User, error) {
 		return nil, err
 	}
 
-	user, err := h.auther.Authenticate(token, ip.AddressForRequest(r.Header, r.RemoteAddr))
+	user, err := h.auther.Authenticate(token, ip.AddressForRequest(header, remoteAddr))
 	if err != nil {
 		log.WithError(err).Info("error authenticating user")
 		return nil, err

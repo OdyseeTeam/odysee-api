@@ -7,10 +7,14 @@ var TableNames = struct {
 	GorpMigrations string
 	LbrynetServers string
 	QueryLog       string
+	UploadQueries  string
+	Uploads        string
 	Users          string
 }{
 	GorpMigrations: "gorp_migrations",
 	LbrynetServers: "lbrynet_servers",
 	QueryLog:       "query_log",
+	UploadQueries:  "upload_queries",
+	Uploads:        "uploads",
 	Users:          "users",
 }

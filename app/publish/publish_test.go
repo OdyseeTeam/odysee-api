@@ -6,23 +6,74 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"testing"
+	"text/template"
 
+	"github.com/OdyseeTeam/odysee-api/app/query"
 	"github.com/OdyseeTeam/odysee-api/app/wallet"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
 	"github.com/OdyseeTeam/odysee-api/internal/storage"
 	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
+	"github.com/Pallinder/go-randomdata"
+	"github.com/shopspring/decimal"
 
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/ybbus/jsonrpc"
 )
 
-func copyToDocker(t *testing.T, fileName string) {
-	cmd := fmt.Sprintf(`docker cp %v lbrytv_lbrynet_1:/storage`, fileName)
-	if _, err := exec.Command("bash", "-c", cmd).Output(); err != nil {
-		t.Skipf("skipping TestLbrynetPublisher (cannot copy %v to docker container: %v)", fileName, err)
+type WalletKeys struct{ PrivateKey, PublicKey string }
+
+const (
+	envPublicKey  = "REAL_WALLET_PUBLIC_KEY"
+	envPrivateKey = "REAL_WALLET_PRIVATE_KEY"
+)
+
+func copyToContainer(t *testing.T, srcPath, dstPath string) error {
+	t.Helper()
+	// cmd := fmt.Sprintf(`docker cp %s %s`, srcPath, dstPath)
+	os.Setenv("PATH", os.Getenv("PATH")+":/usr/local/bin")
+	if out, err := exec.Command("docker", "cp", srcPath, dstPath).CombinedOutput(); err != nil {
+		fmt.Println(os.Getenv("PATH"))
+		// if _, err := exec.Command("docker", "cp", srcPath, dstPath).Output(); err != nil {
+		return fmt.Errorf("cannot copy %s to %s: %w (%s)", srcPath, dstPath, err, string(out))
 	}
+	return nil
+}
+
+func createRealWallet(t *testing.T, keys WalletKeys, userID int) {
+	t.Helper()
+	absPath, _ := filepath.Abs("./testdata/wallet.template")
+	wt, err := template.New("wallet.template").ParseFiles(absPath)
+	require.NoError(t, err)
+	wf, err := os.CreateTemp("", fmt.Sprintf("wallet.%v.*", userID))
+	// defer os.RemoveAll(wf.Name())
+	require.NoError(t, err)
+	err = wt.Execute(wf, keys)
+	require.NoError(t, err)
+	err = wf.Close()
+	require.NoError(t, err)
+	err = copyToContainer(t, wf.Name(), fmt.Sprintf("lbrynet:/storage/lbryum/wallets/lbrytv-id.%v.wallet", userID))
+	require.NoError(t, err)
+}
+
+func Test_createRealWallet(t *testing.T) {
+	userID := randomdata.Number(10000, 90000)
+	createRealWallet(t, WalletKeys{PrivateKey: os.Getenv(envPrivateKey), PublicKey: os.Getenv(envPublicKey)}, userID)
+
+	c := query.NewCaller("http://localhost:5279", userID)
+	res, err := c.Call(jsonrpc.NewRequest("account_balance"))
+	require.NoError(t, err)
+	require.Nil(t, res.Error)
+
+	var bal ljsonrpc.AccountBalanceResponse
+	err = ljsonrpc.Decode(res.Result, &bal)
+	require.NoError(t, err)
+	fmt.Printf("%+v", bal)
+	assert.GreaterOrEqual(t, bal.Available.Cmp(decimal.NewFromInt(1)), 0)
 }
 
 func TestLbrynetPublisher(t *testing.T) {
@@ -40,9 +91,11 @@ func TestLbrynetPublisher(t *testing.T) {
 	require.NoError(t, err)
 	err = f.Close()
 	require.NoError(t, err)
-	defer os.Remove(f.Name())
 
-	copyToDocker(t, f.Name())
+	err = copyToContainer(t, f.Name(), "lbrynet:/storage")
+	if err != nil {
+		t.Skipf("skipping (%s)", err)
+	}
 
 	req := test.StrToReq(t, `{
 		"jsonrpc": "2.0",

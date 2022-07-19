@@ -3,12 +3,14 @@ package auth
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/app/wallet"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/ip"
 	"github.com/OdyseeTeam/odysee-api/models"
+	"github.com/getsentry/sentry-go"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -19,7 +21,7 @@ func Middleware(auther Authenticator) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var user *models.User
-			token, err := auther.GetTokenFromRequest(r)
+			token, err := auther.GetTokenFromHeader(r.Header)
 			if err != nil {
 				logger.Log().Debugf("cannot retrieve token from request: %s", err)
 				next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), contextKey, result{user, err})))
@@ -30,6 +32,11 @@ func Middleware(auther Authenticator) mux.MiddlewareFunc {
 			if err != nil {
 				logger.WithFields(logrus.Fields{"ip": addr}).Debugf("error authenticating user: %s", err)
 			}
+			if user != nil {
+				if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+					hub.Scope().SetUser(sentry.User{ID: strconv.Itoa(user.ID), IPAddress: addr})
+				}
+			}
 			next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), contextKey, result{user, err})))
 		})
 	}
@@ -39,10 +46,10 @@ func Middleware(auther Authenticator) mux.MiddlewareFunc {
 func LegacyMiddleware(provider Provider) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			addr := ip.FromRequest(r)
 			user, err := FromRequest(r)
 			if user == nil && err != nil {
 				if token, ok := r.Header[wallet.LegacyTokenHeader]; ok {
-					addr := ip.FromRequest(r)
 					user, err = provider(token[0], addr)
 					if err != nil {
 						logger.WithFields(logrus.Fields{"ip": addr}).Debugf("error authenticating user")
@@ -51,6 +58,12 @@ func LegacyMiddleware(provider Provider) mux.MiddlewareFunc {
 					err = errors.Err(wallet.ErrNoAuthInfo)
 				}
 			}
+			if user != nil {
+				if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+					hub.Scope().SetUser(sentry.User{ID: strconv.Itoa(user.ID), IPAddress: addr})
+				}
+			}
+
 			next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), contextKey, result{user, err})))
 		})
 	}

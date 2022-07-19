@@ -3,6 +3,7 @@ version: "3.2"
 services:
   lbrynet:
     image: odyseeteam/lbrynet-tv:0.101.2
+    container_name: lbrynet
     ports:
       - "5581:5279"
       - "5279:5279"

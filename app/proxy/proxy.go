@@ -140,6 +140,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	c.Cache = qCache
 
 	metrics.ProxyCallCounter.WithLabelValues(rpcReq.Method, c.Endpoint(), origin).Inc()
+
 	rpcRes, err := c.Call(rpcReq)
 	metrics.ProxyCallDurations.WithLabelValues(rpcReq.Method, c.Endpoint(), origin).Observe(c.Duration)
 

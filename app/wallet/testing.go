@@ -25,7 +25,7 @@ const (
 
 type Authenticator interface {
 	Authenticate(token, metaRemoteIP string) (*models.User, error)
-	GetTokenFromRequest(r *http.Request) (string, error)
+	GetTokenFromHeader(http.Header) (string, error)
 }
 
 // TestAnyAuthenticator will authenticate any token and return a dummy user.
@@ -35,7 +35,7 @@ func (a *TestAnyAuthenticator) Authenticate(token, ip string) (*models.User, err
 	return &models.User{ID: 994, IdpID: null.StringFrom("my-idp-id")}, nil
 }
 
-func (a *TestAnyAuthenticator) GetTokenFromRequest(r *http.Request) (string, error) {
+func (a *TestAnyAuthenticator) GetTokenFromHeader(_ http.Header) (string, error) {
 	return "", nil
 }
 
@@ -46,7 +46,7 @@ func (a *TestMissingTokenAuthenticator) Authenticate(token, ip string) (*models.
 	return nil, nil
 }
 
-func (a *TestMissingTokenAuthenticator) GetTokenFromRequest(r *http.Request) (string, error) {
+func (a *TestMissingTokenAuthenticator) GetTokenFromHeader(_ http.Header) (string, error) {
 	return "", ErrNoAuthInfo
 }
 
@@ -68,8 +68,8 @@ func (a *PostProcessAuthenticator) Authenticate(token, ip string) (*models.User,
 	return a.postFunc(user)
 }
 
-func (a *PostProcessAuthenticator) GetTokenFromRequest(r *http.Request) (string, error) {
-	return a.auther.GetTokenFromRequest(r)
+func (a *PostProcessAuthenticator) GetTokenFromHeader(h http.Header) (string, error) {
+	return a.auther.GetTokenFromHeader(h)
 }
 
 // GetTestToken is for easily retrieving tokens that can be used in tests utilizing authentication subsystem.

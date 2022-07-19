@@ -15,6 +15,8 @@ func TestParent(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrations)
 	t.Run("LbrynetServers", testLbrynetServers)
 	t.Run("QueryLogs", testQueryLogs)
+	t.Run("UploadQueries", testUploadQueries)
+	t.Run("Uploads", testUploads)
 	t.Run("Users", testUsers)
 }
 
@@ -22,6 +24,8 @@ func TestDelete(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsDelete)
 	t.Run("LbrynetServers", testLbrynetServersDelete)
 	t.Run("QueryLogs", testQueryLogsDelete)
+	t.Run("UploadQueries", testUploadQueriesDelete)
+	t.Run("Uploads", testUploadsDelete)
 	t.Run("Users", testUsersDelete)
 }
 
@@ -29,6 +33,8 @@ func TestQueryDeleteAll(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsQueryDeleteAll)
 	t.Run("LbrynetServers", testLbrynetServersQueryDeleteAll)
 	t.Run("QueryLogs", testQueryLogsQueryDeleteAll)
+	t.Run("UploadQueries", testUploadQueriesQueryDeleteAll)
+	t.Run("Uploads", testUploadsQueryDeleteAll)
 	t.Run("Users", testUsersQueryDeleteAll)
 }
 
@@ -36,6 +42,8 @@ func TestSliceDeleteAll(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsSliceDeleteAll)
 	t.Run("LbrynetServers", testLbrynetServersSliceDeleteAll)
 	t.Run("QueryLogs", testQueryLogsSliceDeleteAll)
+	t.Run("UploadQueries", testUploadQueriesSliceDeleteAll)
+	t.Run("Uploads", testUploadsSliceDeleteAll)
 	t.Run("Users", testUsersSliceDeleteAll)
 }
 
@@ -43,6 +51,8 @@ func TestExists(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsExists)
 	t.Run("LbrynetServers", testLbrynetServersExists)
 	t.Run("QueryLogs", testQueryLogsExists)
+	t.Run("UploadQueries", testUploadQueriesExists)
+	t.Run("Uploads", testUploadsExists)
 	t.Run("Users", testUsersExists)
 }
 
@@ -50,6 +60,8 @@ func TestFind(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsFind)
 	t.Run("LbrynetServers", testLbrynetServersFind)
 	t.Run("QueryLogs", testQueryLogsFind)
+	t.Run("UploadQueries", testUploadQueriesFind)
+	t.Run("Uploads", testUploadsFind)
 	t.Run("Users", testUsersFind)
 }
 
@@ -57,6 +69,8 @@ func TestBind(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsBind)
 	t.Run("LbrynetServers", testLbrynetServersBind)
 	t.Run("QueryLogs", testQueryLogsBind)
+	t.Run("UploadQueries", testUploadQueriesBind)
+	t.Run("Uploads", testUploadsBind)
 	t.Run("Users", testUsersBind)
 }
 
@@ -64,6 +78,8 @@ func TestOne(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsOne)
 	t.Run("LbrynetServers", testLbrynetServersOne)
 	t.Run("QueryLogs", testQueryLogsOne)
+	t.Run("UploadQueries", testUploadQueriesOne)
+	t.Run("Uploads", testUploadsOne)
 	t.Run("Users", testUsersOne)
 }
 
@@ -71,6 +87,8 @@ func TestAll(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsAll)
 	t.Run("LbrynetServers", testLbrynetServersAll)
 	t.Run("QueryLogs", testQueryLogsAll)
+	t.Run("UploadQueries", testUploadQueriesAll)
+	t.Run("Uploads", testUploadsAll)
 	t.Run("Users", testUsersAll)
 }
 
@@ -78,6 +96,8 @@ func TestCount(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsCount)
 	t.Run("LbrynetServers", testLbrynetServersCount)
 	t.Run("QueryLogs", testQueryLogsCount)
+	t.Run("UploadQueries", testUploadQueriesCount)
+	t.Run("Uploads", testUploadsCount)
 	t.Run("Users", testUsersCount)
 }
 
@@ -85,6 +105,8 @@ func TestHooks(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsHooks)
 	t.Run("LbrynetServers", testLbrynetServersHooks)
 	t.Run("QueryLogs", testQueryLogsHooks)
+	t.Run("UploadQueries", testUploadQueriesHooks)
+	t.Run("Uploads", testUploadsHooks)
 	t.Run("Users", testUsersHooks)
 }
 
@@ -95,6 +117,10 @@ func TestInsert(t *testing.T) {
 	t.Run("LbrynetServers", testLbrynetServersInsertWhitelist)
 	t.Run("QueryLogs", testQueryLogsInsert)
 	t.Run("QueryLogs", testQueryLogsInsertWhitelist)
+	t.Run("UploadQueries", testUploadQueriesInsert)
+	t.Run("UploadQueries", testUploadQueriesInsertWhitelist)
+	t.Run("Uploads", testUploadsInsert)
+	t.Run("Uploads", testUploadsInsertWhitelist)
 	t.Run("Users", testUsersInsert)
 	t.Run("Users", testUsersInsertWhitelist)
 }
@@ -102,34 +128,44 @@ func TestInsert(t *testing.T) {
 // TestToOne tests cannot be run in parallel
 // or deadlocks can occur.
 func TestToOne(t *testing.T) {
+	t.Run("UploadQueryToUploadUsingUpload", testUploadQueryToOneUploadUsingUpload)
+	t.Run("UploadToUserUsingUser", testUploadToOneUserUsingUser)
 	t.Run("UserToLbrynetServerUsingLbrynetServer", testUserToOneLbrynetServerUsingLbrynetServer)
 }
 
 // TestOneToOne tests cannot be run in parallel
 // or deadlocks can occur.
-func TestOneToOne(t *testing.T) {}
+func TestOneToOne(t *testing.T) {
+	t.Run("UploadToUploadQueryUsingUploadQuery", testUploadOneToOneUploadQueryUsingUploadQuery)
+}
 
 // TestToMany tests cannot be run in parallel
 // or deadlocks can occur.
 func TestToMany(t *testing.T) {
 	t.Run("LbrynetServerToUsers", testLbrynetServerToManyUsers)
+	t.Run("UserToUploads", testUserToManyUploads)
 }
 
 // TestToOneSet tests cannot be run in parallel
 // or deadlocks can occur.
 func TestToOneSet(t *testing.T) {
+	t.Run("UploadQueryToUploadUsingUploadQuery", testUploadQueryToOneSetOpUploadUsingUpload)
+	t.Run("UploadToUserUsingUploads", testUploadToOneSetOpUserUsingUser)
 	t.Run("UserToLbrynetServerUsingUsers", testUserToOneSetOpLbrynetServerUsingLbrynetServer)
 }
 
 // TestToOneRemove tests cannot be run in parallel
 // or deadlocks can occur.
 func TestToOneRemove(t *testing.T) {
+	t.Run("UploadToUserUsingUploads", testUploadToOneRemoveOpUserUsingUser)
 	t.Run("UserToLbrynetServerUsingUsers", testUserToOneRemoveOpLbrynetServerUsingLbrynetServer)
 }
 
 // TestOneToOneSet tests cannot be run in parallel
 // or deadlocks can occur.
-func TestOneToOneSet(t *testing.T) {}
+func TestOneToOneSet(t *testing.T) {
+	t.Run("UploadToUploadQueryUsingUploadQuery", testUploadOneToOneSetOpUploadQueryUsingUploadQuery)
+}
 
 // TestOneToOneRemove tests cannot be run in parallel
 // or deadlocks can occur.
@@ -139,24 +175,29 @@ func TestOneToOneRemove(t *testing.T) {}
 // or deadlocks can occur.
 func TestToManyAdd(t *testing.T) {
 	t.Run("LbrynetServerToUsers", testLbrynetServerToManyAddOpUsers)
+	t.Run("UserToUploads", testUserToManyAddOpUploads)
 }
 
 // TestToManySet tests cannot be run in parallel
 // or deadlocks can occur.
 func TestToManySet(t *testing.T) {
 	t.Run("LbrynetServerToUsers", testLbrynetServerToManySetOpUsers)
+	t.Run("UserToUploads", testUserToManySetOpUploads)
 }
 
 // TestToManyRemove tests cannot be run in parallel
 // or deadlocks can occur.
 func TestToManyRemove(t *testing.T) {
 	t.Run("LbrynetServerToUsers", testLbrynetServerToManyRemoveOpUsers)
+	t.Run("UserToUploads", testUserToManyRemoveOpUploads)
 }
 
 func TestReload(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsReload)
 	t.Run("LbrynetServers", testLbrynetServersReload)
 	t.Run("QueryLogs", testQueryLogsReload)
+	t.Run("UploadQueries", testUploadQueriesReload)
+	t.Run("Uploads", testUploadsReload)
 	t.Run("Users", testUsersReload)
 }
 
@@ -164,6 +205,8 @@ func TestReloadAll(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsReloadAll)
 	t.Run("LbrynetServers", testLbrynetServersReloadAll)
 	t.Run("QueryLogs", testQueryLogsReloadAll)
+	t.Run("UploadQueries", testUploadQueriesReloadAll)
+	t.Run("Uploads", testUploadsReloadAll)
 	t.Run("Users", testUsersReloadAll)
 }
 
@@ -171,6 +214,8 @@ func TestSelect(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsSelect)
 	t.Run("LbrynetServers", testLbrynetServersSelect)
 	t.Run("QueryLogs", testQueryLogsSelect)
+	t.Run("UploadQueries", testUploadQueriesSelect)
+	t.Run("Uploads", testUploadsSelect)
 	t.Run("Users", testUsersSelect)
 }
 
@@ -178,6 +223,8 @@ func TestUpdate(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsUpdate)
 	t.Run("LbrynetServers", testLbrynetServersUpdate)
 	t.Run("QueryLogs", testQueryLogsUpdate)
+	t.Run("UploadQueries", testUploadQueriesUpdate)
+	t.Run("Uploads", testUploadsUpdate)
 	t.Run("Users", testUsersUpdate)
 }
 
@@ -185,5 +232,7 @@ func TestSliceUpdateAll(t *testing.T) {
 	t.Run("GorpMigrations", testGorpMigrationsSliceUpdateAll)
 	t.Run("LbrynetServers", testLbrynetServersSliceUpdateAll)
 	t.Run("QueryLogs", testQueryLogsSliceUpdateAll)
+	t.Run("UploadQueries", testUploadQueriesSliceUpdateAll)
+	t.Run("Uploads", testUploadsSliceUpdateAll)
 	t.Run("Users", testUsersSliceUpdateAll)
 }

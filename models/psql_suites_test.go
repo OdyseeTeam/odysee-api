@@ -12,5 +12,9 @@ func TestUpsert(t *testing.T) {
 
 	t.Run("QueryLogs", testQueryLogsUpsert)
 
+	t.Run("UploadQueries", testUploadQueriesUpsert)
+
+	t.Run("Uploads", testUploadsUpsert)
+
 	t.Run("Users", testUsersUpsert)
 }

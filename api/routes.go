@@ -21,6 +21,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
 
+	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -50,8 +51,9 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 		panic(err)
 	}
 	legacyProvider := auth.NewIAPIProvider(sdkRouter, config.GetInternalAPIHost())
+	sentryHandler := sentryhttp.New(sentryhttp.Options{})
 
-	r.Use(methodTimer)
+	r.Use(methodTimer, sentryHandler.Handle)
 
 	r.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		w.Write([]byte("odysee api"))

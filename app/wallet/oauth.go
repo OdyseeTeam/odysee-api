@@ -161,8 +161,8 @@ func (a *OauthAuthenticator) Authenticate(tokenString, metaRemoteIP string) (*mo
 	return localUser, err
 }
 
-func (a *OauthAuthenticator) GetTokenFromRequest(r *http.Request) (string, error) {
-	if t, ok := r.Header[AuthorizationHeader]; ok {
+func (a *OauthAuthenticator) GetTokenFromHeader(header http.Header) (string, error) {
+	if t, ok := header[AuthorizationHeader]; ok {
 		return t[0], nil
 	}
 	return "", ErrNoAuthInfo

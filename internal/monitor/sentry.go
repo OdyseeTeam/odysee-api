@@ -6,7 +6,7 @@ import (
 	"github.com/getsentry/sentry-go"
 )
 
-var IgnoredExceptions = []string{
+var ignored = []string{
 	responses.AuthRequiredErrorMessage,
 }
 
@@ -16,27 +16,18 @@ func ConfigureSentry(dsn, release, env string) {
 		return
 	}
 
-	err := sentry.Init(sentry.ClientOptions{
+	if err := sentry.Init(sentry.ClientOptions{
 		Dsn:              dsn,
 		Release:          release,
 		Environment:      env,
 		AttachStacktrace: true,
-		BeforeSend: func(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
-			if len(event.Exception) > 0 {
-				for _, ie := range IgnoredExceptions {
-					if event.Exception[0].Value == ie {
-						return nil
-					}
-				}
-			}
-			return event
-		},
-	})
-	if err != nil {
-		logger.Log().Errorf("sentry initialization failed: %v", err)
-	} else {
-		logger.Log().Info("sentry initialized")
+		IgnoreErrors:     ignored,
+		// TracesSampleRate: .5,
+	}); err != nil {
+		logger.Log().Warn("sentry initialization failed: %v", err)
+		return
 	}
+	logger.Log().Info("sentry initialized")
 }
 
 // ErrorToSentry sends to Sentry general exception info with some optional extra detail (like user email, claim url etc)

@@ -26,7 +26,7 @@ type result struct {
 
 type Authenticator interface {
 	Authenticate(token, metaRemoteIP string) (*models.User, error)
-	GetTokenFromRequest(r *http.Request) (string, error)
+	GetTokenFromHeader(http.Header) (string, error)
 }
 
 // FromRequest retrieves user from http.Request that went through our Middleware
