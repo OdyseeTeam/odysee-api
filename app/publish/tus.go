@@ -49,60 +49,115 @@ type completedQuery struct {
 type TusHandler struct {
 	*tusd.UnroutedHandler
 
-	uploadPath   string
-	logger       monitor.ModuleLogger
-	composer     *tusd.StoreComposer
-	authProvider auth.Provider
-	auther       auth.Authenticator
+	options  *TusHandlerOptions
+	composer *tusd.StoreComposer
+	logger   monitor.ModuleLogger
 
-	preparedQueries  chan preparedQuery
-	completedQueries chan completedQuery
+	notifySDKQueries    bool
+	preparedSDKQueries  chan preparedQuery
+	completedSDKQueries chan completedQuery
+}
+
+type TusHandlerOptions struct {
+	// Logger   logging.KVLogger
+	auther     auth.Authenticator
+	provider   auth.Provider
+	uploadPath string
+	tusConfig  *tusd.Config
+	keeper     *uploadKeeper
+}
+
+// func WithLogger(logger logging.KVLogger) func(options *TusHandlerOptions) {
+// 	return func(options *TusHandlerOptions) {
+// 		options.Logger = logger
+// 	}
+// }
+
+func WithUploadPath(uploadPath string) func(options *TusHandlerOptions) {
+	return func(options *TusHandlerOptions) {
+		options.uploadPath = uploadPath
+	}
+}
+
+// WithAuther is required because of the way tus handles http requests, see preCreateHook.
+func WithAuther(auther auth.Authenticator) func(options *TusHandlerOptions) {
+	return func(options *TusHandlerOptions) {
+		options.auther = auther
+	}
+}
+
+// WithLegacyProvider sets a temporary mechanism for supporting authentication with legacy tokens.
+// TODO: Remove auth.Provider after legacy tokens go away.
+func WithLegacyProvider(provider auth.Provider) func(options *TusHandlerOptions) {
+	return func(options *TusHandlerOptions) {
+		options.provider = provider
+	}
+}
+
+func WithUploadKeeper(keeper *uploadKeeper) func(options *TusHandlerOptions) {
+	return func(options *TusHandlerOptions) {
+		options.keeper = keeper
+	}
+}
+
+func WithTusConfig(config tusd.Config) func(options *TusHandlerOptions) {
+	return func(options *TusHandlerOptions) {
+		options.tusConfig = &config
+	}
 }
 
 // NewTusHandler creates a new publish handler.
-// Auther is required because of the way tus handles http requests, see preCreateHook.
-// Provider is a temporary mechanism for supporting authentication with legacy tokens.
-// TODO: Remove auth.Provider after legacy tokens go away.
-func NewTusHandler(auther auth.Authenticator, provider auth.Provider, cfg tusd.Config, uploadPath string) (*TusHandler, error) {
-	h := &TusHandler{}
 
-	if auther == nil {
+func NewTusHandler(optionFuncs ...func(*TusHandlerOptions)) (*TusHandler, error) {
+	options := &TusHandlerOptions{
+		// Logger: logging.NoopKVLogger{},
+		uploadPath: "./uploads",
+		tusConfig:  &tusd.Config{},
+	}
+	for _, optionFunc := range optionFuncs {
+		optionFunc(options)
+	}
+
+	h := &TusHandler{options: options}
+
+	if options.auther == nil {
 		return nil, fmt.Errorf("authenticator is required")
 	}
-	if provider == nil {
+	if options.provider == nil {
 		return nil, fmt.Errorf("legacy auth provider is required")
 	}
 
-	defaultUploadPath := "./uploads"
-	if uploadPath == "" {
-		uploadPath = defaultUploadPath
-	}
-	if err := os.MkdirAll(uploadPath, os.ModePerm); err != nil {
+	if err := os.MkdirAll(options.uploadPath, os.ModePerm); err != nil {
 		return nil, err
 	}
-	h.uploadPath = uploadPath
+
+	cfg := options.tusConfig
 
 	cfg.PreUploadCreateCallback = h.preCreateHook
 	// allow client to set location response protocol
 	// via X-Forwarded-Proto
 	cfg.RespectForwardedHeaders = true
 
-	cfg.NotifyCompleteUploads = true
-	cfg.NotifyCreatedUploads = true
-	cfg.NotifyTerminatedUploads = true
-	cfg.NotifyUploadProgress = true
+	if options.keeper != nil {
+		options.keeper.listenToHandler(h)
+		cfg.NotifyCompleteUploads = true
+		cfg.NotifyCreatedUploads = true
+		cfg.NotifyTerminatedUploads = true
+		cfg.NotifyUploadProgress = true
 
-	handler, err := tusd.NewUnroutedHandler(cfg)
+		h.notifySDKQueries = true
+		h.preparedSDKQueries = make(chan preparedQuery)
+		h.completedSDKQueries = make(chan completedQuery)
+	}
+
+	handler, err := tusd.NewUnroutedHandler(*cfg)
 	if err != nil {
 		return nil, err
 	}
 
 	h.UnroutedHandler = handler
 	h.logger = monitor.NewModuleLogger(module)
-	h.authProvider = provider
-	h.auther = auther
 	h.composer = cfg.StoreComposer
-	h.preparedQueries = make(chan preparedQuery)
 
 	return h, nil
 }
@@ -175,8 +230,8 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 	// NOTE: don't use info.IsFinal as it's not reflect the upload
 	// completion at all
 	if info.Offset != info.Size { // upload is not yet completed
-		err := fmt.Errorf("incomplete upload")
-		log.WithError(err).Error("incomplete upload")
+		err := fmt.Errorf("upload is still in process")
+		log.WithError(err).Error("upload is still in process")
 		w.Write(rpcerrors.ErrorToJSON(err))
 		observeFailure(metrics.GetDuration(r), metrics.PublishUploadIncomplete)
 		return
@@ -259,19 +314,23 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 
 	c := getCaller(sdkrouter.GetSDKAddress(user), dstFilepath, user.ID, qCache)
 
-	h.preparedQueries <- preparedQuery{
-		request:  rpcReq,
-		fileInfo: info,
+	if h.notifySDKQueries {
+		h.preparedSDKQueries <- preparedQuery{
+			request:  rpcReq,
+			fileInfo: info,
+		}
 	}
 
 	op := metrics.StartOperation("sdk", "call_publish")
 	rpcRes, err := c.Call(rpcReq)
 	defer op.End()
 
-	h.completedQueries <- completedQuery{
-		response: rpcRes,
-		err:      err,
-		fileInfo: info,
+	if h.notifySDKQueries {
+		h.completedSDKQueries <- completedQuery{
+			response: rpcRes,
+			err:      err,
+			fileInfo: info,
+		}
 	}
 
 	if err != nil {
@@ -343,12 +402,13 @@ func (h *TusHandler) preCreateHook(hook tusd.HookEvent) error {
 
 func (h *TusHandler) multiAuthUser(header http.Header, remoteAddr string) (*models.User, error) {
 	log := h.logger.Log()
-	token, err := h.auther.GetTokenFromHeader(header)
+	fmt.Println("ZZZ", h.options.auther)
+	token, err := h.options.auther.GetTokenFromHeader(header)
 	if errors.Is(err, wallet.ErrNoAuthInfo) {
 		// TODO: Remove this pathway after legacy tokens go away.
 		if token, ok := header[wallet.LegacyTokenHeader]; ok {
 			addr := ip.AddressForRequest(header, remoteAddr)
-			user, err := h.authProvider(token[0], addr)
+			user, err := h.options.provider(token[0], addr)
 			if err != nil {
 				log.WithError(err).Info("error authenticating user")
 				return nil, err
@@ -365,7 +425,7 @@ func (h *TusHandler) multiAuthUser(header http.Header, remoteAddr string) (*mode
 		return nil, err
 	}
 
-	user, err := h.auther.Authenticate(token, ip.AddressForRequest(header, remoteAddr))
+	user, err := h.options.auther.Authenticate(token, ip.AddressForRequest(header, remoteAddr))
 	if err != nil {
 		log.WithError(err).Info("error authenticating user")
 		return nil, err

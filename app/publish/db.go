@@ -29,9 +29,9 @@ func (d *uploadKeeper) listenToHandler(handler *TusHandler) {
 				err = d.updateProgress(d.db, e)
 			case e := <-handler.TerminatedUploads:
 				err = d.terminate(d.db, e)
-			case q := <-handler.preparedQueries:
+			case q := <-handler.preparedSDKQueries:
 				err = d.createQuery(d.db, q)
-			case q := <-handler.completedQueries:
+			case q := <-handler.completedSDKQueries:
 				err = d.completeQuery(d.db, q)
 			}
 			if err != nil {

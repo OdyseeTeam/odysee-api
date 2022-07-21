@@ -76,4 +76,5 @@ func TestGetTestToken(t *testing.T) {
 	remoteUser, err := getRemoteUser(auther.iapiURL, oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token.AccessToken}), "")
 	require.NoError(t, err)
 	require.Greater(t, remoteUser.ID, 0)
+	require.EqualValues(t, 418533549, remoteUser.ID)
 }

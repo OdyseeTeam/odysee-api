@@ -19,7 +19,7 @@ func CreatePublishRequest(t *testing.T, data []byte, extra ...FormParam) *http.R
 
 	writer := multipart.NewWriter(body)
 
-	fileBody, err := writer.CreateFormFile(fileFieldName, "lbry_auto_test_file")
+	fileBody, err := writer.CreateFormFile(fileFieldName, "ody_auto_test_file")
 	require.NoError(t, err)
 	_, err = io.Copy(fileBody, readSeeker)
 	require.NoError(t, err)
@@ -47,7 +47,7 @@ func GenerateUpdateRequest(t *testing.T, data []byte, extra ...FormParam) *http.
 
 	writer := multipart.NewWriter(body)
 
-	fileBody, err := writer.CreateFormFile(fileFieldName, "lbry_auto_test_file")
+	fileBody, err := writer.CreateFormFile(fileFieldName, "ody_auto_test_file")
 	require.NoError(t, err)
 	_, err = io.Copy(fileBody, readSeeker)
 	require.NoError(t, err)

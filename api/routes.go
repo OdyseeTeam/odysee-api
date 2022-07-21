@@ -100,7 +100,12 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 		StoreComposer: composer,
 	}
 
-	tusHandler, err := publish.NewTusHandler(oauthAuther, legacyProvider, tusCfg, uploadPath)
+	tusHandler, err := publish.NewTusHandler(
+		publish.WithAuther(oauthAuther),
+		publish.WithLegacyProvider(legacyProvider),
+		publish.WithTusConfig(tusCfg),
+		publish.WithUploadPath(uploadPath),
+	)
 	if err != nil {
 		logger.Log().WithError(err).Fatal(err)
 	}

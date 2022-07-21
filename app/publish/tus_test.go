@@ -75,10 +75,10 @@ func newTestTusHandler(t *testing.T) *TusHandler {
 	uploadPath := t.TempDir()
 
 	h, err := NewTusHandler(
-		&wallet.TestAnyAuthenticator{},
-		mockAuthProvider,
-		newTusTestCfg(uploadPath),
-		uploadPath,
+		WithAuther(&wallet.TestAnyAuthenticator{}),
+		WithLegacyProvider(mockAuthProvider),
+		WithTusConfig(newTusTestCfg(uploadPath)),
+		WithUploadPath(uploadPath),
 	)
 	assert.Nil(t, err)
 	return h
@@ -104,12 +104,14 @@ func newTestTusHandlerWithOauth(t *testing.T, reqChan chan *test.Request) *TusHa
 		ts.NextResponse <- expectedPublishResponse
 	}()
 
+	fmt.Println("AUTHER", auther)
 	h, err := NewTusHandler(
-		auther,
-		mockAuthProvider,
-		newTusTestCfg(uploadPath),
-		uploadPath,
+		WithAuther(auther),
+		WithLegacyProvider(mockAuthProvider),
+		WithTusConfig(newTusTestCfg(uploadPath)),
+		WithUploadPath(uploadPath),
 	)
+
 	assert.Nil(t, err)
 	return h
 }
@@ -214,21 +216,30 @@ func TestNewTusHandler(t *testing.T) {
 	require.NoError(t, err)
 
 	successTestCases := []struct {
-		name string
-		fn   func() (auth.Authenticator, auth.Provider, tusd.Config, string)
+		name   string
+		optsFn func() []func(*TusHandlerOptions)
 	}{
 		{
 			name: "WithExistingDirectory",
-			fn: func() (auth.Authenticator, auth.Provider, tusd.Config, string) {
+			optsFn: func() []func(*TusHandlerOptions) {
 				uploadPath := t.TempDir()
-				return auther, mockAuthProvider, newTusTestCfg(uploadPath), uploadPath
+				return []func(*TusHandlerOptions){
+					WithAuther(auther), WithLegacyProvider(mockAuthProvider),
+					WithTusConfig(newTusTestCfg(uploadPath)),
+					WithUploadPath(uploadPath),
+				}
 			},
 		},
 		{
 			name: "WithNewDirectory",
-			fn: func() (auth.Authenticator, auth.Provider, tusd.Config, string) {
+			optsFn: func() []func(*TusHandlerOptions) {
 				uploadPath := filepath.Join(t.TempDir(), "new_dir")
-				return auther, mockAuthProvider, newTusTestCfg(uploadPath), uploadPath
+				return []func(*TusHandlerOptions){
+					WithAuther(auther), WithLegacyProvider(mockAuthProvider),
+					WithTusConfig(newTusTestCfg(uploadPath)),
+					WithUploadPath(uploadPath),
+				}
+
 			},
 		},
 	}
@@ -239,7 +250,7 @@ func TestNewTusHandler(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				t.Parallel()
 
-				h, err := NewTusHandler(test.fn())
+				h, err := NewTusHandler(test.optsFn()...)
 				assert.Nil(t, err)
 				assert.NotNil(t, h)
 			})
@@ -248,19 +259,22 @@ func TestNewTusHandler(t *testing.T) {
 
 	errorTestCases := []struct {
 		name    string
-		fn      func() (auth.Authenticator, auth.Provider, tusd.Config, string)
+		optsFn  func() []func(*TusHandlerOptions)
 		wantErr error
 	}{
 		{
 			name: "WithNilAuthProvider",
-			fn: func() (auth.Authenticator, auth.Provider, tusd.Config, string) {
+			optsFn: func() []func(*TusHandlerOptions) {
 				uploadPath := t.TempDir()
-				return nil, nil, newTusTestCfg(uploadPath), uploadPath
+				return []func(*TusHandlerOptions){
+					WithTusConfig(newTusTestCfg(uploadPath)),
+					WithUploadPath(uploadPath),
+				}
 			},
 		},
 		{
 			name: "WithRestrictedDirectoryAccess",
-			fn: func() (auth.Authenticator, auth.Provider, tusd.Config, string) {
+			optsFn: func() []func(*TusHandlerOptions) {
 				if err := os.Mkdir("test_dir", 0444); err != nil { // read only
 					t.Fatal(err)
 				}
@@ -270,7 +284,11 @@ func TestNewTusHandler(t *testing.T) {
 					}
 				})
 				uploadPath := filepath.Join("test_dir", "new_dir")
-				return auther, mockAuthProvider, newTusTestCfg(uploadPath), uploadPath
+				return []func(*TusHandlerOptions){
+					WithAuther(auther), WithLegacyProvider(mockAuthProvider),
+					WithTusConfig(newTusTestCfg(uploadPath)),
+					WithUploadPath(uploadPath),
+				}
 			},
 			wantErr: os.ErrPermission,
 		},
@@ -282,7 +300,7 @@ func TestNewTusHandler(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				t.Parallel()
 
-				_, err := NewTusHandler(test.fn())
+				_, err := NewTusHandler(test.optsFn()...)
 				assert.NotNil(t, err)
 
 				if test.wantErr != nil {
@@ -347,7 +365,7 @@ func TestNotify(t *testing.T) {
 		gotErrMsg := test.StrToRes(t, string(respBody)).Error.Message
 		assert.Equal(t, wantErrMsg, gotErrMsg)
 
-		f, err := os.Stat(filepath.Join(h.uploadPath, path.Base(loc)))
+		f, err := os.Stat(filepath.Join(h.options.uploadPath, path.Base(loc)))
 		assert.Nil(t, err)
 		assert.NotNil(t, f)
 	})
@@ -469,11 +487,12 @@ func TestTus(t *testing.T) {
 
 		uploadPath := t.TempDir()
 		h, err := NewTusHandler(
-			&wallet.TestMissingTokenAuthenticator{},
-			errAuthFn,
-			newTusTestCfg(uploadPath),
-			uploadPath,
+			WithAuther(&wallet.TestMissingTokenAuthenticator{}),
+			WithLegacyProvider(errAuthFn),
+			WithTusConfig(newTusTestCfg(uploadPath)),
+			WithUploadPath(uploadPath),
 		)
+
 		assert.Nil(t, err)
 
 		w := httptest.NewRecorder()
@@ -733,11 +752,12 @@ func TestNotifyLegacy(t *testing.T) {
 		uploadPath := t.TempDir()
 
 		h, err := NewTusHandler(
-			auther,
-			mockAuthProvider,
-			newTusTestCfg(uploadPath),
-			uploadPath,
+			WithAuther(auther),
+			WithLegacyProvider(mockAuthProvider),
+			WithTusConfig(newTusTestCfg(uploadPath)),
+			WithUploadPath(uploadPath),
 		)
+
 		assert.Nil(t, err)
 
 		w := httptest.NewRecorder()
@@ -867,12 +887,14 @@ func TestTusLegacyToken(t *testing.T) {
 		}
 
 		uploadPath := t.TempDir()
+
 		h, err := NewTusHandler(
-			&wallet.TestMissingTokenAuthenticator{},
-			errAuthFn,
-			newTusTestCfg(uploadPath),
-			uploadPath,
+			WithAuther(&wallet.TestMissingTokenAuthenticator{}),
+			WithLegacyProvider(errAuthFn),
+			WithTusConfig(newTusTestCfg(uploadPath)),
+			WithUploadPath(uploadPath),
 		)
+
 		assert.Nil(t, err)
 
 		w := httptest.NewRecorder()

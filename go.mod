@@ -1,6 +1,6 @@
 module github.com/OdyseeTeam/odysee-api
 
-go 1.17
+go 1.18
 
 require (
 	github.com/ClickHouse/clickhouse-go v1.4.5
