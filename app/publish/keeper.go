@@ -11,12 +11,12 @@ import (
 	// . "github.com/volatiletech/sqlboiler/queries/qm"
 )
 
-type uploadKeeper struct {
+type UploadKeeper struct {
 	handler *TusHandler
 	db      boil.Executor
 }
 
-func (d *uploadKeeper) listenToHandler(handler *TusHandler) {
+func (d *UploadKeeper) listenToHandler(handler *TusHandler) {
 	d.handler = handler
 
 	go func() {
@@ -42,14 +42,14 @@ func (d *uploadKeeper) listenToHandler(handler *TusHandler) {
 	}()
 }
 
-func (d *uploadKeeper) get(id string) (*models.Upload, error) {
+func (d *UploadKeeper) get(id string) (*models.Upload, error) {
 	return models.Uploads(
 		models.UploadWhere.ID.EQ(id),
 		// Load(models.UploadRels.UploadQuery),
 	).One(d.db)
 }
 
-func (d *uploadKeeper) create(exec boil.Executor, hook handler.HookEvent) error {
+func (d *UploadKeeper) create(exec boil.Executor, hook handler.HookEvent) error {
 	user, err := d.handler.multiAuthUser(hook.HTTPRequest.Header, hook.HTTPRequest.RemoteAddr)
 	if err != nil {
 		return err
@@ -63,7 +63,7 @@ func (d *uploadKeeper) create(exec boil.Executor, hook handler.HookEvent) error 
 	return upload.Insert(exec, boil.Infer())
 }
 
-func (d *uploadKeeper) updateProgress(exec boil.Executor, hook handler.HookEvent) error {
+func (d *UploadKeeper) updateProgress(exec boil.Executor, hook handler.HookEvent) error {
 	u, err := d.get(hook.Upload.ID)
 	if err != nil {
 		return err
@@ -78,7 +78,7 @@ func (d *uploadKeeper) updateProgress(exec boil.Executor, hook handler.HookEvent
 	return nil
 }
 
-func (d *uploadKeeper) complete(exec boil.Executor, hook handler.HookEvent) error {
+func (d *UploadKeeper) complete(exec boil.Executor, hook handler.HookEvent) error {
 	u, err := d.get(hook.Upload.ID)
 	if err != nil {
 		return err
@@ -93,7 +93,7 @@ func (d *uploadKeeper) complete(exec boil.Executor, hook handler.HookEvent) erro
 	return nil
 }
 
-func (d *uploadKeeper) terminate(exec boil.Executor, hook handler.HookEvent) error {
+func (d *UploadKeeper) terminate(exec boil.Executor, hook handler.HookEvent) error {
 	u, err := d.get(hook.Upload.ID)
 	if err != nil {
 		return err
@@ -107,7 +107,7 @@ func (d *uploadKeeper) terminate(exec boil.Executor, hook handler.HookEvent) err
 	return nil
 }
 
-func (d *uploadKeeper) createQuery(exec boil.Executor, q preparedQuery) error {
+func (d *UploadKeeper) createQuery(exec boil.Executor, q preparedQuery) error {
 	u, err := d.get(q.fileInfo.ID)
 	if err != nil {
 		return err
@@ -132,7 +132,7 @@ func (d *uploadKeeper) createQuery(exec boil.Executor, q preparedQuery) error {
 	return nil
 }
 
-func (d *uploadKeeper) completeQuery(exec boil.Executor, q completedQuery) error {
+func (d *UploadKeeper) completeQuery(exec boil.Executor, q completedQuery) error {
 	u, err := d.get(q.fileInfo.ID)
 	if err != nil {
 		return err

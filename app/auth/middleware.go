@@ -23,7 +23,6 @@ func Middleware(auther Authenticator) mux.MiddlewareFunc {
 			var user *models.User
 			token, err := auther.GetTokenFromHeader(r.Header)
 			if err != nil {
-				logger.Log().Debugf("cannot retrieve token from request: %s", err)
 				next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), contextKey, result{user, err})))
 				return
 			}
@@ -31,6 +30,8 @@ func Middleware(auther Authenticator) mux.MiddlewareFunc {
 			user, err = auther.Authenticate(token, addr)
 			if err != nil {
 				logger.WithFields(logrus.Fields{"ip": addr}).Debugf("error authenticating user: %s", err)
+			} else {
+				logger.Log().Debug("authenticated")
 			}
 			if user != nil {
 				if hub := sentry.GetHubFromContext(r.Context()); hub != nil {

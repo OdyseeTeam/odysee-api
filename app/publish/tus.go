@@ -64,7 +64,7 @@ type TusHandlerOptions struct {
 	provider   auth.Provider
 	uploadPath string
 	tusConfig  *tusd.Config
-	keeper     *uploadKeeper
+	keeper     *UploadKeeper
 }
 
 // func WithLogger(logger logging.KVLogger) func(options *TusHandlerOptions) {
@@ -94,7 +94,7 @@ func WithLegacyProvider(provider auth.Provider) func(options *TusHandlerOptions)
 	}
 }
 
-func WithUploadKeeper(keeper *uploadKeeper) func(options *TusHandlerOptions) {
+func WithUploadKeeper(keeper *UploadKeeper) func(options *TusHandlerOptions) {
 	return func(options *TusHandlerOptions) {
 		options.keeper = keeper
 	}
@@ -150,12 +150,12 @@ func NewTusHandler(optionFuncs ...func(*TusHandlerOptions)) (*TusHandler, error)
 		h.completedSDKQueries = make(chan completedQuery)
 	}
 
-	handler, err := tusd.NewUnroutedHandler(*cfg)
+	baseHandler, err := tusd.NewUnroutedHandler(*cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	h.UnroutedHandler = handler
+	h.UnroutedHandler = baseHandler
 	h.logger = monitor.NewModuleLogger(module)
 	h.composer = cfg.StoreComposer
 

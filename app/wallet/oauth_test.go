@@ -3,6 +3,7 @@ package wallet
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
@@ -77,4 +78,6 @@ func TestGetTestToken(t *testing.T) {
 	require.NoError(t, err)
 	require.Greater(t, remoteUser.ID, 0)
 	require.EqualValues(t, 418533549, remoteUser.ID)
+	fmt.Println(token.AccessToken)
+	require.False(t, true)
 }

@@ -118,7 +118,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 
 	tusRouter := v2Router.PathPrefix("/publish").Subrouter()
 	tusRouter.Use(tusHandler.Middleware)
-	tusRouter.HandleFunc("/", tusHandler.PostFile).Methods(http.MethodPost)
+	tusRouter.HandleFunc("/", tusHandler.PostFile).Methods(http.MethodPost).Name("tus_publish")
 	tusRouter.HandleFunc("/{id}", tusHandler.HeadFile).Methods(http.MethodHead)
 	tusRouter.HandleFunc("/{id}", tusHandler.PatchFile).Methods(http.MethodPatch)
 	tusRouter.HandleFunc("/{id}", tusHandler.DelFile).Methods(http.MethodDelete)
