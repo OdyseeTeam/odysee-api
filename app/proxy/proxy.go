@@ -7,6 +7,7 @@ package proxy
 // remote clients.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -127,11 +128,11 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 
 	remoteIP := ip.FromRequest(r)
 	// Logging remote IP with query
-	c.AddPostflightHook("wallet_", func(_ *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
-		hctx.AddLogField("remote_ip", remoteIP)
+	c.AddPostflightHook("wallet_", func(_ *query.Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
+		query.WithLogField(ctx, "remote_ip", remoteIP)
 		return nil, nil
 	}, "")
-	c.AddPostflightHook(query.MethodWalletSend, func(_ *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
+	c.AddPostflightHook(query.MethodWalletSend, func(_ *query.Caller, _ context.Context) (*jsonrpc.RPCResponse, error) {
 		audit.LogQuery(userID, remoteIP, query.MethodWalletSend, body)
 		return nil, nil
 	}, "")
@@ -140,7 +141,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	c.Cache = qCache
 
 	metrics.ProxyCallCounter.WithLabelValues(rpcReq.Method, c.Endpoint(), origin).Inc()
-	rpcRes, err := c.Call(rpcReq)
+	rpcRes, err := c.Call(r.Context(), rpcReq)
 	metrics.ProxyCallDurations.WithLabelValues(rpcReq.Method, c.Endpoint(), origin).Observe(c.Duration)
 
 	if err != nil {

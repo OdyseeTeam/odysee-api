@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"encoding/json"
 	"math/rand"
 	"testing"
@@ -24,6 +25,8 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
+var bgctx = func() context.Context { return context.Background() }
+
 func parseRawResponse(t *testing.T, rawCallResponse []byte, v interface{}) {
 	assert.NotNil(t, rawCallResponse)
 	var res jsonrpc.RPCResponse
@@ -35,7 +38,7 @@ func parseRawResponse(t *testing.T, rawCallResponse []byte, v interface{}) {
 
 func TestCaller_CallBlankEndpoint(t *testing.T) {
 	c := NewCaller("", 0)
-	_, err := c.Call(jsonrpc.NewRequest("status"))
+	_, err := c.Call(bgctx(), jsonrpc.NewRequest("status"))
 	require.EqualError(t, err, "cannot call blank endpoint")
 }
 
@@ -53,7 +56,7 @@ func TestCaller_CallRelaxedMethods(t *testing.T) {
 			srv.NextResponse <- test.EmptyResponse()
 
 			caller := NewCaller(srv.URL, 0)
-			resp, err := caller.Call(jsonrpc.NewRequest(m))
+			resp, err := caller.Call(bgctx(), jsonrpc.NewRequest(m))
 			assert.Nil(t, resp)
 			assert.Error(t, err)                                       // empty response should be an error
 			assert.False(t, errors.Is(err, rpcerrors.ErrAuthRequired)) // but it should not be an auth error
@@ -82,7 +85,7 @@ func TestCaller_CallAmbivalentMethodsWithoutWallet(t *testing.T) {
 			defer srv.Close()
 			caller := NewCaller(srv.URL, 0)
 			srv.NextResponse <- test.EmptyResponse()
-			resp, err := caller.Call(jsonrpc.NewRequest(m))
+			resp, err := caller.Call(bgctx(), jsonrpc.NewRequest(m))
 			assert.Nil(t, resp)
 			assert.Error(t, err) // empty response should be an error
 			assert.False(t, errors.Is(err, rpcerrors.ErrAuthRequired))
@@ -114,7 +117,7 @@ func TestCaller_CallAmbivalentMethodsWithWallet(t *testing.T) {
 			srv.NextResponse <- test.EmptyResponse()
 			authedCaller := NewCaller(srv.URL, dummyUserID)
 
-			resp, err := authedCaller.Call(jsonrpc.NewRequest(m))
+			resp, err := authedCaller.Call(bgctx(), jsonrpc.NewRequest(m))
 			assert.Nil(t, resp)
 			assert.Error(t, err) // empty response should be an error
 			assert.False(t, errors.Is(err, rpcerrors.ErrAuthRequired))
@@ -159,7 +162,7 @@ func TestCaller_CallNonRelaxedMethods(t *testing.T) {
 			defer srv.Close()
 
 			caller := NewCaller(srv.URL, 0)
-			resp, err := caller.Call(jsonrpc.NewRequest(m))
+			resp, err := caller.Call(bgctx(), jsonrpc.NewRequest(m))
 			assert.Nil(t, resp)
 			assert.Error(t, err)
 			assert.True(t, errors.Is(err, rpcerrors.ErrAuthRequired))
@@ -169,7 +172,7 @@ func TestCaller_CallNonRelaxedMethods(t *testing.T) {
 
 func TestCaller_CallForbiddenMethod(t *testing.T) {
 	caller := NewCaller(test.RandServerAddress(t), 0)
-	resp, err := caller.Call(jsonrpc.NewRequest("stop"))
+	resp, err := caller.Call(bgctx(), jsonrpc.NewRequest("stop"))
 	assert.Nil(t, resp)
 	assert.Error(t, err)
 	assert.Equal(t, "forbidden method", err.Error())
@@ -184,7 +187,7 @@ func TestCaller_CallAttachesWalletID(t *testing.T) {
 	defer srv.Close()
 	srv.NextResponse <- test.EmptyResponse()
 	caller := NewCaller(srv.URL, dummyUserID)
-	caller.Call(jsonrpc.NewRequest("channel_create", map[string]interface{}{"name": "test", "bid": "0.1"}))
+	caller.Call(bgctx(), jsonrpc.NewRequest("channel_create", map[string]interface{}{"name": "test", "bid": "0.1"}))
 	receivedRequest := <-reqChan
 
 	expectedRequest := test.ReqToStr(t, &jsonrpc.RPCRequest{
@@ -206,20 +209,20 @@ func TestCaller_AddPreflightHookAmendingQueryParams(t *testing.T) {
 
 	c := NewCaller(srv.URL, 0)
 
-	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
-		params := hctx.Query.ParamsAsMap()
+	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
+		params := GetQuery(ctx).ParamsAsMap()
 		if params == nil {
-			hctx.Query.Request.Params = map[string]string{"param": "123"}
+			GetQuery(ctx).Request.Params = map[string]string{"param": "123"}
 		} else {
 			params["param"] = "123"
-			hctx.Query.Request.Params = params
+			GetQuery(ctx).Request.Params = params
 		}
 		return nil, nil
 	}, "")
 
 	srv.NextResponse <- test.EmptyResponse()
 
-	c.Call(jsonrpc.NewRequest(relaxedMethods[0]))
+	c.Call(bgctx(), jsonrpc.NewRequest(relaxedMethods[0]))
 	req := <-reqChan
 	lastRequest := test.StrToReq(t, req.Body)
 
@@ -235,13 +238,13 @@ func TestCaller_AddPreflightHookReturningEarlyResponse(t *testing.T) {
 
 	c := NewCaller(srv.URL, 0)
 
-	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, _ *HookContext) (*jsonrpc.RPCResponse, error) {
+	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, _ context.Context) (*jsonrpc.RPCResponse, error) {
 		return &jsonrpc.RPCResponse{Result: map[string]string{"ok": "ok"}}, nil
 	}, "")
 
 	srv.NextResponse <- test.EmptyResponse()
 
-	res, err := c.Call(jsonrpc.NewRequest(relaxedMethods[0]))
+	res, err := c.Call(bgctx(), jsonrpc.NewRequest(relaxedMethods[0]))
 	require.NoError(t, err)
 
 	assert.Equal(t, map[string]string{"ok": "ok"}, res.Result)
@@ -254,13 +257,13 @@ func TestCaller_AddPreflightHookReturningError(t *testing.T) {
 
 	c := NewCaller(srv.URL, 0)
 
-	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, _ *HookContext) (*jsonrpc.RPCResponse, error) {
+	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, _ context.Context) (*jsonrpc.RPCResponse, error) {
 		return &jsonrpc.RPCResponse{Result: map[string]string{"ok": "ok"}}, errors.Err("an error occured")
 	}, "")
 
 	srv.NextResponse <- test.EmptyResponse()
 
-	res, err := c.Call(jsonrpc.NewRequest(relaxedMethods[0]))
+	res, err := c.Call(bgctx(), jsonrpc.NewRequest(relaxedMethods[0]))
 	assert.EqualError(t, err, "an error occured")
 	assert.Nil(t, res)
 }
@@ -292,12 +295,13 @@ func TestCaller_AddPostflightHook_Response(t *testing.T) {
 	}
 	`
 
-	c.AddPostflightHook("wallet_", func(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
-		hctx.Response.Result = "0.0"
-		return hctx.Response, nil
+	c.AddPostflightHook("wallet_", func(c *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
+		r := GetResponse(ctx)
+		r.Result = "0.0"
+		return r, nil
 	}, "")
 
-	res, err := c.Call(jsonrpc.NewRequest(MethodWalletBalance))
+	res, err := c.Call(bgctx(), jsonrpc.NewRequest(MethodWalletBalance))
 	require.NoError(t, err)
 	assert.Equal(t, "0.0", res.Result)
 }
@@ -322,12 +326,12 @@ func TestCaller_AddPostflightHook_LogField(t *testing.T) {
 	}
 	`
 
-	c.AddPostflightHook(MethodResolve, func(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
-		hctx.AddLogField("remote_ip", "8.8.8.8")
+	c.AddPostflightHook(MethodResolve, func(c *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
+		WithLogField(ctx, "remote_ip", "8.8.8.8")
 		return nil, nil
 	}, "")
 
-	res, err := c.Call(jsonrpc.NewRequest(MethodResolve, map[string]interface{}{"urls": "what:19b9c243bea0c45175e6a6027911abbad53e983e"}))
+	res, err := c.Call(bgctx(), jsonrpc.NewRequest(MethodResolve, map[string]interface{}{"urls": "what:19b9c243bea0c45175e6a6027911abbad53e983e"}))
 	require.NoError(t, err)
 	assert.Contains(t, res.Result.(map[string]interface{}), "what:19b9c243bea0c45175e6a6027911abbad53e983e")
 	assert.Equal(t, "8.8.8.8", logHook.LastEntry().Data["remote_ip"])
@@ -346,20 +350,21 @@ func TestCaller_CloneWithoutHook(t *testing.T) {
 	c := NewCaller(srv.URL, 0)
 	srv.QueueResponses(resolveResponseWithoutPurchase, resolveResponseWithoutPurchase)
 
-	c.AddPostflightHook(MethodResolve, func(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
+	c.AddPostflightHook(MethodResolve, func(c *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
 		call()
 		return nil, nil
 	}, "")
 
-	c.AddPostflightHook(MethodResolve, func(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
+	c.AddPostflightHook(MethodResolve, func(c *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
 		// This will be cloned without the current hook but the previous one should increment `timesCalled` once again
 		cc := c.CloneWithoutHook(c.Endpoint(), MethodResolve, "lbrynext_resolve")
-		_, err := cc.SendQuery(hctx.Query)
+		q := GetQuery(ctx)
+		_, err := cc.SendQuery(ctx, q)
 		assert.NoError(t, err)
 		return nil, nil
 	}, "lbrynext_resolve")
 
-	_, err := c.Call(jsonrpc.NewRequest(MethodResolve, map[string]interface{}{"urls": "what:19b9c243bea0c45175e6a6027911abbad53e983e"}))
+	_, err := c.Call(bgctx(), jsonrpc.NewRequest(MethodResolve, map[string]interface{}{"urls": "what:19b9c243bea0c45175e6a6027911abbad53e983e"}))
 	require.NoError(t, err)
 	assert.Equal(t, timesCalled, 2)
 }
@@ -391,7 +396,7 @@ func TestCaller_CallCachingResponses(t *testing.T) {
 	c := NewCaller(srv.URL, 0)
 	c.Cache, err = cache.New(cache.DefaultConfig())
 	require.NoError(t, err)
-	rpcResponse, err := c.Call(jsonrpc.NewRequest("claim_search", map[string]interface{}{"urls": "what"}))
+	rpcResponse, err := c.Call(bgctx(), jsonrpc.NewRequest("claim_search", map[string]interface{}{"urls": "what"}))
 	require.NoError(t, err)
 	assert.Nil(t, rpcResponse.Error)
 	c.Cache.Wait()
@@ -417,7 +422,7 @@ func TestCaller_CallNotCachingErrors(t *testing.T) {
 	c := NewCaller(srv.URL, 0)
 	c.Cache, err = cache.New(cache.DefaultConfig())
 	require.NoError(t, err)
-	rpcResponse, err := c.Call(jsonrpc.NewRequest("claim_search", map[string]interface{}{"urls": "what"}))
+	rpcResponse, err := c.Call(bgctx(), jsonrpc.NewRequest("claim_search", map[string]interface{}{"urls": "what"}))
 	require.NoError(t, err)
 	assert.Equal(t, rpcResponse.Error.Code, -32000)
 	cResp, err := c.Cache.Retrieve(
@@ -461,7 +466,7 @@ func TestCaller_CallSDKError(t *testing.T) {
 
 	c := NewCaller(srv.URL, 0)
 	hook := logrusTest.NewLocal(logger.Entry.Logger)
-	rpcResponse, err := c.Call(jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": "what"}))
+	rpcResponse, err := c.Call(bgctx(), jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": "what"}))
 	require.NoError(t, err)
 	assert.Equal(t, rpcResponse.Error.Code, -32500)
 	assert.Equal(t, "query", hook.LastEntry().Data["module"])
@@ -474,7 +479,7 @@ func TestCaller_ClientJSONError(t *testing.T) {
 	ts.NextResponse <- `{"method":"version}` // note the missing close quote after "version
 
 	c := NewCaller(ts.URL, 0)
-	_, err := c.Call(jsonrpc.NewRequest(MethodResolve, map[string]interface{}{"urls": "what"}))
+	_, err := c.Call(bgctx(), jsonrpc.NewRequest(MethodResolve, map[string]interface{}{"urls": "what"}))
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "could not decode body to rpc response")
 }
@@ -483,7 +488,7 @@ func TestCaller_CallRaw(t *testing.T) {
 	c := NewCaller(test.RandServerAddress(t), 0)
 	for _, rawQ := range []string{`{}`, `{"method": " "}`} {
 		t.Run(rawQ, func(t *testing.T) {
-			_, err := c.Call(test.StrToReq(t, rawQ))
+			_, err := c.Call(bgctx(), test.StrToReq(t, rawQ))
 			assert.Error(t, err)
 			assert.Equal(t, "no method in request", err.Error())
 		})
@@ -495,7 +500,7 @@ func TestCaller_Resolve(t *testing.T) {
 	resolvedClaimID := "6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
 
 	request := jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": resolvedURL})
-	rpcRes, err := NewCaller(test.RandServerAddress(t), 0).Call(request)
+	rpcRes, err := NewCaller(test.RandServerAddress(t), 0).Call(bgctx(), request)
 	require.NoError(t, err)
 	require.Nil(t, rpcRes.Error)
 
@@ -511,7 +516,7 @@ func TestCaller_WalletBalance(t *testing.T) {
 
 	request := jsonrpc.NewRequest("wallet_balance")
 
-	rpcRes, err := NewCaller(test.RandServerAddress(t), 0).Call(request)
+	rpcRes, err := NewCaller(test.RandServerAddress(t), 0).Call(bgctx(), request)
 	assert.Nil(t, rpcRes)
 	assert.True(t, errors.Is(err, rpcerrors.ErrAuthRequired))
 
@@ -520,7 +525,7 @@ func TestCaller_WalletBalance(t *testing.T) {
 	require.NoError(t, err)
 
 	hook := logrusTest.NewLocal(logger.Entry.Logger)
-	rpcRes, err = NewCaller(addr, dummyUserID).Call(request)
+	rpcRes, err = NewCaller(addr, dummyUserID).Call(bgctx(), request)
 	require.NoError(t, err)
 
 	var accountBalanceResponse struct {
@@ -549,7 +554,7 @@ func TestCaller_CallQueryWithRetry(t *testing.T) {
 	// check that sdk loads the wallet and retries the query if the wallet was not initially loaded
 
 	c := NewCaller(addr, dummyUserID)
-	r, err := c.SendQuery(q)
+	r, err := c.SendQuery(WithQuery(bgctx(), q), q)
 	require.NoError(t, err)
 	require.Nil(t, r.Error)
 }
@@ -578,10 +583,10 @@ func TestCaller_timeouts(t *testing.T) {
 		})
 	}()
 
-	_, err = c.SendQuery(q)
+	_, err = c.SendQuery(WithQuery(bgctx(), q), q)
 	require.NoError(t, err)
 
-	_, err = c.SendQuery(q)
+	_, err = c.SendQuery(WithQuery(bgctx(), q), q)
 	require.Regexp(t, `timeout awaiting response headers`, err.Error())
 }
 
@@ -612,7 +617,7 @@ func TestCaller_DontReloadWalletAfterOtherErrors(t *testing.T) {
 		}),
 	)
 
-	r, err := c.SendQuery(q)
+	r, err := c.SendQuery(WithQuery(bgctx(), q), q)
 	require.NoError(t, err)
 	require.Equal(t, "Wallet at path // was not found", r.Error.Message)
 }
@@ -648,7 +653,7 @@ func TestCaller_DontReloadWalletIfAlreadyLoaded(t *testing.T) {
 		}),
 	)
 
-	r, err := c.SendQuery(q)
+	r, err := c.SendQuery(WithQuery(bgctx(), q), q)
 
 	require.NoError(t, err)
 	require.Nil(t, r.Error)
@@ -657,7 +662,7 @@ func TestCaller_DontReloadWalletIfAlreadyLoaded(t *testing.T) {
 
 func TestCaller_Status(t *testing.T) {
 	c := NewCaller(test.RandServerAddress(t), 0)
-	rpcResponse, err := c.Call(jsonrpc.NewRequest("status"))
+	rpcResponse, err := c.Call(bgctx(), jsonrpc.NewRequest("status"))
 	require.NoError(t, err)
 	assert.Equal(t,
 		"692EAWhtoqDuAfQ6KHMXxFxt8tkhmt7sfprEMHWKjy5hf6PwZcHDV542VHqRnFnTCD",
@@ -672,7 +677,7 @@ func TestCaller_GetFreeUnauthenticated(t *testing.T) {
 	uri := "what#19b9c243bea0c45175e6a6027911abbad53e983e"
 
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
-	resp, err := NewCaller(srvAddress, 0).Call(request)
+	resp, err := NewCaller(srvAddress, 0).Call(bgctx(), request)
 	require.NoError(t, err)
 	require.Nil(t, resp.Error)
 
@@ -695,7 +700,7 @@ func TestCaller_GetFreeAuthenticated(t *testing.T) {
 		resolveResponseFree,
 	)
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
-	resp, err := NewCaller(srv.URL, dummyUserID).Call(request)
+	resp, err := NewCaller(srv.URL, dummyUserID).Call(bgctx(), request)
 	require.NoError(t, err)
 	require.Nil(t, resp.Error)
 
@@ -715,7 +720,7 @@ func TestCaller_GetCouldntFindClaim(t *testing.T) {
 		resolveResponseCouldntFind,
 	)
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
-	resp, err := NewCaller(srv.URL, dummyUserID).Call(request)
+	resp, err := NewCaller(srv.URL, dummyUserID).Call(bgctx(), request)
 	assert.EqualError(t, err, "couldn't find claim")
 	assert.Nil(t, resp)
 }
@@ -733,7 +738,7 @@ func TestCaller_GetInvalidURLAuthenticated(t *testing.T) {
 		resolveResponseFree,
 	)
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
-	resp, err := NewCaller(srv.URL, dummyUserID).Call(request)
+	resp, err := NewCaller(srv.URL, dummyUserID).Call(bgctx(), request)
 	assert.EqualError(t, err, "could not find a corresponding entry in the resolve response")
 	assert.Nil(t, resp)
 }
@@ -746,7 +751,7 @@ func TestCaller_GetPaidCannotPurchase(t *testing.T) {
 	require.NoError(t, err)
 
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
-	resp, err := NewCaller(srvAddress, dummyUserID).Call(request)
+	resp, err := NewCaller(srvAddress, dummyUserID).Call(bgctx(), request)
 	assert.EqualError(t, err, "purchase error: Not enough funds to cover this transaction.")
 	assert.Nil(t, resp)
 }
@@ -756,7 +761,7 @@ func TestCaller_GetPaidUnauthenticated(t *testing.T) {
 	uri := "lbry://@specialoperationstest#3/iOS-13-AdobeXD#9"
 
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
-	resp, err := NewCaller(srvAddress, 0).Call(request)
+	resp, err := NewCaller(srvAddress, 0).Call(bgctx(), request)
 	assert.EqualError(t, err, "authentication required")
 	assert.Nil(t, resp)
 }
@@ -788,7 +793,7 @@ func TestCaller_GetPaidPurchased(t *testing.T) {
 	require.NoError(t, err)
 
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
-	resp, err := NewCaller(srv.URL, dummyUserID).Call(request)
+	resp, err := NewCaller(srv.URL, dummyUserID).Call(bgctx(), request)
 	require.NoError(t, err)
 	require.Nil(t, resp.Error)
 
@@ -816,7 +821,7 @@ func TestCaller_GetPaidResolveLag(t *testing.T) {
 	)
 
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
-	_, err := NewCaller(srv.URL, dummyUserID).Call(request)
+	_, err := NewCaller(srv.URL, dummyUserID).Call(bgctx(), request)
 	require.EqualError(t, err, "couldn't find purchase receipt for paid stream")
 }
 
@@ -846,7 +851,7 @@ func TestCaller_GetPaidPurchasedMissingPurchase(t *testing.T) {
 	require.NoError(t, err)
 
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
-	resp, err := NewCaller(srv.URL, dummyUserID).Call(request)
+	resp, err := NewCaller(srv.URL, dummyUserID).Call(bgctx(), request)
 	require.NoError(t, err)
 	require.Nil(t, resp.Error)
 
@@ -905,7 +910,7 @@ func TestCaller_GetPaidPurchasedMissingEverything(t *testing.T) {
 		resolveResponseWithoutPurchase,
 	)
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
-	_, err := NewCaller(srv.URL, dummyUserID).Call(request)
+	_, err := NewCaller(srv.URL, dummyUserID).Call(bgctx(), request)
 	require.EqualError(t, err, "couldn't find purchase receipt for paid stream")
 }
 
@@ -929,21 +934,21 @@ func TestCaller_LogLevels(t *testing.T) {
 
 	c := NewCaller(srv.URL, 123)
 
-	_, err := c.Call(jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": "what"}))
+	_, err := c.Call(bgctx(), jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": "what"}))
 	require.NoError(t, err)
 	e := hook.LastEntry()
 	assert.Equal(t, "resolve", hook.LastEntry().Data["method"])
 	assert.NotNil(t, hook.LastEntry().Data["params"])
 	assert.Equal(t, logrus.InfoLevel, e.Level)
 
-	_, err = c.Call(jsonrpc.NewRequest("wallet_balance"))
+	_, err = c.Call(bgctx(), jsonrpc.NewRequest("wallet_balance"))
 	require.NoError(t, err)
 	e = hook.LastEntry()
 	assert.Equal(t, "wallet_balance", hook.LastEntry().Data["method"])
 	assert.NotNil(t, hook.LastEntry().Data["params"])
 	assert.Equal(t, logrus.DebugLevel, e.Level)
 
-	_, err = c.Call(jsonrpc.NewRequest("sync_apply"))
+	_, err = c.Call(bgctx(), jsonrpc.NewRequest("sync_apply"))
 	require.NoError(t, err)
 	e = hook.LastEntry()
 	assert.Equal(t, "sync_apply", hook.LastEntry().Data["method"])
@@ -1004,7 +1009,7 @@ func TestCaller_JSONRPCNotCut(t *testing.T) {
 
 	req := jsonrpc.NewRequest("claim_search", params)
 
-	_, err = c.Call(req)
+	_, err = c.Call(bgctx(), req)
 	require.NoError(t, err)
 
 	assert.Equal(t, channelIdscpy, req.Params.(map[string]interface{})["channel_ids"])

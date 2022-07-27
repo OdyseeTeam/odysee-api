@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -56,12 +57,12 @@ var controversialChannels = map[string]bool{
 // preflightHookGet will completely replace `get` request from the client with `purchase_create` + `resolve`.
 // This workaround is due to stability issues in the lbrynet SDK `get` method implementation.
 // Only `ParamStreamingUrl` will be returned, plus `purchase_receipt` if stream has been paid for.
-func preflightHookGet(caller *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
+func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
 	var (
 		contentURL, metricLabel string
 		isPaidStream            bool
 	)
-	query := hctx.Query
+	query := GetQuery(ctx)
 
 	response := &jsonrpc.RPCResponse{
 		ID:      query.Request.ID,
@@ -81,7 +82,7 @@ func preflightHookGet(caller *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, 
 	url = uri.(string)
 	log := logger.Log().WithField("url", url)
 
-	claim, err := resolve(caller, query, url)
+	claim, err := resolve(ctx, caller, query, url)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +102,7 @@ func preflightHookGet(caller *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, 
 		if err != nil {
 			return nil, err
 		}
-		purchaseRes, err := caller.SendQuery(purchaseQuery)
+		purchaseRes, err := caller.SendQuery(WithQuery(ctx, purchaseQuery), purchaseQuery)
 		if err != nil {
 			return nil, err
 		}
@@ -120,7 +121,7 @@ func preflightHookGet(caller *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, 
 			log.Infof("made a purchase for %d LBC", feeAmount)
 			// This is needed so changes can propagate for the subsequent resolve
 			time.Sleep(1 * time.Second)
-			claim, err = resolve(caller, query, url)
+			claim, err = resolve(ctx, caller, query, url)
 			if err != nil {
 				return nil, err
 			}
@@ -179,7 +180,7 @@ func preflightHookGet(caller *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, 
 	return response, nil
 }
 
-func resolve(c *Caller, q *Query, url string) (*ljsonrpc.Claim, error) {
+func resolve(ctx context.Context, c *Caller, q *Query, url string) (*ljsonrpc.Claim, error) {
 	resolveQuery, err := NewQuery(jsonrpc.NewRequest(
 		MethodResolve,
 		map[string]interface{}{
@@ -192,7 +193,7 @@ func resolve(c *Caller, q *Query, url string) (*ljsonrpc.Claim, error) {
 		return nil, err
 	}
 
-	rawResolveResponse, err := c.SendQuery(resolveQuery)
+	rawResolveResponse, err := c.SendQuery(ctx, resolveQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +215,7 @@ func resolve(c *Caller, q *Query, url string) (*ljsonrpc.Claim, error) {
 	return &claim, err
 }
 
-func getStatusResponse(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, error) {
+func getStatusResponse(c *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
 	var response map[string]interface{}
 
 	rawResponse := `
@@ -271,7 +272,7 @@ func getStatusResponse(c *Caller, hctx *HookContext) (*jsonrpc.RPCResponse, erro
 	  }
 	`
 	json.Unmarshal([]byte(rawResponse), &response)
-	rpcResponse := hctx.Query.newResponse()
+	rpcResponse := GetQuery(ctx).newResponse()
 	rpcResponse.Result = response
 	return rpcResponse, nil
 }

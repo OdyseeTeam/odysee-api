@@ -240,7 +240,7 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 	c := getCaller(sdkrouter.GetSDKAddress(user), dstFilepath, user.ID, qCache)
 
 	op := metrics.StartOperation("sdk", "call_publish")
-	rpcRes, err := c.Call(rpcReq)
+	rpcRes, err := c.Call(r.Context(), rpcReq)
 	defer op.End()
 	if err != nil {
 		monitor.ErrorToSentry(
