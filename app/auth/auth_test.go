@@ -89,7 +89,7 @@ func TestLegacyMiddleware_AuthFailure(t *testing.T) {
 	r.Header.Set(wallet.LegacyTokenHeader, "wrong-token")
 	rr := httptest.NewRecorder()
 
-	provider := func(token, ip string) (*models.User, error) {
+	provider := func(token, _ string) (*models.User, error) {
 		if token == "good-token" {
 			return &models.User{ID: 1}, nil
 		}
@@ -109,7 +109,7 @@ func TestLegacyMiddleware_NoAuthInfo(t *testing.T) {
 	require.NoError(t, err)
 	rr := httptest.NewRecorder()
 
-	provider := func(token, ip string) (*models.User, error) {
+	provider := func(token, _ string) (*models.User, error) {
 		if token == "good-token" {
 			return &models.User{ID: 1}, nil
 		}
@@ -143,8 +143,8 @@ func TestLegacyMiddleware_Error(t *testing.T) {
 }
 
 func TestFromRequestSuccess(t *testing.T) {
-	expected := result{nil, errors.Base("a test")}
-	ctx := context.WithValue(context.Background(), contextKey, expected)
+	expected := &CurrentUser{user: nil, err: errors.Base("a test")}
+	ctx := context.WithValue(context.Background(), userContextKey, expected)
 
 	r, err := http.NewRequestWithContext(ctx, http.MethodPost, "", &bytes.Buffer{})
 	require.NoError(t, err)

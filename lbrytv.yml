@@ -9,6 +9,13 @@ BaseContentURL: https://player.odycdn.com/api
 FreeContentURL: https://player.odycdn.com/api/v4/streams/free/
 PaidContentURL: https://player.odycdn.com/api/v3/streams/paid/
 
+StreamsV5:
+  Host: https://player.odycdn.com
+  PaidHost: https://secure.odycdn.com
+  StartPath: /v5/streams/start
+  HLSPath: /v5/streams/hls
+  PaidPass: paid-pass
+
 InternalAPIHost: https://api.odysee.com
 ProjectURL: https://odysee.com
 

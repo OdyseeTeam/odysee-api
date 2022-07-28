@@ -11,6 +11,8 @@ require (
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/dgraph-io/ristretto v0.1.0
 	github.com/getsentry/sentry-go v0.12.0
+	github.com/go-redis/redis/v8 v8.11.5
+	github.com/go-redsync/redsync/v4 v4.5.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/hashicorp/go-retryablehttp v0.5.4
@@ -19,6 +21,7 @@ require (
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20220504162735-e5ab0f883edf
 	github.com/lib/pq v1.10.4
 	github.com/nsf/jsondiff v0.0.0-20190712045011-8443391ee9b6
+	github.com/ory/dockertest/v3 v3.9.1
 	github.com/oschwald/geoip2-golang v1.5.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.12.1
@@ -71,8 +74,6 @@ require (
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/go-playground/validator/v10 v10.10.1 // indirect
-	github.com/go-redis/redis/v8 v8.11.5 // indirect
-	github.com/go-redsync/redsync/v4 v4.5.0 // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
@@ -97,11 +98,9 @@ require (
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/onsi/gomega v1.18.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/opencontainers/runc v1.1.3 // indirect
-	github.com/ory/dockertest/v3 v3.9.1 // indirect
 	github.com/oschwald/maxminddb-golang v1.8.0 // indirect
 	github.com/pelletier/go-toml v1.9.3 // indirect
 	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
@@ -134,7 +133,6 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
-	gopkg.in/Acconut/lockfile.v1 v1.1.0 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/nullbio/null.v6 v6.0.0-20161116030900-40264a2e6b79 // indirect

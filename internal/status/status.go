@@ -116,9 +116,8 @@ func GetStatus(w http.ResponseWriter, req *http.Request) {
 
 func GetStatusV2(w http.ResponseWriter, r *http.Request) {
 	respStatus := http.StatusOK
-	var response statusResponse
 
-	response = statusResponse{
+	response := statusResponse{
 		Timestamp:    fmt.Sprintf("%v", time.Now().UTC()),
 		Services:     nil,
 		GeneralState: statusOK,
@@ -147,7 +146,7 @@ func GetStatusV2(w http.ResponseWriter, r *http.Request) {
 
 	c := query.NewCaller(lbrynetServer.Address, userID)
 	c.Cache = qCache
-	rpcRes, err := c.Call(jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": resolveURL}))
+	rpcRes, err := c.Call(r.Context(), jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": resolveURL}))
 
 	if err != nil {
 		srv.Error = err.Error()
