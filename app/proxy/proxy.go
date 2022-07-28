@@ -7,6 +7,7 @@ package proxy
 // remote clients.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -22,7 +23,6 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/audit"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/ip"
-	"github.com/OdyseeTeam/odysee-api/internal/lbrynext"
 	"github.com/OdyseeTeam/odysee-api/internal/metrics"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/internal/responses"
@@ -127,20 +127,19 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 
 	remoteIP := ip.FromRequest(r)
 	// Logging remote IP with query
-	c.AddPostflightHook("wallet_", func(_ *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
-		hctx.AddLogField("remote_ip", remoteIP)
+	c.AddPostflightHook("wallet_", func(_ *query.Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
+		query.WithLogField(ctx, "remote_ip", remoteIP)
 		return nil, nil
 	}, "")
-	c.AddPostflightHook(query.MethodWalletSend, func(_ *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
+	c.AddPostflightHook(query.MethodWalletSend, func(_ *query.Caller, _ context.Context) (*jsonrpc.RPCResponse, error) {
 		audit.LogQuery(userID, remoteIP, query.MethodWalletSend, body)
 		return nil, nil
 	}, "")
 
-	lbrynext.InstallHooks(c)
 	c.Cache = qCache
 
 	metrics.ProxyCallCounter.WithLabelValues(rpcReq.Method, c.Endpoint(), origin).Inc()
-	rpcRes, err := c.Call(rpcReq)
+	rpcRes, err := c.Call(r.Context(), rpcReq)
 	metrics.ProxyCallDurations.WithLabelValues(rpcReq.Method, c.Endpoint(), origin).Observe(c.Duration)
 
 	if err != nil {
