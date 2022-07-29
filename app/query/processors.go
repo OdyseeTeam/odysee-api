@@ -69,7 +69,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 				return nil, fmt.Errorf("iapi client not present")
 			}
 			resp := &iapi.CustomerListResponse{}
-			err = cu.IAPIClient.Call("customer/list", map[string]string{"target_claim_id_filter": claim.ClaimID}, resp)
+			err = cu.IAPIClient.Call("customer/list", map[string]string{"claim_id_filter": claim.ClaimID}, resp)
 
 			if err != nil {
 				return nil, fmt.Errorf("error calling iapi: %w", err)

@@ -16,6 +16,7 @@ const (
 	timeout              = 5 * time.Second
 	headerForwardedFor   = "X-Forwarded-For"
 	headerOauthToken     = "Authorization"
+	paramLegacyToken     = "auth_token"
 )
 
 // Client stores data about internal-apis call it is about to make.
@@ -125,7 +126,7 @@ func NewClient(optionFuncs ...func(*clientOptions)) (*Client, error) {
 		options.extraHeaders[headerForwardedFor] = options.remoteIP
 	}
 	if options.legacyToken != "" {
-		options.extraParams[headerForwardedFor] = options.legacyToken
+		options.extraParams[paramLegacyToken] = options.legacyToken
 	} else if options.oauthToken != "" {
 		options.extraHeaders[headerOauthToken] = "Bearer " + options.oauthToken
 	} else {
