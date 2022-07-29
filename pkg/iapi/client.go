@@ -42,8 +42,8 @@ type clientOptions struct {
 }
 
 type CustomerListResponse struct {
-	Success bool        `json:"success"`
-	Error   interface{} `json:"error"`
+	Success bool    `json:"success"`
+	Error   *string `json:"error"`
 	Data    []struct {
 		ID               int       `json:"id"`
 		TipperUserID     int       `json:"tipper_user_id"`

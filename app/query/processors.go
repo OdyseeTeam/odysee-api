@@ -74,6 +74,9 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 			if err != nil {
 				return nil, fmt.Errorf("error calling iapi: %w", err)
 			}
+			if resp.Error != nil {
+				return nil, fmt.Errorf("iapi errored: %s", *resp.Error)
+			}
 			if len(resp.Data) == 0 {
 				return nil, fmt.Errorf("empty data from iapi")
 			}
