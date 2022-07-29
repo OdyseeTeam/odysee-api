@@ -89,8 +89,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 			sdHash := hex.EncodeToString(stream.GetSource().SdHash)[:6]
 			pcfg := config.GetStreamsV5()
 			startUrl := fmt.Sprintf("%s/%s/%s", pcfg["startpath"], claim.ClaimID, sdHash)
-			hlsUrl := fmt.Sprintf("%s/%s/%s", pcfg["hlspath"], claim.ClaimID, sdHash)
-
+			hlsUrl := fmt.Sprintf("%s/%s/%s/master.m3u8", pcfg["hlspath"], claim.ClaimID, sdHash)
 			ip := cu.IP
 			hlsHash := signStreamURL(hlsUrl, fmt.Sprintf("ip=%s&pass=%s", ip, pcfg["paidpass"]))
 
