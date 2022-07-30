@@ -111,7 +111,7 @@ func (s *paidContentSuite) TestPurchaseAuthorized() {
 	err = resp.GetObject(&getResponse)
 	s.Require().NoError(err)
 	s.Equal(
-		"https://secure.odycdn.com/v5/streams/start/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4?hash-hls=f43190ca155f3e145d243594673c37b9&ip=8.8.8.8&hash=fb23fa4a6e0c3ff223a1fdf2a6ec2981",
+		"https://secure.odycdn.com/v5/streams/start/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4?hash-hls=4e42be75b03ce2237e8ff8284c794392&ip=8.8.8.8&hash=910a69e8e189288c29a5695314b48e89",
 		getResponse.StreamingURL,
 	)
 }

@@ -89,15 +89,18 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 				return nil, fmt.Errorf("rental expired")
 			}
 
-			sdHash := hex.EncodeToString(stream.GetSource().SdHash)[:6]
+			sdHash := hex.EncodeToString(stream.GetSource().SdHash)
 			pcfg := config.GetStreamsV5()
-			startUrl := fmt.Sprintf("%s/%s/%s", pcfg["startpath"], claim.ClaimID, sdHash)
+			startUrl := fmt.Sprintf("%s/%s/%s", pcfg["startpath"], claim.ClaimID, sdHash[:6])
 			hlsUrl := fmt.Sprintf("%s/%s/%s/master.m3u8", pcfg["hlspath"], claim.ClaimID, sdHash)
+
 			ip := cu.IP
 			hlsHash := signStreamURL(hlsUrl, fmt.Sprintf("ip=%s&pass=%s", ip, pcfg["paidpass"]))
 
 			startQuery := fmt.Sprintf("hash-hls=%s&ip=%s&pass=%s", hlsHash, ip, pcfg["paidpass"])
-			responseResult[ParamStreamingUrl] = fmt.Sprintf("%s%s?hash-hls=%s&ip=%s&hash=%s", pcfg["paidhost"], startUrl, hlsHash, ip, signStreamURL(startUrl, startQuery))
+			responseResult[ParamStreamingUrl] = fmt.Sprintf(
+				"%s%s?hash-hls=%s&ip=%s&hash=%s",
+				pcfg["paidhost"], startUrl, hlsHash, ip, signStreamURL(startUrl, startQuery))
 			response.Result = responseResult
 			return response, nil
 		}
