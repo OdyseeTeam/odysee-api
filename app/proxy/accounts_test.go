@@ -113,7 +113,7 @@ func TestAuthEmailNotVerified(t *testing.T) {
 	var response jsonrpc.RPCResponse
 	err = json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
-	assert.Equal(t, "must authenticate", response.Error.Message)
+	assert.Equal(t, "authentication required", response.Error.Message)
 }
 
 func TestWithoutToken(t *testing.T) {
@@ -168,5 +168,5 @@ func TestAccountSpecificWithoutToken(t *testing.T) {
 	err = json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 	require.NotNil(t, response.Error)
-	require.Equal(t, "authentication required", response.Error.Message)
+	require.Equal(t, "authentication token missing", response.Error.Message)
 }

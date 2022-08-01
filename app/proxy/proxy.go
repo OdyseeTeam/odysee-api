@@ -102,7 +102,6 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		if authErr != nil {
 			writeResponse(w, rpcerrors.ErrorToJSON(authErr))
 			observeFailure(metrics.GetDuration(r), rpcReq.Method, metrics.FailureKindAuth)
-
 			return
 		}
 	}
@@ -190,16 +189,6 @@ func GetAuthError(user *models.User, err error) error {
 	if err == nil && user != nil {
 		return nil
 	}
-
-	// if errors.Is(err, wallet.ErrNoAuthInfo) {
-	// 	return rpcerrors.NewAuthRequiredError()
-	// if err != nil {
-	// 	return rpcerrors.NewForbiddenError(err)
-	// } else if user == nil {
-	// 	return rpcerrors.NewForbiddenError(errors.Err("must authenticate"))
-	// }
-
-	// return errors.Err("unknown auth error")
 	return err
 }
 

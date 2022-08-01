@@ -64,9 +64,6 @@ func GetCurrentUserData(ctx context.Context) (*CurrentUser, error) {
 	if res == nil {
 		return nil, fmt.Errorf("%v is not CurrentUser", v)
 	}
-	if res.err != nil {
-		return nil, res.err
-	}
 	return res, nil
 }
 
@@ -88,21 +85,5 @@ func (cu CurrentUser) Err() error {
 func NewIAPIProvider(router *sdkrouter.Router, internalAPIHost string) Provider {
 	return func(token, metaRemoteIP string) (*models.User, error) {
 		return wallet.GetUserWithSDKServer(router, internalAPIHost, token, metaRemoteIP)
-	}
-}
-
-// NewOauthProvider authenticates a user by validating the access token passed in the
-// authorization header. If the keycloak user id is stored locally then that user will
-// be returned. If not then we reach out to internal-apis to get the internal-apis
-// user id and use that to create the known wallet id, save it along with the user id
-// to the user in question. If auth is successful, the user will have a
-// lbrynet server assigned and a wallet that's created and ready to use.
-func NewOauthProvider(oauthProviderURL string, clientID string, iapiURL string, router *sdkrouter.Router) Provider {
-	auther, err := wallet.NewOauthAuthenticator(oauthProviderURL, clientID, iapiURL, router)
-	if err != nil {
-		panic(err)
-	}
-	return func(token, metaRemoteIP string) (*models.User, error) {
-		return auther.Authenticate(token, metaRemoteIP)
 	}
 }
