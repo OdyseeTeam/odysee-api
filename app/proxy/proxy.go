@@ -19,7 +19,6 @@ import (
 	"github.com/OdyseeTeam/odysee-api/app/query/cache"
 	"github.com/OdyseeTeam/odysee-api/app/rpcerrors"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
-	"github.com/OdyseeTeam/odysee-api/app/wallet"
 	"github.com/OdyseeTeam/odysee-api/internal/audit"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/ip"
@@ -192,15 +191,16 @@ func GetAuthError(user *models.User, err error) error {
 		return nil
 	}
 
-	if errors.Is(err, wallet.ErrNoAuthInfo) {
-		return rpcerrors.NewAuthRequiredError()
-	} else if err != nil {
-		return rpcerrors.NewForbiddenError(err)
-	} else if user == nil {
-		return rpcerrors.NewForbiddenError(errors.Err("must authenticate"))
-	}
+	// if errors.Is(err, wallet.ErrNoAuthInfo) {
+	// 	return rpcerrors.NewAuthRequiredError()
+	// if err != nil {
+	// 	return rpcerrors.NewForbiddenError(err)
+	// } else if user == nil {
+	// 	return rpcerrors.NewForbiddenError(errors.Err("must authenticate"))
+	// }
 
-	return errors.Err("unknown auth error")
+	// return errors.Err("unknown auth error")
+	return err
 }
 
 func getDevice(r *http.Request) string {

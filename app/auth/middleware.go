@@ -54,25 +54,30 @@ func LegacyMiddleware(provider Provider) mux.MiddlewareFunc {
 			var iac *iapi.Client
 			user, err := FromRequest(r)
 			ipAddr := ip.FromRequest(r)
-			token := r.Header.Get(wallet.LegacyTokenHeader)
-			if token == "" {
-				err = errors.Err(wallet.ErrNoAuthInfo)
-			} else if user == nil && err != nil {
-				user, err = provider(token, ipAddr)
-				if err != nil {
-					logger.WithFields(logrus.Fields{"ip": ipAddr}).Debugf("error authenticating user")
+			if user == nil && err != nil {
+				token := r.Header.Get(wallet.LegacyTokenHeader)
+				if token != "" {
+					addr := ip.FromRequest(r)
+					user, err = provider(token, addr)
+					if err != nil {
+						logger.WithFields(logrus.Fields{"ip": addr}).Debugf("error authenticating user")
+					}
+				} else {
+					err = errors.Err(wallet.ErrNoAuthInfo)
 				}
+				if user != nil {
+					iac, _ = iapi.NewClient(
+						iapi.WithLegacyToken(token),
+						iapi.WithRemoteIP(ipAddr),
+					)
+				}
+				cu := NewCurrentUser(user, err)
+				cu.IP = ipAddr
+				cu.IAPIClient = iac
+				next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), userContextKey, cu)))
 			}
-			if user != nil {
-				iac, _ = iapi.NewClient(
-					iapi.WithLegacyToken(token),
-					iapi.WithRemoteIP(ipAddr),
-				)
-			}
-			cu := NewCurrentUser(user, err)
-			cu.IP = ipAddr
-			cu.IAPIClient = iac
-			next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), userContextKey, cu)))
+
+			next.ServeHTTP(w, r)
 		})
 	}
 }
