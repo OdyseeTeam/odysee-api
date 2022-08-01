@@ -84,7 +84,7 @@ func (c *Cache) Retrieve(method string, params interface{}, retriever Retriever)
 			return nil, err
 		}
 
-		resp, ok := res.(jsonrpc.RPCResponse)
+		resp, ok := res.(*jsonrpc.RPCResponse)
 		if ok && resp.Error != nil {
 			l.Debug("rpc error reponse received, not caching")
 			return res, nil

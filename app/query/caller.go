@@ -116,7 +116,7 @@ func (c *Caller) newRPCClient(timeout time.Duration) jsonrpc.RPCClient {
 					Timeout:   30 * time.Second,
 					KeepAlive: 120 * time.Second,
 				}).Dial,
-				ResponseHeaderTimeout: timeout,
+				ResponseHeaderTimeout: timeout * 2,
 				ExpectContinueTimeout: 1 * time.Second,
 			},
 		},

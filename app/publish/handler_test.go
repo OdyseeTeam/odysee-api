@@ -179,7 +179,7 @@ func TestHandler_AuthRequired(t *testing.T) {
 	publisher := &DummyPublisher{}
 	handler := &Handler{UploadPath: os.TempDir()}
 
-	provider := func(token, ip string) (*models.User, error) {
+	provider := func(token, _ string) (*models.User, error) {
 		if token == "legacyAuthToken123" {
 			return &models.User{ID: 20404}, nil
 		}
@@ -194,7 +194,7 @@ func TestHandler_AuthRequired(t *testing.T) {
 	var rpcResponse jsonrpc.RPCResponse
 	err := json.Unmarshal(rr.Body.Bytes(), &rpcResponse)
 	require.NoError(t, err)
-	assert.Equal(t, "authentication required", rpcResponse.Error.Message)
+	assert.Equal(t, "authentication token missing", rpcResponse.Error.Message)
 	require.False(t, publisher.called)
 }
 

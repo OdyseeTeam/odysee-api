@@ -425,6 +425,7 @@ func TestCaller_CallNotCachingErrors(t *testing.T) {
 	rpcResponse, err := c.Call(bgctx(), jsonrpc.NewRequest("claim_search", map[string]interface{}{"urls": "what"}))
 	require.NoError(t, err)
 	assert.Equal(t, rpcResponse.Error.Code, -32000)
+	time.Sleep(500 * time.Millisecond)
 	cResp, err := c.Cache.Retrieve(
 		"claim_search",
 		map[string]interface{}{"urls": "what"},
@@ -576,7 +577,7 @@ func TestCaller_timeouts(t *testing.T) {
 			JSONRPC: "2.0",
 			Result:  `""`,
 		})
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(700 * time.Millisecond)
 		srv.NextResponse <- test.ResToStr(t, &jsonrpc.RPCResponse{
 			JSONRPC: "2.0",
 			Result:  `""`,
@@ -587,7 +588,7 @@ func TestCaller_timeouts(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = c.SendQuery(WithQuery(bgctx(), q), q)
-	require.Regexp(t, `timeout awaiting response headers`, err.Error())
+	require.Error(t, err, `timeout awaiting response headers`)
 }
 
 func TestCaller_DontReloadWalletAfterOtherErrors(t *testing.T) {

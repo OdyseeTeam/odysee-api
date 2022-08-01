@@ -7,7 +7,6 @@ import (
 
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/app/wallet"
-	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/ip"
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/iapi"
@@ -51,28 +50,34 @@ func Middleware(auther Authenticator) mux.MiddlewareFunc {
 func LegacyMiddleware(provider Provider) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var err error
 			var iac *iapi.Client
 			user, err := FromRequest(r)
 			ipAddr := ip.FromRequest(r)
-			token := r.Header.Get(wallet.LegacyTokenHeader)
-			if token == "" {
-				err = errors.Err(wallet.ErrNoAuthInfo)
-			} else if user == nil && err != nil {
-				user, err = provider(token, ipAddr)
-				if err != nil {
-					logger.WithFields(logrus.Fields{"ip": ipAddr}).Debugf("error authenticating user")
+			if err != nil {
+				token := r.Header.Get(wallet.LegacyTokenHeader)
+				if token != "" {
+					user, err = provider(token, ipAddr)
+					if err != nil {
+						logger.WithFields(logrus.Fields{"ip": ipAddr}).Debugf("error authenticating user")
+					}
+				} else {
+					err = wallet.ErrNoAuthInfo
 				}
+				if user != nil {
+					iac, _ = iapi.NewClient(
+						iapi.WithLegacyToken(token),
+						iapi.WithRemoteIP(ipAddr),
+					)
+				}
+				cu := NewCurrentUser(user, err)
+				cu.IP = ipAddr
+				cu.IAPIClient = iac
+				next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), userContextKey, cu)))
+				return
 			}
-			if user != nil {
-				iac, _ = iapi.NewClient(
-					iapi.WithLegacyToken(token),
-					iapi.WithRemoteIP(ipAddr),
-				)
-			}
-			cu := NewCurrentUser(user, err)
-			cu.IP = ipAddr
-			cu.IAPIClient = iac
-			next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), userContextKey, cu)))
+
+			next.ServeHTTP(w, r)
 		})
 	}
 }
