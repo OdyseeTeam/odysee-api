@@ -68,7 +68,6 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	v1Router.HandleFunc("/metric/ui", metrics.TrackUIMetric).Methods(http.MethodPost)
 	v1Router.HandleFunc("/metric/ui", emptyHandler).Methods(http.MethodOptions)
 
-	v1Router.HandleFunc("/status", status.GetStatus).Methods(http.MethodGet)
 	v1Router.HandleFunc("/paid/pubkey", paid.HandlePublicKeyRequest).Methods(http.MethodGet)
 
 	internalRouter := r.PathPrefix("/internal").Subrouter()
@@ -76,8 +75,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 
 	v2Router := r.PathPrefix("/api/v2").Subrouter()
 	v2Router.Use(defaultMiddlewares(oauthAuther, legacyProvider, sdkRouter))
-	v2Router.HandleFunc("/status", status.GetStatusV2).Methods(http.MethodGet)
-	v2Router.HandleFunc("/status", emptyHandler).Methods(http.MethodOptions)
+	status.InstallRoutes(v2Router)
 
 	composer := tusd.NewStoreComposer()
 	store := filestore.New(uploadPath)

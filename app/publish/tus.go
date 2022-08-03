@@ -318,7 +318,7 @@ func (h *TusHandler) multiAuthUser(r *http.Request) (*models.User, error) {
 	if errors.Is(err, wallet.ErrNoAuthInfo) {
 		// TODO: Remove this pathway after legacy tokens go away.
 		if token, ok := r.Header[wallet.LegacyTokenHeader]; ok {
-			addr := ip.AddressForRequest(r.Header, r.RemoteAddr)
+			addr := ip.ForRequest(r)
 			user, err := h.authProvider(token[0], addr)
 			if err != nil {
 				log.WithError(err).Info("error authenticating user")
@@ -336,7 +336,7 @@ func (h *TusHandler) multiAuthUser(r *http.Request) (*models.User, error) {
 		return nil, err
 	}
 
-	user, err := h.auther.Authenticate(token, ip.AddressForRequest(r.Header, r.RemoteAddr))
+	user, err := h.auther.Authenticate(token, ip.ForRequest(r))
 	if err != nil {
 		log.WithError(err).Info("error authenticating user")
 		return nil, err
