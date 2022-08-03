@@ -26,4 +26,10 @@ func TestForRequest(t *testing.T) {
 			assert.Equal(t, exp, ForRequest(r))
 		})
 	}
+	t.Run("cf header", func(t *testing.T) {
+		r, _ := http.NewRequest(http.MethodGet, "", nil)
+		r.Header.Add("X-Forwarded-For", "70.70.70.70")
+		r.Header.Add(CloudflareIPHeader, "80.80.80.80")
+		assert.Equal(t, "80.80.80.80", ForRequest(r))
+	})
 }

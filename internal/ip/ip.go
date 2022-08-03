@@ -9,6 +9,10 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 )
 
+const (
+	CloudflareIPHeader = "Cf-Connecting-Ip"
+)
+
 var logger = monitor.NewModuleLogger("ip")
 
 // most of this is from https://husobee.github.io/golang/ip-address/2015/12/17/remote-ip-go.html
@@ -74,6 +78,10 @@ func IsPrivateSubnet(ipAddress net.IP) bool {
 func ForRequest(r *http.Request) string {
 	headers := r.Header
 	remoteAddr := r.RemoteAddr
+	cf := headers.Get(CloudflareIPHeader)
+	if cf != "" {
+		return cf
+	}
 	for _, h := range []string{"X-Forwarded-For", "X-Real-Ip"} {
 		addresses := strings.Split(headers.Get(h), ",")
 		// march from right to left until we get a public address

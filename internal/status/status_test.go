@@ -180,6 +180,7 @@ func (s *statusSuite) TestWhoAmI() {
 			ReqHeader: map[string]string{
 				wallet.AuthorizationHeader: s.TokenHeader,
 				"X-Forwarded-For":          "192.0.0.1,56.56.56.1",
+				"Cookie":                   "secret1=secret; secret2=secret",
 			},
 			RemoteAddr: "172.16.5.5",
 			Code:       http.StatusOK,

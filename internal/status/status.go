@@ -164,7 +164,7 @@ func WhoAmI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for k := range r.Header {
-		if k == wallet.AuthorizationHeader || k == wallet.LegacyTokenHeader {
+		if k == wallet.AuthorizationHeader || k == wallet.LegacyTokenHeader || k == "Cookie" {
 			continue
 		}
 		res.RequestHeaders[k] = r.Header.Get(k)
