@@ -18,12 +18,12 @@ var expectedIPs = map[string]string{
 	"127.0.0.1, 192.168.0.1, 70.41.3.18, 127.0.0.1":    "70.41.3.18",
 }
 
-func TestAddressForRequest(t *testing.T) {
+func TestForRequest(t *testing.T) {
 	for val, exp := range expectedIPs {
 		t.Run(val, func(t *testing.T) {
 			r, _ := http.NewRequest(http.MethodGet, "", nil)
 			r.Header.Add("X-Forwarded-For", val)
-			assert.Equal(t, exp, AddressForRequest(r.Header, r.RemoteAddr))
+			assert.Equal(t, exp, ForRequest(r))
 		})
 	}
 }
