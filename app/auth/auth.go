@@ -35,7 +35,7 @@ type IAPIUserClient interface {
 
 type Authenticator interface {
 	Authenticate(token, metaRemoteIP string) (*models.User, error)
-	GetTokenFromHeader(http.Header) (string, error)
+	GetTokenFromRequest(r *http.Request) (string, error)
 }
 
 // Provider tries to authenticate using the provided auth token

@@ -35,7 +35,7 @@ func (a *dummyAuther) Authenticate(token, ip string) (*models.User, error) {
 	return &models.User{ID: 16595, IdpID: null.StringFrom("my-random-idp-id")}, nil
 }
 
-func (a *dummyAuther) GetTokenFromHeader(_ http.Header) (string, error) {
+func (a *dummyAuther) GetTokenFromRequest(r *http.Request) (string, error) {
 	return "secret-token", nil
 }
 
