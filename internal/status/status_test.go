@@ -7,21 +7,29 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/OdyseeTeam/odysee-api/app/auth"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/app/wallet"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/internal/e2etest"
 	"github.com/OdyseeTeam/odysee-api/internal/middleware"
 	"github.com/OdyseeTeam/odysee-api/internal/storage"
 	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
+	"github.com/gorilla/mux"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
+
+type statusSuite struct {
+	e2etest.FullSuite
+}
 
 func TestMain(m *testing.M) {
 	// These tests requires an environment close to production setup, i.e. no loading from the config
@@ -37,7 +45,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestGetStatusV2_Unauthenticated(t *testing.T) {
+func TestStatusV2_Unauthenticated(t *testing.T) {
 	rr := httptest.NewRecorder()
 	r, _ := http.NewRequest("GET", "", nil)
 	rt := sdkrouter.New(config.GetLbrynetServers())
@@ -45,7 +53,7 @@ func TestGetStatusV2_Unauthenticated(t *testing.T) {
 		middleware.Chain(
 			sdkrouter.Middleware(rt),
 			auth.NilMiddleware,
-		), GetStatusV2)
+		), StatusV2)
 
 	handler.ServeHTTP(rr, r)
 	response := rr.Result()
@@ -61,7 +69,7 @@ func TestGetStatusV2_Unauthenticated(t *testing.T) {
 	assert.Nil(t, respStatus.User)
 }
 
-func TestGetStatusV2_UnauthenticatedOffline(t *testing.T) {
+func TestStatusV2_UnauthenticatedOffline(t *testing.T) {
 	_, err := models.LbrynetServers().UpdateAllG(models.M{"address": "http://malfunctioning/"})
 	require.NoError(t, err)
 	defer func() {
@@ -75,7 +83,7 @@ func TestGetStatusV2_UnauthenticatedOffline(t *testing.T) {
 		middleware.Chain(
 			sdkrouter.Middleware(rt),
 			auth.NilMiddleware,
-		), GetStatusV2)
+		), StatusV2)
 
 	handler.ServeHTTP(rr, r)
 	response := rr.Result()
@@ -103,7 +111,7 @@ func TestGetStatusV2_UnauthenticatedOffline(t *testing.T) {
 	assert.Nil(t, respStatus.User)
 }
 
-func TestGetStatusV2_Authenticated(t *testing.T) {
+func TestStatusV2_Authenticated(t *testing.T) {
 	ts := test.MockHTTPServer(nil)
 	defer ts.Close()
 	ts.NextResponse <- `{
@@ -123,7 +131,7 @@ func TestGetStatusV2_Authenticated(t *testing.T) {
 		middleware.Chain(
 			sdkrouter.Middleware(rt),
 			auth.MiddlewareWithProvider(rt, ts.URL),
-		), GetStatusV2)
+		), StatusV2)
 
 	handler.ServeHTTP(rr, r)
 	response := rr.Result()
@@ -154,4 +162,62 @@ func TestGetStatusV2_Authenticated(t *testing.T) {
 		statusOK,
 		lbrynetStatus.Status,
 	)
+}
+
+func TestStatusSuite(t *testing.T) {
+	suite.Run(t, new(statusSuite))
+}
+
+func (s *statusSuite) TestWhoAmI() {
+	r := mux.NewRouter().PathPrefix("/v2").Subrouter()
+	r.Use(auth.Middleware(s.Auther))
+	InstallRoutes(r)
+
+	s.Run("authenticated", func() {
+		resp := (&test.HTTPTest{
+			Method: http.MethodGet,
+			URL:    "/v2/whoami",
+			ReqHeader: map[string]string{
+				wallet.AuthorizationHeader: s.TokenHeader,
+				"X-Forwarded-For":          "192.0.0.1,56.56.56.1",
+				"Cookie":                   "secret1=secret; secret2=secret",
+			},
+			RemoteAddr: "172.16.5.5",
+			Code:       http.StatusOK,
+		}).Run(r, s.T())
+		b, err := ioutil.ReadAll(resp.Body)
+		s.Require().NoError(err)
+		wr := whoAmIResponse{}
+		err = json.Unmarshal(b, &wr)
+		s.Require().NoError(err)
+		s.Equal("56.56.56.1", wr.DetectedIP)
+		s.Equal("172.16.5.5", wr.RemoteIP)
+		s.Equal(strconv.Itoa(s.User.ID), wr.UserID)
+		s.Equal(map[string]string{
+			"X-Forwarded-For": "192.0.0.1,56.56.56.1",
+		}, wr.RequestHeaders)
+	})
+
+	s.Run("anonymous", func() {
+		resp := (&test.HTTPTest{
+			Method: http.MethodGet,
+			URL:    "/v2/whoami",
+			ReqHeader: map[string]string{
+				"X-Forwarded-For": "192.0.0.1,56.56.56.1",
+			},
+			RemoteAddr: "172.16.5.5",
+			Code:       http.StatusOK,
+		}).Run(r, s.T())
+		b, err := ioutil.ReadAll(resp.Body)
+		s.Require().NoError(err)
+		wr := whoAmIResponse{}
+		err = json.Unmarshal(b, &wr)
+		s.Require().NoError(err)
+		s.Equal("56.56.56.1", wr.DetectedIP)
+		s.Equal("172.16.5.5", wr.RemoteIP)
+		s.Equal("", wr.UserID)
+		s.Equal(map[string]string{
+			"X-Forwarded-For": "192.0.0.1,56.56.56.1",
+		}, wr.RequestHeaders)
+	})
 }

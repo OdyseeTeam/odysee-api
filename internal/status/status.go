@@ -4,19 +4,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/auth"
 	"github.com/OdyseeTeam/odysee-api/app/query"
 	"github.com/OdyseeTeam/odysee-api/app/query/cache"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
+	"github.com/OdyseeTeam/odysee-api/app/wallet"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/internal/ip"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/internal/responses"
 	"github.com/OdyseeTeam/odysee-api/models"
+	"github.com/gorilla/mux"
 	"github.com/ybbus/jsonrpc"
-
-	"github.com/jinzhu/copier"
 )
 
 var logger = monitor.NewModuleLogger("status")
@@ -48,11 +50,14 @@ type serverItem struct {
 	Status string `json:"status"`
 	Error  string `json:"error,omitempty"`
 }
+
 type serverList []*serverItem
+
 type userData struct {
 	ID                    int    `json:"id"`
 	AssignedLbrynetServer string `json:"assigned_lbrynet_server"`
 }
+
 type statusResponse struct {
 	Timestamp    string                `json:"timestamp"`
 	Services     map[string]serverList `json:"services"`
@@ -60,65 +65,25 @@ type statusResponse struct {
 	User         *userData             `json:"user,omitempty"`
 }
 
-func GetStatus(w http.ResponseWriter, req *http.Request) {
-	respStatus := http.StatusOK
-	var response statusResponse
-
-	if cachedResponse != nil && lastUpdate.After(time.Now().Add(statusCacheValidity)) {
-		//response = *cachedResponse
-		copier.Copy(&response, cachedResponse)
-	} else {
-		services := map[string]serverList{
-			"lbrynet": {},
-			"player":  {},
-		}
-		response = statusResponse{
-			Timestamp:    fmt.Sprintf("%v", time.Now().UTC()),
-			Services:     services,
-			GeneralState: statusOK,
-		}
-		failureDetected := false
-
-		sdks := sdkrouter.FromRequest(req).GetAll()
-		for _, s := range sdks {
-			services["lbrynet"] = append(services["lbrynet"], &serverItem{Name: s.Name, Status: statusOK})
-		}
-
-		for _, ps := range PlayerServers {
-			r, err := http.Get(ps)
-			srv := serverItem{Name: ps, Status: statusOK}
-			if err != nil {
-				srv.Error = fmt.Sprintf("%v", err)
-				srv.Status = statusOffline
-				failureDetected = true
-			} else if r.StatusCode != http.StatusNotFound {
-				srv.Status = statusNotReady
-				srv.Error = fmt.Sprintf("http status %v", r.StatusCode)
-				failureDetected = true
-			}
-			services["player"] = append(services["player"], &srv)
-		}
-		if failureDetected {
-			response.GeneralState = statusFailing
-		}
-		cachedResponse = &response
-		lastUpdate = time.Now()
-	}
-
-	responses.AddJSONContentType(w)
-	w.WriteHeader(respStatus)
-	respByte, err := json.MarshalIndent(response, "", "  ")
-	if err != nil {
-		logger.Log().Error(err)
-	}
-	w.Write(respByte)
+type whoAmIResponse struct {
+	Timestamp      string            `json:"timestamp"`
+	DetectedIP     string            `json:"detected_ip"`
+	UserID         string            `json:"user_id"`
+	SDK            string            `json:"sdk"`
+	RequestHeaders map[string]string `json:"request_headers"`
+	RemoteIP       string            `json:"remote_ip"`
 }
 
-func GetStatusV2(w http.ResponseWriter, r *http.Request) {
-	respStatus := http.StatusOK
-	var response statusResponse
+func InstallRoutes(router *mux.Router) {
+	router.HandleFunc("/status", StatusV2).Methods(http.MethodGet)
+	router.HandleFunc("/whoami", WhoAmI).Methods(http.MethodGet)
+	router.Methods(http.MethodOptions).HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
+}
 
-	response = statusResponse{
+func StatusV2(w http.ResponseWriter, r *http.Request) {
+	respStatus := http.StatusOK
+
+	response := statusResponse{
 		Timestamp:    fmt.Sprintf("%v", time.Now().UTC()),
 		Services:     nil,
 		GeneralState: statusOK,
@@ -147,7 +112,7 @@ func GetStatusV2(w http.ResponseWriter, r *http.Request) {
 
 	c := query.NewCaller(lbrynetServer.Address, userID)
 	c.Cache = qCache
-	rpcRes, err := c.Call(jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": resolveURL}))
+	rpcRes, err := c.Call(r.Context(), jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": resolveURL}))
 
 	if err != nil {
 		srv.Error = err.Error()
@@ -183,4 +148,26 @@ func GetStatusV2(w http.ResponseWriter, r *http.Request) {
 		logger.Log().Error(err)
 	}
 	w.Write(respByte)
+}
+
+func WhoAmI(w http.ResponseWriter, r *http.Request) {
+	res := whoAmIResponse{
+		Timestamp:      time.Now().Format(time.RFC3339),
+		DetectedIP:     ip.ForRequest(r),
+		RequestHeaders: map[string]string{},
+		RemoteIP:       r.RemoteAddr,
+	}
+	cu, err := auth.GetCurrentUserData(r.Context())
+	if err == nil && cu.User() != nil {
+		res.UserID = strconv.Itoa(cu.User().ID)
+		res.SDK = cu.User().R.LbrynetServer.Name
+	}
+
+	for k := range r.Header {
+		if k == wallet.AuthorizationHeader || k == wallet.LegacyTokenHeader || k == "Cookie" {
+			continue
+		}
+		res.RequestHeaders[k] = r.Header.Get(k)
+	}
+	responses.WriteJSON(w, res)
 }

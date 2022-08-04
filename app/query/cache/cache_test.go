@@ -64,19 +64,14 @@ func TestCache(t *testing.T) {
 
 func TestCacheNoError(t *testing.T) {
 	cacheLogger.Disable()
-
-	var (
-		res jsonrpc.RPCResponse
-		req jsonrpc.RPCRequest
-	)
-
+	req := jsonrpc.RPCRequest{}
 	rreq := `{"jsonrpc":"2.0","method":"resolve","params":{"urls":["one", "two", "three"]},"id":1555013448981}`
 	err := json.Unmarshal([]byte(rreq), &req)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	res = jsonrpc.RPCResponse{Error: &jsonrpc.RPCError{Message: "-32500:Attempting to send rpc request when connection is not available"}}
+	res := &jsonrpc.RPCResponse{Error: &jsonrpc.RPCError{Message: "-32500:Attempting to send rpc request when connection is not available"}}
 
 	cfg := DefaultConfig()
 	cfg.ristrettoMetrics = true

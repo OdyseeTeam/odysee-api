@@ -128,6 +128,11 @@ func GetPaidTokenPrivKey() string {
 	return Config.Viper.GetString("PaidTokenPrivKey")
 }
 
+// GetStreamsV5 returns config map for streams endpoint v5
+func GetStreamsV5() map[string]string {
+	return Config.Viper.GetStringMapString("StreamsV5")
+}
+
 // GetAddress determines address to bind http API server to
 func GetAddress() string {
 	return Config.Viper.GetString("Address")

@@ -322,7 +322,7 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	op := metrics.StartOperation("sdk", "call_publish")
-	rpcRes, err := c.Call(rpcReq)
+	rpcRes, err := c.Call(r.Context(), rpcReq)
 	defer op.End()
 
 	if h.notifySDKQueries {
@@ -425,7 +425,7 @@ func (h *TusHandler) multiAuthUser(header http.Header, remoteAddr string) (*mode
 		return nil, err
 	}
 
-	user, err := h.options.auther.Authenticate(token, ip.AddressForRequest(header, remoteAddr))
+	user, err := h.options.auther.Authenticate(token, ip.ForRequest(r))
 	if err != nil {
 		log.WithError(err).Info("error authenticating user")
 		return nil, err

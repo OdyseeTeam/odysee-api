@@ -188,7 +188,7 @@ retry:
 	}
 
 	op := metrics.StartOperation("sdk", "call_publish")
-	rpcRes, err := c.Call(rpcReq)
+	rpcRes, err := c.Call(r.Context(), rpcReq)
 	op.End()
 	if err != nil {
 		monitor.ErrorToSentry(
@@ -220,10 +220,11 @@ retry:
 func getCaller(sdkAddress, filename string, userID int, qCache *cache.Cache) *query.Caller {
 	c := query.NewCaller(sdkAddress, userID)
 	c.Cache = qCache
-	c.AddPreflightHook(query.AllMethodsHook, func(_ *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
-		params := hctx.Query.ParamsAsMap()
+	c.AddPreflightHook(query.AllMethodsHook, func(_ *query.Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
+		q := query.GetQuery(ctx)
+		params := q.ParamsAsMap()
 		params[fileNameParam] = filename
-		hctx.Query.Request.Params = params
+		q.Request.Params = params
 		return nil, nil
 	}, "")
 	return c

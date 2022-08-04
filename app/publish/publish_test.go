@@ -1,6 +1,7 @@
 package publish
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -122,7 +123,8 @@ func TestLbrynetPublisher(t *testing.T) {
 	err = wallet.Create(server, userID)
 	require.NoError(t, err)
 
-	res, err := getCaller(server, path.Join("/storage", path.Base(f.Name())), userID, nil).Call(req)
+	res, err := getCaller(server, path.Join("/storage", path.Base(f.Name())), userID, nil).Call(
+		context.Background(), req)
 	require.NoError(t, err)
 
 	// This is all we can check for now without running on testnet or crediting some funds to the test account

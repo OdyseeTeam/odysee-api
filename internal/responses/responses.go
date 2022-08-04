@@ -17,6 +17,16 @@ func AddJSONContentType(w http.ResponseWriter) {
 	w.Header().Add("content-type", "application/json; charset=utf-8")
 }
 
+func WriteJSON(w http.ResponseWriter, d interface{}) {
+	rb, err := json.MarshalIndent(d, "", "  ")
+	if err != nil {
+		w.Write([]byte("error marshaling object: " + err.Error()))
+		return
+	}
+	AddJSONContentType(w)
+	w.Write(rb)
+}
+
 func JSONRPCSerialize(r *jsonrpc.RPCResponse) ([]byte, error) {
 	var (
 		b []byte
