@@ -16,32 +16,34 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type FullSuite struct {
-	suite.Suite
-	// cleanup func()
-	TokenHeader string
-	dbCleanup   migrator.TestDBCleanup
-	DB          *sql.DB
-	SDKRouter   *sdkrouter.Router
-	Auther      auth.Authenticator
+type TestUser struct {
 	User        *models.User
 	SDKAddress  string
 	CurrentUser *auth.CurrentUser
 }
 
+type FullSuite struct {
+	suite.Suite
+
+	TokenHeader string
+	DB          *sql.DB
+	SDKRouter   *sdkrouter.Router
+	Auther      auth.Authenticator
+	TestUser    *TestUser
+
+	dbCleanup migrator.TestDBCleanup
+}
+
 func (s *FullSuite) SetupSuite() {
 	config.Override("LbrynetServers", "")
 
-	// SDKRouter := SDKRouter.New(config.GetLbrynetServers())
 	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
-	if err != nil {
-		panic(err)
-	}
+	s.Require().NoError(err)
 	storage.SetDB(db)
 	s.dbCleanup = dbCleanup
 	s.DB = db
-	s.SDKRouter = sdkrouter.New(config.GetLbrynetServers())
 
+	s.SDKRouter = sdkrouter.New(config.GetLbrynetServers())
 	th, err := wallet.GetTestTokenHeader()
 	s.Require().NoError(err)
 	s.TokenHeader = th
@@ -54,8 +56,6 @@ func (s *FullSuite) SetupSuite() {
 
 	u, err := auther.Authenticate(s.TokenHeader, "127.0.0.1")
 	s.Require().NoError(err)
-	s.User = u
-	s.SDKAddress = sdkrouter.GetSDKAddress(u)
 
 	iac, err := iapi.NewClient(
 		iapi.WithOAuthToken(strings.TrimPrefix(th, wallet.TokenPrefix)),
@@ -63,10 +63,15 @@ func (s *FullSuite) SetupSuite() {
 	)
 	s.Require().NoError(err)
 
-	CurrentUser := auth.NewCurrentUser(u, nil)
-	CurrentUser.IP = "8.8.8.8"
-	CurrentUser.IAPIClient = iac
-	s.CurrentUser = CurrentUser
+	cu := auth.NewCurrentUser(u, nil)
+	cu.IP = "8.8.8.8"
+	cu.IAPIClient = iac
+
+	s.TestUser = &TestUser{
+		User:        u,
+		SDKAddress:  sdkrouter.GetSDKAddress(u),
+		CurrentUser: cu,
+	}
 }
 
 func (s *FullSuite) TearDownSuite() {

@@ -2,6 +2,7 @@ package publish
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -66,7 +67,7 @@ func Test_createRealWallet(t *testing.T) {
 	createRealWallet(t, WalletKeys{PrivateKey: os.Getenv(envPrivateKey), PublicKey: os.Getenv(envPublicKey)}, userID)
 
 	c := query.NewCaller("http://localhost:5279", userID)
-	res, err := c.Call(jsonrpc.NewRequest("account_balance"))
+	res, err := c.Call(context.Background(), jsonrpc.NewRequest("account_balance"))
 	require.NoError(t, err)
 	require.Nil(t, res.Error)
 
@@ -75,6 +76,19 @@ func Test_createRealWallet(t *testing.T) {
 	require.NoError(t, err)
 	fmt.Printf("%+v", bal)
 	assert.GreaterOrEqual(t, bal.Available.Cmp(decimal.NewFromInt(1)), 0)
+}
+
+func TestStreamize(t *testing.T) {
+	absPath, _ := filepath.Abs("./testdata/assembly.pdf")
+	s, pb, err := Streamize(absPath)
+	require.NoError(t, err)
+	fmt.Println(hex.EncodeToString(pb.GetSource().SdHash))
+	d, err := s.Decode()
+	require.NoError(t, err)
+	od, err := ioutil.ReadFile(absPath)
+	require.NoError(t, err)
+	require.Equal(t, od, d)
+	require.True(t, false)
 }
 
 func TestLbrynetPublisher(t *testing.T) {

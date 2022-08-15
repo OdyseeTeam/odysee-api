@@ -1,6 +1,7 @@
 package publish
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/models"
@@ -50,7 +51,9 @@ func (d *UploadKeeper) get(id string) (*models.Upload, error) {
 }
 
 func (d *UploadKeeper) create(exec boil.Executor, hook handler.HookEvent) error {
-	user, err := d.handler.multiAuthUser(hook.HTTPRequest.Header, hook.HTTPRequest.RemoteAddr)
+	user, err := d.handler.multiAuthUser(&http.Request{
+		Header: hook.HTTPRequest.Header,
+	})
 	if err != nil {
 		return err
 	}

@@ -72,7 +72,7 @@ func Lbrynet() (string, Teardown, error) {
 
 	if err = pool.Retry(func() error {
 		c := query.NewCaller(addr, 0)
-		rpcRes, err := c.Call(jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": "what"}))
+		rpcRes, err := c.Call(context.Background(), jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": "what"}))
 
 		if err != nil {
 			return err

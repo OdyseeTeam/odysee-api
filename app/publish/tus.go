@@ -170,7 +170,7 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 
-	user, err := h.multiAuthUser(r.Header, r.RemoteAddr)
+	user, err := h.multiAuthUser(r)
 	if authErr := proxy.GetAuthError(user, err); authErr != nil {
 		log.WithError(authErr).Error("failed to authorize user")
 		w.Write(rpcerrors.ErrorToJSON(authErr))
@@ -396,18 +396,20 @@ func (h TusHandler) lockUpload(id string) (tusd.Lock, error) {
 //
 // see: https://github.com/tus/tusd/pull/342
 func (h *TusHandler) preCreateHook(hook tusd.HookEvent) error {
-	_, err := h.multiAuthUser(hook.HTTPRequest.Header, hook.HTTPRequest.RemoteAddr)
+	r := &http.Request{
+		Header: hook.HTTPRequest.Header,
+	}
+	_, err := h.multiAuthUser(r)
 	return err
 }
 
-func (h *TusHandler) multiAuthUser(header http.Header, remoteAddr string) (*models.User, error) {
+func (h *TusHandler) multiAuthUser(r *http.Request) (*models.User, error) {
 	log := h.logger.Log()
-	fmt.Println("ZZZ", h.options.auther)
-	token, err := h.options.auther.GetTokenFromHeader(header)
+	token, err := h.options.auther.GetTokenFromRequest(r)
 	if errors.Is(err, wallet.ErrNoAuthInfo) {
 		// TODO: Remove this pathway after legacy tokens go away.
-		if token, ok := header[wallet.LegacyTokenHeader]; ok {
-			addr := ip.AddressForRequest(header, remoteAddr)
+		if token, ok := r.Header[wallet.LegacyTokenHeader]; ok {
+			addr := ip.ForRequest(r)
 			user, err := h.options.provider(token[0], addr)
 			if err != nil {
 				log.WithError(err).Info("error authenticating user")

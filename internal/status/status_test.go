@@ -192,7 +192,7 @@ func (s *statusSuite) TestWhoAmI() {
 		s.Require().NoError(err)
 		s.Equal("56.56.56.1", wr.DetectedIP)
 		s.Equal("172.16.5.5", wr.RemoteIP)
-		s.Equal(strconv.Itoa(s.User.ID), wr.UserID)
+		s.Equal(strconv.Itoa(s.TestUser.User.ID), wr.UserID)
 		s.Equal(map[string]string{
 			"X-Forwarded-For": "192.0.0.1,56.56.56.1",
 		}, wr.RequestHeaders)
