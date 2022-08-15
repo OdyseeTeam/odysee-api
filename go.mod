@@ -16,7 +16,6 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/hashicorp/go-retryablehttp v0.5.4
-	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20220504162735-e5ab0f883edf
 	github.com/lib/pq v1.10.4

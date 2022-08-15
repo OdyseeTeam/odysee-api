@@ -22,7 +22,6 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/audit"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/ip"
-	"github.com/OdyseeTeam/odysee-api/internal/lbrynext"
 	"github.com/OdyseeTeam/odysee-api/internal/metrics"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/internal/responses"

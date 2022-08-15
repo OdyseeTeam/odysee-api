@@ -15,6 +15,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
+	"github.com/Pallinder/go-randomdata"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
