@@ -47,7 +47,7 @@ func TestRoutesPublish(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 	// Authentication Required error here is enough to see that the request
 	// has been dispatched through the publish handler
-	assert.Contains(t, rr.Body.String(), `"code": -32084`)
+	assert.Contains(t, rr.Body.String(), `authentication token missing`)
 }
 
 func TestCORS(t *testing.T) {

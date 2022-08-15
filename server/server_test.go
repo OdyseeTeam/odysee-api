@@ -37,14 +37,24 @@ func randomServer(r *sdkrouter.Router) *Server {
 }
 
 func TestStartAndServeUntilShutdown(t *testing.T) {
+	var (
+		err      error
+		response *http.Response
+	)
 	server := randomServer(sdkrouter.New(config.GetLbrynetServers()))
 	server.Start()
 	go server.ServeUntilShutdown()
 
 	url := fmt.Sprintf("http://%v/", server.Address())
 
-	time.Sleep(500 * time.Millisecond)
-	response, err := http.Get(url)
+	// Retry 10 times to give the server a chance to start
+	for i := 0; i < 10; i++ {
+		time.Sleep(100 * time.Millisecond)
+		response, err = http.Get(url)
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +62,7 @@ func TestStartAndServeUntilShutdown(t *testing.T) {
 	server.stopChan <- syscall.SIGINT
 
 	// Retry 10 times to give the server a chance to shut down
-	for range [10]int{} {
+	for i := 0; i < 10; i++ {
 		time.Sleep(100 * time.Millisecond)
 		_, err = http.Get(url)
 		if err != nil {
@@ -78,7 +88,7 @@ func TestHeaders(t *testing.T) {
 	client := http.Client{}
 
 	// Retry 10 times to give the server a chance to start
-	for range [10]int{} {
+	for i := 0; i < 10; i++ {
 		time.Sleep(100 * time.Millisecond)
 		response, err = client.Do(request)
 		if err == nil {

@@ -9,6 +9,7 @@ import (
 
 	cfg "github.com/OdyseeTeam/odysee-api/config"
 	"github.com/OdyseeTeam/odysee-api/models"
+	"github.com/go-redis/redis/v8"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
@@ -82,6 +83,15 @@ func GetOauthTokenURL() string {
 	return cfg["providerurl"] + cfg["tokenpath"]
 }
 
+// GetRedisOpts returns the address of OAuth client ID
+func GetRedisOpts() (*redis.Options, error) {
+	opts, err := redis.ParseURL(Config.Viper.GetString("redis"))
+	if err != nil {
+		return nil, err
+	}
+	return opts, nil
+}
+
 // GetDatabase returns postgresql database server connection config
 func GetDatabase() cfg.DBConfig {
 	return Config.GetDatabase()
@@ -116,6 +126,11 @@ func ShouldLogResponses() bool {
 // GetPaidTokenPrivKey returns absolute path to the private RSA key for generating paid tokens
 func GetPaidTokenPrivKey() string {
 	return Config.Viper.GetString("PaidTokenPrivKey")
+}
+
+// GetStreamsV5 returns config map for streams endpoint v5
+func GetStreamsV5() map[string]string {
+	return Config.Viper.GetStringMapString("StreamsV5")
 }
 
 // GetAddress determines address to bind http API server to

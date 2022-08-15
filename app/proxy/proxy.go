@@ -7,6 +7,7 @@ package proxy
 // remote clients.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -18,7 +19,6 @@ import (
 	"github.com/OdyseeTeam/odysee-api/app/query/cache"
 	"github.com/OdyseeTeam/odysee-api/app/rpcerrors"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
-	"github.com/OdyseeTeam/odysee-api/app/wallet"
 	"github.com/OdyseeTeam/odysee-api/internal/audit"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/ip"
@@ -103,7 +103,6 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		if authErr != nil {
 			writeResponse(w, rpcerrors.ErrorToJSON(authErr))
 			observeFailure(metrics.GetDuration(r), rpcReq.Method, metrics.FailureKindAuth)
-
 			return
 		}
 	}
@@ -127,21 +126,20 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 
 	remoteIP := ip.FromRequest(r)
 	// Logging remote IP with query
-	c.AddPostflightHook("wallet_", func(_ *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
-		hctx.AddLogField("remote_ip", remoteIP)
+	c.AddPostflightHook("wallet_", func(_ *query.Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
+		query.WithLogField(ctx, "remote_ip", remoteIP)
 		return nil, nil
 	}, "")
-	c.AddPostflightHook(query.MethodWalletSend, func(_ *query.Caller, hctx *query.HookContext) (*jsonrpc.RPCResponse, error) {
+	c.AddPostflightHook(query.MethodWalletSend, func(_ *query.Caller, _ context.Context) (*jsonrpc.RPCResponse, error) {
 		audit.LogQuery(userID, remoteIP, query.MethodWalletSend, body)
 		return nil, nil
 	}, "")
 
-	lbrynext.InstallHooks(c)
 	c.Cache = qCache
 
-	rpcRes, err := c.Call(rpcReq)
-	metrics.ProxyCallDurations.WithLabelValues(rpcReq.Method, c.Endpoint(), origin).Observe(c.Duration)
 	metrics.ProxyCallCounter.WithLabelValues(rpcReq.Method, c.Endpoint(), origin).Inc()
+	rpcRes, err := c.Call(r.Context(), rpcReq)
+	metrics.ProxyCallDurations.WithLabelValues(rpcReq.Method, c.Endpoint(), origin).Observe(c.Duration)
 
 	if err != nil {
 		writeResponse(w, rpcerrors.ToJSON(err))
@@ -192,16 +190,7 @@ func GetAuthError(user *models.User, err error) error {
 	if err == nil && user != nil {
 		return nil
 	}
-
-	if errors.Is(err, wallet.ErrNoAuthInfo) {
-		return rpcerrors.NewAuthRequiredError()
-	} else if err != nil {
-		return rpcerrors.NewForbiddenError(err)
-	} else if user == nil {
-		return rpcerrors.NewForbiddenError(errors.Err("must authenticate"))
-	}
-
-	return errors.Err("unknown auth error")
+	return err
 }
 
 func getDevice(r *http.Request) string {

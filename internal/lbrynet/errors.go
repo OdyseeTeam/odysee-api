@@ -1,6 +1,9 @@
 package lbrynet
 
 import (
+	"fmt"
+	"regexp"
+
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"

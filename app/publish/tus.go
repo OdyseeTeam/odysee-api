@@ -124,6 +124,10 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 	if h.composer.UsesLocker {
 		lock, err := h.lockUpload(id)
 		if err != nil {
+			monitor.ErrorToSentry(err, map[string]string{
+				"upload_id": id,
+				"user_id":   strconv.Itoa(user.ID),
+			})
 			log.WithError(err).Error("failed to acquire file lock")
 			w.Write(rpcerrors.NewInternalError(err).JSON())
 			observeFailure(metrics.GetDuration(r), metrics.PublishLockFailure)
@@ -236,7 +240,7 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 	c := getCaller(sdkrouter.GetSDKAddress(user), dstFilepath, user.ID, qCache)
 
 	op := metrics.StartOperation("sdk", "call_publish")
-	rpcRes, err := c.Call(rpcReq)
+	rpcRes, err := c.Call(r.Context(), rpcReq)
 	defer op.End()
 	if err != nil {
 		monitor.ErrorToSentry(
@@ -314,7 +318,7 @@ func (h *TusHandler) multiAuthUser(r *http.Request) (*models.User, error) {
 	if errors.Is(err, wallet.ErrNoAuthInfo) {
 		// TODO: Remove this pathway after legacy tokens go away.
 		if token, ok := r.Header[wallet.LegacyTokenHeader]; ok {
-			addr := ip.AddressForRequest(r.Header, r.RemoteAddr)
+			addr := ip.ForRequest(r)
 			user, err := h.authProvider(token[0], addr)
 			if err != nil {
 				log.WithError(err).Info("error authenticating user")
@@ -332,7 +336,7 @@ func (h *TusHandler) multiAuthUser(r *http.Request) (*models.User, error) {
 		return nil, err
 	}
 
-	user, err := h.auther.Authenticate(token, ip.AddressForRequest(r.Header, r.RemoteAddr))
+	user, err := h.auther.Authenticate(token, ip.ForRequest(r))
 	if err != nil {
 		log.WithError(err).Info("error authenticating user")
 		return nil, err

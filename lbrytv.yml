@@ -1,13 +1,20 @@
 LbrynetServers:
-  default: http://localhost:5581/
-  lbrynet1: http://localhost:5581/
-  lbrynet2: http://localhost:5581/
+  default: http://localhost:5279/
+  lbrynet1: http://localhost:5279/
+  lbrynet2: http://localhost:5279/
 
 Debug: 1
 
 BaseContentURL: https://player.odycdn.com/api
 FreeContentURL: https://player.odycdn.com/api/v4/streams/free/
 PaidContentURL: https://player.odycdn.com/api/v3/streams/paid/
+
+StreamsV5:
+  Host: https://player.odycdn.com
+  PaidHost: https://secure.odycdn.com
+  StartPath: /v5/streams/start
+  HLSPath: /v5/streams/hls
+  PaidPass: paid-pass
 
 InternalAPIHost: https://api.odysee.com
 ProjectURL: https://odysee.com
@@ -36,7 +43,7 @@ RefractorTimeout: 120
 PaidTokenPrivKey: token_privkey.rsa
 
 LbrynetXServer: http://sdk.lbry.tech:5279/api
-LbrynetXPercentage: 50
+LbrynetXPercentage: 0
 
 CORSDomains:
   - http://localhost:1337
@@ -47,3 +54,5 @@ RPCTimeouts:
   txo_list: 4m
   transaction_list: 4m
   publish: 4m
+
+Redis: redis://:odyredis@localhost:6379/1

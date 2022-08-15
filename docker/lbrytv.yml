@@ -13,6 +13,11 @@ Database:
   DBName: lbrytv
   Options: sslmode=disable
 
+OAuth:
+  ClientID: odysee-apis
+  ProviderURL: https://sso.odysee.com/auth/realms/Users
+  TokenPath: /protocol/openid-connect/token
+
 PublishSourceDir: /storage/published
 BlobFilesDir: /storage/lbrynet/blobfiles
 
@@ -27,7 +32,7 @@ RefractorTimeout: 120
 PaidTokenPrivKey: token_privkey.rsa
 
 LbrynetXServer: http://sdk.lbry.tech:5279/api
-LbrynetXPercentage: 50
+LbrynetXPercentage: 0
 
 FreeContentURL: https://player.odycdn.com/api/v4/streams/free/
 PaidContentURL: https://player.odycdn.com/api/v3/streams/paid/
