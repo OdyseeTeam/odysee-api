@@ -18,13 +18,15 @@ ALTER TABLE users
 -- +migrate StatementEnd
 
 -- +migrate StatementBegin
+-- This is for *local testing only*, you want to replace
+-- these records with actual SDK addresses in a server environment.
 INSERT INTO lbrynet_servers(name, address)
     VALUES
-        ('default',  'http://localhost:5279/'),
-        ('lbrynet2', 'http://localhost:5279/'),
-        ('lbrynet3', 'http://localhost:5279/'),
-        ('lbrynet4', 'http://localhost:5279/'),
-        ('lbrynet5', 'http://localhost:5279/');
+        ('default',  'http://localhost:15279/'),
+        ('lbrynet2', 'http://localhost:15279/'),
+        ('lbrynet3', 'http://localhost:15279/'),
+        ('lbrynet4', 'http://localhost:15279/'),
+        ('lbrynet5', 'http://localhost:15279/');
 -- +migrate StatementEnd
 
 -- +migrate StatementBegin

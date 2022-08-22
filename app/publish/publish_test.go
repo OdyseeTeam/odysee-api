@@ -78,6 +78,29 @@ func Test_createRealWallet(t *testing.T) {
 	assert.GreaterOrEqual(t, bal.Available.Cmp(decimal.NewFromInt(1)), 0)
 }
 
+func TestPubStream(t *testing.T) {
+	userID := randomdata.Number(10000, 90000)
+	createRealWallet(t, WalletKeys{PrivateKey: os.Getenv(envPrivateKey), PublicKey: os.Getenv(envPublicKey)}, userID)
+
+	c := query.NewCaller("http://localhost:5279", userID)
+	res, err := c.Call(context.Background(), jsonrpc.NewRequest("stream_create", map[string]interface{}{
+		"file_size":            56480488,
+		"file_name":            "assembly.pdf",
+		"bid":                  "0.00001",
+		"name":                 "test_streamize",
+		"sd_hash":              "9c16de961a57d6d9afe46419f330c60f6c6f1e460bec45b199c3efb1a83b8accd2e5ad61612e561a4d01f86e75ff2e83",
+		"allow_duplicate_name": true,
+	}))
+	require.NoError(t, err)
+	require.Nil(t, res.Error)
+
+	var scr ljsonrpc.StreamCreateOptions
+	err = ljsonrpc.Decode(res.Result, &scr)
+	fmt.Println(res.Result)
+	require.NoError(t, err)
+	fmt.Printf("%+v", scr)
+}
+
 func TestStreamize(t *testing.T) {
 	absPath, _ := filepath.Abs("./testdata/assembly.pdf")
 	s, pb, err := Streamize(absPath)
@@ -88,6 +111,7 @@ func TestStreamize(t *testing.T) {
 	od, err := ioutil.ReadFile(absPath)
 	require.NoError(t, err)
 	require.Equal(t, od, d)
+	fmt.Println(pb.GetSource().SdHash)
 	require.True(t, false)
 }
 

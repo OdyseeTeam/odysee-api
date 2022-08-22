@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -22,11 +23,13 @@ import (
 )
 
 const (
-	rentalClaim   = "81b1749f773bad5b9b53d21508051560f2746cdc"
+	rentalClaim   = "22acd6a6ab1c83d8c265d652c3842420810006be"
 	purchaseClaim = "2742f9e8eea0c4654ea8b51507dbb7f23f1f5235"
 
-	rentalURL   = "lbry://@gifprofile#7/rental1#8"
+	rentalURL   = "lbry://@gifprofile#7/test-rental-2#2"
 	purchaseURL = "lbry://@gifprofile#7/purchase1#2"
+
+	fakeRemoteIP = "171.100.27.222"
 )
 
 type paidContentSuite struct {
@@ -69,19 +72,19 @@ func (s *paidContentSuite) SetupSuite() {
 	s.Require().NoError(err, errors.Unwrap(err))
 	s.auther = auther
 
-	u, err := auther.Authenticate(s.tokenHeader, "127.0.0.1")
+	u, err := auther.Authenticate(s.tokenHeader, fakeRemoteIP)
 	s.Require().NoError(err)
 	s.user = u
 	s.sdkAddress = sdkrouter.GetSDKAddress(u)
 
 	iac, err := iapi.NewClient(
 		iapi.WithOAuthToken(strings.TrimPrefix(th, wallet.TokenPrefix)),
-		iapi.WithRemoteIP("8.8.8.8"),
+		iapi.WithRemoteIP(fakeRemoteIP),
 	)
 	s.Require().NoError(err)
 
 	cu := auth.NewCurrentUser(u, nil)
-	cu.IP = "8.8.8.8"
+	cu.IP = fakeRemoteIP
 	cu.IAPIClient = iac
 	s.cu = cu
 }
@@ -112,6 +115,28 @@ func (s *paidContentSuite) TestPurchaseAuthorized() {
 	s.Require().NoError(err)
 	s.Equal(
 		"https://secure.odycdn.com/v5/streams/start/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4?hash-hls=4e42be75b03ce2237e8ff8284c794392&ip=8.8.8.8&hash=910a69e8e189288c29a5695314b48e89",
+		getResponse.StreamingURL,
+	)
+}
+
+func (s *paidContentSuite) TestRentalAuthorized() {
+	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": rentalURL})
+
+	ctx := auth.AttachCurrentUser(bgctx(), s.cu)
+	resp, err := NewCaller(s.sdkAddress, s.user.ID).Call(ctx, request)
+
+	s.Require().NoError(err)
+	s.Require().Nil(resp.Error)
+
+	getResponse := &ljsonrpc.GetResponse{}
+	err = resp.GetObject(&getResponse)
+	s.Require().NoError(err)
+	s.Equal(
+		fmt.Sprintf(
+			"https://secure.odycdn.com/v5/streams/start/%s/2ef2a4?hash-hls=4e42be75b03ce2237e8ff8284c794392&ip=%s&hash=910a69e8e189288c29a5695314b48e89",
+			purchaseClaim,
+			fakeRemoteIP,
+		),
 		getResponse.StreamingURL,
 	)
 }

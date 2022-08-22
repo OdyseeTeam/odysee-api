@@ -58,7 +58,6 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		return nil, err
 	}
 	stream := claim.Value.GetStream()
-
 	for _, t := range claim.Value.Tags {
 		if strings.HasPrefix(t, "purchase:") || strings.HasPrefix(t, "rental:") {
 			cu, err := auth.GetCurrentUserData(ctx)
@@ -205,6 +204,7 @@ func resolve(ctx context.Context, c *Caller, q *Query, url string) (*ljsonrpc.Cl
 			"urls":                     url,
 			"include_purchase_receipt": true,
 			"include_protobuf":         true,
+			"include_is_my_output":     true,
 		},
 	), q.WalletID)
 	if err != nil {
