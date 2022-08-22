@@ -18,6 +18,7 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.5.4
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20220504162735-e5ab0f883edf
+	github.com/lbryio/reflector.go v1.1.3-0.20220512140100-a1c2e92ca368
 	github.com/lib/pq v1.10.4
 	github.com/nsf/jsondiff v0.0.0-20190712045011-8443391ee9b6
 	github.com/ory/dockertest/v3 v3.9.1
@@ -47,10 +48,16 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
+	github.com/aws/aws-sdk-go v1.44.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bluele/gcache v0.0.2 // indirect
 	github.com/bmizerany/pat v0.0.0-20170815010413-6226ea591a40 // indirect
+	github.com/brk0v/directio v0.0.0-20190225130936-69406e757cf7 // indirect
 	github.com/btcsuite/btcd v0.0.0-20190824003749-130ea5bddde3 // indirect
+	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
 	github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d // indirect
+	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd // indirect
+	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cloudflare/golz4 v0.0.0-20150217214814-ef862a3cdc58 // indirect
@@ -70,9 +77,11 @@ require (
 	github.com/gin-gonic/gin v1.7.7 // indirect
 	github.com/go-errors/errors v1.1.1 // indirect
 	github.com/go-gorp/gorp/v3 v3.0.2 // indirect
+	github.com/go-ini/ini v1.48.0 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/go-playground/validator/v10 v10.10.1 // indirect
+	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
@@ -86,9 +95,14 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/karrick/godirwalk v1.17.0 // indirect
+	github.com/lbryio/chainquery v1.9.0 // indirect
+	github.com/lbryio/lbry.go v1.1.2 // indirect
 	github.com/lbryio/types v0.0.0-20220224142228-73610f6654a6 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
+	github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/manveru/faker v0.0.0-20171103152722-9fbc68a78c4d // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
@@ -142,4 +156,4 @@ require (
 
 replace github.com/floostack/transcoder => github.com/andybeletsky/transcoder v1.2.0
 
-replace github.com/lbryio/lbry.go/v2 => github.com/andybeletsky/lbry.go/v2 v2.7.2-0.20220614174946-e19facdded3c
+replace github.com/lbryio/lbry.go/v2 => github.com/andybeletsky/lbry.go/v2 v2.7.3-0.20220822174109-27e6bde12cf2
