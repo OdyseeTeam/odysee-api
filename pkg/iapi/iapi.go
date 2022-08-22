@@ -19,6 +19,8 @@ const (
 	paramLegacyToken     = "auth_token"
 )
 
+var APIError = errors.New("internal-api error")
+
 // Client stores data about internal-apis call it is about to make.
 type Client struct {
 	options clientOptions
@@ -39,32 +41,6 @@ type clientOptions struct {
 	extraHeaders map[string]string
 	extraParams  map[string]string
 	httpClient   httpClient
-}
-
-type CustomerListResponse struct {
-	Success bool    `json:"success"`
-	Error   *string `json:"error"`
-	Data    []struct {
-		ID               int       `json:"id"`
-		TipperUserID     int       `json:"tipper_user_id"`
-		CreatorUserID    int       `json:"creator_user_id"`
-		AccountID        int       `json:"account_id"`
-		ChannelName      string    `json:"channel_name"`
-		ChannelClaimID   string    `json:"channel_claim_id"`
-		TippedAmount     int       `json:"tipped_amount"`
-		ReceivedAmount   int       `json:"received_amount"`
-		Currency         string    `json:"currency"`
-		TargetClaimID    string    `json:"target_claim_id"`
-		Status           string    `json:"status"`
-		PaymentIntentID  string    `json:"payment_intent_id"`
-		PrivateTip       bool      `json:"private_tip"`
-		CreatedAt        time.Time `json:"created_at"`
-		UpdatedAt        time.Time `json:"updated_at"`
-		Type             string    `json:"type"`
-		ReferenceClaimID *string   `json:"reference_claim_id"`
-		ValidThrough     time.Time `json:"valid_through"`
-		SourceClaimID    string    `json:"source_claim_id"`
-	} `json:"data"`
 }
 
 func WithLegacyToken(token string) func(options *clientOptions) {
@@ -182,5 +158,15 @@ func (c Client) Call(path string, params map[string]string, target interface{}) 
 	if err != nil {
 		return err
 	}
+
+	var bresp BaseResponse
+	err = json.Unmarshal(body, &bresp)
+	if err != nil {
+		return err
+	}
+	if !bresp.Success {
+		return fmt.Errorf("%w: %s", APIError, *bresp.Error)
+	}
+
 	return nil
 }
