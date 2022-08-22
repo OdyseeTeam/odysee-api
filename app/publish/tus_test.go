@@ -302,6 +302,7 @@ func TestNotify(t *testing.T) {
 	}
 	storage.SetDB(db)
 	config.Override("LbrynetServers", "")
+
 	defer dbCleanup()
 
 	token, err := wallet.GetTestTokenHeader()
@@ -457,6 +458,7 @@ func TestTus(t *testing.T) {
 	}
 	storage.SetDB(db)
 	config.Override("LbrynetServers", "")
+
 	defer dbCleanup()
 
 	token, err := wallet.GetTestTokenHeader()
@@ -704,6 +706,7 @@ func TestNotifyLegacy(t *testing.T) {
 	}
 	storage.SetDB(db)
 	config.Override("LbrynetServers", "")
+
 	defer dbCleanup()
 
 	auther, err := wallet.NewOauthAuthenticator(config.GetOauthProviderURL(), config.GetOauthClientID(), config.GetInternalAPIHost(), nil)
@@ -859,6 +862,7 @@ func TestTusLegacyToken(t *testing.T) {
 	}
 	storage.SetDB(db)
 	config.Override("LbrynetServers", "")
+
 	defer dbCleanup()
 
 	t.Run("FailedToAuthorize", func(t *testing.T) {

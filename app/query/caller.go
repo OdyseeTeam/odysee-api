@@ -18,6 +18,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/metrics"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"
 )
@@ -117,7 +118,6 @@ func (c *Caller) newRPCClient(timeout time.Duration) jsonrpc.RPCClient {
 					KeepAlive: 120 * time.Second,
 				}).Dial,
 				ResponseHeaderTimeout: timeout * 2,
-				ExpectContinueTimeout: 1 * time.Second,
 			},
 		},
 	})
@@ -342,17 +342,16 @@ func isMatchingHook(m string, hook hookEntry) bool {
 }
 
 func isErrWalletNotLoaded(r *jsonrpc.RPCResponse) bool {
-	return r.Error != nil && errors.Is(lbrynet.NewWalletError(0, errors.Err(r.Error.Message)), lbrynet.ErrWalletNotLoaded)
+	return r.Error != nil && errors.Is(lbrynet.NewWalletError(ljsonrpc.WrapError(r.Error)), lbrynet.ErrWalletNotLoaded)
 }
 
 func isErrWalletAlreadyLoaded(r *jsonrpc.RPCResponse) bool {
-	return r.Error != nil && errors.Is(lbrynet.NewWalletError(0, errors.Err(r.Error.Message)), lbrynet.ErrWalletAlreadyLoaded)
+	return r.Error != nil && errors.Is(lbrynet.NewWalletError(ljsonrpc.WrapError(r.Error)), lbrynet.ErrWalletAlreadyLoaded)
 }
 
 // cutSublistsToSize makes a copy of a map, cutting the size of the lists inside it
 // to at most num, made for declogging logs
 func cutSublistsToSize(m map[string]interface{}, num int) map[string]interface{} {
-
 	ret := make(map[string]interface{})
 	for key, value := range m {
 		switch value.(type) {

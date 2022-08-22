@@ -15,6 +15,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
+	"github.com/Pallinder/go-randomdata"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
@@ -269,7 +270,7 @@ func TestCaller_AddPreflightHookReturningError(t *testing.T) {
 }
 
 func TestCaller_AddPostflightHook_Response(t *testing.T) {
-	dummyUserID := rand.Intn(100)
+	dummyUserID := randomdata.Number(1, 99999)
 	reqChan := test.ReqChan()
 	srv := test.MockHTTPServer(reqChan)
 	defer srv.Close()
@@ -512,8 +513,7 @@ func TestCaller_Resolve(t *testing.T) {
 }
 
 func TestCaller_WalletBalance(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-	dummyUserID := rand.Intn(10^6-10^3) + 10 ^ 3
+	dummyUserID := randomdata.Number(1, 99999)
 
 	request := jsonrpc.NewRequest("wallet_balance")
 
@@ -523,7 +523,7 @@ func TestCaller_WalletBalance(t *testing.T) {
 
 	addr := test.RandServerAddress(t)
 	err = wallet.Create(addr, dummyUserID)
-	require.NoError(t, err)
+	require.NoError(t, err, dummyUserID)
 
 	hook := logrusTest.NewLocal(logger.Entry.Logger)
 	rpcRes, err = NewCaller(addr, dummyUserID).Call(bgctx(), request)
@@ -567,6 +567,7 @@ func TestCaller_timeouts(t *testing.T) {
 	config.Override("RPCTimeouts", map[string]string{
 		"resolve": "300ms",
 	})
+	defer config.RestoreOverridden()
 
 	c := NewCaller(srv.URL, 0)
 	q, err := NewQuery(jsonrpc.NewRequest("resolve"), "")
@@ -607,20 +608,26 @@ func TestCaller_DontReloadWalletAfterOtherErrors(t *testing.T) {
 			JSONRPC: "2.0",
 			Error: &jsonrpc.RPCError{
 				Message: "Couldn't find wallet: //",
+				Data: map[string]interface{}{
+					"name": ljsonrpc.ErrorWalletNotFound,
+				},
 			},
 		}),
 		test.EmptyResponse(), // for the wallet_add call
 		test.ResToStr(t, &jsonrpc.RPCResponse{
 			JSONRPC: "2.0",
 			Error: &jsonrpc.RPCError{
-				Message: "Wallet at path // was not found",
+				Message: "Couldn't find wallet: //",
+				Data: map[string]interface{}{
+					"name": ljsonrpc.ErrorWalletNotFound,
+				},
 			},
 		}),
 	)
 
 	r, err := c.SendQuery(WithQuery(bgctx(), q), q)
 	require.NoError(t, err)
-	require.Equal(t, "Wallet at path // was not found", r.Error.Message)
+	require.Equal(t, "Couldn't find wallet: //", r.Error.Message)
 }
 
 func TestCaller_DontReloadWalletIfAlreadyLoaded(t *testing.T) {
@@ -638,7 +645,10 @@ func TestCaller_DontReloadWalletIfAlreadyLoaded(t *testing.T) {
 		test.ResToStr(t, &jsonrpc.RPCResponse{
 			JSONRPC: "2.0",
 			Error: &jsonrpc.RPCError{
-				Message: "Couldn't find wallet: //",
+				Message: "Wallet // is not loaded",
+				Data: map[string]interface{}{
+					"name": ljsonrpc.ErrorWalletNotLoaded,
+				},
 			},
 		}),
 		test.EmptyResponse(), // for the wallet_add call
@@ -646,6 +656,9 @@ func TestCaller_DontReloadWalletIfAlreadyLoaded(t *testing.T) {
 			JSONRPC: "2.0",
 			Error: &jsonrpc.RPCError{
 				Message: "Wallet at path // is already loaded",
+				Data: map[string]interface{}{
+					"name": ljsonrpc.ErrorWalletAlreadyLoaded,
+				},
 			},
 		}),
 		test.ResToStr(t, &jsonrpc.RPCResponse{
