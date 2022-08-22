@@ -355,7 +355,7 @@ func TestCreateWalletLoadWallet(t *testing.T) {
 
 	err = createWallet(addr, userID)
 	require.NotNil(t, err)
-	assert.True(t, errors.Is(err, lbrynet.ErrWalletExists))
+	assert.ErrorIs(t, err, lbrynet.ErrWalletAlreadyLoaded, err.Error())
 
 	err = UnloadWallet(addr, userID)
 	require.NoError(t, err)

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -216,9 +215,14 @@ func TestMiddleware(t *testing.T) {
 }
 
 func isWalletLoaded(t *testing.T, c *ljsonrpc.Client, id string) bool {
+	// t.Helper()
 	wallets, err := c.WalletList(id, 1, 1)
-	if err != nil && strings.Contains(err.Error(), `Couldn't find wallet`) {
-		return false
+
+	if err != nil {
+		derr := err.(ljsonrpc.Error)
+		if derr.Name == ljsonrpc.ErrorWalletNotLoaded {
+			return false
+		}
 	}
 	require.NoError(t, err)
 	return len(wallets.Items) > 0

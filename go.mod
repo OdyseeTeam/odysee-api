@@ -154,3 +154,5 @@ require (
 )
 
 replace github.com/floostack/transcoder => github.com/andybeletsky/transcoder v1.2.0
+
+replace github.com/lbryio/lbry.go/v2 => github.com/andybeletsky/lbry.go/v2 v2.7.2-0.20220614174946-e19facdded3c

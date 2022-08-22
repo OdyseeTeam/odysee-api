@@ -43,6 +43,7 @@ func TestCORS(t *testing.T) {
 		"https://somedomain.com",
 	}
 	config.Override("CORSDomains", allowedDomains)
+	defer config.RestoreOverridden()
 
 	InstallRoutes(r, rt)
 
