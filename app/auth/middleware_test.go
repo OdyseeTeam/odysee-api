@@ -15,6 +15,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/ip"
 	"github.com/OdyseeTeam/odysee-api/internal/middleware"
 	"github.com/OdyseeTeam/odysee-api/internal/storage"
+	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
 
@@ -71,7 +72,7 @@ func TestMiddleware_OAuthSuccess(t *testing.T) {
 
 	r, err := http.NewRequest("GET", "/api/proxy", nil)
 	require.NoError(t, err)
-	token, err := wallet.GetTestTokenHeader()
+	token, err := test.GetTestTokenHeader()
 	require.NoError(t, err)
 
 	r.Header.Set(wallet.AuthorizationHeader, token)

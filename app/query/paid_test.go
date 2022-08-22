@@ -12,6 +12,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/storage"
+	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/iapi"
 	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
@@ -59,7 +60,7 @@ func (s *paidContentSuite) SetupSuite() {
 	s.db = db
 	s.sdkRouter = sdkrouter.New(config.GetLbrynetServers())
 
-	th, err := wallet.GetTestTokenHeader()
+	th, err := test.GetTestTokenHeader()
 	s.Require().NoError(err)
 	s.tokenHeader = th
 

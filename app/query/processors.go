@@ -72,10 +72,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 			err = cu.IAPIClient.Call("customer/list", map[string]string{"claim_id_filter": claim.ClaimID}, resp)
 
 			if err != nil {
-				return nil, fmt.Errorf("error calling iapi: %w", err)
-			}
-			if resp.Error != nil {
-				return nil, fmt.Errorf("iapi errored: %s", *resp.Error)
+				return nil, err
 			}
 			if len(resp.Data) == 0 {
 				return nil, fmt.Errorf("empty data from iapi")

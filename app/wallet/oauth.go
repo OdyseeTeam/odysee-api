@@ -105,7 +105,7 @@ func (a *OauthAuthenticator) Authenticate(tokenString, metaRemoteIP string) (*mo
 	}
 
 	// No mention of it recorded in the DB, so get the internal-apis user ID via remote user
-	remoteUser, err := getRemoteUser(a.iapiURL, oauth2.StaticTokenSource(&oauth2.Token{AccessToken: tokenString}), metaRemoteIP)
+	remoteUser, err := GetRemoteUser(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: tokenString}), metaRemoteIP)
 	if err != nil {
 		/*  For now keep the same process, where if we fail to get a remote user, authentication fails.
 		We don't have to check for verified email since IDP already confirmed via OAuth2. This should

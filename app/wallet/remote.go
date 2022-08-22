@@ -2,11 +2,11 @@ package wallet
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/internal/metrics"
-
-	"github.com/lbryio/lbry.go/v2/extras/lbryinc"
+	"github.com/OdyseeTeam/odysee-api/pkg/iapi"
 
 	"golang.org/x/oauth2"
 )
@@ -18,21 +18,27 @@ type remoteUser struct {
 	Cached           bool
 }
 
-func getRemoteUserLegacy(url, token string, remoteIP string) (remoteUser, error) {
+func GetRemoteUserLegacy(server, token string, remoteIP string) (remoteUser, error) {
+	ruser := remoteUser{}
 	op := metrics.StartOperation(opName, "get_remote_user")
 	defer op.End()
 
-	c := lbryinc.NewClient(token, &lbryinc.ClientOpts{
-		ServerAddress: url,
-		RemoteIP:      remoteIP,
-	})
+	iac, err := iapi.NewClient(
+		iapi.WithLegacyToken(token),
+		iapi.WithRemoteIP(remoteIP),
+		iapi.WithServer(server),
+	)
+	if err != nil {
+		return ruser, err
+	}
 
 	start := time.Now()
-	r, err := c.UserHasVerifiedEmail()
+	resp := &iapi.UserHasVerifiedEmailResponse{}
+	err = iac.Call("user/has_verified_email", map[string]string{}, resp)
 	duration := time.Since(start).Seconds()
 
 	if err != nil {
-		if errors.As(err, &lbryinc.APIError{}) {
+		if errors.Is(err, iapi.APIError) {
 			metrics.IAPIAuthFailedDurations.Observe(duration)
 		} else {
 			metrics.IAPIAuthErrorDurations.Observe(duration)
@@ -42,29 +48,40 @@ func getRemoteUserLegacy(url, token string, remoteIP string) (remoteUser, error)
 
 	metrics.IAPIAuthSuccessDurations.Observe(duration)
 
-	ru := remoteUser{
-		ID:               int(r["user_id"].(float64)),
-		HasVerifiedEmail: r["has_verified_email"].(bool),
-	}
+	ruser.ID = resp.Data.UserID
+	ruser.HasVerifiedEmail = resp.Data.HasVerifiedEmail
 
-	return ru, nil
+	return ruser, nil
 }
 
-func getRemoteUser(url string, token oauth2.TokenSource, remoteIP string) (remoteUser, error) {
+func GetRemoteUser(token oauth2.TokenSource, remoteIP string) (remoteUser, error) {
+	ruser := remoteUser{}
 	op := metrics.StartOperation(opName, "get_remote_user")
 	defer op.End()
 
-	c := lbryinc.NewOauthClient(token, &lbryinc.ClientOpts{
-		ServerAddress: url,
-		RemoteIP:      remoteIP,
-	})
+	t, err := token.Token()
+	if err != nil {
+		return ruser, err
+	}
+	if t.Type() != "Bearer" {
+		return ruser, errors.New("internal-apis requires an oAuth token of type 'Bearer'")
+	}
+
+	iac, err := iapi.NewClient(
+		iapi.WithOAuthToken(strings.TrimPrefix(t.AccessToken, TokenPrefix)),
+		iapi.WithRemoteIP(remoteIP),
+	)
+	if err != nil {
+		return ruser, err
+	}
 
 	start := time.Now()
-	r, err := c.UserHasVerifiedEmail()
+	resp := &iapi.UserHasVerifiedEmailResponse{}
+	err = iac.Call("user/has_verified_email", map[string]string{}, resp)
 	duration := time.Since(start).Seconds()
 
 	if err != nil {
-		if errors.As(err, &lbryinc.APIError{}) {
+		if errors.Is(err, iapi.APIError) {
 			metrics.IAPIAuthFailedDurations.Observe(duration)
 		} else {
 			metrics.IAPIAuthErrorDurations.Observe(duration)
@@ -74,10 +91,8 @@ func getRemoteUser(url string, token oauth2.TokenSource, remoteIP string) (remot
 
 	metrics.IAPIAuthSuccessDurations.Observe(duration)
 
-	ru := remoteUser{
-		ID:               int(r["user_id"].(float64)),
-		HasVerifiedEmail: r["has_verified_email"].(bool),
-	}
+	ruser.ID = resp.Data.UserID
+	ruser.HasVerifiedEmail = resp.Data.HasVerifiedEmail
 
-	return ru, nil
+	return ruser, nil
 }
