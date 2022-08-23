@@ -1,7 +1,6 @@
 package wallet
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -12,7 +11,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/oauth2"
 )
 
 func TestOauthAuthenticatorAuthenticate(t *testing.T) {
@@ -25,7 +23,7 @@ func TestOauthAuthenticatorAuthenticate(t *testing.T) {
 	auther, err := NewOauthAuthenticator(config.GetOauthProviderURL(), config.GetOauthClientID(), config.GetInternalAPIHost(), rt)
 	require.NoError(t, err, errors.Unwrap(err))
 
-	token, err := GetTestToken()
+	token, err := test.GetTestToken()
 	require.NoError(t, err, errors.Unwrap(err))
 
 	u, err := auther.Authenticate("Bearer "+token.AccessToken, "")
@@ -57,23 +55,4 @@ func TestOauthAuthenticatorAuthenticate(t *testing.T) {
 	require.Equal(t, sdk.ID, sdk2.ID)
 	require.Equal(t, sdk.Address, sdk2.Address)
 	require.Equal(t, u.LbrynetServerID.Int, sdk2.ID)
-}
-
-func TestGetTestToken(t *testing.T) {
-	token, err := GetTestToken()
-	require.NoError(t, err)
-
-	userInfo := &UserInfo{}
-
-	auther, err := NewOauthAuthenticator(config.GetOauthProviderURL(), config.GetOauthClientID(), config.GetInternalAPIHost(), nil)
-	require.NoError(t, err)
-	ot, err := auther.verifier.Verify(context.Background(), token.AccessToken)
-	require.NoError(t, err)
-
-	err = ot.Claims(userInfo)
-	require.NoError(t, err)
-
-	remoteUser, err := getRemoteUser(auther.iapiURL, oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token.AccessToken}), "")
-	require.NoError(t, err)
-	require.Greater(t, remoteUser.ID, 0)
 }
