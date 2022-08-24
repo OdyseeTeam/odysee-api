@@ -1,7 +1,6 @@
 package wallet
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/oauth2"
 )
 
 func TestOauthAuthenticatorAuthenticate(t *testing.T) {
@@ -26,7 +24,7 @@ func TestOauthAuthenticatorAuthenticate(t *testing.T) {
 	auther, err := NewOauthAuthenticator(config.GetOauthProviderURL(), config.GetOauthClientID(), config.GetInternalAPIHost(), rt)
 	require.NoError(t, err, errors.Unwrap(err))
 
-	token, err := GetTestToken()
+	token, err := test.GetTestToken()
 	require.NoError(t, err, errors.Unwrap(err))
 
 	u, err := auther.Authenticate("Bearer "+token.AccessToken, "")

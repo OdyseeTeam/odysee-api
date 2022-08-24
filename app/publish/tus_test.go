@@ -321,7 +321,7 @@ func TestNotify(t *testing.T) {
 
 	defer dbCleanup()
 
-	token, err := wallet.GetTestTokenHeader()
+	token, err := test.GetTestTokenHeader()
 	require.NoError(t, err)
 
 	t.Run("FileNotExist", func(t *testing.T) {
@@ -477,7 +477,7 @@ func TestTus(t *testing.T) {
 
 	defer dbCleanup()
 
-	token, err := wallet.GetTestTokenHeader()
+	token, err := test.GetTestTokenHeader()
 	require.NoError(t, err)
 
 	t.Run("FailedToAuthorize", func(t *testing.T) {

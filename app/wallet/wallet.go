@@ -48,7 +48,7 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 	log := logger.WithFields(logrus.Fields{monitor.TokenF: token, "ip": metaRemoteIP})
 
 	user, err := currentCache.get(token, func() (interface{}, error) {
-		remoteUser, err := getRemoteUserLegacy(internalAPIHost, token, metaRemoteIP)
+		remoteUser, err := GetRemoteUserLegacy(internalAPIHost, token, metaRemoteIP)
 		if err != nil {
 			log.Error(err)
 			return nil, err
