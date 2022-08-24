@@ -10,6 +10,7 @@ require (
 	github.com/bluele/factory-go v0.0.1
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/dgraph-io/ristretto v0.1.0
+	github.com/friendsofgo/errors v0.9.2
 	github.com/getsentry/sentry-go v0.12.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-redsync/redsync/v4 v4.5.0
@@ -18,7 +19,9 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.5.4
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20220504162735-e5ab0f883edf
+	github.com/lbryio/lbry.go/v3 v3.0.1-beta
 	github.com/lbryio/reflector.go v1.1.3-0.20220512140100-a1c2e92ca368
+	github.com/lbryio/types v0.0.0-20220224142228-73610f6654a6
 	github.com/lib/pq v1.10.4
 	github.com/nsf/jsondiff v0.0.0-20190712045011-8443391ee9b6
 	github.com/ory/dockertest/v3 v3.9.1
@@ -28,6 +31,7 @@ require (
 	github.com/prometheus/client_model v0.2.0
 	github.com/rs/cors v1.7.0
 	github.com/rubenv/sql-migrate v1.1.1
+	github.com/shopspring/decimal v1.3.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cast v1.4.1
 	github.com/spf13/cobra v1.4.0
@@ -53,14 +57,18 @@ require (
 	github.com/bluele/gcache v0.0.2 // indirect
 	github.com/bmizerany/pat v0.0.0-20170815010413-6226ea591a40 // indirect
 	github.com/brk0v/directio v0.0.0-20190225130936-69406e757cf7 // indirect
-	github.com/btcsuite/btcd v0.0.0-20190824003749-130ea5bddde3 // indirect
+	github.com/btcsuite/btcd v0.22.0-beta // indirect
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
-	github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d // indirect
+	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
 	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd // indirect
 	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cloudflare/golz4 v0.0.0-20150217214814-ef862a3cdc58 // indirect
+	github.com/cockroachdb/errors v1.8.6 // indirect
+	github.com/cockroachdb/logtags v0.0.0-20211118104740-dabe8e521a4f // indirect
+	github.com/cockroachdb/redact v1.1.3 // indirect
+	github.com/cockroachdb/sentry-go v0.6.1-cockroachdb.2 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
@@ -98,9 +106,10 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/karrick/godirwalk v1.17.0 // indirect
+	github.com/kr/pretty v0.3.0 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/lbryio/chainquery v1.9.0 // indirect
 	github.com/lbryio/lbry.go v1.1.2 // indirect
-	github.com/lbryio/types v0.0.0-20220224142228-73610f6654a6 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
@@ -123,7 +132,6 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
-	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/smartystreets/assertions v1.1.1 // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
@@ -138,11 +146,11 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
-	golang.org/x/mod v0.5.0 // indirect
+	golang.org/x/mod v0.6.0-dev.0.20211013180041-c96bc1413d57 // indirect
 	golang.org/x/net v0.0.0-20220621193019-9d032be2e588 // indirect
 	golang.org/x/sys v0.0.0-20220615213510-4f61da869c0c // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/tools v0.1.7 // indirect
+	golang.org/x/tools v0.1.8-0.20211029000441-d6a9af8af023 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
