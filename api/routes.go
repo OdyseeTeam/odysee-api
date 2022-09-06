@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/auth"
+	"github.com/OdyseeTeam/odysee-api/app/geopublish"
 	"github.com/OdyseeTeam/odysee-api/app/proxy"
 	"github.com/OdyseeTeam/odysee-api/app/publish"
 	"github.com/OdyseeTeam/odysee-api/app/query/cache"
@@ -20,6 +21,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/status"
 	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
+	"github.com/lbryio/transcoder/pkg/logging/zapadapter"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/gorilla/mux"
@@ -122,6 +124,14 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	tusRouter.HandleFunc("/{id}", tusHandler.DelFile).Methods(http.MethodDelete)
 	tusRouter.HandleFunc("/{id}/notify", tusHandler.Notify).Methods(http.MethodPost)
 	tusRouter.PathPrefix("/").HandlerFunc(emptyHandler).Methods(http.MethodOptions)
+
+	v3Router := r.PathPrefix("/api/v3").Subrouter()
+	ug := auth.NewUniversalUserGetter(oauthAuther, legacyProvider, zapadapter.NewKV(nil))
+	gPath := config.GetGeoPublishSourceDir()
+	err = geopublish.InstallRoutes(v3Router.PathPrefix("/publish").Subrouter(), ug, gPath, "/api/v3/publish/")
+	if err != nil {
+		panic(err)
+	}
 }
 
 func defaultMiddlewares(oauthAuther auth.Authenticator, legacyProvider auth.Provider, router *sdkrouter.Router) mux.MiddlewareFunc {

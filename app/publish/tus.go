@@ -52,10 +52,6 @@ type TusHandler struct {
 	options  *TusHandlerOptions
 	composer *tusd.StoreComposer
 	logger   monitor.ModuleLogger
-
-	notifySDKQueries    bool
-	preparedSDKQueries  chan preparedQuery
-	completedSDKQueries chan completedQuery
 }
 
 type TusHandlerOptions struct {
@@ -64,7 +60,6 @@ type TusHandlerOptions struct {
 	provider   auth.Provider
 	uploadPath string
 	tusConfig  *tusd.Config
-	keeper     *UploadKeeper
 }
 
 // func WithLogger(logger logging.KVLogger) func(options *TusHandlerOptions) {
@@ -91,12 +86,6 @@ func WithAuther(auther auth.Authenticator) func(options *TusHandlerOptions) {
 func WithLegacyProvider(provider auth.Provider) func(options *TusHandlerOptions) {
 	return func(options *TusHandlerOptions) {
 		options.provider = provider
-	}
-}
-
-func WithUploadKeeper(keeper *UploadKeeper) func(options *TusHandlerOptions) {
-	return func(options *TusHandlerOptions) {
-		options.keeper = keeper
 	}
 }
 
@@ -137,18 +126,6 @@ func NewTusHandler(optionFuncs ...func(*TusHandlerOptions)) (*TusHandler, error)
 	// allow client to set location response protocol
 	// via X-Forwarded-Proto
 	cfg.RespectForwardedHeaders = true
-
-	if options.keeper != nil {
-		options.keeper.listenToHandler(h)
-		cfg.NotifyCompleteUploads = true
-		cfg.NotifyCreatedUploads = true
-		cfg.NotifyTerminatedUploads = true
-		cfg.NotifyUploadProgress = true
-
-		h.notifySDKQueries = true
-		h.preparedSDKQueries = make(chan preparedQuery)
-		h.completedSDKQueries = make(chan completedQuery)
-	}
 
 	baseHandler, err := tusd.NewUnroutedHandler(*cfg)
 	if err != nil {
@@ -314,24 +291,9 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 
 	c := getCaller(sdkrouter.GetSDKAddress(user), dstFilepath, user.ID, qCache)
 
-	if h.notifySDKQueries {
-		h.preparedSDKQueries <- preparedQuery{
-			request:  rpcReq,
-			fileInfo: info,
-		}
-	}
-
 	op := metrics.StartOperation("sdk", "call_publish")
 	rpcRes, err := c.Call(r.Context(), rpcReq)
 	defer op.End()
-
-	if h.notifySDKQueries {
-		h.completedSDKQueries <- completedQuery{
-			response: rpcRes,
-			err:      err,
-			fileInfo: info,
-		}
-	}
 
 	if err != nil {
 		monitor.ErrorToSentry(

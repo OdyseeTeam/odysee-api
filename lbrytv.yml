@@ -30,15 +30,7 @@ Database:
   Options: sslmode=disable
 
 PublishSourceDir: /storage/publish
-BlobFilesDir: /storage/lbrynet/blobfiles
-
-ReflectorAddress: reflector.lbry.com:5566
-# ReflectorTimeout (in seconds) is TCP timeout for pushing blobs to reflector.
-ReflectorTimeout: 60
-
-RefractorAddress: blobcache.lbry.com:5567
-# RefractorTimeout (in seconds) is TCP timeout for streaming blobs off reflector/refractor.
-RefractorTimeout: 120
+GeoPublishSourceDir: /storage/geopublish
 
 PaidTokenPrivKey: token_privkey.rsa
 

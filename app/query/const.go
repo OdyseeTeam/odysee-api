@@ -14,6 +14,7 @@ const (
 	MethodResolve          = "resolve"
 	MethodStatus           = "status"
 	MethodStreamUpdate     = "stream_update"
+	MethodStreamCreate     = "stream_create"
 	MethodSyncApply        = "sync_apply"
 	MethodWalletBalance    = "wallet_balance"
 	MethodWalletSend       = "wallet_send"
@@ -91,7 +92,7 @@ var walletSpecificMethods = []string{
 	"claim_list",
 
 	"stream_abandon",
-	"stream_create",
+	MethodStreamCreate,
 	"stream_list",
 	MethodStreamUpdate,
 	"stream_repost",

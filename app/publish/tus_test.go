@@ -102,7 +102,6 @@ func newTestTusHandlerWithOauth(t *testing.T, reqChan chan *test.Request) *TusHa
 		ts.NextResponse <- expectedPublishResponse
 	}()
 
-	fmt.Println("AUTHER", auther)
 	h, err := NewTusHandler(
 		WithAuther(auther),
 		WithLegacyProvider(mockAuthProvider),

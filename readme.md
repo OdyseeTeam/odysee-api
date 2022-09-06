@@ -22,7 +22,7 @@ go install github.com/volatiletech/sqlboiler/drivers/sqlboiler-psql
 
 *Note: if you're running a LBRY desktop app or a lbrynet instance, you will have to either shut it down or change its ports*
 
-**2. Setup up the database schema if this is your first launch**
+**2. Set up database schema if this is your first launch**
 
 `go run . db_migrate_up`
 
@@ -73,6 +73,14 @@ LBRY_WEB_API=http://localhost:8080 yarn dev:web
 ```
 
 **4. Open http://localhost:9090/ in Chrome or Firefox for best experience**
+
+## Development tips
+
+### Change DB schema
+
+1. Create a schema migration
+2. Apply schema migration with `go run . db_migrate_up`
+3. Run `make models` for sqlboiler to pick up the changes
 
 ## Testing
 

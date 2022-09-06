@@ -28,7 +28,8 @@ import (
 )
 
 type statusSuite struct {
-	e2etest.FullSuite
+	suite.Suite
+	userHelper *e2etest.UserTestHelper
 }
 
 func TestMain(m *testing.M) {
@@ -73,7 +74,7 @@ func TestStatusV2_UnauthenticatedOffline(t *testing.T) {
 	_, err := models.LbrynetServers().UpdateAllG(models.M{"address": "http://malfunctioning/"})
 	require.NoError(t, err)
 	defer func() {
-		models.LbrynetServers().UpdateAllG(models.M{"address": "http://localhost:5279/"})
+		models.LbrynetServers().UpdateAllG(models.M{"address": "http://localhost:15279/"})
 	}()
 
 	rr := httptest.NewRecorder()
@@ -170,7 +171,7 @@ func TestStatusSuite(t *testing.T) {
 
 func (s *statusSuite) TestWhoAmI() {
 	r := mux.NewRouter().PathPrefix("/v2").Subrouter()
-	r.Use(auth.Middleware(s.Auther))
+	r.Use(auth.Middleware(s.userHelper.Auther))
 	InstallRoutes(r)
 
 	s.Run("authenticated", func() {
@@ -178,7 +179,7 @@ func (s *statusSuite) TestWhoAmI() {
 			Method: http.MethodGet,
 			URL:    "/v2/whoami",
 			ReqHeader: map[string]string{
-				wallet.AuthorizationHeader: s.TokenHeader,
+				wallet.AuthorizationHeader: s.userHelper.TokenHeader,
 				"X-Forwarded-For":          "192.0.0.1,56.56.56.1",
 				"Cookie":                   "secret1=secret; secret2=secret",
 			},
@@ -192,7 +193,7 @@ func (s *statusSuite) TestWhoAmI() {
 		s.Require().NoError(err)
 		s.Equal("56.56.56.1", wr.DetectedIP)
 		s.Equal("172.16.5.5", wr.RemoteIP)
-		s.Equal(strconv.Itoa(s.TestUser.User.ID), wr.UserID)
+		s.Equal(strconv.Itoa(s.userHelper.UserID()), wr.UserID)
 		s.Equal(map[string]string{
 			"X-Forwarded-For": "192.0.0.1,56.56.56.1",
 		}, wr.RequestHeaders)
@@ -220,4 +221,13 @@ func (s *statusSuite) TestWhoAmI() {
 			"X-Forwarded-For": "192.0.0.1,56.56.56.1",
 		}, wr.RequestHeaders)
 	})
+}
+
+func (s *statusSuite) SetupSuite() {
+	s.userHelper = &e2etest.UserTestHelper{}
+	s.Require().NoError(s.userHelper.Setup())
+}
+
+func (s *statusSuite) TearDownSuite() {
+	s.userHelper.Cleanup()
 }

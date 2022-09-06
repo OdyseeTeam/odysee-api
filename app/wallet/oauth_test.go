@@ -2,7 +2,6 @@ package wallet
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
@@ -56,26 +55,4 @@ func TestOauthAuthenticatorAuthenticate(t *testing.T) {
 	require.Equal(t, sdk.ID, sdk2.ID)
 	require.Equal(t, sdk.Address, sdk2.Address)
 	require.Equal(t, u.LbrynetServerID.Int, sdk2.ID)
-}
-
-func TestGetTestToken(t *testing.T) {
-	token, err := GetTestToken()
-	require.NoError(t, err)
-
-	userInfo := &UserInfo{}
-
-	auther, err := NewOauthAuthenticator(config.GetOauthProviderURL(), config.GetOauthClientID(), config.GetInternalAPIHost(), nil)
-	require.NoError(t, err)
-	ot, err := auther.verifier.Verify(context.Background(), token.AccessToken)
-	require.NoError(t, err)
-
-	err = ot.Claims(userInfo)
-	require.NoError(t, err)
-
-	remoteUser, err := getRemoteUser(auther.iapiURL, oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token.AccessToken}), "")
-	require.NoError(t, err)
-	require.Greater(t, remoteUser.ID, 0)
-	require.EqualValues(t, 418533549, remoteUser.ID)
-	fmt.Println(token.AccessToken)
-	require.False(t, true)
 }

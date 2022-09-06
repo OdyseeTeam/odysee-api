@@ -11,7 +11,9 @@ import (
 )
 
 const (
-	TestClientID = "ci-tester"
+	TestUserID = 418533549
+
+	testClientID = "ci-tester"
 
 	envClientSecret = "OAUTH_TEST_CLIENT_SECRET"
 	envUsername     = "OAUTH_TEST_USERNAME"
@@ -38,7 +40,7 @@ func GetTestToken() (*oauth2.Token, error) {
 	ctx := context.Background()
 	conf := &oauth2.Config{
 		// ClientID:     config.GetOauthClientID(),
-		ClientID:     TestClientID,
+		ClientID:     testClientID,
 		ClientSecret: clientSecret,
 		Endpoint:     oauth2.Endpoint{TokenURL: config.GetOauthTokenURL()},
 	}
