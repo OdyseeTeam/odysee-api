@@ -45,7 +45,7 @@ type UploadProcessResult struct {
 type Carriage struct {
 	blobsPath    string
 	analyzer     *fileanalyzer.Analyzer
-	uploader     *blobs.Uploader
+	reflectorCfg map[string]string
 	resultWriter io.Writer
 	logger       logging.KVLogger
 }
@@ -56,17 +56,12 @@ func NewCarriage(blobsPath string, resultWriter io.Writer, reflectorCfg map[stri
 		return nil, err
 	}
 
-	uploader, err := blobs.NewUploaderFromCfg(reflectorCfg)
-	if err != nil {
-		return nil, err
-	}
-
 	if logger == nil {
 		logger = zapadapter.NewKV(nil)
 	}
 
 	c := &Carriage{
-		uploader:     uploader,
+		reflectorCfg: reflectorCfg,
 		analyzer:     analyzer,
 		blobsPath:    blobsPath,
 		resultWriter: resultWriter,
@@ -116,6 +111,11 @@ func (c *Carriage) ProcessTask(ctx context.Context, t *asynq.Task) error {
 
 func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error) {
 	r := &UploadProcessResult{UploadID: p.UploadID, UserID: p.UserID}
+	uploader, err := blobs.NewUploaderFromCfg(c.reflectorCfg)
+	if err != nil {
+		return nil, err
+	}
+
 	info, err := c.analyzer.Analyze(context.Background(), p.Path)
 	if info == nil {
 		return r, err
@@ -134,7 +134,7 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	streamSource := stream.GetSource()
 	r.SDHash = hex.EncodeToString(streamSource.GetSdHash())
 	defer os.RemoveAll(path.Join(c.blobsPath, r.SDHash))
-	err = c.uploader.Upload(src)
+	err = uploader.Upload(src)
 	if err != nil {
 		r.Retry = true
 		return r, err

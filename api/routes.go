@@ -126,6 +126,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	tusRouter.PathPrefix("/").HandlerFunc(emptyHandler).Methods(http.MethodOptions)
 
 	v3Router := r.PathPrefix("/api/v3").Subrouter()
+	v3Router.Use(defaultMiddlewares(oauthAuther, legacyProvider, sdkRouter))
 	ug := auth.NewUniversalUserGetter(oauthAuther, legacyProvider, zapadapter.NewKV(nil))
 	gPath := config.GetGeoPublishSourceDir()
 	err = geopublish.InstallRoutes(v3Router.PathPrefix("/publish").Subrouter(), ug, gPath, "/api/v3/publish/")
