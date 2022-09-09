@@ -43,3 +43,11 @@ type CustomerListResponse struct {
 		SourceClaimID    string    `json:"source_claim_id"`
 	} `json:"data"`
 }
+
+type MembershipPerkCheck struct {
+	Success bool        `json:"success"`
+	Error   interface{} `json:"error"`
+	Data    struct {
+		HasAccess bool `json:"has_access"`
+	} `json:"data"`
+}
