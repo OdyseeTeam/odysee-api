@@ -101,6 +101,39 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 			response.Result = responseResult
 			return response, nil
 		}
+		if strings.HasPrefix(t, "c:members-only") {
+			cu, err := auth.GetCurrentUserData(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("no user data in context: %w", err)
+			}
+			if cu.IAPIClient == nil {
+				return nil, fmt.Errorf("iapi client not present")
+			}
+			resp := &iapi.MembershipPerkCheck{}
+			//this is temporarily using a verbose type, it will be replaced once the iapis tables are refactored!!!
+			err = cu.IAPIClient.Call("membership_perk/check", map[string]string{"claim_id": claim.ClaimID, "type": "Exclusive content"}, resp)
+
+			if err != nil {
+				return nil, err
+			}
+			if !resp.Data.HasAccess {
+				return nil, fmt.Errorf("no access to content")
+			}
+			sdHash := hex.EncodeToString(stream.GetSource().SdHash)
+			pcfg := config.GetStreamsV5()
+			startUrl := fmt.Sprintf("%s/%s/%s", pcfg["startpath"], claim.ClaimID, sdHash[:6])
+			hlsUrl := fmt.Sprintf("%s/%s/%s/master.m3u8", pcfg["hlspath"], claim.ClaimID, sdHash)
+
+			ip := cu.IP
+			hlsHash := signStreamURL(hlsUrl, fmt.Sprintf("ip=%s&pass=%s", ip, pcfg["paidpass"]))
+
+			startQuery := fmt.Sprintf("hash-hls=%s&ip=%s&pass=%s", hlsHash, ip, pcfg["paidpass"])
+			responseResult[ParamStreamingUrl] = fmt.Sprintf(
+				"%s%s?hash-hls=%s&ip=%s&hash=%s",
+				pcfg["paidhost"], startUrl, hlsHash, ip, signStreamURL(startUrl, startQuery))
+			response.Result = responseResult
+			return response, nil
+		}
 	}
 
 	feeAmount := stream.GetFee().GetAmount()
