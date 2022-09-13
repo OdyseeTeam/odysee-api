@@ -22,12 +22,25 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
+const (
+	accessTypePurchase   = "purchase"
+	accessTypeRental     = "rental"
+	accessTypeMemberOnly = "memberonly"
+	accessTypeFree       = ""
+
+	iapiTypeMembershipVod        = "Exclusive content"
+	iapiTypeMembershipLiveStream = "Exclusive livestreams"
+)
+
+var errNeedSignedUrl = errors.Err("need signed url")
+var errNeedSignedLivestreamUrl = errors.Err("need signed url")
+
 var reAlreadyPurchased = regexp.MustCompile(`(?i)you already have a purchase`)
 var rePurchaseFree = regexp.MustCompile(`(?i)does not have a purchase price`)
 
-// preflightHookGet will completely replace `get` request from the client with `purchase_create` + `resolve`.
-// This workaround is due to stability issues in the lbrynet SDK `get` method implementation.
-// Only `ParamStreamingUrl` will be returned, plus `purchase_receipt` if stream has been paid for.
+// preflightHookGet replaces `get` request from the client with `purchase_create` + `resolve` for paid streams
+// plus extra logic for looking up off-chain purchases, rentals and memberships.
+// Only `streaming_url` and `purchase_receipt` (if stream has a receipt associated with it) will be returned in the response.
 func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
 	var (
 		contentURL, metricLabel string
@@ -58,84 +71,50 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		return nil, err
 	}
 	stream := claim.Value.GetStream()
+	pcfg := config.GetStreamsV5()
 
-	for _, t := range claim.Value.Tags {
-		if strings.HasPrefix(t, "purchase:") || strings.HasPrefix(t, "rental:") {
-			cu, err := auth.GetCurrentUserData(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("no user data in context: %w", err)
-			}
-			if cu.IAPIClient == nil {
-				return nil, fmt.Errorf("iapi client not present")
-			}
-			resp := &iapi.CustomerListResponse{}
-			err = cu.IAPIClient.Call("customer/list", map[string]string{"claim_id_filter": claim.ClaimID}, resp)
-
-			if err != nil {
-				return nil, err
-			}
-			if len(resp.Data) == 0 {
-				return nil, fmt.Errorf("empty data from iapi")
-			}
-			purchase := resp.Data[0]
-
-			if purchase.Status != "confirmed" {
-				return nil, fmt.Errorf("unconfirmed purchase")
-			}
-			if strings.HasPrefix(t, "rental:") && purchase.Type == "rental" && time.Now().After(purchase.ValidThrough) {
-				return nil, fmt.Errorf("rental expired")
-			}
-
-			sdHash := hex.EncodeToString(stream.GetSource().SdHash)
-			pcfg := config.GetStreamsV5()
-			startUrl := fmt.Sprintf("%s/%s/%s", pcfg["startpath"], claim.ClaimID, sdHash[:6])
-			hlsUrl := fmt.Sprintf("%s/%s/%s/master.m3u8", pcfg["hlspath"], claim.ClaimID, sdHash)
-
-			ip := cu.IP
-			hlsHash := signStreamURL(hlsUrl, fmt.Sprintf("ip=%s&pass=%s", ip, pcfg["paidpass"]))
-
-			startQuery := fmt.Sprintf("hash-hls=%s&ip=%s&pass=%s", hlsHash, ip, pcfg["paidpass"])
-			responseResult[ParamStreamingUrl] = fmt.Sprintf(
-				"%s%s?hash-hls=%s&ip=%s&hash=%s",
-				pcfg["paidhost"], startUrl, hlsHash, ip, signStreamURL(startUrl, startQuery))
-			response.Result = responseResult
-			return response, nil
+	hasAccess, err := checkStreamAccess(ctx, claim)
+	if !hasAccess {
+		return nil, err
+	} else if errors.Is(err, errNeedSignedUrl) {
+		src := stream.GetSource()
+		if src == nil {
+			m := "paid content doesn't have source data"
+			log.Error(m)
+			return nil, errors.Err(m)
 		}
-		if strings.HasPrefix(t, "c:members-only") {
-			cu, err := auth.GetCurrentUserData(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("no user data in context: %w", err)
-			}
-			if cu.IAPIClient == nil {
-				return nil, fmt.Errorf("iapi client not present")
-			}
-			resp := &iapi.MembershipPerkCheck{}
-			//this is temporarily using a verbose type, it will be replaced once the iapis tables are refactored!!!
-			err = cu.IAPIClient.Call("membership_perk/check", map[string]string{"claim_id": claim.ClaimID, "type": "Exclusive content"}, resp)
-
-			if err != nil {
-				return nil, err
-			}
-			if !resp.Data.HasAccess {
-				return nil, fmt.Errorf("no access to content")
-			}
-			sdHash := hex.EncodeToString(stream.GetSource().SdHash)
-			pcfg := config.GetStreamsV5()
-			startUrl := fmt.Sprintf("%s/%s/%s", pcfg["startpath"], claim.ClaimID, sdHash[:6])
-			hlsUrl := fmt.Sprintf("%s/%s/%s/master.m3u8", pcfg["hlspath"], claim.ClaimID, sdHash)
-
-			ip := cu.IP
-			hlsHash := signStreamURL(hlsUrl, fmt.Sprintf("ip=%s&pass=%s", ip, pcfg["paidpass"]))
-
-			startQuery := fmt.Sprintf("hash-hls=%s&ip=%s&pass=%s", hlsHash, ip, pcfg["paidpass"])
-			responseResult[ParamStreamingUrl] = fmt.Sprintf(
-				"%s%s?hash-hls=%s&ip=%s&hash=%s",
-				pcfg["paidhost"], startUrl, hlsHash, ip, signStreamURL(startUrl, startQuery))
-			response.Result = responseResult
-			return response, nil
+		sdHash := hex.EncodeToString(src.SdHash)
+		startUrl := fmt.Sprintf("%s/%s/%s", pcfg["startpath"], claim.ClaimID, sdHash[:6])
+		hlsUrl := fmt.Sprintf("%s/%s/%s/master.m3u8", pcfg["hlspath"], claim.ClaimID, sdHash)
+		cu, err := auth.GetCurrentUserData(ctx)
+		if err != nil {
+			return nil, err
 		}
+		ip := cu.IP
+		hlsHash := signStreamURL(hlsUrl, fmt.Sprintf("ip=%s&pass=%s", ip, pcfg["paidpass"]))
+
+		startQuery := fmt.Sprintf("hash-hls=%s&ip=%s&pass=%s", hlsHash, ip, pcfg["paidpass"])
+		responseResult[ParamStreamingUrl] = fmt.Sprintf(
+			"%s%s?hash-hls=%s&ip=%s&hash=%s",
+			pcfg["paidhost"], startUrl, hlsHash, ip, signStreamURL(startUrl, startQuery))
+		response.Result = responseResult
+		return response, nil
+	} else if errors.Is(err, errNeedSignedLivestreamUrl) {
+		baseUrl := paramsMap["base_streaming_url"].(string)
+		cu, err := auth.GetCurrentUserData(ctx)
+		if err != nil {
+			return nil, err
+		}
+		ip := cu.IP
+		query := fmt.Sprintf("ip=%s&pass=%s", ip, pcfg["paidpass"])
+		responseResult[ParamStreamingUrl] = fmt.Sprintf(
+			"%s?ip=%s&hash=%s",
+			baseUrl, ip, signStreamURL(baseUrl, query))
+		response.Result = responseResult
+		return response, nil
 	}
 
+	// Lbrynet paid content logic below
 	feeAmount := stream.GetFee().GetAmount()
 	if feeAmount > 0 {
 		isPaidStream = true
@@ -187,14 +166,14 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 	if src == nil {
 		m := "stream doesn't have source data"
 		log.Error(m)
-		return nil, fmt.Errorf(m)
+		return nil, errors.Err(m)
 	}
 	sdHash := hex.EncodeToString(src.SdHash)[:6]
 	if isPaidStream {
 		size := src.GetSize()
 		if claim.PurchaseReceipt == nil {
 			log.Error("stream was paid for but receipt not found in the resolve response")
-			return nil, fmt.Errorf("couldn't find purchase receipt for paid stream")
+			return nil, errors.Err("couldn't find purchase receipt for paid stream")
 		}
 
 		log.Debugf("creating stream token with stream id=%s, txid=%s, size=%v", claim.Name+"/"+claim.ClaimID, claim.PurchaseReceipt.Txid, size)
@@ -228,6 +207,91 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 	return response, nil
 }
 
+func checkStreamAccess(ctx context.Context, claim *ljsonrpc.Claim) (bool, error) {
+	var (
+		accessType string
+	)
+
+	params := GetQuery(ctx).ParamsAsMap()
+	_, isLivestream := params["base_streaming_url"]
+
+TagLoop:
+	for _, t := range claim.Value.Tags {
+		switch {
+		case strings.HasPrefix(t, "purchase:"):
+			accessType = accessTypePurchase
+			break TagLoop
+		case strings.HasPrefix(t, "rental:"):
+			accessType = accessTypeRental
+			break TagLoop
+		case strings.HasPrefix(t, "c:members-only"):
+			accessType = accessTypeMemberOnly
+			break TagLoop
+		}
+	}
+
+	if accessType == accessTypeFree || claim.IsMyOutput {
+		return true, nil
+	}
+
+	cu, err := auth.GetCurrentUserData(ctx)
+	if err != nil {
+		return false, errors.Err("no user data in context: %w", err)
+	}
+	if cu.IAPIClient == nil {
+		return false, errors.Err("authentication required")
+	}
+	iac := cu.IAPIClient
+
+	switch accessType {
+	case accessTypePurchase, accessTypeRental:
+		resp := &iapi.CustomerListResponse{}
+		err = iac.Call("customer/list", map[string]string{"claim_id_filter": claim.ClaimID}, resp)
+		if err != nil {
+			return false, err
+		}
+		if len(resp.Data) == 0 {
+			return false, errors.Err("no access to paid content")
+		}
+		purchase := resp.Data[0]
+		if purchase.Status != "confirmed" {
+			return false, errors.Err("unconfirmed purchase")
+		}
+		if accessType == accessTypeRental {
+			if purchase.Type != "rental" {
+				return false, errors.Err("incorrect purchase type")
+			}
+			if purchase.Type == "rental" && time.Now().After(purchase.ValidThrough) {
+				return false, errors.Err("rental expired")
+			}
+		}
+		return true, errNeedSignedUrl
+	case accessTypeMemberOnly:
+		var (
+			perkType string
+			signErr  error
+		)
+		resp := &iapi.MembershipPerkCheck{}
+		if isLivestream {
+			perkType = iapiTypeMembershipLiveStream
+			signErr = errNeedSignedLivestreamUrl
+		} else {
+			perkType = iapiTypeMembershipVod
+			signErr = errNeedSignedUrl
+		}
+		err = iac.Call("membership_perk/check", map[string]string{"claim_id": claim.ClaimID, "type": perkType}, resp)
+		if err != nil {
+			return false, err
+		}
+		if !resp.Data.HasAccess {
+			return false, errors.Err("no access to members-only content")
+		}
+		return true, signErr
+	default:
+		return false, errors.Err("unknown access type")
+	}
+}
+
 func resolve(ctx context.Context, c *Caller, q *Query, url string) (*ljsonrpc.Claim, error) {
 	resolveQuery, err := NewQuery(jsonrpc.NewRequest(
 		MethodResolve,
@@ -235,6 +299,7 @@ func resolve(ctx context.Context, c *Caller, q *Query, url string) (*ljsonrpc.Cl
 			"urls":                     url,
 			"include_purchase_receipt": true,
 			"include_protobuf":         true,
+			"include_is_my_output":     true,
 		},
 	), q.WalletID)
 	if err != nil {
@@ -254,16 +319,16 @@ func resolve(ctx context.Context, c *Caller, q *Query, url string) (*ljsonrpc.Cl
 
 	claim, ok := resolveResponse[url]
 	if !ok {
-		return nil, fmt.Errorf("could not find a corresponding entry in the resolve response")
+		return nil, errors.Err("could not find a corresponding entry in the resolve response")
 	}
 	// Empty claim ID means that resolve error has been returned
 	if claim.ClaimID == "" {
-		return nil, fmt.Errorf("couldn't find claim")
+		return nil, errors.Err("couldn't find claim")
 	}
 	return &claim, err
 }
 
-func getStatusResponse(c *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
+func getStatusResponse(_ *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
 	var response map[string]interface{}
 
 	rawResponse := `
