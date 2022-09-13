@@ -1,7 +1,6 @@
 package query
 
 import (
-	"context"
 	"database/sql"
 	"strings"
 	"testing"
@@ -16,18 +15,22 @@ import (
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/iapi"
 	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
-	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
-	"github.com/ybbus/jsonrpc"
 
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/stretchr/testify/suite"
+	"github.com/ybbus/jsonrpc"
 )
 
 const (
-	rentalClaim   = "81b1749f773bad5b9b53d21508051560f2746cdc"
-	purchaseClaim = "2742f9e8eea0c4654ea8b51507dbb7f23f1f5235"
+	rentalURL      = "lbry://@gifprofile#7/rental1#8"
+	purchaseURL    = "lbry://@gifprofile#7/purchase1#2"
+	membersOnlyURL = "lbry://@gifprofile#7/members-only#7"
 
-	rentalURL   = "lbry://@gifprofile#7/rental1#8"
-	purchaseURL = "lbry://@gifprofile#7/purchase1#2"
+	expiredRentalURL = "lbry://@gifprofile#7/2222222222222#8"
+	activeRentalURL  = "lbry://@gifprofile#7/test-rental-2#2"
+
+	noAccessPaidURL        = "lbry://@PlayNice#4/Alexswar#c"
+	noAccessMembersOnlyURL = "lbry://@gifprofile#7/members-only-no-access#8"
 )
 
 type paidContentSuite struct {
@@ -92,27 +95,66 @@ func (s *paidContentSuite) TearDownSuite() {
 	config.RestoreOverridden()
 }
 
-func (s *paidContentSuite) TestPurchaseUnauthorized() {
-	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": purchaseURL})
+func (s *paidContentSuite) TestUnauthorized() {
+	cases := []struct {
+		url, errString string
+	}{
+		{rentalURL, "authentication required"},
+		{purchaseURL, "authentication required"},
+		{membersOnlyURL, "authentication required"},
+	}
+	for _, tc := range cases {
+		s.Run(tc.url, func() {
+			request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": tc.url})
+			ctx := auth.AttachCurrentUser(bgctx(), auth.NewCurrentUser(nil, errors.Err("anonymous")))
+			_, err := NewCaller(s.sdkAddress, 0).Call(ctx, request)
+			s.EqualError(err, tc.errString)
+		})
+	}
+}
 
-	_, err := NewCaller(s.sdkAddress, 0).Call(context.Background(), request)
-	s.Error(err, "authentication required")
+func (s *paidContentSuite) TestNoAccess() {
+	cases := []struct {
+		url, errString string
+	}{
+		{noAccessPaidURL, "no access to paid content"},
+		{expiredRentalURL, "rental expired"},
+		{noAccessMembersOnlyURL, "no access to members-only content"},
+	}
+	for _, tc := range cases {
+		s.Run(tc.url, func() {
+			request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": tc.url})
+			ctx := auth.AttachCurrentUser(bgctx(), s.cu)
+			resp, err := NewCaller(s.sdkAddress, s.user.ID).Call(ctx, request)
+			s.EqualError(err, tc.errString)
+			s.Nil(resp)
+		})
+	}
 }
 
 func (s *paidContentSuite) TestPurchaseAuthorized() {
-	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": purchaseURL})
+	streamingUrlPrefix := "https://secure.odycdn.com/v5/streams/start"
+	cases := []struct {
+		url, streamingUrl string
+	}{
+		{activeRentalURL, "/22acd6a6ab1c83d8c265d652c3842420810006be/96a3e2?hash-hls=33c2dc5a5aaf863e469488009b9164a6&ip=8.8.8.8&hash=90c0a6f1859842493354b462cc857c0c"},
+		{purchaseURL, "/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4?hash-hls=4e42be75b03ce2237e8ff8284c794392&ip=8.8.8.8&hash=910a69e8e189288c29a5695314b48e89"},
+		{membersOnlyURL, "/7de672e799d17fc562ae7b381db1722a81856410/ad42aa?hash-hls=5e25826a1957b73084e85e5878fef08b&ip=8.8.8.8&hash=bcc9a904ae8621e910427f2eb3637be7"},
+	}
+	for _, tc := range cases {
+		s.Run(tc.url, func() {
+			request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": tc.url})
 
-	ctx := auth.AttachCurrentUser(bgctx(), s.cu)
-	resp, err := NewCaller(s.sdkAddress, s.user.ID).Call(ctx, request)
+			ctx := auth.AttachCurrentUser(bgctx(), s.cu)
+			resp, err := NewCaller(s.sdkAddress, s.user.ID).Call(ctx, request)
 
-	s.Require().NoError(err)
-	s.Require().Nil(resp.Error)
+			s.Require().NoError(err)
+			s.Require().Nil(resp.Error)
 
-	getResponse := &ljsonrpc.GetResponse{}
-	err = resp.GetObject(&getResponse)
-	s.Require().NoError(err)
-	s.Equal(
-		"https://secure.odycdn.com/v5/streams/start/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4?hash-hls=4e42be75b03ce2237e8ff8284c794392&ip=8.8.8.8&hash=910a69e8e189288c29a5695314b48e89",
-		getResponse.StreamingURL,
-	)
+			gresp := &ljsonrpc.GetResponse{}
+			err = resp.GetObject(&gresp)
+			s.Require().NoError(err)
+			s.Equal(streamingUrlPrefix+tc.streamingUrl, gresp.StreamingURL)
+		})
+	}
 }
