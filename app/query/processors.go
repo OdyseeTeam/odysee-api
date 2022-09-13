@@ -230,8 +230,11 @@ TagLoop:
 		}
 	}
 
-	if accessType == accessTypeFree || claim.IsMyOutput {
+	if accessType == accessTypeFree {
 		return true, nil
+	}
+	if claim.IsMyOutput {
+		return true, errNeedSignedUrl
 	}
 
 	cu, err := auth.GetCurrentUserData(ctx)
