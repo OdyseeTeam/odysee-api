@@ -31,6 +31,8 @@ const (
 
 	noAccessPaidURL        = "lbry://@PlayNice#4/Alexswar#c"
 	noAccessMembersOnlyURL = "lbry://@gifprofile#7/members-only-no-access#8"
+
+	livestreamURL = "lbry://@gifprofile#7/members-only-livestream#f"
 )
 
 type paidContentSuite struct {
@@ -102,6 +104,7 @@ func (s *paidContentSuite) TestUnauthorized() {
 		{rentalURL, "authentication required"},
 		{purchaseURL, "authentication required"},
 		{membersOnlyURL, "authentication required"},
+		{livestreamURL, "authentication required"},
 	}
 	for _, tc := range cases {
 		s.Run(tc.url, func() {
@@ -132,18 +135,28 @@ func (s *paidContentSuite) TestNoAccess() {
 	}
 }
 
-func (s *paidContentSuite) TestPurchaseAuthorized() {
-	streamingUrlPrefix := "https://secure.odycdn.com/v5/streams/start"
+func (s *paidContentSuite) TestAccess() {
+	sp := "https://secure.odycdn.com/v5/streams/start"
 	cases := []struct {
-		url, streamingUrl string
+		url, expectedStreamingUrl string
+		baseStreamingURL          string
 	}{
-		{activeRentalURL, "/22acd6a6ab1c83d8c265d652c3842420810006be/96a3e2?hash-hls=33c2dc5a5aaf863e469488009b9164a6&ip=8.8.8.8&hash=90c0a6f1859842493354b462cc857c0c"},
-		{purchaseURL, "/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4?hash-hls=4e42be75b03ce2237e8ff8284c794392&ip=8.8.8.8&hash=910a69e8e189288c29a5695314b48e89"},
-		{membersOnlyURL, "/7de672e799d17fc562ae7b381db1722a81856410/ad42aa?hash-hls=5e25826a1957b73084e85e5878fef08b&ip=8.8.8.8&hash=bcc9a904ae8621e910427f2eb3637be7"},
+		{url: activeRentalURL, expectedStreamingUrl: sp + "/22acd6a6ab1c83d8c265d652c3842420810006be/96a3e2?hash-hls=33c2dc5a5aaf863e469488009b9164a6&ip=8.8.8.8&hash=90c0a6f1859842493354b462cc857c0c"},
+		{url: purchaseURL, expectedStreamingUrl: sp + "/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4?hash-hls=4e42be75b03ce2237e8ff8284c794392&ip=8.8.8.8&hash=910a69e8e189288c29a5695314b48e89"},
+		{url: membersOnlyURL, expectedStreamingUrl: sp + "/7de672e799d17fc562ae7b381db1722a81856410/ad42aa?hash-hls=5e25826a1957b73084e85e5878fef08b&ip=8.8.8.8&hash=bcc9a904ae8621e910427f2eb3637be7"},
+		{
+			url:                  livestreamURL,
+			baseStreamingURL:     "https://cloud.odysee.live/secure/oongiu1aingoo2ohtoonooy6wahsaey2shinaeka/master.m3u8",
+			expectedStreamingUrl: "https://cloud.odysee.live/secure/oongiu1aingoo2ohtoonooy6wahsaey2shinaeka/master.m3u8?ip=8.8.8.8&hash=4986df06e96fedc4c12245d180821e0e",
+		},
 	}
 	for _, tc := range cases {
 		s.Run(tc.url, func() {
-			request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": tc.url})
+			params := map[string]interface{}{"uri": tc.url}
+			if tc.baseStreamingURL != "" {
+				params[ParamBaseStreamingUrl] = tc.baseStreamingURL
+			}
+			request := jsonrpc.NewRequest(MethodGet, params)
 
 			ctx := auth.AttachCurrentUser(bgctx(), s.cu)
 			resp, err := NewCaller(s.sdkAddress, s.user.ID).Call(ctx, request)
@@ -154,7 +167,7 @@ func (s *paidContentSuite) TestPurchaseAuthorized() {
 			gresp := &ljsonrpc.GetResponse{}
 			err = resp.GetObject(&gresp)
 			s.Require().NoError(err)
-			s.Equal(streamingUrlPrefix+tc.streamingUrl, gresp.StreamingURL)
+			s.Equal(tc.expectedStreamingUrl, gresp.StreamingURL)
 		})
 	}
 }

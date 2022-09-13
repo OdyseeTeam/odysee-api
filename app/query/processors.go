@@ -27,16 +27,20 @@ const (
 	accessTypeRental     = "rental"
 	accessTypeMemberOnly = "memberonly"
 	accessTypeFree       = ""
+
+	iapiTypeMembershipVod        = "Exclusive content"
+	iapiTypeMembershipLiveStream = "Exclusive livestreams"
 )
 
 var errNeedSignedUrl = errors.Err("need signed url")
+var errNeedSignedLivestreamUrl = errors.Err("need signed url")
 
 var reAlreadyPurchased = regexp.MustCompile(`(?i)you already have a purchase`)
 var rePurchaseFree = regexp.MustCompile(`(?i)does not have a purchase price`)
 
-// preflightHookGet will completely replace `get` request from the client with `purchase_create` + `resolve`.
-// This workaround is due to stability issues in the lbrynet SDK `get` method implementation.
-// Only `ParamStreamingUrl` will be returned, plus `purchase_receipt` if stream has been paid for.
+// preflightHookGet replaces `get` request from the client with `purchase_create` + `resolve` for paid streams
+// plus extra logic for looking up off-chain purchases, rentals and memberships.
+// Only `streaming_url` and `purchase_receipt` (if stream has a receipt associated with it) will be returned in the response.
 func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
 	var (
 		contentURL, metricLabel string
@@ -67,13 +71,19 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		return nil, err
 	}
 	stream := claim.Value.GetStream()
+	pcfg := config.GetStreamsV5()
 
 	hasAccess, err := checkStreamAccess(ctx, claim)
 	if !hasAccess {
 		return nil, err
 	} else if errors.Is(err, errNeedSignedUrl) {
-		sdHash := hex.EncodeToString(stream.GetSource().SdHash)
-		pcfg := config.GetStreamsV5()
+		src := stream.GetSource()
+		if src == nil {
+			m := "paid content doesn't have source data"
+			log.Error(m)
+			return nil, errors.Err(m)
+		}
+		sdHash := hex.EncodeToString(src.SdHash)
 		startUrl := fmt.Sprintf("%s/%s/%s", pcfg["startpath"], claim.ClaimID, sdHash[:6])
 		hlsUrl := fmt.Sprintf("%s/%s/%s/master.m3u8", pcfg["hlspath"], claim.ClaimID, sdHash)
 		cu, err := auth.GetCurrentUserData(ctx)
@@ -87,6 +97,19 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		responseResult[ParamStreamingUrl] = fmt.Sprintf(
 			"%s%s?hash-hls=%s&ip=%s&hash=%s",
 			pcfg["paidhost"], startUrl, hlsHash, ip, signStreamURL(startUrl, startQuery))
+		response.Result = responseResult
+		return response, nil
+	} else if errors.Is(err, errNeedSignedLivestreamUrl) {
+		baseUrl := paramsMap["base_streaming_url"].(string)
+		cu, err := auth.GetCurrentUserData(ctx)
+		if err != nil {
+			return nil, err
+		}
+		ip := cu.IP
+		query := fmt.Sprintf("ip=%s&pass=%s", ip, pcfg["paidpass"])
+		responseResult[ParamStreamingUrl] = fmt.Sprintf(
+			"%s?ip=%s&hash=%s",
+			baseUrl, ip, signStreamURL(baseUrl, query))
 		response.Result = responseResult
 		return response, nil
 	}
@@ -189,18 +212,11 @@ func checkStreamAccess(ctx context.Context, claim *ljsonrpc.Claim) (bool, error)
 		accessType string
 	)
 
+	params := GetQuery(ctx).ParamsAsMap()
+	_, isLivestream := params["base_streaming_url"]
+
 TagLoop:
 	for _, t := range claim.Value.Tags {
-		// if strings.HasPrefix(t, "purchase:") {
-		// 	accessType = accessTypePurchase
-		// 	break
-		// } else if strings.HasPrefix(t, "rental:") {
-		// 	accessType = accessTypeRental
-		// 	break
-		// } else if strings.HasPrefix(t, "c:members-only") {
-		// 	accessType = accessTypeMemberOnly
-		// 	break
-		// }
 		switch {
 		case strings.HasPrefix(t, "purchase:"):
 			accessType = accessTypePurchase
@@ -251,16 +267,26 @@ TagLoop:
 		}
 		return true, errNeedSignedUrl
 	case accessTypeMemberOnly:
+		var (
+			perkType string
+			signErr  error
+		)
 		resp := &iapi.MembershipPerkCheck{}
-		// TODO: his is temporarily using a verbose type, it will be replaced once the iapis tables are refactored!!!
-		err = iac.Call("membership_perk/check", map[string]string{"claim_id": claim.ClaimID, "type": "Exclusive content"}, resp)
+		if isLivestream {
+			perkType = iapiTypeMembershipLiveStream
+			signErr = errNeedSignedLivestreamUrl
+		} else {
+			perkType = iapiTypeMembershipVod
+			signErr = errNeedSignedUrl
+		}
+		err = iac.Call("membership_perk/check", map[string]string{"claim_id": claim.ClaimID, "type": perkType}, resp)
 		if err != nil {
 			return false, err
 		}
 		if !resp.Data.HasAccess {
 			return false, errors.Err("no access to members-only content")
 		}
-		return true, errNeedSignedUrl
+		return true, signErr
 	default:
 		return false, errors.Err("unknown access type")
 	}
