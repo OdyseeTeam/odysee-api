@@ -2,6 +2,7 @@ package geopublish
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -128,8 +129,7 @@ func WithTusConfig(config tusd.Config) func(options *HandlerOptions) {
 	}
 }
 
-// NewHandler creates a new publish handler.
-
+// NewHandler creates a new geopublish handler.
 func NewHandler(optionFuncs ...func(*HandlerOptions)) (*Handler, error) {
 	options := &HandlerOptions{
 		// Logger: logging.NoopKVLogger{},
@@ -189,16 +189,16 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	user, err := h.getUserFromRequest(r)
 	if authErr := proxy.GetAuthError(user, err); authErr != nil {
 		log.WithError(authErr).Error("failed to authorize user")
-		w.Write(rpcerrors.ErrorToJSON(authErr))
 		observeFailure(metrics.GetDuration(r), metrics.FailureKindAuth)
+		rpcerrors.Write(w, authErr)
 		return
 	}
 	log = log.WithField("user_id", user.ID)
 
 	if sdkrouter.GetSDKAddress(user) == "" {
 		log.Errorf("user %d does not have sdk address assigned", user.ID)
-		w.Write(rpcerrors.NewInternalError(errors.Err("user does not have sdk address assigned")).JSON())
 		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+		rpcerrors.Write(w, errors.Err("user does not have sdk address assigned"))
 		return
 	}
 
@@ -207,8 +207,8 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	if id == "" {
 		err := fmt.Errorf("file id is required")
 		log.Error(err)
-		w.Write(rpcerrors.NewInvalidParamsError(err).JSON())
 		observeFailure(metrics.GetDuration(r), metrics.FailureKindClient)
+		rpcerrors.Write(w, rpcerrors.NewInvalidParamsError(err))
 		return
 	}
 
@@ -219,8 +219,8 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 			"user_id":   strconv.Itoa(user.ID),
 		})
 		log.WithError(err).Error("failed to acquire file lock")
-		w.Write(rpcerrors.NewInternalError(err).JSON())
 		observeFailure(metrics.GetDuration(r), metrics.PublishLockFailure)
+		rpcerrors.Write(w, err)
 		return
 	}
 	defer lock.Unlock()
@@ -228,16 +228,16 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	upload, err := h.composer.Core.GetUpload(r.Context(), id)
 	if err != nil {
 		log.WithError(err).Error("failed to get upload object")
-		w.Write(rpcerrors.NewInternalError(err).JSON())
 		observeFailure(metrics.GetDuration(r), metrics.PublishUploadObjectFailure)
+		rpcerrors.Write(w, err)
 		return
 	}
 
 	info, err := upload.GetInfo(r.Context())
 	if err != nil {
 		log.WithError(err).Error("failed to get upload info")
-		w.Write(rpcerrors.NewInternalError(err).JSON())
 		observeFailure(metrics.GetDuration(r), metrics.PublishUploadObjectFailure)
+		rpcerrors.Write(w, err)
 		return
 	}
 
@@ -246,8 +246,8 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	if info.Offset != info.Size { // upload is not yet completed
 		err := fmt.Errorf("upload is still in process")
 		log.WithError(err).Error("upload is still in process")
-		w.Write(rpcerrors.ErrorToJSON(err))
 		observeFailure(metrics.GetDuration(r), metrics.PublishUploadIncomplete)
+		rpcerrors.Write(w, err)
 		return
 	}
 
@@ -257,8 +257,8 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	if len(uploadMD) == 0 {
 		err := fmt.Errorf("file metadata is required")
 		log.Error(err.Error())
-		w.Write(rpcerrors.ErrorToJSON(err))
 		observeFailure(metrics.GetDuration(r), metrics.FailureKindClient)
+		w.Write(rpcerrors.ErrorToJSON(err))
 		return
 	}
 
@@ -266,8 +266,8 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	if !ok || origUploadName == "" {
 		err := fmt.Errorf("file name is required")
 		log.Error(err.Error())
-		w.Write(rpcerrors.ErrorToJSON(err))
 		observeFailure(metrics.GetDuration(r), metrics.FailureKindClient)
+		w.Write(rpcerrors.ErrorToJSON(err))
 		return
 
 	}
@@ -275,8 +275,8 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	origUploadPath, ok := info.Storage["Path"]
 	if !ok || origUploadPath == "" { // shouldn't happen but check regardless
 		log.Errorf("file path property not found in storage info: %v", reflect.ValueOf(info.Storage).MapKeys())
-		w.Write(rpcerrors.ErrorToJSON(err))
 		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+		rpcerrors.Write(w, err)
 		return
 	}
 
@@ -287,29 +287,29 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	dstDir := filepath.Join(dir, strconv.Itoa(user.ID), info.ID)
 	if err := os.MkdirAll(dstDir, os.ModePerm); err != nil {
 		log.WithError(err).Errorf("failed to create directory: %s", dstDir)
-		w.Write(rpcerrors.ErrorToJSON(err))
 		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+		rpcerrors.Write(w, err)
 		return
 	}
 
 	dstFilepath := filepath.Join(dstDir, origUploadName)
 	if err := os.Rename(origUploadPath, dstFilepath); err != nil {
 		log.WithError(err).Errorf("failed to rename uploaded file to: %s", dstFilepath)
-		w.Write(rpcerrors.ErrorToJSON(err))
 		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+		rpcerrors.Write(w, err)
 		return
 	}
 
 	var rpcReq *jsonrpc.RPCRequest
 	if err := json.NewDecoder(r.Body).Decode(&rpcReq); err != nil {
-		w.Write(rpcerrors.NewJSONParseError(err).JSON())
 		observeFailure(metrics.GetDuration(r), metrics.FailureKindClientJSON)
+		rpcerrors.Write(w, rpcerrors.NewJSONParseError(err))
 		return
 	}
 
 	rpcparams, ok := rpcReq.Params.(map[string]interface{})
 	if !ok {
-		w.Write(rpcerrors.NewInvalidParamsError(werrors.New("cannot parse params")).JSON())
+		rpcerrors.Write(w, rpcerrors.NewInvalidParamsError(werrors.New("cannot parse params")))
 		return
 	}
 
@@ -333,8 +333,7 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	err = h.udb.processUpload(info.ID, user, dstFilepath, rpcReq)
 	if err != nil {
 		log.WithError(err).Error("upload processing failed")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
+		rpcerrors.Write(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
@@ -355,14 +354,17 @@ func (h Handler) Status(w http.ResponseWriter, r *http.Request) {
 	}
 	up, err := h.udb.get(id, user.ID)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		if errors.Is(err, sql.ErrNoRows) {
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			rpcerrors.Write(w, err)
+		}
 		return
 	}
 
 	pq, err := up.PublishQuery().One(h.udb.db)
 	if err != nil {
-		w.WriteHeader(http.StatusConflict)
-		w.Write([]byte(err.Error()))
+		rpcerrors.Write(w, fmt.Errorf("error getting publish query: %w", err))
 		return
 	}
 
@@ -371,9 +373,11 @@ func (h Handler) Status(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(pq.Response.JSON)
 	case models.PublishQueryStatusFailed:
-		w.WriteHeader(http.StatusConflict)
-		w.Write([]byte(pq.Error))
-		w.Write(pq.Response.JSON)
+		if pq.Response.IsZero() {
+			w.Write(pq.Response.JSON)
+		} else {
+			rpcerrors.Write(w, errors.Err(pq.Error))
+		}
 	default:
 		w.WriteHeader(http.StatusAccepted)
 	}
