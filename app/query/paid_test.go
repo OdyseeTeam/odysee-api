@@ -1,9 +1,7 @@
 package query
 
 import (
-	"context"
 	"database/sql"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -17,20 +15,24 @@ import (
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/iapi"
 	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
-	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
-	"github.com/ybbus/jsonrpc"
 
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/stretchr/testify/suite"
+	"github.com/ybbus/jsonrpc"
 )
 
 const (
-	rentalClaim   = "22acd6a6ab1c83d8c265d652c3842420810006be"
-	purchaseClaim = "2742f9e8eea0c4654ea8b51507dbb7f23f1f5235"
+	rentalURL      = "lbry://@gifprofile#7/rental1#8"
+	purchaseURL    = "lbry://@gifprofile#7/purchase1#2"
+	membersOnlyURL = "lbry://@gifprofile#7/members-only#7"
 
-	rentalURL   = "lbry://@gifprofile#7/test-rental-2#2"
-	purchaseURL = "lbry://@gifprofile#7/purchase1#2"
+	expiredRentalURL = "lbry://@gifprofile#7/2222222222222#8"
+	activeRentalURL  = "lbry://@gifprofile#7/test-rental-2#2"
 
-	fakeRemoteIP = "171.100.27.222"
+	noAccessPaidURL        = "lbry://@PlayNice#4/Alexswar#c"
+	noAccessMembersOnlyURL = "lbry://@gifprofile#7/members-only-no-access#8"
+
+	livestreamURL = "lbry://@gifprofile#7/members-only-livestream#f"
 )
 
 type paidContentSuite struct {
@@ -73,19 +75,19 @@ func (s *paidContentSuite) SetupSuite() {
 	s.Require().NoError(err, errors.Unwrap(err))
 	s.auther = auther
 
-	u, err := auther.Authenticate(s.tokenHeader, fakeRemoteIP)
+	u, err := auther.Authenticate(s.tokenHeader, "127.0.0.1")
 	s.Require().NoError(err)
 	s.user = u
 	s.sdkAddress = sdkrouter.GetSDKAddress(u)
 
 	iac, err := iapi.NewClient(
 		iapi.WithOAuthToken(strings.TrimPrefix(th, wallet.TokenPrefix)),
-		iapi.WithRemoteIP(fakeRemoteIP),
+		iapi.WithRemoteIP("8.8.8.8"),
 	)
 	s.Require().NoError(err)
 
 	cu := auth.NewCurrentUser(u, nil)
-	cu.IP = fakeRemoteIP
+	cu.IP = "8.8.8.8"
 	cu.IAPIClient = iac
 	s.cu = cu
 }
@@ -95,49 +97,77 @@ func (s *paidContentSuite) TearDownSuite() {
 	config.RestoreOverridden()
 }
 
-func (s *paidContentSuite) TestPurchaseUnauthorized() {
-	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": purchaseURL})
-
-	_, err := NewCaller(s.sdkAddress, 0).Call(context.Background(), request)
-	s.Error(err, "authentication required")
+func (s *paidContentSuite) TestUnauthorized() {
+	cases := []struct {
+		url, errString string
+	}{
+		{rentalURL, "authentication required"},
+		{purchaseURL, "authentication required"},
+		{membersOnlyURL, "authentication required"},
+		{livestreamURL, "authentication required"},
+	}
+	for _, tc := range cases {
+		s.Run(tc.url, func() {
+			request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": tc.url})
+			ctx := auth.AttachCurrentUser(bgctx(), auth.NewCurrentUser(nil, errors.Err("anonymous")))
+			_, err := NewCaller(s.sdkAddress, 0).Call(ctx, request)
+			s.EqualError(err, tc.errString)
+		})
+	}
 }
 
-func (s *paidContentSuite) TestPurchaseAuthorized() {
-	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": purchaseURL})
-
-	ctx := auth.AttachCurrentUser(bgctx(), s.cu)
-	resp, err := NewCaller(s.sdkAddress, s.user.ID).Call(ctx, request)
-
-	s.Require().NoError(err)
-	s.Require().Nil(resp.Error)
-
-	getResponse := &ljsonrpc.GetResponse{}
-	err = resp.GetObject(&getResponse)
-	s.Require().NoError(err)
-	s.Equal(
-		"https://secure.odycdn.com/v5/streams/start/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4?hash-hls=4e42be75b03ce2237e8ff8284c794392&ip=8.8.8.8&hash=910a69e8e189288c29a5695314b48e89",
-		getResponse.StreamingURL,
-	)
+func (s *paidContentSuite) TestNoAccess() {
+	cases := []struct {
+		url, errString string
+	}{
+		{noAccessPaidURL, "no access to paid content"},
+		{expiredRentalURL, "rental expired"},
+		{noAccessMembersOnlyURL, "no access to members-only content"},
+	}
+	for _, tc := range cases {
+		s.Run(tc.url, func() {
+			request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": tc.url})
+			ctx := auth.AttachCurrentUser(bgctx(), s.cu)
+			resp, err := NewCaller(s.sdkAddress, s.user.ID).Call(ctx, request)
+			s.EqualError(err, tc.errString)
+			s.Nil(resp)
+		})
+	}
 }
 
-func (s *paidContentSuite) TestRentalAuthorized() {
-	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": rentalURL})
+func (s *paidContentSuite) TestAccess() {
+	sp := "https://secure.odycdn.com/v5/streams/start"
+	cases := []struct {
+		url, expectedStreamingUrl string
+		baseStreamingURL          string
+	}{
+		{url: activeRentalURL, expectedStreamingUrl: sp + "/22acd6a6ab1c83d8c265d652c3842420810006be/96a3e2?hash-hls=33c2dc5a5aaf863e469488009b9164a6&ip=8.8.8.8&hash=90c0a6f1859842493354b462cc857c0c"},
+		{url: purchaseURL, expectedStreamingUrl: sp + "/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4?hash-hls=4e42be75b03ce2237e8ff8284c794392&ip=8.8.8.8&hash=910a69e8e189288c29a5695314b48e89"},
+		{url: membersOnlyURL, expectedStreamingUrl: sp + "/7de672e799d17fc562ae7b381db1722a81856410/ad42aa?hash-hls=5e25826a1957b73084e85e5878fef08b&ip=8.8.8.8&hash=bcc9a904ae8621e910427f2eb3637be7"},
+		{
+			url:                  livestreamURL,
+			baseStreamingURL:     "https://cloud.odysee.live/secure/oongiu1aingoo2ohtoonooy6wahsaey2shinaeka/master.m3u8",
+			expectedStreamingUrl: "https://cloud.odysee.live/secure/oongiu1aingoo2ohtoonooy6wahsaey2shinaeka/master.m3u8?ip=8.8.8.8&hash=4986df06e96fedc4c12245d180821e0e",
+		},
+	}
+	for _, tc := range cases {
+		s.Run(tc.url, func() {
+			params := map[string]interface{}{"uri": tc.url}
+			if tc.baseStreamingURL != "" {
+				params[ParamBaseStreamingUrl] = tc.baseStreamingURL
+			}
+			request := jsonrpc.NewRequest(MethodGet, params)
 
-	ctx := auth.AttachCurrentUser(bgctx(), s.cu)
-	resp, err := NewCaller(s.sdkAddress, s.user.ID).Call(ctx, request)
+			ctx := auth.AttachCurrentUser(bgctx(), s.cu)
+			resp, err := NewCaller(s.sdkAddress, s.user.ID).Call(ctx, request)
 
-	s.Require().NoError(err)
-	s.Require().Nil(resp.Error)
+			s.Require().NoError(err)
+			s.Require().Nil(resp.Error)
 
-	getResponse := &ljsonrpc.GetResponse{}
-	err = resp.GetObject(&getResponse)
-	s.Require().NoError(err)
-	s.Equal(
-		fmt.Sprintf(
-			"https://secure.odycdn.com/v5/streams/start/%s/2ef2a4?hash-hls=4e42be75b03ce2237e8ff8284c794392&ip=%s&hash=910a69e8e189288c29a5695314b48e89",
-			purchaseClaim,
-			fakeRemoteIP,
-		),
-		getResponse.StreamingURL,
-	)
+			gresp := &ljsonrpc.GetResponse{}
+			err = resp.GetObject(&gresp)
+			s.Require().NoError(err)
+			s.Equal(tc.expectedStreamingUrl, gresp.StreamingURL)
+		})
+	}
 }

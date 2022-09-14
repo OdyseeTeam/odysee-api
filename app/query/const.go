@@ -19,13 +19,14 @@ const (
 	MethodWalletBalance    = "wallet_balance"
 	MethodWalletSend       = "wallet_send"
 
-	ParamAccountID       = "account_id"
-	ParamChannelID       = "channel_id"
-	ParamNewSDKServer    = "new_sdk_server"
-	ParamPurchaseReceipt = "purchase_receipt"
-	ParamStreamingUrl    = "streaming_url"
-	ParamUrls            = "urls"
-	ParamWalletID        = "wallet_id"
+	ParamAccountID        = "account_id"
+	ParamChannelID        = "channel_id"
+	ParamNewSDKServer     = "new_sdk_server"
+	ParamPurchaseReceipt  = "purchase_receipt"
+	ParamStreamingUrl     = "streaming_url"
+	ParamBaseStreamingUrl = "base_streaming_url"
+	ParamUrls             = "urls"
+	ParamWalletID         = "wallet_id"
 )
 
 var forbiddenParams = []string{ParamAccountID, ParamNewSDKServer}
