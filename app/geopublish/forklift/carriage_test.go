@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"testing"
 
 	"github.com/OdyseeTeam/odysee-api/app/query"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
 	"github.com/OdyseeTeam/odysee-api/internal/e2etest"
+	"github.com/OdyseeTeam/odysee-api/internal/test"
 
 	"github.com/stretchr/testify/suite"
 	"github.com/ybbus/jsonrpc"
@@ -50,22 +50,23 @@ func (s *carriageSuite) TestProcess() {
 		p := UploadProcessPayload{
 			UploadID: "",
 			UserID:   s.userHelper.UserID(),
-			Path:     filepath.Join("testdata", "od_blues.mp4"),
+			Path:     test.StaticAsset(s.T(), "reel.mp4"),
 			Request: jsonrpc.NewRequest(query.MethodStreamCreate, map[string]interface{}{
-				"name":          "publish2test",
-				"title":         "Publish v2 test",
-				"description":   "",
-				"locations":     []string{},
-				"bid":           "0.01000000",
-				"languages":     []string{"en"},
-				"tags":          []string{"c:disable-comments"},
-				"thumbnail_url": "https://thumbs.odycdn.com/92399dc6df41af6f7c61def97335dfa5.webp",
-				"release_time":  1661882701,
-				"blocking":      true,
-				"preview":       false,
-				"license":       "None",
-				"channel_id":    "febc557fcfbe5c1813eb621f7d38a80bc4355085",
-				"file_path":     "__POST_FILE__",
+				"name":                 "publish2test",
+				"title":                "Publish v2 test",
+				"description":          "",
+				"locations":            []string{},
+				"bid":                  "0.01000000",
+				"languages":            []string{"en"},
+				"tags":                 []string{"c:disable-comments"},
+				"thumbnail_url":        "https://thumbs.odycdn.com/92399dc6df41af6f7c61def97335dfa5.webp",
+				"release_time":         1661882701,
+				"blocking":             true,
+				"preview":              false,
+				"license":              "None",
+				"channel_id":           "febc557fcfbe5c1813eb621f7d38a80bc4355085",
+				"file_path":            "__POST_FILE__",
+				"allow_duplicate_name": true,
 			}),
 		}
 
@@ -76,13 +77,12 @@ func (s *carriageSuite) TestProcess() {
 		rr, err := json.Marshal(res.Response.Result)
 		s.Require().NoError(err)
 		err = json.Unmarshal(rr, &scr)
-		s.Require().NoError(err)
-		fmt.Printf("RESPONSE: %+v", scr)
+		s.Require().NoError(err, fmt.Sprintf("RESPONSE: %+v", scr))
 
 		s.Equal("video/mp4", scr.Outputs[0].Value.Source.MediaType)
-		s.Equal("od_blues.mp4", scr.Outputs[0].Value.Source.Name)
+		s.Equal("reel.mp4", scr.Outputs[0].Value.Source.Name)
 		s.Equal("publish2test", scr.Outputs[0].Name)
-		s.EqualValues(strconv.Itoa(56109368), scr.Outputs[0].Value.Source.Size)
+		s.EqualValues(strconv.Itoa(3753255), scr.Outputs[0].Value.Source.Size)
 		s.Equal(res.SDHash, scr.Outputs[0].Value.Source.SdHash)
 
 		s.NoFileExists(c.blobsPath, res.SDHash)

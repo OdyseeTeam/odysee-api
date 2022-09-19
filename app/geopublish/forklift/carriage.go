@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path"
+	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/query"
 	"github.com/OdyseeTeam/odysee-api/models"
@@ -25,6 +27,8 @@ import (
 const (
 	TypeUploadProcess = "upload:process"
 )
+
+var ErrUpload = errors.New("several errors detected uploading blobs")
 
 type UploadProcessPayload struct {
 	UploadID string
@@ -104,6 +108,7 @@ func (c *Carriage) ProcessTask(ctx context.Context, t *asynq.Task) error {
 
 	_, err = c.resultWriter.Write(br)
 	if err != nil {
+		c.logger.Warn("writing result failed", "err", err)
 		return fmt.Errorf("error writing result: %w", err)
 	}
 	return nil
@@ -111,6 +116,8 @@ func (c *Carriage) ProcessTask(ctx context.Context, t *asynq.Task) error {
 
 func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error) {
 	r := &UploadProcessResult{UploadID: p.UploadID, UserID: p.UserID}
+	log := c.logger.With("upload_id", p.UploadID, "user_id", p.UserID)
+
 	uploader, err := blobs.NewUploaderFromCfg(c.reflectorCfg)
 	if err != nil {
 		return nil, err
@@ -119,7 +126,8 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	info, err := c.analyzer.Analyze(context.Background(), p.Path)
 	if info == nil {
 		return r, err
-	} // else warn about error
+	}
+	log.Debug("stream analyzed", "info", info, "err", err)
 
 	src, err := blobs.NewSource(p.Path, c.blobsPath)
 	if err != nil {
@@ -127,17 +135,19 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	}
 
 	stream, err := src.Split()
-	// TODO: Retry upload on failure
 	if err != nil {
 		return r, err
 	}
 	streamSource := stream.GetSource()
 	r.SDHash = hex.EncodeToString(streamSource.GetSdHash())
 	defer os.RemoveAll(path.Join(c.blobsPath, r.SDHash))
-	err = uploader.Upload(src)
+	summary, err := uploader.Upload(src)
 	if err != nil {
-		r.Retry = true
+		// The errors current uploader returns usually do not make sense to retry.
 		return r, err
+	} else if summary.Err > 0 {
+		r.Retry = true
+		return r, fmt.Errorf("%w (%v)", ErrUpload, summary.Err)
 	}
 
 	u, err := models.Users(
@@ -159,12 +169,12 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	// }
 
 	patch := map[string]interface{}{
-		"file_size":            streamSource.Size,
-		"file_name":            fileName,
-		"file_hash":            hex.EncodeToString(streamSource.GetHash()),
-		"sd_hash":              r.SDHash,
-		"allow_duplicate_name": true,
+		"file_size": streamSource.Size,
+		"file_name": fileName,
+		"file_hash": hex.EncodeToString(streamSource.GetHash()),
+		"sd_hash":   r.SDHash,
 	}
+
 	m := info.MediaInfo
 	if m != nil {
 		patch["width"] = m.Width
@@ -177,6 +187,7 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	}
 	delete(pp, "file_path")
 	p.Request.Params = pp
+	log.Debug("sending request", "method", p.Request.Method, "params", p.Request)
 	res, err := caller.Call(context.Background(), p.Request)
 	if err != nil {
 		r.Retry = true
@@ -187,5 +198,13 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	if res.Error != nil {
 		return r, fmt.Errorf("sdk returned an error: %s", res.Error.Message)
 	}
+	log.Info("stream processed", "method", p.Request.Method, "params", p.Request)
 	return r, nil
+}
+
+func (c *Carriage) RetryDelay(n int, err error, t *asynq.Task) time.Duration {
+	if errors.Is(err, ErrUpload) {
+		return time.Duration(n) * time.Minute
+	}
+	return 10 * time.Second
 }

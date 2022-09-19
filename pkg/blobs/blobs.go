@@ -108,13 +108,14 @@ func (s *Source) Stream() *pb.Stream {
 	return s.stream
 }
 
-func (u *Uploader) Upload(source *Source) error {
+func (u *Uploader) Upload(source *Source) (*reflector.Summary, error) {
 	if source.finalPath == "" || source.Stream() == nil {
-		return errors.New("source is not split to blobs")
+		return nil, errors.New("source is not split to blobs")
 	}
 	err := u.uploader.Upload(source.finalPath)
+	summary := u.uploader.GetSummary()
 	if err != nil {
-		return fmt.Errorf("cannot upload blobs: %w", err)
+		return nil, fmt.Errorf("cannot upload blobs: %w", err)
 	}
-	return nil
+	return &summary, nil
 }

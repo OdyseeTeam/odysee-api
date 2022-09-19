@@ -99,7 +99,7 @@ func NewForklift(blobsPath string, reflectorCfg map[string]string, redisOpts asy
 			// 	"low":      1,
 			// },
 			// Logger:         options.logger,
-			RetryDelayFunc: f.RetryDelay,
+			RetryDelayFunc: c.RetryDelay,
 		},
 	)
 	return f, nil
@@ -162,10 +162,6 @@ func (f *Forklift) GetUploadProcessResult() (*UploadProcessResult, error) {
 		return nil, err
 	}
 	return r, nil
-}
-
-func (r *Forklift) RetryDelay(n int, e error, t *asynq.Task) time.Duration {
-	return 5 * time.Second
 }
 
 func (w RedisResultBus) Write(data []byte) (int, error) {
