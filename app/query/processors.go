@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -100,7 +101,14 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		response.Result = responseResult
 		return response, nil
 	} else if errors.Is(err, errNeedSignedLivestreamUrl) {
-		baseUrl := paramsMap["base_streaming_url"].(string)
+		baseUrl, ok := paramsMap["base_streaming_url"].(string)
+		if !ok {
+			return nil, errors.Err("invalid base_streaming_url supplied")
+		}
+		u, err := url.Parse(baseUrl)
+		if err != nil {
+			return nil, errors.Err("invalid base_streaming_url supplied")
+		}
 		cu, err := auth.GetCurrentUserData(ctx)
 		if err != nil {
 			return nil, err
@@ -109,7 +117,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		query := fmt.Sprintf("ip=%s&pass=%s", ip, pcfg["paidpass"])
 		responseResult[ParamStreamingUrl] = fmt.Sprintf(
 			"%s?ip=%s&hash=%s",
-			baseUrl, ip, signStreamURL(baseUrl, query))
+			baseUrl, ip, signStreamURL(u.Path, query))
 		response.Result = responseResult
 		return response, nil
 	}
@@ -234,6 +242,9 @@ TagLoop:
 		return true, nil
 	}
 	if claim.IsMyOutput {
+		if isLivestream {
+			return true, errNeedSignedLivestreamUrl
+		}
 		return true, errNeedSignedUrl
 	}
 

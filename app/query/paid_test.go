@@ -33,6 +33,8 @@ const (
 	noAccessMembersOnlyURL = "lbry://@gifprofile#7/members-only-no-access#8"
 
 	livestreamURL = "lbry://@gifprofile#7/members-only-livestream#f"
+
+	falseIP = "8.8.8.8"
 )
 
 type paidContentSuite struct {
@@ -82,12 +84,12 @@ func (s *paidContentSuite) SetupSuite() {
 
 	iac, err := iapi.NewClient(
 		iapi.WithOAuthToken(strings.TrimPrefix(th, wallet.TokenPrefix)),
-		iapi.WithRemoteIP("8.8.8.8"),
+		iapi.WithRemoteIP(falseIP),
 	)
 	s.Require().NoError(err)
 
 	cu := auth.NewCurrentUser(u, nil)
-	cu.IP = "8.8.8.8"
+	cu.IP = falseIP
 	cu.IAPIClient = iac
 	s.cu = cu
 }
@@ -146,8 +148,8 @@ func (s *paidContentSuite) TestAccess() {
 		{url: membersOnlyURL, expectedStreamingUrl: sp + "/7de672e799d17fc562ae7b381db1722a81856410/ad42aa?hash-hls=5e25826a1957b73084e85e5878fef08b&ip=8.8.8.8&hash=bcc9a904ae8621e910427f2eb3637be7"},
 		{
 			url:                  livestreamURL,
-			baseStreamingURL:     "https://cloud.odysee.live/secure/oongiu1aingoo2ohtoonooy6wahsaey2shinaeka/master.m3u8",
-			expectedStreamingUrl: "https://cloud.odysee.live/secure/oongiu1aingoo2ohtoonooy6wahsaey2shinaeka/master.m3u8?ip=8.8.8.8&hash=4986df06e96fedc4c12245d180821e0e",
+			baseStreamingURL:     "https://cloud.odysee.live/secure/content/f9660d617e226959102e84436533638858d0b572/master.m3u8",
+			expectedStreamingUrl: "https://cloud.odysee.live/secure/content/f9660d617e226959102e84436533638858d0b572/master.m3u8?ip=8.8.8.8&hash=414505d9387c3809b11229bc3e238c62",
 		},
 	}
 	for _, tc := range cases {
