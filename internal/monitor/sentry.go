@@ -24,7 +24,7 @@ func ConfigureSentry(dsn, release, env string) {
 		IgnoreErrors:     ignored,
 		// TracesSampleRate: .5,
 	}); err != nil {
-		logger.Log().Warn("sentry initialization failed: %v", err)
+		logger.Log().Warnf("sentry initialization failed: %v", err)
 		return
 	}
 	logger.Log().Info("sentry initialized")
