@@ -129,7 +129,7 @@ func WithTusConfig(config tusd.Config) func(options *HandlerOptions) {
 	}
 }
 
-// NewHandler creates a new geopublish handler.
+// NewHandler creates a new geopublish HTTP handler.
 func NewHandler(optionFuncs ...func(*HandlerOptions)) (*Handler, error) {
 	options := &HandlerOptions{
 		// Logger: logging.NoopKVLogger{},
@@ -153,14 +153,13 @@ func NewHandler(optionFuncs ...func(*HandlerOptions)) (*Handler, error) {
 	cfg := options.tusConfig
 
 	cfg.PreUploadCreateCallback = h.preCreateHook
-	// allow client to set location response protocol
+	// Allow client to set location response protocol
 	// via X-Forwarded-Proto
 	cfg.RespectForwardedHeaders = true
 
 	h.logger = monitor.NewModuleLogger(module)
 	udb := UploadsDB{logger: h.logger, db: options.db, queue: options.queue}
 	udb.listenToHandler(h)
-	// cfg.NotifyCompleteUploads = true
 	cfg.NotifyCreatedUploads = true
 	cfg.NotifyTerminatedUploads = true
 	cfg.NotifyUploadProgress = true
@@ -339,7 +338,12 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-// IsReady returns status of the upload.
+// Status returns status of the upload.
+// Possible response HTTP codes:
+// - 202: upload is currently being processed
+// - 200: upload has been fully processed and is immediately available on the network. Normal JSON-RPC SDK response is provided in the body
+// - 409: SDK returned an error and upload cannot be processed. Error details are provided in the response body
+// - 404, 403: upload not found or does not belong to the user
 func (h Handler) Status(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id := params["id"]
@@ -364,6 +368,7 @@ func (h Handler) Status(w http.ResponseWriter, r *http.Request) {
 
 	pq, err := up.PublishQuery().One(h.udb.db)
 	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
 		rpcerrors.Write(w, fmt.Errorf("error getting publish query: %w", err))
 		return
 	}

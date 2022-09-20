@@ -2,6 +2,7 @@ package e2etest
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -22,11 +23,11 @@ import (
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
 	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/OdyseeTeam/odysee-api/models"
-	"github.com/volatiletech/sqlboiler/queries/qm"
-	"github.com/ybbus/jsonrpc"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/suite"
+	"github.com/volatiletech/sqlboiler/queries/qm"
+	"github.com/ybbus/jsonrpc"
 )
 
 type e2eSuite struct {
@@ -53,15 +54,13 @@ func (s *e2eSuite) TestPublishV3() {
 		s.T().Skipf(s.forkliftErr.Error())
 	}
 
-	// defer config.Config.RestoreOverridden()
-
 	fnb64 := base64.StdEncoding.EncodeToString([]byte("dummy.md"))
 	f := []byte("test file")
 
 	u, err := s.router.Get("geopublish").URL()
 	s.Require().NoError(err)
 
-	rr := (&test.HTTPTest{
+	initResp := (&test.HTTPTest{
 		Method: http.MethodPost,
 		URL:    u.Path,
 		ReqHeader: map[string]string{
@@ -75,17 +74,25 @@ func (s *e2eSuite) TestPublishV3() {
 		ReqBody: bytes.NewReader(f),
 		Code:    http.StatusCreated,
 	}).Run(s.router, s.T())
-	loc, err := url.Parse(rr.Header().Get("Location"))
+	loc, err := url.Parse(initResp.Header().Get("Location"))
 	s.Require().NoError(err)
 	s.Regexp("/api/v3/publish/[a-z0-9]{32}", loc.RequestURI())
 
-	id := filepath.Base(loc.Path)
-
+	uploadID := filepath.Base(loc.Path)
+	var upload *models.Upload
 	time.Sleep(2 * time.Second)
-	upload, err := models.Uploads(
-		models.UploadWhere.ID.EQ(id), qm.Load(models.UploadRels.PublishQuery),
-	).One(s.userHelper.DB)
-	s.Require().NoError(err)
+
+	Wait(s.T(), "upload settling into the database", 5*time.Second, 1000*time.Millisecond, func() error {
+		upload, err = models.Uploads(
+			models.UploadWhere.ID.EQ(uploadID), qm.Load(models.UploadRels.PublishQuery),
+		).One(s.userHelper.DB)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrWaitContinue
+		} else if err != nil {
+			return err
+		}
+		return nil
+	})
 	s.Equal(models.UploadStatusCreated, upload.Status)
 
 	(&test.HTTPTest{
@@ -101,29 +108,46 @@ func (s *e2eSuite) TestPublishV3() {
 		ReqBody: bytes.NewReader(f),
 		Code:    http.StatusNoContent,
 	}).Run(s.router, s.T())
-	time.Sleep(2 * time.Second)
-	upload, err = models.Uploads(
-		models.UploadWhere.ID.EQ(id), qm.Load(models.UploadRels.PublishQuery),
-	).One(s.userHelper.DB)
-	s.Require().NoError(err)
+
+	Wait(s.T(), "upload settling into the database", 5*time.Second, 1000*time.Millisecond, func() error {
+		upload, err = models.Uploads(models.UploadWhere.ID.EQ(uploadID), qm.Load(models.UploadRels.PublishQuery)).One(s.userHelper.DB)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrWaitContinue
+		} else if err != nil {
+			return err
+		}
+		return nil
+	})
+
 	s.Equal(models.UploadStatusUploading, upload.Status)
 
-	req, err := json.Marshal(jsonrpc.NewRequest(query.MethodStreamCreate, map[string]interface{}{
-		"name":          "publish2test-dummymd",
-		"title":         "Publish v2 test for dummy.md",
-		"description":   "",
-		"locations":     []string{},
-		"bid":           "0.01000000",
-		"languages":     []string{"en"},
-		"tags":          []string{"c:disable-comments"},
-		"thumbnail_url": "https://thumbs.odycdn.com/92399dc6df41af6f7c61def97335dfa5.webp",
-		"release_time":  1661882701,
-		"blocking":      true,
-		"preview":       false,
-		"license":       "None",
-		"channel_id":    "febc557fcfbe5c1813eb621f7d38a80bc4355085",
+	(&test.HTTPTest{
+		Method: http.MethodGet,
+		URL:    loc.RequestURI() + "/status",
+		ReqHeader: map[string]string{
+			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
+		},
+		Code: http.StatusNotFound,
+	}).Run(s.router, s.T())
+
+	streamCreateReq, err := json.Marshal(jsonrpc.NewRequest(query.MethodStreamCreate, map[string]interface{}{
+		"name":                 "publish2test-dummymd",
+		"title":                "Publish v2 test for dummy.md",
+		"description":          "",
+		"locations":            []string{},
+		"bid":                  "0.01000000",
+		"languages":            []string{"en"},
+		"tags":                 []string{"c:disable-comments"},
+		"thumbnail_url":        "https://thumbs.odycdn.com/92399dc6df41af6f7c61def97335dfa5.webp",
+		"release_time":         1661882701,
+		"blocking":             true,
+		"preview":              false,
+		"license":              "None",
+		"channel_id":           "febc557fcfbe5c1813eb621f7d38a80bc4355085",
+		"allow_duplicate_name": true,
 	}))
 	s.Require().NoError(err)
+
 	(&test.HTTPTest{
 		Method: http.MethodPost,
 		URL:    loc.RequestURI() + "/notify",
@@ -131,17 +155,25 @@ func (s *e2eSuite) TestPublishV3() {
 			"Tus-Resumable":            "1.0.0",
 			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
 		},
-		ReqBody: bytes.NewReader(req),
+		ReqBody: bytes.NewReader(streamCreateReq),
 		Code:    http.StatusAccepted,
 	}).Run(s.router, s.T())
 
-	time.Sleep(15 * time.Second)
-	upload, err = models.Uploads(models.UploadWhere.ID.EQ(id), qm.Load(models.UploadRels.PublishQuery)).One(s.userHelper.DB)
-	s.Require().NoError(err)
-	s.Equal(models.UploadStatusFinished, upload.Status, upload.Error)
-	s.Equal(models.PublishQueryStatusSucceeded, upload.R.PublishQuery.Status)
+	Wait(s.T(), "upload postprocessing", 15*time.Second, 1000*time.Millisecond, func() error {
+		upload, err = models.Uploads(models.UploadWhere.ID.EQ(uploadID), qm.Load(models.UploadRels.PublishQuery)).One(s.userHelper.DB)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrWaitContinue
+		} else if err != nil {
+			return err
+		}
+		if upload.Status == models.UploadStatusFinished {
+			s.Equal(models.PublishQueryStatusSucceeded, upload.R.PublishQuery.Status)
+			return nil
+		}
+		return ErrWaitContinue
+	})
 
-	sr := (&test.HTTPTest{
+	statusResp := (&test.HTTPTest{
 		Method: http.MethodGet,
 		URL:    loc.RequestURI() + "/status",
 		ReqHeader: map[string]string{
@@ -149,55 +181,20 @@ func (s *e2eSuite) TestPublishV3() {
 		},
 		Code: http.StatusOK,
 	}).Run(s.router, s.T())
-	srb, err := ioutil.ReadAll(sr.Result().Body)
+	srb, err := ioutil.ReadAll(statusResp.Result().Body)
 	s.Require().NoError(err)
 
-	jr := jsonrpc.RPCResponse{}
-	err = json.Unmarshal(srb, &jr)
+	streamCreateResp := jsonrpc.RPCResponse{}
+	err = json.Unmarshal(srb, &streamCreateResp)
 	s.Require().NoError(err)
 
-	jrb, _ := json.Marshal(jr.Result)
+	jrb, _ := json.Marshal(streamCreateResp.Result)
 	scr := forklift.StreamCreateResponse{}
 	err = json.Unmarshal(jrb, &scr)
 	s.Require().NoError(err)
 	s.Equal("dummy.md", scr.Outputs[0].Value.Source.Name)
-	// s.Equal("publish2test", scr.Outputs[0].Name)
 	s.EqualValues(strconv.Itoa(len(f)), scr.Outputs[0].Value.Source.Size)
 
-	// t.Run("ResumeWithChunks", func(t *testing.T) {
-	// 	h := newTestTusHandlerWithOauth(t, nil)
-	// 	loc := newPartialUpload(t, h,
-	// 		header{"Upload-Length", "6"},
-	// 		header{wallet.LegacyTokenHeader, "legacyAuthToken123"},
-	// 	)
-
-	// 	testData := []byte("foobar")
-	// 	b := bytes.NewReader(testData)
-
-	// 	const chunkSize = 2
-	// 	for i := 0; i < b.Len(); i += chunkSize {
-	// 		t.Run(fmt.Sprintf("PatchOffset-%d", i), func(t *testing.T) {
-	// 			buf := make([]byte, chunkSize)
-	// 			if _, err := b.ReadAt(buf, int64(i)); err != nil {
-	// 				t.Fatal(err)
-	// 			}
-
-	// 			w := httptest.NewRecorder()
-	// 			r, err := http.NewRequest(http.MethodPatch, loc, bytes.NewReader(buf))
-	// 			assert.Nil(t, err)
-
-	// 			r.Header.Set(wallet.LegacyTokenHeader, "legacyAuthToken123")
-	// 			r.Header.Set("Content-Type", "application/offset+octet-stream")
-	// 			r.Header.Set("Upload-Offset", strconv.Itoa(i))
-	// 			r.Header.Set("Tus-Resumable", tusVersion)
-
-	// 			newTestMux(h).ServeHTTP(w, r)
-
-	// 			resp := w.Result()
-	// 			assert.Equal(t, http.StatusNoContent, resp.StatusCode)
-	// 		})
-	// 	}
-	// })
 }
 
 func (s *e2eSuite) SetupSuite() {
