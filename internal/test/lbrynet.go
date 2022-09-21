@@ -1,6 +1,7 @@
 package test
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -49,7 +50,10 @@ func (w SDKWallet) Inject() error {
 	)
 }
 
-func InjectTestingWallet(userID int) (SDKWallet, error) {
+func InjectTestingWallet(userID int) (*SDKWallet, error) {
+	if os.Getenv(envPrivateKey) == "" || os.Getenv(envPublicKey) == "" {
+		return nil, errors.New("missing env variables for test wallet")
+	}
 	w := SDKWallet{PrivateKey: os.Getenv(envPrivateKey), PublicKey: os.Getenv(envPublicKey), UserID: userID}
-	return w, w.Inject()
+	return &w, w.Inject()
 }

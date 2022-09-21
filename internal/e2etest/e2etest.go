@@ -3,6 +3,7 @@ package e2etest
 import (
 	"database/sql"
 	"strings"
+	"testing"
 
 	"github.com/OdyseeTeam/odysee-api/app/auth"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
@@ -25,6 +26,7 @@ type TestUser struct {
 }
 
 type UserTestHelper struct {
+	t           *testing.T
 	TokenHeader string
 	DB          *sql.DB
 	SDKRouter   *sdkrouter.Router
@@ -34,7 +36,8 @@ type UserTestHelper struct {
 	CleanupFuncs []cleanupFunc
 }
 
-func (s *UserTestHelper) Setup() error {
+func (s *UserTestHelper) Setup(t *testing.T) error {
+	s.t = t
 	s.CleanupFuncs = []cleanupFunc{}
 	config.Override("LbrynetServers", "")
 
@@ -63,6 +66,12 @@ func (s *UserTestHelper) Setup() error {
 		return err
 	}
 	s.Auther = auther
+
+	w, err := test.InjectTestingWallet(test.TestUserID)
+	if err != nil {
+		return err
+	}
+	s.t.Logf("set up wallet userid=%v", w.UserID)
 
 	u, err := auther.Authenticate(s.TokenHeader, "127.0.0.1")
 	if err != nil {
@@ -100,7 +109,8 @@ func (s *UserTestHelper) Cleanup() {
 	config.RestoreOverridden()
 }
 
-func (s *UserTestHelper) InjectTestingWallet() error {
-	_, err := test.InjectTestingWallet(s.UserID())
-	return err
-}
+// func (s *UserTestHelper) InjectTestingWallet() error {
+// 	w, err := test.InjectTestingWallet(s.UserID())
+// 	s.t.Logf("set up wallet userid=%v", w.UserID)
+// 	return err
+// }

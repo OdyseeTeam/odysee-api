@@ -203,9 +203,7 @@ func (s *e2eSuite) SetupSuite() {
 
 	s.userHelper = &UserTestHelper{}
 	s.forkliftHelper = &forklift.ForkliftTestHelper{}
-	s.Require().NoError(s.userHelper.Setup())
-	s.Require().NoError(s.userHelper.InjectTestingWallet())
-	s.userHelper.InjectTestingWallet()
+	s.Require().NoError(s.userHelper.Setup(s.T()))
 	err := s.forkliftHelper.Setup()
 	if errors.Is(err, forklift.ErrMissingEnv) {
 		s.forkliftErr = err

@@ -30,8 +30,7 @@ func TestCarriageSuite(t *testing.T) {
 func (s *carriageSuite) SetupSuite() {
 	s.userHelper = &e2etest.UserTestHelper{}
 	s.forkliftHelper = &ForkliftTestHelper{}
-	s.Require().NoError(s.userHelper.Setup())
-	s.Require().NoError(s.userHelper.InjectTestingWallet())
+	s.Require().NoError(s.userHelper.Setup(s.T()))
 	err := s.forkliftHelper.Setup()
 	if errors.Is(err, ErrMissingEnv) {
 		s.T().Skipf(err.Error())
@@ -47,27 +46,29 @@ func (s *carriageSuite) TestProcessReel() {
 	c, err := NewCarriage(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
 	s.Require().NoError(err)
 
+	claimName := fmt.Sprintf("publishv3testreel-%s", time.Now().Format("20060102150405"))
+
 	for i := 0; i <= 1; i++ {
 		p := UploadProcessPayload{
 			UploadID: "",
 			UserID:   s.userHelper.UserID(),
 			Path:     test.StaticAsset(s.T(), "hdreel.mov"),
 			Request: jsonrpc.NewRequest(query.MethodStreamCreate, map[string]interface{}{
-				"name":                 fmt.Sprintf("publishv3testreel-%s", time.Now().Format("20060102150405")),
-				"title":                "Publish v3 Test: Reel",
-				"description":          "",
-				"locations":            []string{},
-				"bid":                  "0.0001",
-				"languages":            []string{"en"},
-				"tags":                 []string{"c:disable-comments"},
-				"thumbnail_url":        "https://thumbs.odycdn.com/92399dc6df41af6f7c61def97335dfa5.webp",
-				"release_time":         1661882701,
-				"blocking":             true,
-				"preview":              false,
-				"license":              "None",
-				"channel_id":           "febc557fcfbe5c1813eb621f7d38a80bc4355085",
-				"file_path":            "__POST_FILE__",
-				"allow_duplicate_name": true,
+				"name":          claimName,
+				"title":         "Publish v3 Test: Reel",
+				"description":   "",
+				"locations":     []string{},
+				"bid":           "0.001",
+				"languages":     []string{"en"},
+				"tags":          []string{"c:disable-comments"},
+				"thumbnail_url": "https://thumbs.odycdn.com/92399dc6df41af6f7c61def97335dfa5.webp",
+				"release_time":  1661882701,
+				"blocking":      true,
+				"preview":       false,
+				"license":       "None",
+				"channel_id":    "febc557fcfbe5c1813eb621f7d38a80bc4355085",
+				"file_path":     "__POST_FILE__",
+				// "allow_duplicate_name": true,
 			}),
 		}
 
@@ -88,11 +89,10 @@ func (s *carriageSuite) TestProcessReel() {
 
 		s.Equal("video/quicktime", scr.Outputs[0].Value.Source.MediaType)
 		s.Equal("hdreel.mov", scr.Outputs[0].Value.Source.Name)
-		s.Equal("publishv3testreel", scr.Outputs[0].Name)
+		s.Equal(claimName, scr.Outputs[0].Name)
 		s.EqualValues(strconv.Itoa(17809516), scr.Outputs[0].Value.Source.Size)
 		s.Equal(res.SDHash, scr.Outputs[0].Value.Source.SdHash)
 		fmt.Printf("%+v\n", scr.Outputs[0])
-		s.FailNow("aaa")
 
 		s.NoFileExists(c.blobsPath, res.SDHash)
 	}
@@ -101,18 +101,18 @@ func (s *carriageSuite) TestProcessReel() {
 func (s *carriageSuite) TestProcessImage() {
 	c, err := NewCarriage(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
 	s.Require().NoError(err)
-
+	claimName := fmt.Sprintf("publishv3testimage-%s", time.Now().Format("20060102150405"))
 	for i := 0; i <= 1; i++ {
 		p := UploadProcessPayload{
 			UploadID: "",
 			UserID:   s.userHelper.UserID(),
 			Path:     test.StaticAsset(s.T(), "image2.jpg"),
 			Request: jsonrpc.NewRequest(query.MethodStreamCreate, map[string]interface{}{
-				"name":                 "publishv3testimage",
+				"name":                 claimName,
 				"title":                "Publish v3 Test: Image",
 				"description":          "",
 				"locations":            []string{},
-				"bid":                  "0.0001",
+				"bid":                  "0.001",
 				"languages":            []string{"en"},
 				"tags":                 []string{"c:disable-comments"},
 				"thumbnail_url":        "https://thumbs.odycdn.com/92399dc6df41af6f7c61def97335dfa5.webp",
@@ -142,7 +142,7 @@ func (s *carriageSuite) TestProcessImage() {
 
 		s.Equal("image/jpeg", scr.Outputs[0].Value.Source.MediaType)
 		s.Equal("image2.jpg", scr.Outputs[0].Value.Source.Name)
-		s.Equal("publishv3testimage", scr.Outputs[0].Name)
+		s.Equal(claimName, scr.Outputs[0].Name)
 		s.EqualValues(strconv.Itoa(375172), scr.Outputs[0].Value.Source.Size)
 		s.Equal(res.SDHash, scr.Outputs[0].Value.Source.SdHash)
 
@@ -153,18 +153,18 @@ func (s *carriageSuite) TestProcessImage() {
 func (s *carriageSuite) TestProcessDoc() {
 	c, err := NewCarriage(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
 	s.Require().NoError(err)
-
+	claimName := fmt.Sprintf("publishv3testdoc-%s", time.Now().Format("20060102150405"))
 	for i := 0; i <= 1; i++ {
 		p := UploadProcessPayload{
 			UploadID: "",
 			UserID:   s.userHelper.UserID(),
 			Path:     test.StaticAsset(s.T(), "doc.pdf"),
 			Request: jsonrpc.NewRequest(query.MethodStreamCreate, map[string]interface{}{
-				"name":                 "publishv3testdoc",
+				"name":                 claimName,
 				"title":                "Publish v3 Test: Doc",
 				"description":          "",
 				"locations":            []string{},
-				"bid":                  "0.0001",
+				"bid":                  "0.001",
 				"languages":            []string{"en"},
 				"tags":                 []string{"c:disable-comments"},
 				"thumbnail_url":        "https://thumbs.odycdn.com/92399dc6df41af6f7c61def97335dfa5.webp",
@@ -189,7 +189,7 @@ func (s *carriageSuite) TestProcessDoc() {
 
 		s.Equal("application/pdf", scr.Outputs[0].Value.Source.MediaType)
 		s.Equal("doc.pdf", scr.Outputs[0].Value.Source.Name)
-		s.Equal("publishv3testdoc", scr.Outputs[0].Name)
+		s.Equal(claimName, scr.Outputs[0].Name)
 		s.EqualValues(strconv.Itoa(474475), scr.Outputs[0].Value.Source.Size)
 		s.Equal(res.SDHash, scr.Outputs[0].Value.Source.SdHash)
 
