@@ -55,12 +55,23 @@ func (w SDKWallet) Inject() error {
 		return err
 	}
 
+	err = w.Load() // Unload an old wallet file before overwriting
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (w SDKWallet) Unload() error {
 	c := jsonrpc.NewClient(SDKAddress)
 	_, err := c.Call("wallet_remove", map[string]string{"wallet_id": w.walletID()})
+	return err
+}
+
+func (w SDKWallet) Load() error {
+	c := jsonrpc.NewClient(SDKAddress)
+	_, err := c.Call("wallet_add", map[string]string{"wallet_id": w.walletID()})
 	return err
 }
 
