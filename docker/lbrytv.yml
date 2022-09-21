@@ -19,6 +19,7 @@ OAuth:
   TokenPath: /protocol/openid-connect/token
 
 PublishSourceDir: /storage/published
+GeoPublishSourceDir: /storage/geopublish
 
 PaidTokenPrivKey: token_privkey.rsa
 
@@ -37,3 +38,12 @@ RPCTimeouts:
   txo_list: 4m
   transaction_list: 4m
   publish: 4m
+
+Redis: redis://:odyredis@redis:6379/1
+
+ReflectorUpstream:
+  DatabaseDSN: 'user:password@tcp(host.com)/blobs'
+  Region: us-east-1
+  Bucket: blobs'
+  Key: key
+  Secret: secret

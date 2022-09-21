@@ -29,8 +29,8 @@ Database:
   DBName: lbrytv
   Options: sslmode=disable
 
-PublishSourceDir: /storage/publish
-GeoPublishSourceDir: /storage/geopublish
+PublishSourceDir: ./rundata/storage/publish
+GeoPublishSourceDir: ./rundata/storage/geopublish
 
 PaidTokenPrivKey: token_privkey.rsa
 

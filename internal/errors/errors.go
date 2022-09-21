@@ -192,7 +192,7 @@ func Recover(e *error) {
 	}
 
 	stack := make([]uintptr, maxStackDepth)
-	length := runtime.Callers(4, stack[:])
+	length := runtime.Callers(3, stack[:])
 	stack = stack[:length]
 
 	*e = &traced{

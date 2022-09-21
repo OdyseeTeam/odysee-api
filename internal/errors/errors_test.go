@@ -2,6 +2,7 @@ package errors
 
 import (
 	base "errors"
+	"fmt"
 	"testing"
 
 	pkg "github.com/pkg/errors"
@@ -27,7 +28,7 @@ func TestRecover(t *testing.T) {
 	require.NotPanics(t, func() {
 		err = func() (e error) {
 			defer Recover(&e)
-			itPanics()
+			doPanic()
 			return nil
 		}()
 	})
@@ -39,18 +40,24 @@ func TestRecover(t *testing.T) {
 	assert.True(t, ok)
 
 	stackFrames := withTrace.StackFrames()
-	assert.Equal(t, "itPanicsDeeper", stackFrames[0].Name)
-	assert.Equal(t, "itPanics", stackFrames[1].Name)
+	fmt.Println(stackFrames)
+	assert.Equal(t, "doYetDeeperPanic", stackFrames[0].Name)
+	assert.Equal(t, "doDeeperPanic", stackFrames[1].Name)
+	assert.Equal(t, "doPanic", stackFrames[2].Name)
 
 	traceStr := Trace(err)
 	assert.Contains(t, traceStr, "who shall dwell in these worlds")
 }
 
-func itPanics() {
-	itPanicsDeeper()
+func doPanic() {
+	doDeeperPanic()
 }
 
-func itPanicsDeeper() {
+func doDeeperPanic() {
+	doYetDeeperPanic()
+}
+
+func doYetDeeperPanic() {
 	panic("But who shall dwell in these worlds if they be inhabited?… Are we or they Lords of the World?… And how are all things made for man?")
 }
 

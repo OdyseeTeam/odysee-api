@@ -27,7 +27,6 @@ test_circleci:
 
 .PHONY: clean
 clean:
-	find . -name rice-box.go | xargs rm
 	rm -rf ./dist
 
 .PHONY: server

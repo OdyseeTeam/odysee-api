@@ -37,6 +37,7 @@ type Uploader struct {
 	uploader *reflector.Uploader
 }
 
+// NewSource initializes a blob splitter, takes source file and blobs destination path as arguments.
 func NewSource(filePath, blobsPath string) (*Source, error) {
 	s := Source{
 		filePath:  filePath,
@@ -46,6 +47,8 @@ func NewSource(filePath, blobsPath string) (*Source, error) {
 	return &s, nil
 }
 
+// NewUploaderFromCfg initializes blob file uploader from a config dictionary.
+// Required parameters in the config map are MySQL DSN and S3 config for the reflector.
 func NewUploaderFromCfg(cfg map[string]string) (*Uploader, error) {
 	db := &db.SQL{
 		LogQueries: false,
@@ -108,6 +111,8 @@ func (s *Source) Stream() *pb.Stream {
 	return s.stream
 }
 
+// Upload is a wrapper for uploading sreams to reflector.
+// Split() should be called on the source first.
 func (u *Uploader) Upload(source *Source) (*reflector.Summary, error) {
 	if source.finalPath == "" || source.Stream() == nil {
 		return nil, errors.New("source is not split to blobs")
