@@ -6,7 +6,11 @@ import (
 	"os"
 	"os/exec"
 	"text/template"
+
+	"github.com/ybbus/jsonrpc"
 )
+
+var SDKAddress = "http://localhost:15279"
 
 type SDKWallet struct {
 	UserID                int
@@ -53,6 +57,13 @@ func (w SDKWallet) Inject() error {
 func InjectTestingWallet(userID int) (*SDKWallet, error) {
 	if os.Getenv(envPrivateKey) == "" || os.Getenv(envPublicKey) == "" {
 		return nil, errors.New("missing env variables for test wallet")
+	}
+
+	c := jsonrpc.NewClient(SDKAddress)
+	_, err := c.Call("wallet_remove", map[string]string{"wallet_id": fmt.Sprintf("lbrytv-id.%d.wallet", userID)})
+
+	if err != nil {
+		return nil, fmt.Errorf("error removing wallet: %w", err)
 	}
 	w := SDKWallet{PrivateKey: os.Getenv(envPrivateKey), PublicKey: os.Getenv(envPublicKey), UserID: userID}
 	return &w, w.Inject()

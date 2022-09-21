@@ -19,7 +19,7 @@ func TestInjectTestingWallet(t *testing.T) {
 	_, err := InjectTestingWallet(userID)
 	require.NoError(t, err)
 
-	c := query.NewCaller("http://localhost:15279", userID)
+	c := query.NewCaller(SDKAddress, userID)
 	res, err := c.Call(context.Background(), jsonrpc.NewRequest("account_balance"))
 	require.NoError(t, err)
 	require.Nil(t, res.Error)
