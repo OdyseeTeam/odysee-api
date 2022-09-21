@@ -47,7 +47,7 @@ get_sqlboiler:
 
 .PHONY: models
 models: get_sqlboiler
-	sqlboiler --add-global-variants --wipe psql --no-context
+	sqlboiler --add-global-variants --wipe psql --no-context --no-tests
 
 .PHONY: api
 api:
