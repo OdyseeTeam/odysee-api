@@ -16,7 +16,7 @@ import (
 
 func TestInjectTestingWallet(t *testing.T) {
 	userID := randomdata.Number(10000, 90000)
-	_, err := InjectTestingWallet(userID)
+	w, err := InjectTestingWallet(userID)
 	require.NoError(t, err)
 
 	c := query.NewCaller(SDKAddress, userID)
@@ -28,4 +28,7 @@ func TestInjectTestingWallet(t *testing.T) {
 	err = ljsonrpc.Decode(res.Result, &bal)
 	require.NoError(t, err)
 	assert.GreaterOrEqual(t, bal.Available.Cmp(decimal.NewFromInt(1)), 0)
+
+	assert.NoError(t, w.Unload())
+	assert.NoError(t, w.RemoveFile())
 }

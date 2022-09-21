@@ -23,11 +23,17 @@ const (
 )
 
 func copyToContainer(srcPath, dstPath string) error {
-	// cmd := fmt.Sprintf(`docker cp %s %s`, srcPath, dstPath)
 	os.Setenv("PATH", os.Getenv("PATH")+":/usr/local/bin")
 	if out, err := exec.Command("docker", "cp", srcPath, dstPath).CombinedOutput(); err != nil {
-		// if _, err := exec.Command("docker", "cp", srcPath, dstPath).Output(); err != nil {
 		return fmt.Errorf("cannot copy %s to %s: %w (%s)", srcPath, dstPath, err, string(out))
+	}
+	return nil
+}
+
+func rmFromContainer(p string) error {
+	os.Setenv("PATH", os.Getenv("PATH")+":/usr/local/bin")
+	if out, err := exec.Command("docker", "exec", "lbrynet", "rm", p).CombinedOutput(); err != nil {
+		return fmt.Errorf("cannot remove lbrynet:%s: %w (%s)", p, err, string(out))
 	}
 	return nil
 }
@@ -54,17 +60,26 @@ func (w SDKWallet) Inject() error {
 	)
 }
 
+func (w SDKWallet) Unload() error {
+	c := jsonrpc.NewClient(SDKAddress)
+	_, err := c.Call("wallet_remove", map[string]string{"wallet_id": fmt.Sprintf("lbrytv-id.%d.wallet", w.UserID)})
+	return err
+}
+
+func (w SDKWallet) RemoveFile() error {
+	return rmFromContainer(fmt.Sprintf("/storage/lbryum/wallets/lbrytv-id.%v.wallet", w.UserID))
+}
+
 func InjectTestingWallet(userID int) (*SDKWallet, error) {
 	if os.Getenv(envPrivateKey) == "" || os.Getenv(envPublicKey) == "" {
 		return nil, errors.New("missing env variables for test wallet")
 	}
-
-	c := jsonrpc.NewClient(SDKAddress)
-	_, err := c.Call("wallet_remove", map[string]string{"wallet_id": fmt.Sprintf("lbrytv-id.%d.wallet", userID)})
-
-	if err != nil {
-		return nil, fmt.Errorf("error removing wallet: %w", err)
-	}
 	w := SDKWallet{PrivateKey: os.Getenv(envPrivateKey), PublicKey: os.Getenv(envPublicKey), UserID: userID}
+
+	err := w.Unload()
+	if err != nil {
+		return nil, fmt.Errorf("error unloading wallet: %w", err)
+	}
+
 	return &w, w.Inject()
 }

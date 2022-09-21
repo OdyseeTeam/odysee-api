@@ -27,26 +27,11 @@ func TestCarriageSuite(t *testing.T) {
 	suite.Run(t, new(carriageSuite))
 }
 
-func (s *carriageSuite) SetupSuite() {
-	s.userHelper = &e2etest.UserTestHelper{}
-	s.forkliftHelper = &ForkliftTestHelper{}
-	s.Require().NoError(s.userHelper.Setup(s.T()))
-	err := s.forkliftHelper.Setup()
-	if errors.Is(err, ErrMissingEnv) {
-		s.T().Skipf(err.Error())
-	}
-}
-
-func (s *carriageSuite) TearDownSuite() {
-	config.RestoreOverridden()
-	s.userHelper.Cleanup()
-}
-
 func (s *carriageSuite) TestProcessReel() {
 	c, err := NewCarriage(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
 	s.Require().NoError(err)
 
-	claimName := fmt.Sprintf("publishv3testreel-%s", time.Now().Format("20060102150405"))
+	claimName := fmt.Sprintf("publishv3testreel-%s", time.Now().Format("2006-01-02-15-04-05"))
 
 	for i := 0; i <= 1; i++ {
 		p := UploadProcessPayload{
@@ -101,7 +86,7 @@ func (s *carriageSuite) TestProcessReel() {
 func (s *carriageSuite) TestProcessImage() {
 	c, err := NewCarriage(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
 	s.Require().NoError(err)
-	claimName := fmt.Sprintf("publishv3testimage-%s", time.Now().Format("20060102150405"))
+	claimName := fmt.Sprintf("publishv3testimage-%s", time.Now().Format("2006-01-02-15-04-05"))
 	for i := 0; i <= 1; i++ {
 		p := UploadProcessPayload{
 			UploadID: "",
@@ -153,7 +138,7 @@ func (s *carriageSuite) TestProcessImage() {
 func (s *carriageSuite) TestProcessDoc() {
 	c, err := NewCarriage(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
 	s.Require().NoError(err)
-	claimName := fmt.Sprintf("publishv3testdoc-%s", time.Now().Format("20060102150405"))
+	claimName := fmt.Sprintf("publishv3testdoc-%s", time.Now().Format("2006-01-02-15-04-05"))
 	for i := 0; i <= 1; i++ {
 		p := UploadProcessPayload{
 			UploadID: "",
@@ -195,4 +180,19 @@ func (s *carriageSuite) TestProcessDoc() {
 
 		s.NoFileExists(c.blobsPath, res.SDHash)
 	}
+}
+
+func (s *carriageSuite) SetupSuite() {
+	s.userHelper = &e2etest.UserTestHelper{}
+	s.forkliftHelper = &ForkliftTestHelper{}
+	s.Require().NoError(s.userHelper.Setup(s.T()))
+	err := s.forkliftHelper.Setup()
+	if errors.Is(err, ErrMissingEnv) {
+		s.T().Skipf(err.Error())
+	}
+}
+
+func (s *carriageSuite) TearDownSuite() {
+	config.RestoreOverridden()
+	s.userHelper.Cleanup()
 }

@@ -33,12 +33,12 @@ type UserTestHelper struct {
 	Auther      auth.Authenticator
 	TestUser    *TestUser
 
-	CleanupFuncs []cleanupFunc
+	cleanupFuncs []cleanupFunc
 }
 
 func (s *UserTestHelper) Setup(t *testing.T) error {
 	s.t = t
-	s.CleanupFuncs = []cleanupFunc{}
+	s.cleanupFuncs = []cleanupFunc{}
 	config.Override("LbrynetServers", "")
 
 	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
@@ -46,7 +46,7 @@ func (s *UserTestHelper) Setup(t *testing.T) error {
 		panic(err)
 	}
 	storage.SetDB(db)
-	s.CleanupFuncs = append(s.CleanupFuncs, func() error {
+	s.cleanupFuncs = append(s.cleanupFuncs, func() error {
 		zapadapter.NewKV(nil).Info("cleaning up usertesthelper db")
 		return dbCleanup()
 	})
@@ -72,6 +72,10 @@ func (s *UserTestHelper) Setup(t *testing.T) error {
 		return err
 	}
 	s.t.Logf("set up wallet userid=%v", w.UserID)
+	s.cleanupFuncs = append(s.cleanupFuncs, func() error {
+		w.Unload()
+		return w.RemoveFile()
+	})
 
 	u, err := auther.Authenticate(s.TokenHeader, "127.0.0.1")
 	if err != nil {
@@ -103,14 +107,8 @@ func (s *UserTestHelper) UserID() int {
 }
 
 func (s *UserTestHelper) Cleanup() {
-	for _, f := range s.CleanupFuncs {
+	for _, f := range s.cleanupFuncs {
 		f()
 	}
 	config.RestoreOverridden()
 }
-
-// func (s *UserTestHelper) InjectTestingWallet() error {
-// 	w, err := test.InjectTestingWallet(s.UserID())
-// 	s.t.Logf("set up wallet userid=%v", w.UserID)
-// 	return err
-// }
