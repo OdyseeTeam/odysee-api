@@ -164,9 +164,6 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	if path.Ext(streamSource.Name) == "" {
 		fileName += info.MediaType.Extension
 	}
-	// else {
-	// 	fileName = strings.TrimSuffix(ss.Name, path.Ext(ss.Name)) + info.MediaType.Extension
-	// }
 
 	patch := map[string]interface{}{
 		"file_size": streamSource.Size,
@@ -186,7 +183,7 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 		pp[k] = v
 	}
 	delete(pp, "file_path")
-	p.Request.Params = pp
+
 	log.Debug("sending request", "method", p.Request.Method, "params", p.Request)
 	res, err := caller.Call(context.Background(), p.Request)
 	if err != nil {

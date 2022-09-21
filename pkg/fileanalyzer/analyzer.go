@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 
 	"github.com/h2non/filetype"
@@ -77,17 +76,30 @@ func (d *Analyzed) GetMediaInfo(ctx context.Context) error {
 		return errors.New("format data is missing from ffprobe results")
 	}
 
-	m := &MediaInfo{}
-	s := data.Streams[0]
-	if data.Format.DurationSeconds > 0 {
-		m.Duration = int(data.Format.DurationSeconds)
+	info := &MediaInfo{}
+	var (
+		stream         *ffprobe.Stream
+		needStreamType string
+	)
+	if d.MediaType.Name == "image" {
+		needStreamType = "video"
 	} else {
-		d, _ := strconv.ParseFloat(s.Duration, 32)
-		m.Duration = int(d)
+		needStreamType = d.MediaType.Name
 	}
-	m.Width = s.Width
-	m.Height = s.Height
-	d.MediaInfo = m
+	for _, s := range data.Streams {
+		if s.CodecType == needStreamType {
+			stream = s
+			break
+		}
+	}
+	if stream == nil {
+		return nil
+	}
+
+	info.Duration = int(data.Format.Duration().Seconds())
+	info.Width = stream.Width
+	info.Height = stream.Height
+	d.MediaInfo = info
 
 	return nil
 }

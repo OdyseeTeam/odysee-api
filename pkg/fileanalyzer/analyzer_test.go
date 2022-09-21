@@ -39,6 +39,18 @@ func (s *analyzerSuite) TestAnalyze() {
 			ext:      ".mp3",
 		},
 		{
+			kind: "mov video",
+			url:  "https://ik.imagekit.io/odystatic/hdreel.mov",
+			videoMeta: &MediaInfo{
+				Duration: 29,
+				Width:    1920,
+				Height:   1080,
+			},
+			mimeName: "video",
+			mimeType: "video/quicktime",
+			ext:      ".avi",
+		},
+		{
 			kind: "video",
 			url:  "https://filesamples.com/samples/video/avi/sample_960x400_ocean_with_audio.avi",
 			videoMeta: &MediaInfo{
@@ -52,10 +64,10 @@ func (s *analyzerSuite) TestAnalyze() {
 		},
 		{
 			kind: "JPEG",
-			url:  "https://filesamples.com/samples/image/jpeg/sample_1280×853.jpeg",
+			url:  "https://photographylife.com/wp-content/uploads/2018/11/Moeraki-Boulders-New-Zealand.jpg",
 			videoMeta: &MediaInfo{
-				Width:  1280,
-				Height: 853,
+				Width:  2048,
+				Height: 1365,
 			},
 			mimeName: "image",
 			mimeType: "image/jpeg",
@@ -86,7 +98,9 @@ func (s *analyzerSuite) TestAnalyze() {
 				s.Equal(c.mimeType, d.MediaType.MIME)
 			}
 			s.Equal(c.mimeName, d.MediaType.Name)
-			s.Equal(c.videoMeta, d.MediaInfo)
+			if c.videoMeta != nil {
+				s.Equal(c.videoMeta, d.MediaInfo)
+			}
 		})
 	}
 }
