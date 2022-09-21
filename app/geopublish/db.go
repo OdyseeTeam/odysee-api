@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/geopublish/forklift"
+	"github.com/OdyseeTeam/odysee-api/app/geopublish/metrics"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/models"
 
@@ -53,6 +54,7 @@ func (d *UploadsDB) listenToHandler(upHandler *Handler) {
 			if err != nil {
 				log.Errorf("error saving query result: %s", err)
 			} else {
+				metrics.UploadsProcessed.Inc()
 				log.Infof("upload %s processed", res.UploadID)
 			}
 		}
@@ -68,6 +70,7 @@ func (d *UploadsDB) listenToHandler(upHandler *Handler) {
 			log.Infof("listening to handler")
 			select {
 			case e = <-upHandler.CreatedUploads:
+				metrics.UploadsCreated.Inc()
 				en = "CreatedUploads"
 				err := d.guardUser(d.markUploadCreated, d.db, e)
 				if err != nil {
@@ -79,18 +82,16 @@ func (d *UploadsDB) listenToHandler(upHandler *Handler) {
 				if err != nil {
 					gerr = fmt.Errorf("error handling upload progress signal: %w", err)
 				}
-			// case e := <-handler.CompleteUploads:
-			// 	err = d.guardUser(d.markUploadReceived, d.db, e)
 			case e = <-upHandler.TerminatedUploads:
+				metrics.UploadsCanceled.Inc()
 				en = "TerminatedUploads"
 				err := d.guardUser(d.markUploadTerminated, d.db, e)
 				if err != nil {
 					gerr = fmt.Errorf("error handling terminated upload signal: %w", err)
 				}
-				// case q := <-handler.preparedSDKQueries:
-				// 	err = d.createQuery(d.db, q)
 			}
 			if gerr != nil {
+				metrics.UploadsDBErrors.Inc()
 				log.Error(gerr)
 			} else {
 				log.Infof("handled %s signal, upload id=%s", en, e.Upload.ID)
@@ -190,20 +191,6 @@ func (d *UploadsDB) processUpload(id string, user *models.User, path string, req
 	return nil
 }
 
-// func (d *UploadsDB) markUploadProcessing(exec boil.Executor, hook handler.HookEvent, user *models.User) error {
-// 	u, err := d.get(hook.Upload.ID, user.ID)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	u.Status = models.UploadStatusProcessing
-// 	u.UpdatedAt = null.TimeFrom(time.Now())
-// 	_, err = u.Update(exec, boil.Infer())
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
-
 func (d *UploadsDB) markUploadTerminated(hook handler.HookEvent, user *models.User) error {
 	u, err := d.get(hook.Upload.ID, user.ID)
 	if err != nil {
@@ -243,37 +230,6 @@ func (d *UploadsDB) markUploadFinished(u *models.Upload) error {
 	return nil
 }
 
-// func (d *UploadsDB) getPendingQueries() (models.PublishQuerySlice, error) {
-// 	q := models.PublishQueries(
-// 		qm.Where(
-// 			"(status=?) or (status=? and retries lt ?)",
-// 			models.PublishQueryStatusReceived,
-// 			models.PublishQueryStatusFailed,
-// 			queryMaxRetries,
-// 		),
-// 		qm.OrderBy(models.PublishQueryColumns.UpdatedAt),
-// 		qm.Load(models.PublishQueryRels.Upload),
-// 	)
-// 	return q.All(d.db)
-// }
-
-// func (d *UploadsDB) markQueryForwarded(exec boil.Executor, id string) (*models.PublishQuery, error) {
-// 	q, err := d.getQuery(id)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	if q.Status == models.PublishQueryStatusFailed {
-// 		q.Retries += 1
-// 	}
-// 	q.Status = models.PublishQueryStatusForwarded
-// 	q.UpdatedAt = null.TimeFrom(time.Now())
-// 	_, err = q.Update(exec, boil.Infer())
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return q, nil
-// }
-
 func (d *UploadsDB) saveUploadProcessingResult(id string, rpcRes *jsonrpc.RPCResponse, callErr string) error {
 	up, err := d.get(id, 0)
 	if err != nil {
@@ -307,33 +263,3 @@ func (d *UploadsDB) saveUploadProcessingResult(id string, rpcRes *jsonrpc.RPCRes
 	}
 	return nil
 }
-
-// func (d *UploadsDB) uploadCompletedQuery(exec boil.Executor, q uploadCompleteddQuery) error {
-// 	u, err := d.get(q.fileInfo.ID)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if q.response.Error != nil || q.err != nil {
-// 		u.Status = models.UploadStatusQueryFailed
-// 	} else {
-// 		u.Status = models.UploadStatusCompleted
-// 	}
-// 	u.UpdatedAt = null.TimeFrom(time.Now())
-// 	_, err = u.Update(exec, boil.Infer())
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	resp := null.JSON{}
-// 	if err := resp.Marshal(q.response); err != nil {
-// 		return err
-// 	}
-// 	uq := u.R.UploadQuery
-// 	uq.Response = resp
-// 	uq.Error = q.err.Error()
-// 	_, err = uq.Update(exec, boil.Infer())
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }

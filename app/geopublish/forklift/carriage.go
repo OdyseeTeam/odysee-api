@@ -11,6 +11,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/OdyseeTeam/odysee-api/app/geopublish/metrics"
 	"github.com/OdyseeTeam/odysee-api/app/query"
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/blobs"
@@ -144,8 +145,10 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	summary, err := uploader.Upload(src)
 	if err != nil {
 		// The errors current uploader returns usually do not make sense to retry.
+		metrics.BlobUploadErrors.WithLabelValues(metrics.LabelFatal).Inc()
 		return r, err
 	} else if summary.Err > 0 {
+		metrics.BlobUploadErrors.WithLabelValues(metrics.LabelCommon).Inc()
 		r.Retry = true
 		return r, fmt.Errorf("%w (%v)", ErrUpload, summary.Err)
 	}
@@ -186,13 +189,17 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 
 	log.Debug("sending request", "method", p.Request.Method, "params", p.Request)
 	res, err := caller.Call(context.Background(), p.Request)
+	metrics.QueriesSent.Inc()
 	if err != nil {
+		metrics.QueriesFailed.Inc()
 		r.Retry = true
 		return r, fmt.Errorf("error calling sdk: %w", err)
 	}
+	metrics.QueriesCompleted.Inc()
 
 	r.Response = res
 	if res.Error != nil {
+		metrics.QueriesErrored.Inc()
 		return r, fmt.Errorf("sdk returned an error: %s", res.Error.Message)
 	}
 	log.Info("stream processed", "method", p.Request.Method, "params", p.Request)
