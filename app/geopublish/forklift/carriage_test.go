@@ -31,7 +31,8 @@ func (s *carriageSuite) TestProcessReel() {
 	c, err := NewCarriage(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
 	s.Require().NoError(err)
 
-	claimName := fmt.Sprintf("publishv3testreel-%s", time.Now().Format("2006-01-02-15-04-05"))
+	ts := time.Now().Format("2006-01-02-15-04-05-000")
+	claimName := fmt.Sprintf("publishv3testreel-%s", ts)
 
 	for i := 0; i <= 1; i++ {
 		p := UploadProcessPayload{
@@ -39,21 +40,21 @@ func (s *carriageSuite) TestProcessReel() {
 			UserID:   s.userHelper.UserID(),
 			Path:     test.StaticAsset(s.T(), "hdreel.mov"),
 			Request: jsonrpc.NewRequest(query.MethodStreamCreate, map[string]interface{}{
-				"name":          claimName,
-				"title":         "Publish v3 Test: Reel",
-				"description":   "",
-				"locations":     []string{},
-				"bid":           "0.001",
-				"languages":     []string{"en"},
-				"tags":          []string{"c:disable-comments"},
-				"thumbnail_url": "https://thumbs.odycdn.com/92399dc6df41af6f7c61def97335dfa5.webp",
-				"release_time":  1661882701,
-				"blocking":      true,
-				"preview":       false,
-				"license":       "None",
-				"channel_id":    "febc557fcfbe5c1813eb621f7d38a80bc4355085",
-				"file_path":     "__POST_FILE__",
-				// "allow_duplicate_name": true,
+				"name":                 claimName,
+				"title":                fmt.Sprintf("Publish v3 Test: Reel %s", ts),
+				"description":          "",
+				"locations":            []string{},
+				"bid":                  "0.001",
+				"languages":            []string{"en"},
+				"tags":                 []string{"c:disable-comments"},
+				"thumbnail_url":        "https://thumbs.odycdn.com/92399dc6df41af6f7c61def97335dfa5.webp",
+				"release_time":         time.Now().Unix(),
+				"blocking":             true,
+				"preview":              false,
+				"license":              "None",
+				"channel_id":           "febc557fcfbe5c1813eb621f7d38a80bc4355085",
+				"file_path":            "__POST_FILE__",
+				"allow_duplicate_name": true,
 			}),
 		}
 
@@ -86,7 +87,9 @@ func (s *carriageSuite) TestProcessReel() {
 func (s *carriageSuite) TestProcessImage() {
 	c, err := NewCarriage(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
 	s.Require().NoError(err)
-	claimName := fmt.Sprintf("publishv3testimage-%s", time.Now().Format("2006-01-02-15-04-05"))
+
+	ts := time.Now().Format("2006-01-02-15-04-05-000")
+	claimName := fmt.Sprintf("publishv3testimage-%s", ts)
 	for i := 0; i <= 1; i++ {
 		p := UploadProcessPayload{
 			UploadID: "",
@@ -94,14 +97,14 @@ func (s *carriageSuite) TestProcessImage() {
 			Path:     test.StaticAsset(s.T(), "image2.jpg"),
 			Request: jsonrpc.NewRequest(query.MethodStreamCreate, map[string]interface{}{
 				"name":                 claimName,
-				"title":                "Publish v3 Test: Image",
+				"title":                fmt.Sprintf("Publish v3 Image: Reel %s", ts),
 				"description":          "",
 				"locations":            []string{},
 				"bid":                  "0.001",
 				"languages":            []string{"en"},
 				"tags":                 []string{"c:disable-comments"},
 				"thumbnail_url":        "https://thumbs.odycdn.com/92399dc6df41af6f7c61def97335dfa5.webp",
-				"release_time":         1661882701,
+				"release_time":         time.Now().Unix(),
 				"blocking":             true,
 				"preview":              false,
 				"license":              "None",
@@ -138,7 +141,8 @@ func (s *carriageSuite) TestProcessImage() {
 func (s *carriageSuite) TestProcessDoc() {
 	c, err := NewCarriage(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
 	s.Require().NoError(err)
-	claimName := fmt.Sprintf("publishv3testdoc-%s", time.Now().Format("2006-01-02-15-04-05"))
+	ts := time.Now().Format("2006-01-02-15-04-05-000")
+	claimName := fmt.Sprintf("publishv3testdoc-%s", ts)
 	for i := 0; i <= 1; i++ {
 		p := UploadProcessPayload{
 			UploadID: "",
@@ -146,14 +150,14 @@ func (s *carriageSuite) TestProcessDoc() {
 			Path:     test.StaticAsset(s.T(), "doc.pdf"),
 			Request: jsonrpc.NewRequest(query.MethodStreamCreate, map[string]interface{}{
 				"name":                 claimName,
-				"title":                "Publish v3 Test: Doc",
+				"title":                fmt.Sprintf("Publish v3 Image: Doc %s", ts),
 				"description":          "",
 				"locations":            []string{},
 				"bid":                  "0.001",
 				"languages":            []string{"en"},
 				"tags":                 []string{"c:disable-comments"},
 				"thumbnail_url":        "https://thumbs.odycdn.com/92399dc6df41af6f7c61def97335dfa5.webp",
-				"release_time":         1661882701,
+				"release_time":         time.Now().Unix(),
 				"blocking":             true,
 				"preview":              false,
 				"license":              "None",
