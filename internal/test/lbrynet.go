@@ -22,20 +22,8 @@ const (
 	envPrivateKey = "REAL_WALLET_PRIVATE_KEY"
 )
 
-func copyToContainer(srcPath, dstPath string) error {
-	os.Setenv("PATH", os.Getenv("PATH")+":/usr/local/bin")
-	if out, err := exec.Command("docker", "cp", srcPath, dstPath).CombinedOutput(); err != nil {
-		return fmt.Errorf("cannot copy %s to %s: %w (%s)", srcPath, dstPath, err, string(out))
-	}
-	return nil
-}
-
-func rmFromContainer(p string) error {
-	os.Setenv("PATH", os.Getenv("PATH")+":/usr/local/bin")
-	if out, err := exec.Command("docker", "exec", "lbrynet", "rm", p).CombinedOutput(); err != nil {
-		return fmt.Errorf("cannot remove lbrynet:%s: %w (%s)", p, err, string(out))
-	}
-	return nil
+func (w SDKWallet) walletID() string {
+	return fmt.Sprintf("lbrytv-id.%d.wallet", w.UserID)
 }
 
 func (w SDKWallet) Inject() error {
@@ -54,20 +42,30 @@ func (w SDKWallet) Inject() error {
 		return err
 	}
 
-	return copyToContainer(
+	err = w.Unload() // Unload an old wallet file before overwriting
+	if err != nil {
+		return err
+	}
+
+	err = copyToContainer(
 		wf.Name(),
-		fmt.Sprintf("lbrynet:/storage/lbryum/wallets/lbrytv-id.%v.wallet", w.UserID),
+		fmt.Sprintf("lbrynet:/storage/lbryum/wallets/%s", w.walletID()),
 	)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (w SDKWallet) Unload() error {
 	c := jsonrpc.NewClient(SDKAddress)
-	_, err := c.Call("wallet_remove", map[string]string{"wallet_id": fmt.Sprintf("lbrytv-id.%d.wallet", w.UserID)})
+	_, err := c.Call("wallet_remove", map[string]string{"wallet_id": w.walletID()})
 	return err
 }
 
 func (w SDKWallet) RemoveFile() error {
-	return rmFromContainer(fmt.Sprintf("/storage/lbryum/wallets/lbrytv-id.%v.wallet", w.UserID))
+	return rmFromContainer(fmt.Sprintf("/storage/lbryum/wallets/%s", w.walletID()))
 }
 
 func InjectTestingWallet(userID int) (*SDKWallet, error) {
@@ -82,4 +80,20 @@ func InjectTestingWallet(userID int) (*SDKWallet, error) {
 	}
 
 	return &w, w.Inject()
+}
+
+func copyToContainer(srcPath, dstPath string) error {
+	os.Setenv("PATH", os.Getenv("PATH")+":/usr/local/bin")
+	if out, err := exec.Command("docker", "cp", srcPath, dstPath).CombinedOutput(); err != nil {
+		return fmt.Errorf("cannot copy %s to %s: %w (%s)", srcPath, dstPath, err, string(out))
+	}
+	return nil
+}
+
+func rmFromContainer(p string) error {
+	os.Setenv("PATH", os.Getenv("PATH")+":/usr/local/bin")
+	if out, err := exec.Command("docker", "exec", "lbrynet", "rm", p).CombinedOutput(); err != nil {
+		return fmt.Errorf("cannot remove lbrynet:%s: %w (%s)", p, err, string(out))
+	}
+	return nil
 }
