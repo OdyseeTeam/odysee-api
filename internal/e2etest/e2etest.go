@@ -2,8 +2,8 @@ package e2etest
 
 import (
 	"database/sql"
-	"errors"
 	"strings"
+	"testing"
 
 	"github.com/OdyseeTeam/odysee-api/app/auth"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
@@ -14,63 +14,101 @@ import (
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/iapi"
 	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
-	"github.com/stretchr/testify/suite"
+	"github.com/lbryio/transcoder/pkg/logging/zapadapter"
 )
 
-type FullSuite struct {
-	suite.Suite
-	// cleanup func()
-	TokenHeader string
-	dbCleanup   migrator.TestDBCleanup
-	DB          *sql.DB
-	SDKRouter   *sdkrouter.Router
-	Auther      auth.Authenticator
+type cleanupFunc func() error
+
+type TestUser struct {
 	User        *models.User
 	SDKAddress  string
 	CurrentUser *auth.CurrentUser
 }
 
-func (s *FullSuite) SetupSuite() {
+type UserTestHelper struct {
+	t           *testing.T
+	TokenHeader string
+	DB          *sql.DB
+	SDKRouter   *sdkrouter.Router
+	Auther      auth.Authenticator
+	TestUser    *TestUser
+
+	cleanupFuncs []cleanupFunc
+}
+
+func (s *UserTestHelper) Setup(t *testing.T) error {
+	s.t = t
+	s.cleanupFuncs = []cleanupFunc{}
 	config.Override("LbrynetServers", "")
 
-	// SDKRouter := SDKRouter.New(config.GetLbrynetServers())
 	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
 	if err != nil {
 		panic(err)
 	}
 	storage.SetDB(db)
-	s.dbCleanup = dbCleanup
+	s.cleanupFuncs = append(s.cleanupFuncs, func() error {
+		zapadapter.NewKV(nil).Info("cleaning up usertesthelper db")
+		return dbCleanup()
+	})
 	s.DB = db
 	s.SDKRouter = sdkrouter.New(config.GetLbrynetServers())
 
 	th, err := test.GetTestTokenHeader()
-	s.Require().NoError(err)
+	if err != nil {
+		return err
+	}
 	s.TokenHeader = th
 
 	auther, err := wallet.NewOauthAuthenticator(
 		config.GetOauthProviderURL(), config.GetOauthClientID(),
 		config.GetInternalAPIHost(), s.SDKRouter)
-	s.Require().NoError(err, errors.Unwrap(err))
+	if err != nil {
+		return err
+	}
 	s.Auther = auther
 
+	w, err := test.InjectTestingWallet(test.TestUserID)
+	if err != nil {
+		return err
+	}
+	s.t.Logf("set up wallet userid=%v", w.UserID)
+	s.cleanupFuncs = append(s.cleanupFuncs, func() error {
+		w.Unload()
+		return w.RemoveFile()
+	})
+
 	u, err := auther.Authenticate(s.TokenHeader, "127.0.0.1")
-	s.Require().NoError(err)
-	s.User = u
-	s.SDKAddress = sdkrouter.GetSDKAddress(u)
+	if err != nil {
+		return err
+	}
 
 	iac, err := iapi.NewClient(
 		iapi.WithOAuthToken(strings.TrimPrefix(th, wallet.TokenPrefix)),
 		iapi.WithRemoteIP("8.8.8.8"),
 	)
-	s.Require().NoError(err)
+	if err != nil {
+		return err
+	}
 
-	CurrentUser := auth.NewCurrentUser(u, nil)
-	CurrentUser.IP = "8.8.8.8"
-	CurrentUser.IAPIClient = iac
-	s.CurrentUser = CurrentUser
+	cu := auth.NewCurrentUser(u, nil)
+	cu.IP = "8.8.8.8"
+	cu.IAPIClient = iac
+
+	s.TestUser = &TestUser{
+		User:        u,
+		SDKAddress:  sdkrouter.GetSDKAddress(u),
+		CurrentUser: cu,
+	}
+	return nil
 }
 
-func (s *FullSuite) TearDownSuite() {
-	s.dbCleanup()
+func (s *UserTestHelper) UserID() int {
+	return s.TestUser.User.ID
+}
+
+func (s *UserTestHelper) Cleanup() {
+	for _, f := range s.cleanupFuncs {
+		f()
+	}
 	config.RestoreOverridden()
 }

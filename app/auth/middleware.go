@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
@@ -10,6 +11,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/ip"
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/iapi"
+	"github.com/getsentry/sentry-go"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -31,11 +33,15 @@ func Middleware(auther Authenticator) mux.MiddlewareFunc {
 			user, err = auther.Authenticate(token, ipAddr)
 			if err != nil {
 				logger.WithFields(logrus.Fields{"ip": ipAddr}).Debugf("error authenticating user: %s", err)
-			} else {
+			}
+			if user != nil {
 				iac, _ = iapi.NewClient(
 					iapi.WithOAuthToken(strings.TrimPrefix(token, wallet.TokenPrefix)),
 					iapi.WithRemoteIP(ipAddr),
 				)
+				if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+					hub.Scope().SetUser(sentry.User{ID: strconv.Itoa(user.ID), IPAddress: ipAddr})
+				}
 			}
 
 			cu := NewCurrentUser(user, err)
@@ -52,8 +58,8 @@ func LegacyMiddleware(provider Provider) mux.MiddlewareFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var err error
 			var iac *iapi.Client
-			user, err := FromRequest(r)
 			ipAddr := ip.FromRequest(r)
+			user, err := FromRequest(r)
 			if err != nil {
 				token := r.Header.Get(wallet.LegacyTokenHeader)
 				if token != "" {
@@ -69,6 +75,9 @@ func LegacyMiddleware(provider Provider) mux.MiddlewareFunc {
 						iapi.WithLegacyToken(token),
 						iapi.WithRemoteIP(ipAddr),
 					)
+					if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+						hub.Scope().SetUser(sentry.User{ID: strconv.Itoa(user.ID), IPAddress: ipAddr})
+					}
 				}
 				cu := NewCurrentUser(user, err)
 				cu.IP = ipAddr

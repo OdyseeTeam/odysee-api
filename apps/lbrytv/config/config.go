@@ -10,6 +10,7 @@ import (
 	cfg "github.com/OdyseeTeam/odysee-api/config"
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/go-redis/redis/v8"
+	"github.com/hibiken/asynq"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
@@ -83,13 +84,22 @@ func GetOauthTokenURL() string {
 	return cfg["providerurl"] + cfg["tokenpath"]
 }
 
-// GetRedisOpts returns the address of OAuth client ID
+// GetRedisOpts returns Redis connection options in the official redis client format.
 func GetRedisOpts() (*redis.Options, error) {
 	opts, err := redis.ParseURL(Config.Viper.GetString("redis"))
 	if err != nil {
 		return nil, err
 	}
 	return opts, nil
+}
+
+// GetAsynqRedisOpts rreturns Redis connection options ready for asynq package.
+func GetAsynqRedisOpts() (asynq.RedisConnOpt, error) {
+	redisOpts, err := asynq.ParseRedisURI(Config.Viper.GetString("redis"))
+	if err != nil {
+		return nil, err
+	}
+	return redisOpts, nil
 }
 
 // GetDatabase returns postgresql database server connection config
@@ -108,14 +118,10 @@ func GetPublishSourceDir() string {
 	return Config.Viper.GetString("PublishSourceDir")
 }
 
-// GetBlobFilesDir returns directory where SDK instance stores blob files.
-func GetBlobFilesDir() string {
-	return Config.Viper.GetString("BlobFilesDir")
-}
-
-// GetReflectorAddress returns reflector address in the format of host:port.
-func GetReflectorAddress() string {
-	return Config.Viper.GetString("ReflectorAddress")
+// GetGeoPublishSourceDir returns directory for storing files created by publish v3 endpoint for all odysee-api instances.
+// The directory needs to be accessed by the running SDK instance.
+func GetGeoPublishSourceDir() string {
+	return Config.Viper.GetString("GeoPublishSourceDir")
 }
 
 // ShouldLogResponses enables or disables full SDK responses logging
@@ -131,6 +137,11 @@ func GetPaidTokenPrivKey() string {
 // GetStreamsV5 returns config map for streams endpoint v5
 func GetStreamsV5() map[string]string {
 	return Config.Viper.GetStringMapString("StreamsV5")
+}
+
+// GetStreamsV5 returns config map for streams endpoint v5
+func GetReflectorUpstream() map[string]string {
+	return Config.Viper.GetStringMapString("ReflectorUpstream")
 }
 
 // GetAddress determines address to bind http API server to
@@ -161,14 +172,6 @@ func GetLbrynetServers() map[string]string {
 	}
 }
 
-func Override(key string, value interface{}) {
-	Config.Override(key, value)
-}
-
-func RestoreOverridden() {
-	Config.RestoreOverridden()
-}
-
 func GetLbrynetXServer() string {
 	return Config.Viper.GetString("LbrynetXServer")
 }
@@ -194,4 +197,12 @@ func GetRPCTimeout(method string) *time.Duration {
 		}
 	}
 	return nil
+}
+
+func Override(key string, value interface{}) {
+	Config.Override(key, value)
+}
+
+func RestoreOverridden() {
+	Config.RestoreOverridden()
 }

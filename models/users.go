@@ -99,13 +99,16 @@ var UserWhere = struct {
 // UserRels is where relationship names are stored.
 var UserRels = struct {
 	LbrynetServer string
+	Uploads       string
 }{
 	LbrynetServer: "LbrynetServer",
+	Uploads:       "Uploads",
 }
 
 // userR is where relationships are stored.
 type userR struct {
 	LbrynetServer *LbrynetServer
+	Uploads       UploadSlice
 }
 
 // NewStruct creates a new relationship struct
@@ -396,6 +399,27 @@ func (o *User) LbrynetServer(mods ...qm.QueryMod) lbrynetServerQuery {
 	return query
 }
 
+// Uploads retrieves all the upload's Uploads with an executor.
+func (o *User) Uploads(mods ...qm.QueryMod) uploadQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"uploads\".\"user_id\"=?", o.ID),
+	)
+
+	query := Uploads(queryMods...)
+	queries.SetFrom(query.Query, "\"uploads\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"uploads\".*"})
+	}
+
+	return query
+}
+
 // LoadLbrynetServer allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (userL) LoadLbrynetServer(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
@@ -501,6 +525,101 @@ func (userL) LoadLbrynetServer(e boil.Executor, singular bool, maybeUser interfa
 	return nil
 }
 
+// LoadUploads allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadUploads(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(qm.From(`uploads`), qm.WhereIn(`user_id in ?`, args...))
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load uploads")
+	}
+
+	var resultSlice []*Upload
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice uploads")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on uploads")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for uploads")
+	}
+
+	if len(uploadAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.Uploads = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &uploadR{}
+			}
+			foreign.R.User = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.UserID) {
+				local.R.Uploads = append(local.R.Uploads, foreign)
+				if foreign.R == nil {
+					foreign.R = &uploadR{}
+				}
+				foreign.R.User = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetLbrynetServerG of the user to the related item.
 // Sets o.R.LbrynetServer to related.
 // Adds o to related.R.Users.
@@ -592,6 +711,157 @@ func (o *User) RemoveLbrynetServer(exec boil.Executor, related *LbrynetServer) e
 		related.R.Users = related.R.Users[:ln-1]
 		break
 	}
+	return nil
+}
+
+// AddUploadsG adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.Uploads.
+// Sets related.R.User appropriately.
+// Uses the global database handle.
+func (o *User) AddUploadsG(insert bool, related ...*Upload) error {
+	return o.AddUploads(boil.GetDB(), insert, related...)
+}
+
+// AddUploads adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.Uploads.
+// Sets related.R.User appropriately.
+func (o *User) AddUploads(exec boil.Executor, insert bool, related ...*Upload) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.UserID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"uploads\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
+				strmangle.WhereClause("\"", "\"", 2, uploadPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.UserID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			Uploads: related,
+		}
+	} else {
+		o.R.Uploads = append(o.R.Uploads, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &uploadR{
+				User: o,
+			}
+		} else {
+			rel.R.User = o
+		}
+	}
+	return nil
+}
+
+// SetUploadsG removes all previously related items of the
+// user replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.User's Uploads accordingly.
+// Replaces o.R.Uploads with related.
+// Sets related.R.User's Uploads accordingly.
+// Uses the global database handle.
+func (o *User) SetUploadsG(insert bool, related ...*Upload) error {
+	return o.SetUploads(boil.GetDB(), insert, related...)
+}
+
+// SetUploads removes all previously related items of the
+// user replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.User's Uploads accordingly.
+// Replaces o.R.Uploads with related.
+// Sets related.R.User's Uploads accordingly.
+func (o *User) SetUploads(exec boil.Executor, insert bool, related ...*Upload) error {
+	query := "update \"uploads\" set \"user_id\" = null where \"user_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.Uploads {
+			queries.SetScanner(&rel.UserID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.User = nil
+		}
+
+		o.R.Uploads = nil
+	}
+	return o.AddUploads(exec, insert, related...)
+}
+
+// RemoveUploadsG relationships from objects passed in.
+// Removes related items from R.Uploads (uses pointer comparison, removal does not keep order)
+// Sets related.R.User.
+// Uses the global database handle.
+func (o *User) RemoveUploadsG(related ...*Upload) error {
+	return o.RemoveUploads(boil.GetDB(), related...)
+}
+
+// RemoveUploads relationships from objects passed in.
+// Removes related items from R.Uploads (uses pointer comparison, removal does not keep order)
+// Sets related.R.User.
+func (o *User) RemoveUploads(exec boil.Executor, related ...*Upload) error {
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.UserID, nil)
+		if rel.R != nil {
+			rel.R.User = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("user_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.Uploads {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.Uploads)
+			if ln > 1 && i < ln-1 {
+				o.R.Uploads[i] = o.R.Uploads[ln-1]
+			}
+			o.R.Uploads = o.R.Uploads[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 

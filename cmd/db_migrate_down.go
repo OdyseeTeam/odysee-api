@@ -35,6 +35,9 @@ var dbMigrateDown = &cobra.Command{
 		}
 		defer db.Close()
 		m := migrator.New(db, storage.MigrationsFS)
-		m.MigrateDown(max)
+		_, err = m.MigrateDown(max)
+		if err != nil {
+			panic(err)
+		}
 	},
 }

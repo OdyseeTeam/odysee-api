@@ -21,10 +21,10 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/metrics"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/internal/responses"
-	"github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/go-retryablehttp"
 
 	"github.com/gorilla/mux"
+	"github.com/hashicorp/go-cleanhttp"
+	"github.com/hashicorp/go-retryablehttp"
 	werrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc"

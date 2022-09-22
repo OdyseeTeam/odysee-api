@@ -77,7 +77,7 @@ func TestHandler_StreamUpdate(t *testing.T) {
 
 	require.True(t, publisher.called)
 	require.Equal(t, query.MethodStreamUpdate, publisher.query.Method)
-	expectedPath := path.Join(os.TempDir(), "20404", ".+", "lbry_auto_test_file")
+	expectedPath := path.Join(os.TempDir(), "20404", ".+", "ody_auto_test_file")
 	assert.Regexp(t, expectedPath, publisher.queryParams["file_path"].(string))
 	assert.Equal(t, sdkrouter.WalletID(20404), publisher.queryParams["wallet_id"].(string))
 	assert.NotContains(t, "name", publisher.queryParams)
@@ -130,7 +130,7 @@ func TestUploadHandler(t *testing.T) {
 	test.AssertEqualJSON(t, expectedPublishResponse, respBody)
 
 	require.True(t, publisher.called)
-	expectedPath := path.Join(os.TempDir(), "20404", ".+", "lbry_auto_test_file")
+	expectedPath := path.Join(os.TempDir(), "20404", ".+", "ody_auto_test_file")
 	assert.Regexp(t, expectedPath, publisher.filePath)
 	assert.Equal(t, sdkrouter.WalletID(20404), publisher.walletID)
 	expectedReq := fmt.Sprintf(testPublishRequest, sdkrouter.WalletID(20404), publisher.filePath)
@@ -204,7 +204,7 @@ func TestUploadHandlerSystemError(t *testing.T) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
-	fileBody, err := writer.CreateFormFile(fileFieldName, "lbry_auto_test_file")
+	fileBody, err := writer.CreateFormFile(fileFieldName, "ody_auto_test_file")
 	require.NoError(t, err)
 	_, err = io.Copy(fileBody, reader)
 	require.NoError(t, err)

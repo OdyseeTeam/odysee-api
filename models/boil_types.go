@@ -50,3 +50,22 @@ func makeCacheKey(cols boil.Columns, nzDefaults []string) string {
 	strmangle.PutBuffer(buf)
 	return str
 }
+
+// Enum values for publish_query_status
+const (
+	PublishQueryStatusReceived  = "received"
+	PublishQueryStatusForwarded = "forwarded"
+	PublishQueryStatusFailed    = "failed"
+	PublishQueryStatusSucceeded = "succeeded"
+)
+
+// Enum values for upload_status
+const (
+	UploadStatusCreated    = "created"
+	UploadStatusUploading  = "uploading"
+	UploadStatusReceived   = "received"
+	UploadStatusTerminated = "terminated"
+	UploadStatusAbandoned  = "abandoned"
+	UploadStatusFailed     = "failed"
+	UploadStatusFinished   = "finished"
+)

@@ -21,11 +21,9 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("failed to init redis: %s", err)
 	}
+	defer teardown()
 
 	code := m.Run()
-	if err := teardown(); err != nil {
-		log.Print(err)
-	}
 	os.Exit(code)
 }
 

@@ -112,7 +112,6 @@ func (a *OauthAuthenticator) Authenticate(tokenString, metaRemoteIP string) (*mo
 		be different, where we don't need a user id from internal-apis to continue but for now, to
 		keep it simple lets just require it instead of changing primary keys and wallet names. Also as
 		the wallets are populated with the IDP ID these calls will dwindle down to first time users.
-
 		When we do, do it, we should populate IDP_ID for wallet_IDS for all new wallets created, storing
 		all user id based wallet ids as they arise. Then we will be left with old wallets that have not
 		been accessed in a long time and can be wiped. When they sign in at some point in the future

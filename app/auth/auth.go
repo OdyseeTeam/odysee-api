@@ -33,6 +33,7 @@ type CurrentUser struct {
 type IAPIUserClient interface {
 }
 
+// Authenticator authenticates
 type Authenticator interface {
 	Authenticate(token, metaRemoteIP string) (*models.User, error)
 	GetTokenFromRequest(r *http.Request) (string, error)

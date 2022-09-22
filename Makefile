@@ -27,7 +27,6 @@ test_circleci:
 
 .PHONY: clean
 clean:
-	find . -name rice-box.go | xargs rm
 	rm -rf ./dist
 
 .PHONY: server
@@ -43,12 +42,12 @@ retag:
 	git tag $(tag)
 
 get_sqlboiler:
-	go get -u -t github.com/volatiletech/sqlboiler@v3.4.0
-	go get -u -t github.com/volatiletech/sqlboiler/drivers/sqlboiler-psql@v3.4.0
+	go install github.com/volatiletech/sqlboiler
+	go install github.com/volatiletech/sqlboiler/drivers/sqlboiler-psql
 
 .PHONY: models
 models: get_sqlboiler
-	sqlboiler --add-global-variants --wipe psql --no-context
+	sqlboiler --add-global-variants --wipe psql --no-context --no-tests
 
 .PHONY: api
 api:
@@ -63,8 +62,13 @@ watchman:
 		-ldflags "-s -w -X github.com/OdyseeTeam/odysee-api/version.version=$(watchman_version) -X github.com/OdyseeTeam/odysee-api/version.commit=$(git_hash) -X github.com/OdyseeTeam/odysee-api/apps/version.buildDate=$(date)" \
 		./apps/watchman/cmd/watchman/
 
+cur_branch := $(shell git rev-parse --abbrev-ref HEAD)
+.PHONY: image
+image:
+	docker buildx build -t odyseeteam/odysee-api:$(api_version) -t odyseeteam/odysee-api:latest -t odyseeteam/odysee-api:$(cur_branch) --platform linux/amd64 .
+
 watchman_image:
-	docker build -t odyseeteam/watchman:$(watchman_version) ./apps/watchman
+	docker buildx build -t odyseeteam/watchman:$(watchman_version) --platform linux/amd64 ./apps/watchman
 
 watchman_design:
 	goa gen github.com/OdyseeTeam/odysee-api/apps/watchman/design -o apps/watchman

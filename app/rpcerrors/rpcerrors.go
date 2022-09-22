@@ -2,6 +2,7 @@ package rpcerrors
 
 import (
 	"encoding/json"
+	"io"
 
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
@@ -49,6 +50,10 @@ func (e RPCError) JSON() []byte {
 	return b
 }
 
+func (e RPCError) Write(w io.Writer) (int, error) {
+	return w.Write(e.JSON())
+}
+
 var ErrAuthRequired = errors.Base(responses.AuthRequiredErrorMessage)
 
 func newRPCErr(e error, code int) RPCError { return RPCError{errors.Err(e), code} }
@@ -80,4 +85,15 @@ func ToJSON(err error) []byte {
 		return e.JSON()
 	}
 	return NewInternalError(err).JSON()
+}
+
+func Write(w io.Writer, err error) (int, error) {
+	var rpcErr RPCError
+	var b []byte
+	if errors.As(err, &rpcErr) {
+		b = rpcErr.JSON()
+	} else {
+		b = NewInternalError(err).JSON()
+	}
+	return w.Write(b)
 }

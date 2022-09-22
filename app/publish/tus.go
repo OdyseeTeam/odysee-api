@@ -32,56 +32,108 @@ import (
 
 const module = "publish.tus"
 
+type preparedQuery struct {
+	request  *jsonrpc.RPCRequest
+	fileInfo tusd.FileInfo
+}
+
+type completedQuery struct {
+	response *jsonrpc.RPCResponse
+	err      error
+	fileInfo tusd.FileInfo
+}
+
 // TusHandler handle media publishing on odysee-api, it implements TUS
 // specifications to support resumable file upload and extends the handler to
 // support fetching media from remote url.
 type TusHandler struct {
 	*tusd.UnroutedHandler
 
-	uploadPath   string
-	logger       monitor.ModuleLogger
-	composer     *tusd.StoreComposer
-	authProvider auth.Provider
-	auther       auth.Authenticator
+	options  *TusHandlerOptions
+	composer *tusd.StoreComposer
+	logger   monitor.ModuleLogger
+}
+
+type TusHandlerOptions struct {
+	// Logger   logging.KVLogger
+	auther     auth.Authenticator
+	provider   auth.Provider
+	uploadPath string
+	tusConfig  *tusd.Config
+}
+
+// func WithLogger(logger logging.KVLogger) func(options *TusHandlerOptions) {
+// 	return func(options *TusHandlerOptions) {
+// 		options.Logger = logger
+// 	}
+// }
+
+func WithUploadPath(uploadPath string) func(options *TusHandlerOptions) {
+	return func(options *TusHandlerOptions) {
+		options.uploadPath = uploadPath
+	}
+}
+
+// WithAuther is required because of the way tus handles http requests, see preCreateHook.
+func WithAuther(auther auth.Authenticator) func(options *TusHandlerOptions) {
+	return func(options *TusHandlerOptions) {
+		options.auther = auther
+	}
+}
+
+// WithLegacyProvider sets a temporary mechanism for supporting authentication with legacy tokens.
+// TODO: Remove auth.Provider after legacy tokens go away.
+func WithLegacyProvider(provider auth.Provider) func(options *TusHandlerOptions) {
+	return func(options *TusHandlerOptions) {
+		options.provider = provider
+	}
+}
+
+func WithTusConfig(config tusd.Config) func(options *TusHandlerOptions) {
+	return func(options *TusHandlerOptions) {
+		options.tusConfig = &config
+	}
 }
 
 // NewTusHandler creates a new publish handler.
-// Auther is required because of the way tus handles http requests, see preCreateHook.
-// Provider is a temporary mechanism for supporting authentication with legacy tokens.
-// TODO: Remove auth.Provider after legacy tokens go away.
-func NewTusHandler(auther auth.Authenticator, provider auth.Provider, cfg tusd.Config, uploadPath string) (*TusHandler, error) {
-	h := &TusHandler{}
 
-	if auther == nil {
+func NewTusHandler(optionFuncs ...func(*TusHandlerOptions)) (*TusHandler, error) {
+	options := &TusHandlerOptions{
+		// Logger: logging.NoopKVLogger{},
+		uploadPath: "./uploads",
+		tusConfig:  &tusd.Config{},
+	}
+	for _, optionFunc := range optionFuncs {
+		optionFunc(options)
+	}
+
+	h := &TusHandler{options: options}
+
+	if options.auther == nil {
 		return nil, fmt.Errorf("authenticator is required")
 	}
-	if provider == nil {
+	if options.provider == nil {
 		return nil, fmt.Errorf("legacy auth provider is required")
 	}
 
-	defaultUploadPath := "./uploads"
-	if uploadPath == "" {
-		uploadPath = defaultUploadPath
-	}
-	if err := os.MkdirAll(uploadPath, os.ModePerm); err != nil {
+	if err := os.MkdirAll(options.uploadPath, os.ModePerm); err != nil {
 		return nil, err
 	}
-	h.uploadPath = uploadPath
+
+	cfg := options.tusConfig
 
 	cfg.PreUploadCreateCallback = h.preCreateHook
 	// allow client to set location response protocol
 	// via X-Forwarded-Proto
 	cfg.RespectForwardedHeaders = true
 
-	handler, err := tusd.NewUnroutedHandler(cfg)
+	baseHandler, err := tusd.NewUnroutedHandler(*cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	h.UnroutedHandler = handler
+	h.UnroutedHandler = baseHandler
 	h.logger = monitor.NewModuleLogger(module)
-	h.authProvider = provider
-	h.auther = auther
 	h.composer = cfg.StoreComposer
 
 	return h, nil
@@ -156,7 +208,7 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 	// completion at all
 	if info.Offset != info.Size { // upload is not yet completed
 		err := fmt.Errorf("upload is still in process")
-		log.WithError(err).Error("file incomplete")
+		log.WithError(err).Error("upload is still in process")
 		w.Write(rpcerrors.ErrorToJSON(err))
 		observeFailure(metrics.GetDuration(r), metrics.PublishUploadIncomplete)
 		return
@@ -242,6 +294,7 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 	op := metrics.StartOperation("sdk", "call_publish")
 	rpcRes, err := c.Call(r.Context(), rpcReq)
 	defer op.End()
+
 	if err != nil {
 		monitor.ErrorToSentry(
 			fmt.Errorf("error calling publish: %v", err),
@@ -314,12 +367,12 @@ func (h *TusHandler) preCreateHook(hook tusd.HookEvent) error {
 
 func (h *TusHandler) multiAuthUser(r *http.Request) (*models.User, error) {
 	log := h.logger.Log()
-	token, err := h.auther.GetTokenFromRequest(r)
+	token, err := h.options.auther.GetTokenFromRequest(r)
 	if errors.Is(err, wallet.ErrNoAuthInfo) {
 		// TODO: Remove this pathway after legacy tokens go away.
 		if token, ok := r.Header[wallet.LegacyTokenHeader]; ok {
 			addr := ip.ForRequest(r)
-			user, err := h.authProvider(token[0], addr)
+			user, err := h.options.provider(token[0], addr)
 			if err != nil {
 				log.WithError(err).Info("error authenticating user")
 				return nil, err
@@ -336,7 +389,7 @@ func (h *TusHandler) multiAuthUser(r *http.Request) (*models.User, error) {
 		return nil, err
 	}
 
-	user, err := h.auther.Authenticate(token, ip.ForRequest(r))
+	user, err := h.options.auther.Authenticate(token, ip.ForRequest(r))
 	if err != nil {
 		log.WithError(err).Info("error authenticating user")
 		return nil, err

@@ -1,7 +1,7 @@
 LbrynetServers:
-  default: http://localhost:5279/
-  lbrynet1: http://localhost:5279/
-  lbrynet2: http://localhost:5279/
+  default: http://localhost:15279/
+  lbrynet1: http://localhost:15279/
+  lbrynet2: http://localhost:15279/
 
 Debug: 1
 
@@ -29,16 +29,8 @@ Database:
   DBName: lbrytv
   Options: sslmode=disable
 
-PublishSourceDir: /storage/publish
-BlobFilesDir: /storage/lbrynet/blobfiles
-
-ReflectorAddress: reflector.lbry.com:5566
-# ReflectorTimeout (in seconds) is TCP timeout for pushing blobs to reflector.
-ReflectorTimeout: 60
-
-RefractorAddress: blobcache.lbry.com:5567
-# RefractorTimeout (in seconds) is TCP timeout for streaming blobs off reflector/refractor.
-RefractorTimeout: 120
+PublishSourceDir: ./rundata/storage/publish
+GeoPublishSourceDir: ./rundata/storage/geopublish
 
 PaidTokenPrivKey: token_privkey.rsa
 
@@ -56,3 +48,10 @@ RPCTimeouts:
   publish: 4m
 
 Redis: redis://:odyredis@localhost:6379/1
+
+ReflectorUpstream:
+  DatabaseDSN: 'user:password@tcp(host.com)/blobs'
+  Region: us-east-1
+  Bucket: blobs'
+  Key: key
+  Secret: secret

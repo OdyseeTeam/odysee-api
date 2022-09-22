@@ -1,0 +1,23 @@
+package test
+
+var tmplWallet = `
+{
+    "accounts": [
+        {
+            "address_generator": {
+                "name": "single-address"
+            },
+            "certificates": {},
+            "encrypted": false,
+            "ledger": "lbc_mainnet",
+            "modified_on": 1657898418,
+            "name": "Account #bP2uhrhHgHLR6WNHCjQpWFDtb3V8aPpo6Q",
+            "private_key": "{{.PrivateKey}}",
+            "public_key": "{{.PublicKey}}"
+        }
+    ],
+    "name": "My Wallet",
+    "preferences": {},
+    "version": 1
+}
+`

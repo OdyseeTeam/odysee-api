@@ -178,7 +178,6 @@ called by it), you should call Recover() as follows
 		funcThatMayPanic()
 		return e
 	}()
-
 */
 func Recover(e *error) {
 	p := recover()
@@ -192,7 +191,14 @@ func Recover(e *error) {
 	}
 
 	stack := make([]uintptr, maxStackDepth)
-	length := runtime.Callers(4, stack[:])
+	var skip int
+	switch runtime.GOOS {
+	case "darwin":
+		skip = 3
+	default:
+		skip = 4
+	}
+	length := runtime.Callers(skip, stack[:])
 	stack = stack[:length]
 
 	*e = &traced{

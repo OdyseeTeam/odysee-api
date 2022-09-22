@@ -3,9 +3,9 @@ version: "3.2"
 services:
   lbrynet:
     image: odyseeteam/lbrynet-tv:0.110.0
+    container_name: lbrynet
     ports:
-      - "5581:5279"
-      - "5279:5279"
+      - "15279:5279"
     volumes:
       - storage:/storage
     environment:
@@ -36,7 +36,6 @@ services:
       --requirepass odyredis --appendonly yes
     labels:
       com.centurylinklabs.watchtower.enable: false
-    restart: unless-stopped
   postgres:
     image: postgres:11-alpine
     command:

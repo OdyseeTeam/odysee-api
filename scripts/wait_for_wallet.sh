@@ -1,6 +1,6 @@
 #!/bin/bash
 
-lbrynet=http://localhost:5279/
+lbrynet=http://localhost:15279/
 echo "Waiting for wallet server '${lbrynet}'..."
 
 while [[ ! $(curl -sd '{"method": "status"}' ${lbrynet} |grep '"wallet": true') ]]; do

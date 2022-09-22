@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/auth"
+	"github.com/OdyseeTeam/odysee-api/app/geopublish"
 	"github.com/OdyseeTeam/odysee-api/app/proxy"
 	"github.com/OdyseeTeam/odysee-api/app/publish"
 	"github.com/OdyseeTeam/odysee-api/app/query/cache"
@@ -20,7 +21,9 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/status"
 	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
+	"github.com/lbryio/transcoder/pkg/logging/zapadapter"
 
+	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -50,8 +53,9 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 		panic(err)
 	}
 	legacyProvider := auth.NewIAPIProvider(sdkRouter, config.GetInternalAPIHost())
+	sentryHandler := sentryhttp.New(sentryhttp.Options{})
 
-	r.Use(methodTimer)
+	r.Use(methodTimer, sentryHandler.Handle)
 
 	r.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		w.Write([]byte("odysee api"))
@@ -96,7 +100,12 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 		StoreComposer: composer,
 	}
 
-	tusHandler, err := publish.NewTusHandler(oauthAuther, legacyProvider, tusCfg, uploadPath)
+	tusHandler, err := publish.NewTusHandler(
+		publish.WithAuther(oauthAuther),
+		publish.WithLegacyProvider(legacyProvider),
+		publish.WithTusConfig(tusCfg),
+		publish.WithUploadPath(uploadPath),
+	)
 	if err != nil {
 		logger.Log().WithError(err).Fatal(err)
 	}
@@ -109,12 +118,21 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 
 	tusRouter := v2Router.PathPrefix("/publish").Subrouter()
 	tusRouter.Use(tusHandler.Middleware)
-	tusRouter.HandleFunc("/", tusHandler.PostFile).Methods(http.MethodPost)
+	tusRouter.HandleFunc("/", tusHandler.PostFile).Methods(http.MethodPost).Name("tus_publish")
 	tusRouter.HandleFunc("/{id}", tusHandler.HeadFile).Methods(http.MethodHead)
 	tusRouter.HandleFunc("/{id}", tusHandler.PatchFile).Methods(http.MethodPatch)
 	tusRouter.HandleFunc("/{id}", tusHandler.DelFile).Methods(http.MethodDelete)
 	tusRouter.HandleFunc("/{id}/notify", tusHandler.Notify).Methods(http.MethodPost)
 	tusRouter.PathPrefix("/").HandlerFunc(emptyHandler).Methods(http.MethodOptions)
+
+	v3Router := r.PathPrefix("/api/v3").Subrouter()
+	v3Router.Use(defaultMiddlewares(oauthAuther, legacyProvider, sdkRouter))
+	ug := auth.NewUniversalUserGetter(oauthAuther, legacyProvider, zapadapter.NewKV(nil))
+	gPath := config.GetGeoPublishSourceDir()
+	err = geopublish.InstallRoutes(v3Router.PathPrefix("/publish").Subrouter(), ug, gPath, "/api/v3/publish/")
+	if err != nil {
+		panic(err)
+	}
 }
 
 func defaultMiddlewares(oauthAuther auth.Authenticator, legacyProvider auth.Provider, router *sdkrouter.Router) mux.MiddlewareFunc {
