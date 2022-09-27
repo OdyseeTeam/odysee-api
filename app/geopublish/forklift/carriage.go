@@ -50,7 +50,7 @@ type UploadProcessResult struct {
 type Carriage struct {
 	blobsPath    string
 	analyzer     *fileanalyzer.Analyzer
-	reflectorCfg map[string]string
+	store        *blobs.Store
 	resultWriter io.Writer
 	logger       logging.KVLogger
 }
@@ -65,8 +65,13 @@ func NewCarriage(blobsPath string, resultWriter io.Writer, reflectorCfg map[stri
 		logger = zapadapter.NewKV(nil)
 	}
 
+	s, err := blobs.NewStore(reflectorCfg)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Carriage{
-		reflectorCfg: reflectorCfg,
+		store:        s,
 		analyzer:     analyzer,
 		blobsPath:    blobsPath,
 		resultWriter: resultWriter,
@@ -119,10 +124,7 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	r := &UploadProcessResult{UploadID: p.UploadID, UserID: p.UserID}
 	log := c.logger.With("upload_id", p.UploadID, "user_id", p.UserID)
 
-	uploader, err := blobs.NewUploaderFromCfg(c.reflectorCfg)
-	if err != nil {
-		return nil, err
-	}
+	uploader := c.store.Uploader()
 
 	info, err := c.analyzer.Analyze(context.Background(), p.Path)
 	if info == nil {
