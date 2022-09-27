@@ -33,6 +33,11 @@ type Source struct {
 	blobsManifest []string
 }
 
+type Store struct {
+	cfg map[string]string
+	db  *db.SQL
+}
+
 type Uploader struct {
 	uploader *reflector.Uploader
 }
@@ -47,9 +52,9 @@ func NewSource(filePath, blobsPath string) (*Source, error) {
 	return &s, nil
 }
 
-// NewUploaderFromCfg initializes blob file uploader from a config dictionary.
+// NewStore initializes blob storage with a config dictionary.
 // Required parameters in the config map are MySQL DSN and S3 config for the reflector.
-func NewUploaderFromCfg(cfg map[string]string) (*Uploader, error) {
+func NewStore(cfg map[string]string) (*Store, error) {
 	db := &db.SQL{
 		LogQueries: false,
 	}
@@ -58,12 +63,21 @@ func NewUploaderFromCfg(cfg map[string]string) (*Uploader, error) {
 		return nil, err
 	}
 
-	store := store.NewDBBackedStore(store.NewS3Store(
-		cfg["key"], cfg["secret"], cfg["region"], cfg["bucket"],
-	), db, false)
-	return &Uploader{
-		uploader: reflector.NewUploader(db, store, 5, false, false),
+	return &Store{
+		cfg: cfg,
+		db:  db,
 	}, nil
+}
+
+// Uploader returns blob file uploader instance for the pre-configured store.
+// Can only be used for one stream upload and discarded afterwards.
+func (s *Store) Uploader() *Uploader {
+	dbs := store.NewDBBackedStore(store.NewS3Store(
+		s.cfg["key"], s.cfg["secret"], s.cfg["region"], s.cfg["bucket"],
+	), s.db, false)
+	return &Uploader{
+		uploader: reflector.NewUploader(s.db, dbs, 5, false, false),
+	}
 }
 
 func (s *Source) Split() (*pb.Stream, error) {

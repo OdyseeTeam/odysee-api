@@ -27,13 +27,18 @@ func (s *analyzerSuite) SetupSuite() {
 func (s *analyzerSuite) TestAnalyze() {
 	cases := []struct {
 		kind, url               string
-		videoMeta               *MediaInfo
+		meta                    *MediaInfo
 		getMediaInfoError       error
 		mimeName, mimeType, ext string
 	}{
 		{
-			kind:     "audio",
-			url:      "https://getsamplefiles.com/download/mp3/96k",
+			kind: "audio",
+			url:  "https://getsamplefiles.com/download/mp3/96k",
+			meta: &MediaInfo{
+				Duration: 45,
+				Width:    0,
+				Height:   0,
+			},
 			mimeName: "audio",
 			mimeType: "audio/mpeg",
 			ext:      ".mp3",
@@ -41,7 +46,7 @@ func (s *analyzerSuite) TestAnalyze() {
 		{
 			kind: "mov video",
 			url:  "https://ik.imagekit.io/odystatic/hdreel.mov",
-			videoMeta: &MediaInfo{
+			meta: &MediaInfo{
 				Duration: 29,
 				Width:    1920,
 				Height:   1080,
@@ -53,7 +58,7 @@ func (s *analyzerSuite) TestAnalyze() {
 		{
 			kind: "video",
 			url:  "https://filesamples.com/samples/video/avi/sample_960x400_ocean_with_audio.avi",
-			videoMeta: &MediaInfo{
+			meta: &MediaInfo{
 				Duration: 46,
 				Width:    960,
 				Height:   400,
@@ -65,7 +70,7 @@ func (s *analyzerSuite) TestAnalyze() {
 		{
 			kind: "JPEG",
 			url:  "https://photographylife.com/wp-content/uploads/2018/11/Moeraki-Boulders-New-Zealand.jpg",
-			videoMeta: &MediaInfo{
+			meta: &MediaInfo{
 				Width:  2048,
 				Height: 1365,
 			},
@@ -98,8 +103,8 @@ func (s *analyzerSuite) TestAnalyze() {
 				s.Equal(c.mimeType, d.MediaType.MIME)
 			}
 			s.Equal(c.mimeName, d.MediaType.Name)
-			if c.videoMeta != nil {
-				s.Equal(c.videoMeta, d.MediaInfo)
+			if c.meta != nil {
+				s.Equal(c.meta, d.MediaInfo)
 			}
 		})
 	}
