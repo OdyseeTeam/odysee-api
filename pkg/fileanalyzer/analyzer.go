@@ -64,11 +64,7 @@ func (d *Analyzed) GetMediaInfo(ctx context.Context) error {
 	if d.MediaType.Name != "video" && d.MediaType.Name != "image" && d.MediaType.Name != "audio" {
 		return fmt.Errorf("no media info for '%s' type", d.MediaType.Name)
 	}
-	f, err := os.Open(d.filePath)
-	if err != nil {
-		return err
-	}
-	data, err := ffprobe.ProbeReader(ctx, f)
+	data, err := ffprobe.ProbeURL(ctx, d.filePath)
 	if err != nil {
 		return fmt.Errorf("error running ffprobe: %w", err)
 	}
