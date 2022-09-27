@@ -8,6 +8,7 @@ import (
 
 	"github.com/OdyseeTeam/odysee-api/app/auth"
 	"github.com/OdyseeTeam/odysee-api/app/geopublish"
+	gpmetrics "github.com/OdyseeTeam/odysee-api/app/geopublish/metrics"
 	"github.com/OdyseeTeam/odysee-api/app/proxy"
 	"github.com/OdyseeTeam/odysee-api/app/publish"
 	"github.com/OdyseeTeam/odysee-api/app/query/cache"
@@ -110,12 +111,6 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 		logger.Log().WithError(err).Fatal(err)
 	}
 
-	onceMetrics.Do(func() {
-		redislocker.RegisterMetrics()
-		collector := prometheuscollector.New(tusHandler.Metrics)
-		prometheus.MustRegister(collector)
-	})
-
 	tusRouter := v2Router.PathPrefix("/publish").Subrouter()
 	tusRouter.Use(tusHandler.Middleware)
 	tusRouter.HandleFunc("/", tusHandler.PostFile).Methods(http.MethodPost).Name("tus_publish")
@@ -129,10 +124,19 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	v3Router.Use(defaultMiddlewares(oauthAuther, legacyProvider, sdkRouter))
 	ug := auth.NewUniversalUserGetter(oauthAuther, legacyProvider, zapadapter.NewKV(nil))
 	gPath := config.GetGeoPublishSourceDir()
-	err = geopublish.InstallRoutes(v3Router.PathPrefix("/publish").Subrouter(), ug, gPath, "/api/v3/publish/")
+	v3Handler, err := geopublish.InstallRoutes(v3Router.PathPrefix("/publish").Subrouter(), ug, gPath, "/api/v3/publish/")
 	if err != nil {
 		panic(err)
 	}
+
+	onceMetrics.Do(func() {
+		gpmetrics.RegisterMetrics()
+		redislocker.RegisterMetrics()
+		tus2metrics := prometheuscollector.New(tusHandler.Metrics)
+		prometheus.MustRegister(tus2metrics)
+		tus3metrics := prometheuscollector.New(v3Handler.Metrics)
+		prometheus.MustRegister(tus3metrics)
+	})
 }
 
 func defaultMiddlewares(oauthAuther auth.Authenticator, legacyProvider auth.Provider, router *sdkrouter.Router) mux.MiddlewareFunc {

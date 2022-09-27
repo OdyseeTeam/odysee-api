@@ -76,7 +76,7 @@ func (s *Store) Uploader() *Uploader {
 		s.cfg["key"], s.cfg["secret"], s.cfg["region"], s.cfg["bucket"],
 	), s.db, false)
 	return &Uploader{
-		uploader: reflector.NewUploader(s.db, dbs, 5, false, false),
+		uploader: reflector.NewUploader(s.db, dbs, 1, true, false),
 	}
 }
 
