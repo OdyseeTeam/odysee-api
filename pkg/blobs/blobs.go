@@ -36,6 +36,7 @@ type Source struct {
 type Store struct {
 	cfg map[string]string
 	db  *db.SQL
+	dbs *store.DBBackedStore
 }
 
 type Uploader struct {
@@ -66,17 +67,17 @@ func NewStore(cfg map[string]string) (*Store, error) {
 	return &Store{
 		cfg: cfg,
 		db:  db,
+		dbs: store.NewDBBackedStore(store.NewS3Store(
+			cfg["key"], cfg["secret"], cfg["region"], cfg["bucket"],
+		), db, false),
 	}, nil
 }
 
 // Uploader returns blob file uploader instance for the pre-configured store.
 // Can only be used for one stream upload and discarded afterwards.
 func (s *Store) Uploader() *Uploader {
-	dbs := store.NewDBBackedStore(store.NewS3Store(
-		s.cfg["key"], s.cfg["secret"], s.cfg["region"], s.cfg["bucket"],
-	), s.db, false)
 	return &Uploader{
-		uploader: reflector.NewUploader(s.db, dbs, 1, true, false),
+		uploader: reflector.NewUploader(s.db, s.dbs, 1, true, false),
 	}
 }
 

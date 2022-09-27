@@ -132,8 +132,8 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	onceMetrics.Do(func() {
 		gpmetrics.RegisterMetrics()
 		redislocker.RegisterMetrics()
-		tus2metrics := prometheuscollector.New(tusHandler.Metrics)
-		prometheus.MustRegister(tus2metrics)
+		// tus2metrics := prometheuscollector.New(tusHandler.Metrics)
+		// prometheus.MustRegister(tus2metrics)
 		tus3metrics := prometheuscollector.New(v3Handler.Metrics)
 		prometheus.MustRegister(tus3metrics)
 	})
