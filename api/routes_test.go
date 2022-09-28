@@ -25,7 +25,7 @@ func TestRoutesPublish(t *testing.T) {
 	req := publish.CreatePublishRequest(t, []byte("test file"))
 	rr := httptest.NewRecorder()
 
-	InstallRoutes(r, rt, false)
+	InstallRoutes(r, rt, nil)
 	r.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -45,7 +45,7 @@ func TestCORS(t *testing.T) {
 	config.Override("CORSDomains", allowedDomains)
 	defer config.RestoreOverridden()
 
-	InstallRoutes(r, rt, false)
+	InstallRoutes(r, rt, nil)
 
 	cases := map[string]string{
 		"https://odysee.com":          "https://odysee.com",

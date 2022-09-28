@@ -26,9 +26,9 @@ type Server struct {
 }
 
 // NewServer returns a server initialized with settings from supplied options.
-func NewServer(address string, sdkRouter *sdkrouter.Router, enableProfiling bool) *Server {
+func NewServer(address string, sdkRouter *sdkrouter.Router, rOpts *api.RoutesOptions) *Server {
 	r := mux.NewRouter()
-	api.InstallRoutes(r, sdkRouter, enableProfiling)
+	api.InstallRoutes(r, sdkRouter, rOpts)
 	r.Use(monitor.ErrorLoggingMiddleware)
 	r.Use(defaultHeadersMiddleware(map[string]string{
 		"Server":                       "api.lbry.tv",

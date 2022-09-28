@@ -41,11 +41,19 @@ var logger = monitor.NewModuleLogger("api")
 
 var onceMetrics sync.Once
 
+type RoutesOptions struct {
+	EnableV3Publish bool
+	EnableProfiling bool
+}
+
 // emptyHandler can be used when you just need to let middlewares do their job and no actual response is needed.
 func emptyHandler(_ http.ResponseWriter, _ *http.Request) {}
 
 // InstallRoutes sets up global API handlers
-func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, profileEndpoints bool) {
+func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptions) {
+	if opts == nil {
+		opts = &RoutesOptions{}
+	}
 	uploadPath := config.GetPublishSourceDir()
 
 	upHandler := &publish.Handler{UploadPath: uploadPath}
@@ -79,7 +87,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, profileEndpoints 
 	internalRouter := r.PathPrefix("/internal").Subrouter()
 	internalRouter.Handle("/metrics", promhttp.Handler())
 
-	if profileEndpoints {
+	if opts.EnableProfiling {
 		internalRouter.HandleFunc("/symbol", pprof.Symbol).Methods(http.MethodPost)
 		internalRouter.HandleFunc("/", pprof.Index)
 		internalRouter.HandleFunc("/cmdline", pprof.Cmdline)
@@ -136,22 +144,28 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, profileEndpoints 
 	tusRouter.HandleFunc("/{id}/notify", tusHandler.Notify).Methods(http.MethodPost)
 	tusRouter.PathPrefix("/").HandlerFunc(emptyHandler).Methods(http.MethodOptions)
 
-	v3Router := r.PathPrefix("/api/v3").Subrouter()
-	v3Router.Use(defaultMiddlewares(oauthAuther, legacyProvider, sdkRouter))
-	ug := auth.NewUniversalUserGetter(oauthAuther, legacyProvider, zapadapter.NewKV(nil))
-	gPath := config.GetGeoPublishSourceDir()
-	v3Handler, err := geopublish.InstallRoutes(v3Router.PathPrefix("/publish").Subrouter(), ug, gPath, "/api/v3/publish/")
-	if err != nil {
-		panic(err)
+	var v3Handler *geopublish.Handler
+	if opts.EnableV3Publish {
+		v3Router := r.PathPrefix("/api/v3").Subrouter()
+		v3Router.Use(defaultMiddlewares(oauthAuther, legacyProvider, sdkRouter))
+		ug := auth.NewUniversalUserGetter(oauthAuther, legacyProvider, zapadapter.NewKV(nil))
+		gPath := config.GetGeoPublishSourceDir()
+		v3Handler, err = geopublish.InstallRoutes(v3Router.PathPrefix("/publish").Subrouter(), ug, gPath, "/api/v3/publish/")
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	onceMetrics.Do(func() {
 		gpmetrics.RegisterMetrics()
 		redislocker.RegisterMetrics()
-		// tus2metrics := prometheuscollector.New(tusHandler.Metrics)
-		// prometheus.MustRegister(tus2metrics)
-		tus3metrics := prometheuscollector.New(v3Handler.Metrics)
-		prometheus.MustRegister(tus3metrics)
+		if !opts.EnableV3Publish {
+			tus2metrics := prometheuscollector.New(tusHandler.Metrics)
+			prometheus.MustRegister(tus2metrics)
+		} else {
+			tus3metrics := prometheuscollector.New(v3Handler.Metrics)
+			prometheus.MustRegister(tus3metrics)
+		}
 	})
 }
 

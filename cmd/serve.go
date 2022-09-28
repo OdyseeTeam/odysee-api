@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/OdyseeTeam/odysee-api/api"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/app/wallet"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
@@ -25,7 +26,10 @@ var rootCmd = &cobra.Command{
 		sdkRouter := sdkrouter.New(config.GetLbrynetServers())
 		go sdkRouter.WatchLoad()
 
-		s := server.NewServer(config.GetAddress(), sdkRouter, config.GetProfiling())
+		s := server.NewServer(config.GetAddress(), sdkRouter, &api.RoutesOptions{
+			EnableProfiling: config.GetProfiling(),
+			EnableV3Publish: true,
+		})
 		err := s.Start()
 		if err != nil {
 			log.Fatal(err)
