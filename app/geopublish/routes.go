@@ -33,7 +33,7 @@ func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPre
 		path.Join(uploadPath, "blobs"),
 		config.GetReflectorUpstream(),
 		asynqRedisOpts,
-		forklift.WithConcurrency(10),
+		forklift.WithConcurrency(3),
 		// forklift.WithLogger(logger),
 	)
 	if err != nil {
