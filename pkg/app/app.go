@@ -72,7 +72,7 @@ func Logger(l *logrus.Logger) Option {
 func New(address string, setters ...Option) *App {
 	args := &Options{
 		Headers: map[string]string{
-			"Server": "lbrytv app",
+			"Server": "odysee-api",
 		},
 		StopWait:          time.Second * 15,
 		WriteTimeout:      time.Second * 5,

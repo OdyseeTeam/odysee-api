@@ -210,7 +210,7 @@ func (s *e2eSuite) SetupSuite() {
 	}
 
 	s.router = mux.NewRouter()
-	api.InstallRoutes(s.router, s.userHelper.SDKRouter)
+	api.InstallRoutes(s.router, s.userHelper.SDKRouter, &api.RoutesOptions{EnableV3Publish: true})
 }
 
 // func (s *e2eSuite) TearDownSuite() {

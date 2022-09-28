@@ -55,7 +55,7 @@ Make sure you have recent enough Docker and `docker-compose` installed.
 
 This will pull and launch SDK and postgres images, which Odysee API requires to operate.
 
-`docker-compose up app`
+`docker-compose up oapi`
 
 *Note: if you're running a LBRY desktop app or lbrynet instance, you will have to either shut it down or change ports*
 

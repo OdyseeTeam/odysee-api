@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	cfg "github.com/OdyseeTeam/odysee-api/config"
@@ -17,18 +16,12 @@ import (
 )
 
 const (
-	lbrynetServers    = "LbrynetServers"
-	deprecatedLbrynet = "Lbrynet"
-	configName        = "lbrytv"
+	lbrynetServers           = "LbrynetServers"
+	deprecatedLbrynetSetting = "Lbrynet"
+	configName               = "oapi"
 )
 
-// overriddenValues stores overridden v values
-// and is initialized as an empty map in the read method
-var (
-	overriddenValues map[string]interface{}
-	once             sync.Once
-	Config           *cfg.ConfigWrapper
-)
+var Config *cfg.ConfigWrapper
 
 func init() {
 	Config = cfg.ReadConfig(configName)
@@ -45,9 +38,6 @@ func init() {
 
 	c.Viper.SetDefault("Address", ":8080")
 	c.Viper.SetDefault("Host", "http://localhost:8080")
-	c.Viper.SetDefault("FreeContentURL", "http://localhost:8080/content/")
-	c.Viper.SetDefault("ReflectorTimeout", int64(10))
-	c.Viper.SetDefault("RefractorTimeout", int64(10))
 }
 
 func ProjectRoot() string {
@@ -149,17 +139,17 @@ func GetAddress() string {
 	return Config.Viper.GetString("Address")
 }
 
-//GetLbrynetServers returns the names/addresses of every SDK server
+// GetLbrynetServers returns the names/addresses of every SDK server
 func GetLbrynetServers() map[string]string {
-	if Config.Viper.GetString(deprecatedLbrynet) != "" &&
+	if Config.Viper.GetString(deprecatedLbrynetSetting) != "" &&
 		len(Config.Viper.GetStringMapString(lbrynetServers)) > 0 {
-		logrus.Panicf("Both %s and %s are set. This is a highlander situation...there can be only 1.", deprecatedLbrynet, lbrynetServers)
+		logrus.Panicf("Both %s and %s are set. This is a highlander situation...there can be only 1.", deprecatedLbrynetSetting, lbrynetServers)
 	}
 
 	if len(Config.Viper.GetStringMapString(lbrynetServers)) > 0 {
 		return Config.Viper.GetStringMapString(lbrynetServers)
-	} else if Config.Viper.GetString(deprecatedLbrynet) != "" {
-		return map[string]string{"sdk": Config.Viper.GetString(deprecatedLbrynet)}
+	} else if Config.Viper.GetString(deprecatedLbrynetSetting) != "" {
+		return map[string]string{"sdk": Config.Viper.GetString(deprecatedLbrynetSetting)}
 	} else {
 		servers, err := models.LbrynetServers().AllG()
 		if err != nil {
@@ -197,6 +187,10 @@ func GetRPCTimeout(method string) *time.Duration {
 		}
 	}
 	return nil
+}
+
+func GetProfiling() bool {
+	return Config.Viper.GetBool("Profiling")
 }
 
 func Override(key string, value interface{}) {

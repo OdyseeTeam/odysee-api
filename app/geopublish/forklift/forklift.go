@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/OdyseeTeam/odysee-api/app/geopublish/metrics"
 	"github.com/lbryio/transcoder/pkg/logging"
 	"github.com/lbryio/transcoder/pkg/logging/zapadapter"
 
@@ -120,6 +121,25 @@ func (f *Forklift) Start() error {
 	// if err := f.asynqServer.Run(mux); err != nil {
 	// 	return fmt.Errorf("could not run server: %w", err)
 	// }
+
+	go func() {
+		t := time.NewTicker(1 * time.Second)
+		for {
+			select {
+			case <-t.C:
+				q, err := f.asynqInspector.GetQueueInfo("default")
+				if err != nil {
+					continue
+				}
+				metrics.QueueTasks.WithLabelValues("active").Set(float64(q.Active))
+				metrics.QueueTasks.WithLabelValues("completed").Set(float64(q.Completed))
+				metrics.QueueTasks.WithLabelValues("pending").Set(float64(q.Pending))
+				metrics.QueueTasks.WithLabelValues("failed").Set(float64(q.Failed))
+			case <-f.stopChan:
+				return
+			}
+		}
+	}()
 	if err := f.asynqServer.Start(mux); err != nil {
 		return fmt.Errorf("could not start asynq server: %w", err)
 	}

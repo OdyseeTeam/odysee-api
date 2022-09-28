@@ -58,7 +58,7 @@ func testMetricUIEvent(t *testing.T, method, name string, params map[string]stri
 	config.Config.Override("PublishSourceDir", os.TempDir())
 
 	r := mux.NewRouter()
-	api.InstallRoutes(r, nil)
+	api.InstallRoutes(r, nil, nil)
 	rr := httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 	return rr
