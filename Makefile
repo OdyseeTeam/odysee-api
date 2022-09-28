@@ -49,10 +49,10 @@ get_sqlboiler:
 models: get_sqlboiler
 	sqlboiler --add-global-variants --wipe psql --no-context --no-tests
 
-.PHONY: api
-api:
+.PHONY: oapi
+oapi:
 	CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build \
-		-o dist/linux_amd64/lbrytv \
+		-o dist/linux_amd64/oapi \
 		-ldflags "-s -w -X github.com/OdyseeTeam/odysee-api/version.version=$(api_version) -X github.com/OdyseeTeam/odysee-api/version.commit=$(git_hash) -X github.com/OdyseeTeam/odysee-api/apps/version.buildDate=$(date)" \
 		.
 

@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 }
 
 func randomServer(r *sdkrouter.Router) *Server {
-	return NewServer(fmt.Sprintf("localhost:%v", 30000+rand.Intn(30000)), r)
+	return NewServer(fmt.Sprintf("localhost:%v", 30000+rand.Intn(30000)), r, false)
 }
 
 func TestStartAndServeUntilShutdown(t *testing.T) {

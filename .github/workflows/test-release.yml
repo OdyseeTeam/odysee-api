@@ -68,11 +68,8 @@ jobs:
   release:
     name: release
     needs: test
-    # if: github.event.workflow_run.head_branch == 'master' || github.event.workflow_run.head_branch == 'dev'
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
-#    env:
-#      GOROOT: /usr/local/go
 
     steps:
       - name: Checkout
@@ -111,7 +108,7 @@ jobs:
 
       - name: Build odysee-api
         if: steps.release.outputs.app == 'api'
-        run: make api
+        run: make oapi
 
       - name: Build and push odysee-api docker image
         if: steps.release.outputs.app == 'api'

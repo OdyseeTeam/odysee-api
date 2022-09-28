@@ -18,14 +18,14 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "lbrytv",
-	Short: "lbrytv is a backend API server for lbry.tv frontend",
-	Run: func(cmd *cobra.Command, args []string) {
+	Use:   "oapi",
+	Short: "backend server for Odysee frontend",
+	Run: func(_ *cobra.Command, _ []string) {
 		rand.Seed(time.Now().UnixNano()) // always seed random!
 		sdkRouter := sdkrouter.New(config.GetLbrynetServers())
 		go sdkRouter.WatchLoad()
 
-		s := server.NewServer(config.GetAddress(), sdkRouter)
+		s := server.NewServer(config.GetAddress(), sdkRouter, config.GetProfiling())
 		err := s.Start()
 		if err != nil {
 			log.Fatal(err)

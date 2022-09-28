@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"net/http/pprof"
 	"strings"
 	"sync"
 	"time"
@@ -44,7 +45,7 @@ var onceMetrics sync.Once
 func emptyHandler(_ http.ResponseWriter, _ *http.Request) {}
 
 // InstallRoutes sets up global API handlers
-func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
+func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, profileEndpoints bool) {
 	uploadPath := config.GetPublishSourceDir()
 
 	upHandler := &publish.Handler{UploadPath: uploadPath}
@@ -77,6 +78,21 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 
 	internalRouter := r.PathPrefix("/internal").Subrouter()
 	internalRouter.Handle("/metrics", promhttp.Handler())
+
+	if profileEndpoints {
+		internalRouter.HandleFunc("/symbol", pprof.Symbol).Methods(http.MethodPost)
+		internalRouter.HandleFunc("/", pprof.Index)
+		internalRouter.HandleFunc("/cmdline", pprof.Cmdline)
+		internalRouter.HandleFunc("/profile", pprof.Profile)
+		internalRouter.HandleFunc("/symbol", pprof.Symbol)
+		internalRouter.HandleFunc("/trace", pprof.Trace)
+		internalRouter.Handle("/allocs", pprof.Handler("allocs"))
+		internalRouter.Handle("/block", pprof.Handler("block"))
+		internalRouter.Handle("/goroutine", pprof.Handler("goroutine"))
+		internalRouter.Handle("/heap", pprof.Handler("heap"))
+		internalRouter.Handle("/mutex", pprof.Handler("mutex"))
+		internalRouter.Handle("/threadcreate", pprof.Handler("threadcreate"))
+	}
 
 	v2Router := r.PathPrefix("/api/v2").Subrouter()
 	v2Router.Use(defaultMiddlewares(oauthAuther, legacyProvider, sdkRouter))
