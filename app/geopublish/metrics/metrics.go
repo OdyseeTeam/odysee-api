@@ -49,12 +49,17 @@ var (
 		Namespace: ns,
 		Name:      "blob_upload_errors",
 	}, []string{"type"})
+
+	QueueTasks = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: ns,
+		Name:      "queue_tasks",
+	}, []string{"status"})
 )
 
 func RegisterMetrics() {
 	prometheus.MustRegister(
 		UploadsCreated, UploadsProcessed, UploadsCanceled, UploadsFailed,
 		QueriesSent, QueriesCompleted, QueriesFailed, QueriesErrored,
-		BlobUploadErrors,
+		BlobUploadErrors, QueueTasks,
 	)
 }

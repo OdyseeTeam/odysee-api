@@ -21,12 +21,12 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/metrics"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/models"
-	"github.com/volatiletech/sqlboiler/boil"
 
 	"github.com/gorilla/mux"
 	werrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	tusd "github.com/tus/tusd/pkg/handler"
+	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/ybbus/jsonrpc"
 )
 

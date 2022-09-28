@@ -2,12 +2,14 @@ package api
 
 import (
 	"net/http"
+	"net/http/pprof"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/auth"
 	"github.com/OdyseeTeam/odysee-api/app/geopublish"
+	gpmetrics "github.com/OdyseeTeam/odysee-api/app/geopublish/metrics"
 	"github.com/OdyseeTeam/odysee-api/app/proxy"
 	"github.com/OdyseeTeam/odysee-api/app/publish"
 	"github.com/OdyseeTeam/odysee-api/app/query/cache"
@@ -39,11 +41,19 @@ var logger = monitor.NewModuleLogger("api")
 
 var onceMetrics sync.Once
 
+type RoutesOptions struct {
+	EnableV3Publish bool
+	EnableProfiling bool
+}
+
 // emptyHandler can be used when you just need to let middlewares do their job and no actual response is needed.
 func emptyHandler(_ http.ResponseWriter, _ *http.Request) {}
 
 // InstallRoutes sets up global API handlers
-func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
+func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptions) {
+	if opts == nil {
+		opts = &RoutesOptions{}
+	}
 	uploadPath := config.GetPublishSourceDir()
 
 	upHandler := &publish.Handler{UploadPath: uploadPath}
@@ -76,6 +86,22 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 
 	internalRouter := r.PathPrefix("/internal").Subrouter()
 	internalRouter.Handle("/metrics", promhttp.Handler())
+
+	if opts.EnableProfiling {
+		pr := internalRouter.PathPrefix("/pprof").Subrouter()
+		pr.HandleFunc("/symbol", pprof.Symbol).Methods(http.MethodPost)
+		pr.HandleFunc("/", pprof.Index)
+		pr.HandleFunc("/cmdline", pprof.Cmdline)
+		pr.HandleFunc("/profile", pprof.Profile)
+		pr.HandleFunc("/symbol", pprof.Symbol)
+		pr.HandleFunc("/trace", pprof.Trace)
+		pr.Handle("/allocs", pprof.Handler("allocs"))
+		pr.Handle("/block", pprof.Handler("block"))
+		pr.Handle("/goroutine", pprof.Handler("goroutine"))
+		pr.Handle("/heap", pprof.Handler("heap"))
+		pr.Handle("/mutex", pprof.Handler("mutex"))
+		pr.Handle("/threadcreate", pprof.Handler("threadcreate"))
+	}
 
 	v2Router := r.PathPrefix("/api/v2").Subrouter()
 	v2Router.Use(defaultMiddlewares(oauthAuther, legacyProvider, sdkRouter))
@@ -110,12 +136,6 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 		logger.Log().WithError(err).Fatal(err)
 	}
 
-	onceMetrics.Do(func() {
-		redislocker.RegisterMetrics()
-		collector := prometheuscollector.New(tusHandler.Metrics)
-		prometheus.MustRegister(collector)
-	})
-
 	tusRouter := v2Router.PathPrefix("/publish").Subrouter()
 	tusRouter.Use(tusHandler.Middleware)
 	tusRouter.HandleFunc("/", tusHandler.PostFile).Methods(http.MethodPost).Name("tus_publish")
@@ -125,14 +145,29 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router) {
 	tusRouter.HandleFunc("/{id}/notify", tusHandler.Notify).Methods(http.MethodPost)
 	tusRouter.PathPrefix("/").HandlerFunc(emptyHandler).Methods(http.MethodOptions)
 
-	v3Router := r.PathPrefix("/api/v3").Subrouter()
-	v3Router.Use(defaultMiddlewares(oauthAuther, legacyProvider, sdkRouter))
-	ug := auth.NewUniversalUserGetter(oauthAuther, legacyProvider, zapadapter.NewKV(nil))
-	gPath := config.GetGeoPublishSourceDir()
-	err = geopublish.InstallRoutes(v3Router.PathPrefix("/publish").Subrouter(), ug, gPath, "/api/v3/publish/")
-	if err != nil {
-		panic(err)
+	var v3Handler *geopublish.Handler
+	if opts.EnableV3Publish {
+		v3Router := r.PathPrefix("/api/v3").Subrouter()
+		v3Router.Use(defaultMiddlewares(oauthAuther, legacyProvider, sdkRouter))
+		ug := auth.NewUniversalUserGetter(oauthAuther, legacyProvider, zapadapter.NewKV(nil))
+		gPath := config.GetGeoPublishSourceDir()
+		v3Handler, err = geopublish.InstallRoutes(v3Router.PathPrefix("/publish").Subrouter(), ug, gPath, "/api/v3/publish/")
+		if err != nil {
+			panic(err)
+		}
 	}
+
+	onceMetrics.Do(func() {
+		gpmetrics.RegisterMetrics()
+		redislocker.RegisterMetrics()
+		if !opts.EnableV3Publish {
+			tus2metrics := prometheuscollector.New(tusHandler.Metrics)
+			prometheus.MustRegister(tus2metrics)
+		} else {
+			tus3metrics := prometheuscollector.New(v3Handler.Metrics)
+			prometheus.MustRegister(tus3metrics)
+		}
+	})
 }
 
 func defaultMiddlewares(oauthAuther auth.Authenticator, legacyProvider auth.Provider, router *sdkrouter.Router) mux.MiddlewareFunc {

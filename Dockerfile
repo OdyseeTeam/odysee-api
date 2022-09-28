@@ -19,9 +19,9 @@ RUN apk update && \
 COPY --from=gather /build/ffprobe /usr/local/bin/
 
 WORKDIR /app
-COPY dist/linux_amd64/lbrytv /app
-RUN chmod a+x /app/lbrytv
-COPY ./docker/lbrytv.yml ./config/lbrytv.yml
+COPY dist/linux_amd64/oapi /app
+RUN chmod a+x /app/oapi
+COPY ./docker/oapi.yml ./config/oapi.yml
 COPY ./docker/launcher.sh ./
 
 CMD ["./launcher.sh"]

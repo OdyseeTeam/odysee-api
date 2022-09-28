@@ -15,14 +15,14 @@ import (
 	tushandler "github.com/tus/tusd/pkg/handler"
 )
 
-func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPrefix string) error {
+func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPrefix string) (*Handler, error) {
 	redisOpts, err := config.GetRedisOpts()
 	if err != nil {
-		return fmt.Errorf("cannot get redis config: %w", err)
+		return nil, fmt.Errorf("cannot get redis config: %w", err)
 	}
 	asynqRedisOpts, err := config.GetAsynqRedisOpts()
 	if err != nil {
-		return fmt.Errorf("cannot get redis config: %w", err)
+		return nil, fmt.Errorf("cannot get redis config: %w", err)
 	}
 
 	composer := tushandler.NewStoreComposer()
@@ -37,16 +37,16 @@ func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPre
 		// forklift.WithLogger(logger),
 	)
 	if err != nil {
-		return fmt.Errorf("cannot initialize forklift: %w", err)
+		return nil, fmt.Errorf("cannot initialize forklift: %w", err)
 	}
 	err = fl.Start()
 	if err != nil {
-		return fmt.Errorf("cannot start forklift: %w", err)
+		return nil, fmt.Errorf("cannot start forklift: %w", err)
 	}
 
 	locker, err := redislocker.New(redisOpts)
 	if err != nil {
-		return fmt.Errorf("cannot start redislocker: %w", err)
+		return nil, fmt.Errorf("cannot start redislocker: %w", err)
 	}
 	locker.UseIn(composer)
 
@@ -63,7 +63,7 @@ func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPre
 		WithQueue(fl),
 	)
 	if err != nil {
-		return fmt.Errorf("cannot initialize tus handler: %w", err)
+		return nil, fmt.Errorf("cannot initialize tus handler: %w", err)
 	}
 
 	r := router
@@ -76,5 +76,5 @@ func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPre
 	r.HandleFunc("/{id}/status", tusHandler.Status).Methods(http.MethodGet)
 	r.PathPrefix("/").HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}).Methods(http.MethodOptions)
 
-	return nil
+	return tusHandler, nil
 }
