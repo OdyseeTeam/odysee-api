@@ -1,22 +1,13 @@
 # syntax=docker/dockerfile:1
-
-FROM alpine:3.16 AS gather
-
-WORKDIR /build
-
-ADD https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz ./
-RUN tar -xf ffmpeg-git-amd64-static.tar.xz && mv ffmpeg-*-static/ffprobe ffmpeg-*-static/ffmpeg ./
-
-RUN chmod a+x ffmpeg ffprobe
-
-FROM alpine:3.16 AS build
+FROM odyseeteam/transcoder-ffmpeg:5.1.1 AS ffmpeg
+FROM alpine:3.16
 EXPOSE 8080
 
 RUN apk update && \
     apk add --no-cache \
     openssh-keygen
 
-COPY --from=gather /build/ffprobe /usr/local/bin/
+COPY --from=ffmpeg /build/ffprobe /usr/local/bin/
 
 WORKDIR /app
 COPY dist/linux_amd64/oapi /app
