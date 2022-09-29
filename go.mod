@@ -18,7 +18,6 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/hashicorp/go-retryablehttp v0.5.4
 	github.com/hibiken/asynq v0.23.0
-	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20220815204100-2adb8af5b68c
 	github.com/lbryio/lbry.go/v3 v3.0.1-beta
 	github.com/lbryio/reflector.go v1.1.3-0.20220730181028-f5d30b1a6e79
@@ -167,6 +166,6 @@ require (
 	logur.dev/logur v0.17.0 // indirect
 )
 
-replace github.com/floostack/transcoder => github.com/andybeletsky/transcoder v1.2.0
+replace github.com/floostack/transcoder => github.com/anbsky/transcoder v1.2.0
 
-replace github.com/lbryio/lbry.go/v2 => github.com/andybeletsky/lbry.go/v2 v2.7.3-0.20220822174109-27e6bde12cf2
+replace github.com/lbryio/lbry.go/v2 v2.7.2-0.20220504162735-e5ab0f883edf => github.com/anbsky/lbry.go/v2 v2.7.3-0.20220822174109-27e6bde12cf2

@@ -123,5 +123,5 @@ Our PGP key is [here](https://lbry.com/faq/pgp-key) if you need it.
 
 ## Contact
 
-The primary contact for this project is [@andybeletsky](https://github.com/andybeletsky) (andrey@lbry.com).
+The primary contact for this project is [@anbsky](https://github.com/anbsky) (andrey.beletsky@lbry.com).
 
