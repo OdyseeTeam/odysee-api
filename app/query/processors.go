@@ -91,7 +91,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		if err != nil {
 			return nil, err
 		}
-		ip := cu.IP
+		ip := cu.IP()
 		hlsHash := signStreamURL(hlsUrl, fmt.Sprintf("ip=%s&pass=%s", ip, pcfg["paidpass"]))
 
 		startQuery := fmt.Sprintf("hash-hls=%s&ip=%s&pass=%s", hlsHash, ip, pcfg["paidpass"])
@@ -113,7 +113,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		if err != nil {
 			return nil, err
 		}
-		ip := cu.IP
+		ip := cu.IP()
 		query := fmt.Sprintf("ip=%s&pass=%s", ip, pcfg["paidpass"])
 		responseResult[ParamStreamingUrl] = fmt.Sprintf(
 			"%s?ip=%s&hash=%s",
@@ -217,11 +217,14 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 
 func checkStreamAccess(ctx context.Context, claim *ljsonrpc.Claim) (bool, error) {
 	var (
-		accessType string
+		accessType, environ string
 	)
 
 	params := GetQuery(ctx).ParamsAsMap()
 	_, isLivestream := params["base_streaming_url"]
+	if p, ok := params[iapi.ParamEnviron]; ok {
+		environ, _ = p.(string)
+	}
 
 TagLoop:
 	for _, t := range claim.Value.Tags {
@@ -252,10 +255,14 @@ TagLoop:
 	if err != nil {
 		return false, errors.Err("no user data in context: %w", err)
 	}
-	if cu.IAPIClient == nil {
+
+	iac := cu.IAPIClient()
+	if iac == nil {
 		return false, errors.Err("authentication required")
 	}
-	iac := cu.IAPIClient
+	if environ == iapi.EnvironTest {
+		iac = iac.Clone(iapi.WithEnvironment(iapi.EnvironTest))
+	}
 
 	switch accessType {
 	case accessTypePurchase, accessTypeRental:

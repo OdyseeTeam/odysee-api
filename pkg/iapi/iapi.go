@@ -12,6 +12,10 @@ import (
 )
 
 const (
+	EnvironLive  = "live"
+	EnvironTest  = "test"
+	ParamEnviron = "environment"
+
 	defaultServerAddress = "https://api.odysee.com"
 	timeout              = 5 * time.Second
 	headerForwardedFor   = "X-Forwarded-For"
@@ -35,24 +39,17 @@ type httpClient interface {
 // - RemoteIP — to forward the IP of a frontend client making the request
 type clientOptions struct {
 	server       string
-	legacyToken  string
-	oauthToken   string
-	remoteIP     string
 	extraHeaders map[string]string
 	extraParams  map[string]string
 	httpClient   httpClient
 }
 
 func WithLegacyToken(token string) func(options *clientOptions) {
-	return func(options *clientOptions) {
-		options.legacyToken = token
-	}
+	return WithExtraParam(paramLegacyToken, token)
 }
 
 func WithOAuthToken(token string) func(options *clientOptions) {
-	return func(options *clientOptions) {
-		options.oauthToken = token
-	}
+	return WithExtraHeader(headerOauthToken, "Bearer "+token)
 }
 
 func WithServer(server string) func(options *clientOptions) {
@@ -62,14 +59,17 @@ func WithServer(server string) func(options *clientOptions) {
 }
 
 func WithRemoteIP(remoteIP string) func(options *clientOptions) {
-	return func(options *clientOptions) {
-		options.remoteIP = remoteIP
-	}
+	return WithExtraHeader(headerForwardedFor, remoteIP)
 }
+
 func WithExtraHeader(key, value string) func(options *clientOptions) {
 	return func(options *clientOptions) {
 		options.extraHeaders[key] = value
 	}
+}
+
+func WithEnvironment(name string) func(options *clientOptions) {
+	return WithExtraParam(ParamEnviron, name)
 }
 
 func WithExtraParam(key, value string) func(options *clientOptions) {
@@ -90,7 +90,7 @@ func NewClient(optionFuncs ...func(*clientOptions)) (*Client, error) {
 	options := &clientOptions{
 		server:       "https://api.odysee.com",
 		extraHeaders: map[string]string{},
-		extraParams:  map[string]string{},
+		extraParams:  map[string]string{ParamEnviron: EnvironLive},
 		httpClient:   &http.Client{Timeout: timeout},
 	}
 
@@ -98,14 +98,7 @@ func NewClient(optionFuncs ...func(*clientOptions)) (*Client, error) {
 		optionFunc(options)
 	}
 
-	if options.remoteIP != "" {
-		options.extraHeaders[headerForwardedFor] = options.remoteIP
-	}
-	if options.legacyToken != "" {
-		options.extraParams[paramLegacyToken] = options.legacyToken
-	} else if options.oauthToken != "" {
-		options.extraHeaders[headerOauthToken] = "Bearer " + options.oauthToken
-	} else {
+	if options.extraHeaders[headerOauthToken] == "" && options.extraParams[paramLegacyToken] == "" {
 		return nil, errors.New("either legacy or oauth token required")
 	}
 
@@ -113,7 +106,24 @@ func NewClient(optionFuncs ...func(*clientOptions)) (*Client, error) {
 	return c, nil
 }
 
-func (c Client) prepareParams(params map[string]string) url.Values {
+func (c Client) Clone(optionFuncs ...func(*clientOptions)) *Client {
+	o := c.options
+	o.extraHeaders = map[string]string{}
+	o.extraParams = map[string]string{}
+	for k, v := range c.options.extraHeaders {
+		o.extraHeaders[k] = v
+	}
+	for k, v := range c.options.extraParams {
+		o.extraParams[k] = v
+	}
+
+	for _, optionFunc := range optionFuncs {
+		optionFunc(&o)
+	}
+	return &Client{options: o}
+}
+
+func (c *Client) prepareParams(params map[string]string) url.Values {
 	data := url.Values{}
 	for k, v := range c.options.extraParams {
 		data.Add(k, v)
@@ -124,7 +134,7 @@ func (c Client) prepareParams(params map[string]string) url.Values {
 	return data
 }
 
-func (c Client) Call(path string, params map[string]string, target interface{}) error {
+func (c *Client) Call(path string, params map[string]string, target interface{}) error {
 	r, err := http.NewRequest(
 		http.MethodPost,
 		fmt.Sprintf("%s/%s", c.options.server, path),

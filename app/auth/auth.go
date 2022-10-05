@@ -23,8 +23,8 @@ type ctxKey int
 const userContextKey ctxKey = iota
 
 type CurrentUser struct {
-	IP         string
-	IAPIClient *iapi.Client
+	ipAddr string
+	iac    *iapi.Client
 
 	user *models.User
 	err  error
@@ -68,8 +68,8 @@ func GetCurrentUserData(ctx context.Context) (*CurrentUser, error) {
 	return res, nil
 }
 
-func NewCurrentUser(u *models.User, e error) *CurrentUser {
-	return &CurrentUser{user: u, err: e}
+func NewCurrentUser(u *models.User, ipAddr string, iac *iapi.Client, e error) *CurrentUser {
+	return &CurrentUser{user: u, ipAddr: ipAddr, iac: iac, err: e}
 }
 
 func (cu CurrentUser) User() *models.User {
@@ -78,6 +78,14 @@ func (cu CurrentUser) User() *models.User {
 
 func (cu CurrentUser) Err() error {
 	return cu.err
+}
+
+func (cu CurrentUser) IP() string {
+	return cu.ipAddr
+}
+
+func (cu CurrentUser) IAPIClient() *iapi.Client {
+	return cu.iac
 }
 
 // NewIAPIProvider authenticates a user by hitting internal-api with the auth token

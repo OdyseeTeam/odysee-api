@@ -44,9 +44,7 @@ func Middleware(auther Authenticator) mux.MiddlewareFunc {
 				}
 			}
 
-			cu := NewCurrentUser(user, err)
-			cu.IP = ipAddr
-			cu.IAPIClient = iac
+			cu := NewCurrentUser(user, ipAddr, iac, err)
 			next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), userContextKey, cu)))
 		})
 	}
@@ -79,9 +77,7 @@ func LegacyMiddleware(provider Provider) mux.MiddlewareFunc {
 						hub.Scope().SetUser(sentry.User{ID: strconv.Itoa(user.ID), IPAddress: ipAddr})
 					}
 				}
-				cu := NewCurrentUser(user, err)
-				cu.IP = ipAddr
-				cu.IAPIClient = iac
+				cu := NewCurrentUser(user, ipAddr, iac, err)
 				next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), userContextKey, cu)))
 				return
 			}

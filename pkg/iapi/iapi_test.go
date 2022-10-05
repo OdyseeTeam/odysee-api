@@ -11,6 +11,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNewClient(t *testing.T) {
+	dummyToken := randomdata.Alphanumeric(120)
+	remoteIP := "8.8.8.8"
+
+	_, err := NewClient(WithRemoteIP(remoteIP))
+	assert.Error(t, err)
+
+	c, err := NewClient(WithOAuthToken(dummyToken), WithRemoteIP(remoteIP))
+	require.NoError(t, err)
+	assert.Equal(t, "Bearer "+dummyToken, c.options.extraHeaders[headerOauthToken])
+	assert.Equal(t, remoteIP, c.options.extraHeaders[headerForwardedFor])
+	assert.Equal(t, EnvironLive, c.options.extraParams[ParamEnviron])
+
+	cc := c.Clone(WithEnvironment(EnvironTest))
+	assert.Equal(t, EnvironTest, cc.options.extraParams[ParamEnviron])
+	assert.Equal(t, remoteIP, cc.options.extraHeaders[headerForwardedFor])
+	assert.Equal(t, "Bearer "+dummyToken, cc.options.extraHeaders[headerOauthToken])
+	assert.Equal(t, EnvironLive, c.options.extraParams[ParamEnviron])
+}
+
 func TestCallCustomerList(t *testing.T) {
 	oat, err := test.GetTestToken()
 	require.NoError(t, err)

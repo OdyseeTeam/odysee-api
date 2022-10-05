@@ -32,7 +32,7 @@ const (
 	noAccessPaidURL        = "lbry://@PlayNice#4/Alexswar#c"
 	noAccessMembersOnlyURL = "lbry://@gifprofile#7/members-only-no-access#8"
 
-	livestreamURL = "lbry://@gifprofile#7/members-only-livestream#f"
+	livestreamURL = "lbry://@gifprofile:7/members-only-live-2:4"
 
 	falseIP = "8.8.8.8"
 )
@@ -88,9 +88,8 @@ func (s *paidContentSuite) SetupSuite() {
 	)
 	s.Require().NoError(err)
 
-	cu := auth.NewCurrentUser(u, nil)
-	cu.IP = falseIP
-	cu.IAPIClient = iac
+	cu := auth.NewCurrentUser(
+		u, falseIP, iac, nil)
 	s.cu = cu
 }
 
@@ -111,7 +110,7 @@ func (s *paidContentSuite) TestUnauthorized() {
 	for _, tc := range cases {
 		s.Run(tc.url, func() {
 			request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": tc.url})
-			ctx := auth.AttachCurrentUser(bgctx(), auth.NewCurrentUser(nil, errors.Err("anonymous")))
+			ctx := auth.AttachCurrentUser(bgctx(), auth.NewCurrentUser(nil, falseIP, nil, errors.Err("anonymous")))
 			_, err := NewCaller(s.sdkAddress, 0).Call(ctx, request)
 			s.EqualError(err, tc.errString)
 		})

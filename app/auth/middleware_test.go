@@ -192,7 +192,7 @@ func TestFromRequestFail(t *testing.T) {
 
 func dummyHandler(w http.ResponseWriter, r *http.Request) {
 	cu, err := GetCurrentUserData(r.Context())
-	w.Header().Add("x-remote-ip", cu.IP)
+	w.Header().Add("x-remote-ip", cu.IP())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("unexpected error: %s", err)))

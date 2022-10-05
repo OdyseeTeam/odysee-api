@@ -90,9 +90,7 @@ func (s *UserTestHelper) Setup(t *testing.T) error {
 		return err
 	}
 
-	cu := auth.NewCurrentUser(u, nil)
-	cu.IP = "8.8.8.8"
-	cu.IAPIClient = iac
+	cu := auth.NewCurrentUser(u, "8.8.8.8", iac, nil)
 
 	s.TestUser = &TestUser{
 		User:        u,
