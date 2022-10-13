@@ -1,6 +1,7 @@
 package geopublish
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -104,22 +105,12 @@ func (d *UploadsDB) listenToHandler(upHandler *Handler) {
 func (d *UploadsDB) get(id string, userID int) (*models.Upload, error) {
 	mods := []qm.QueryMod{
 		models.UploadWhere.ID.EQ(id),
-		qm.Load(models.UploadRels.PublishQuery),
+		qm.Load(models.UploadRels.Query),
 	}
 	if userID > 0 {
 		mods = append(mods, models.UploadWhere.UserID.EQ(null.IntFrom(userID)))
 	}
 	return models.Uploads(mods...).One(d.db)
-}
-
-func (d *UploadsDB) getQuery(id string) (*models.PublishQuery, error) {
-	r, err := models.PublishQueries(
-		models.PublishQueryWhere.UploadID.EQ(id),
-	).One(d.db)
-	if err != nil {
-		return nil, fmt.Errorf("cannot get query with id=%s: %w", id, err)
-	}
-	return r, nil
 }
 
 func (d *UploadsDB) markUploadCreated(hook handler.HookEvent, user *models.User) error {
@@ -164,13 +155,13 @@ func (d *UploadsDB) processUpload(id string, user *models.User, path string, req
 	if err := req.Marshal(request); err != nil {
 		return err
 	}
-	uq := &models.PublishQuery{
+	uq := &models.Query{
 		UpdatedAt: null.TimeFrom(time.Now()),
-		Status:    models.PublishQueryStatusReceived,
+		Status:    models.QueryStatusReceived,
 		Query:     req,
 	}
 
-	err = up.SetPublishQuery(d.db, true, uq)
+	err = up.SetQuery(d.db, true, uq)
 	if err != nil {
 		return err
 	}
@@ -238,9 +229,9 @@ func (d *UploadsDB) saveUploadProcessingResult(id string, rpcRes *jsonrpc.RPCRes
 	if rpcRes == nil {
 		return d.markUploadFailed(up, callErr)
 	}
-	q, err := d.getQuery(id)
-	if err != nil {
-		return err
+	q := up.R.Query
+	if q == nil {
+		return errors.New("upload record is missing query")
 	}
 	resp := null.JSON{}
 	if err := resp.Marshal(rpcRes); err != nil {
@@ -251,9 +242,9 @@ func (d *UploadsDB) saveUploadProcessingResult(id string, rpcRes *jsonrpc.RPCRes
 	q.Error = callErr
 
 	if rpcRes.Error != nil || callErr != "" {
-		q.Status = models.PublishQueryStatusFailed
+		q.Status = models.QueryStatusFailed
 	} else {
-		q.Status = models.PublishQueryStatusSucceeded
+		q.Status = models.QueryStatusSucceeded
 	}
 	d.markUploadFinished(up)
 

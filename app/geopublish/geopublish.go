@@ -366,7 +366,7 @@ func (h Handler) Status(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pq, err := up.PublishQuery().One(h.udb.db)
+	pq, err := up.Query().One(h.udb.db)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		rpcerrors.Write(w, fmt.Errorf("error getting publish query: %w", err))
@@ -374,10 +374,10 @@ func (h Handler) Status(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch pq.Status {
-	case models.PublishQueryStatusSucceeded:
+	case models.QueryStatusSucceeded:
 		w.WriteHeader(http.StatusOK)
 		w.Write(pq.Response.JSON)
-	case models.PublishQueryStatusFailed:
+	case models.QueryStatusFailed:
 		if pq.Response.IsZero() {
 			w.Write(pq.Response.JSON)
 		} else {
