@@ -146,10 +146,10 @@ func (s *paidContentSuite) TestAccess() {
 		url, expectedStreamingUrl string
 		baseStreamingURL          string
 	}{
-		{url: urlRentalActive, expectedStreamingUrl: sp + "/22acd6a6ab1c83d8c265d652c3842420810006be/96a3e2?hash-hls=33c2dc5a5aaf863e469488009b9164a6&ip=8.8.8.8&hash=90c0a6f1859842493354b462cc857c0c"},
-		{url: urlPurchase, expectedStreamingUrl: sp + "/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4?hash-hls=4e42be75b03ce2237e8ff8284c794392&ip=8.8.8.8&hash=910a69e8e189288c29a5695314b48e89"},
-		{url: urlMembersOnly, expectedStreamingUrl: sp + "/7de672e799d17fc562ae7b381db1722a81856410/ad42aa?hash-hls=5e25826a1957b73084e85e5878fef08b&ip=8.8.8.8&hash=bcc9a904ae8621e910427f2eb3637be7"},
-		{url: urlV2PurchaseRental, expectedStreamingUrl: sp + "/970deae1469f2b4c7cc7286793b82676053ab3cd/ad42aa?hash-hls=5e25826a1957b73084e85e5878fef08b&ip=8.8.8.8&hash=bcc9a904ae8621e910427f2eb3637be7"},
+		{url: urlRentalActive, expectedStreamingUrl: sp + "/22acd6a6ab1c83d8c265d652c3842420810006be/96a3e2?hash-hls=13545307db94557076f7588baa662e8d&ip=8.8.8.8&hash=d3aee92e2e9161a17465ff1b8c05843f"},
+		{url: urlPurchase, expectedStreamingUrl: sp + "/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4?hash-hls=a43753e2392f2013f99e23b0d4dcc693&ip=8.8.8.8&hash=d3092ba947df383cd7bd407ff60a57e6"},
+		{url: urlMembersOnly, expectedStreamingUrl: sp + "/7de672e799d17fc562ae7b381db1722a81856410/ad42aa?hash-hls=be111832e6ecda4593a9372292f07700&ip=8.8.8.8&hash=c248aa3284e0b3e27f7f0429269585df"},
+		{url: urlV2PurchaseRental, expectedStreamingUrl: sp + "/970deae1469f2b4c7cc7286793b82676053ab3cd/2c2b26?hash-hls=cd78493472d31764f688009042b044ca&ip=8.8.8.8&hash=be3b8b078fce36d8ce07250fc0ddda50"},
 		{
 			url:                  urlLivestream,
 			baseStreamingURL:     "https://cloud.odysee.live/secure/content/f9660d617e226959102e84436533638858d0b572/master.m3u8",
