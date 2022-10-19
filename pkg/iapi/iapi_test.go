@@ -1,6 +1,7 @@
 package iapi
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -112,7 +113,7 @@ func TestCallCustomerList(t *testing.T) {
 		t.Run(cs.name, func(t *testing.T) {
 			r := &CustomerListResponse{}
 			c := cs.genClient()
-			err = c.Call(cs.method, cs.params, r)
+			err = c.Call(context.Background(), cs.method, cs.params, r)
 			if cs.errorCheck != nil {
 				cs.errorCheck(err)
 			} else {
@@ -160,7 +161,7 @@ func TestCallHasVerifiedEmail(t *testing.T) {
 		t.Run(cs.name, func(t *testing.T) {
 			r := &UserHasVerifiedEmailResponse{}
 			c := cs.genClient()
-			err = c.Call(cs.method, cs.params, r)
+			err = c.Call(context.Background(), cs.method, cs.params, r)
 			if cs.errorCheck != nil {
 				cs.errorCheck(err)
 			} else {

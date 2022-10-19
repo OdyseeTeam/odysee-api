@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"time"
@@ -34,7 +35,7 @@ func GetRemoteUserLegacy(server, token string, remoteIP string) (remoteUser, err
 
 	start := time.Now()
 	resp := &iapi.UserHasVerifiedEmailResponse{}
-	err = iac.Call("user/has_verified_email", map[string]string{}, resp)
+	err = iac.Call(context.Background(), "user/has_verified_email", map[string]string{}, resp)
 	duration := time.Since(start).Seconds()
 
 	if err != nil {
@@ -77,7 +78,7 @@ func GetRemoteUser(token oauth2.TokenSource, remoteIP string) (remoteUser, error
 
 	start := time.Now()
 	resp := &iapi.UserHasVerifiedEmailResponse{}
-	err = iac.Call("user/has_verified_email", map[string]string{}, resp)
+	err = iac.Call(context.Background(), "user/has_verified_email", map[string]string{}, resp)
 	duration := time.Since(start).Seconds()
 
 	if err != nil {

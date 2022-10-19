@@ -13,6 +13,8 @@ import (
 	"github.com/OdyseeTeam/odysee-api/app/auth"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/pkg/iapi"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
 	"github.com/OdyseeTeam/odysee-api/internal/metrics"
@@ -43,6 +45,7 @@ var rePurchaseFree = regexp.MustCompile(`(?i)does not have a purchase price`)
 // plus extra logic for looking up off-chain purchases, rentals and memberships.
 // Only `streaming_url` and `purchase_receipt` (if stream has a receipt associated with it) will be returned in the response.
 func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
+	var logger = zapadapter.NewKV(nil).With("module", "query.preprocessors")
 	var (
 		contentURL, metricLabel string
 		isPaidStream            bool
@@ -65,7 +68,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		return nil, errors.Err("missing uri parameter for 'get' method")
 	}
 	lbryUrl = uri.(string)
-	log := logger.Log().WithField("url", lbryUrl)
+	log := logger.With("url", lbryUrl)
 
 	claim, err := resolve(ctx, caller, query, lbryUrl)
 	if err != nil {
@@ -74,7 +77,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 	stream := claim.Value.GetStream()
 	pcfg := config.GetStreamsV5()
 
-	hasAccess, err := checkStreamAccess(ctx, claim)
+	hasAccess, err := checkStreamAccess(logging.AddToContext(ctx, logger), claim)
 	if !hasAccess {
 		return nil, err
 	} else if errors.Is(err, errNeedSignedUrl) {
@@ -153,7 +156,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 			// Assuming the stream is of a paid variety and we have just paid for the stream
 			metrics.LbrytvPurchases.Inc()
 			metrics.LbrytvPurchaseAmounts.Observe(float64(feeAmount))
-			log.Infof("made a purchase for %d LBC", feeAmount)
+			logger.With("made a purchase for %d LBC", feeAmount)
 			// This is needed so changes can propagate for the subsequent resolve
 			time.Sleep(1 * time.Second)
 			claim, err = resolve(ctx, caller, query, lbryUrl)
@@ -184,7 +187,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 			return nil, errors.Err("couldn't find purchase receipt for paid stream")
 		}
 
-		log.Debugf("creating stream token with stream id=%s, txid=%s, size=%v", claim.Name+"/"+claim.ClaimID, claim.PurchaseReceipt.Txid, size)
+		logger.Debug("stream token created", "stream", claim.Name+"/"+claim.ClaimID, "txid", claim.PurchaseReceipt.Txid, "size", size)
 		token, err := paid.CreateToken(claim.Name+"/"+claim.ClaimID, claim.PurchaseReceipt.Txid, size, paid.ExpTenSecPer100MB)
 		if err != nil {
 			return nil, err
@@ -229,10 +232,10 @@ func checkStreamAccess(ctx context.Context, claim *ljsonrpc.Claim) (bool, error)
 TagLoop:
 	for _, t := range claim.Value.Tags {
 		switch {
-		case strings.HasPrefix(t, "purchase:"):
+		case strings.HasPrefix(t, "purchase:") || t == "c:purchase":
 			accessType = accessTypePurchase
 			break TagLoop
-		case strings.HasPrefix(t, "rental:"):
+		case strings.HasPrefix(t, "rental:") || t == "c:rental":
 			accessType = accessTypeRental
 			break TagLoop
 		case strings.HasPrefix(t, "c:members-only"):
@@ -267,7 +270,7 @@ TagLoop:
 	switch accessType {
 	case accessTypePurchase, accessTypeRental:
 		resp := &iapi.CustomerListResponse{}
-		err = iac.Call("customer/list", map[string]string{"claim_id_filter": claim.ClaimID}, resp)
+		err = iac.Call(ctx, "customer/list", map[string]string{"claim_id_filter": claim.ClaimID}, resp)
 		if err != nil {
 			return false, err
 		}
@@ -300,7 +303,7 @@ TagLoop:
 			perkType = iapiTypeMembershipVod
 			signErr = errNeedSignedUrl
 		}
-		err = iac.Call("membership_perk/check", map[string]string{"claim_id": claim.ClaimID, "type": perkType}, resp)
+		err = iac.Call(ctx, "membership_perk/check", map[string]string{"claim_id": claim.ClaimID, "type": perkType}, resp)
 		if err != nil {
 			return false, err
 		}
