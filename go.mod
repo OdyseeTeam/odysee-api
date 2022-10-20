@@ -49,6 +49,7 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	gopkg.in/vansante/go-ffprobe.v2 v2.1.0
 	gopkg.in/yaml.v2 v2.4.0
+	logur.dev/logur v0.17.0
 )
 
 require (
@@ -163,7 +164,6 @@ require (
 	gopkg.in/nullbio/null.v6 v6.0.0-20161116030900-40264a2e6b79 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0 // indirect
-	logur.dev/logur v0.17.0 // indirect
 )
 
 replace github.com/floostack/transcoder => github.com/anbsky/transcoder v1.2.0

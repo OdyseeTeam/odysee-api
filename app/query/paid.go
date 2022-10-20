@@ -29,6 +29,7 @@ func (q urlQuery) hash(kvs ...qkv) string {
 func signStreamURL(path, query string) string {
 	h := md5.New()
 	h.Write([]byte(fmt.Sprintf("%s?%s", path, query)))
-	logger.Log().Debugf("signing url: %s?%s", path, query)
-	return hex.EncodeToString(h.Sum(nil))
+	s := hex.EncodeToString(h.Sum(nil))
+	logger.Log().Debugf("signing url: %s?%s, signed: %s", path, query, s)
+	return s
 }
