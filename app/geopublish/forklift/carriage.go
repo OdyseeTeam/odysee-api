@@ -121,13 +121,17 @@ func (c *Carriage) ProcessTask(ctx context.Context, t *asynq.Task) error {
 }
 
 func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error) {
+	var t time.Time
 	r := &UploadProcessResult{UploadID: p.UploadID, UserID: p.UserID}
 	log := c.logger.With("upload_id", p.UploadID, "user_id", p.UserID)
 
 	uploader := c.store.Uploader()
 
+	t = time.Now()
 	info, err := c.analyzer.Analyze(context.Background(), p.Path)
+	metrics.ProcessingTime.WithLabelValues(metrics.LabelProcessingAnalyze).Observe(float64(time.Since(t)))
 	if info == nil {
+		metrics.ProcessingErrors.WithLabelValues(metrics.LabelProcessingAnalyze).Inc()
 		return r, err
 	}
 	log.Debug("stream analyzed", "info", info, "err", err)
@@ -137,20 +141,26 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 		return r, err
 	}
 
+	t = time.Now()
 	stream, err := src.Split()
+	metrics.ProcessingTime.WithLabelValues(metrics.LabelProcessingBlobSplit).Observe(float64(time.Since(t)))
 	if err != nil {
+		metrics.ProcessingErrors.WithLabelValues(metrics.LabelProcessingBlobSplit).Inc()
 		return r, err
 	}
 	streamSource := stream.GetSource()
 	r.SDHash = hex.EncodeToString(streamSource.GetSdHash())
 	defer os.RemoveAll(path.Join(c.blobsPath, r.SDHash))
+
+	t = time.Now()
 	summary, err := uploader.Upload(src)
+	metrics.ProcessingTime.WithLabelValues(metrics.LabelProcessingReflection).Observe(float64(time.Since(t)))
 	if err != nil {
 		// The errors current uploader returns usually do not make sense to retry.
-		metrics.BlobUploadErrors.WithLabelValues(metrics.LabelFatal).Inc()
+		metrics.ProcessingErrors.WithLabelValues(metrics.LabelProcessingReflection).Inc()
 		return r, err
 	} else if summary.Err > 0 {
-		metrics.BlobUploadErrors.WithLabelValues(metrics.LabelCommon).Inc()
+		metrics.ProcessingErrors.WithLabelValues(metrics.LabelProcessingReflection).Inc()
 		r.Retry = true
 		return r, fmt.Errorf("%w (%v)", ErrUpload, summary.Err)
 	}
@@ -190,20 +200,25 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	delete(pp, "file_path")
 
 	log.Debug("sending request", "method", p.Request.Method, "params", p.Request)
+	t = time.Now()
 	res, err := caller.Call(context.Background(), p.Request)
+	metrics.ProcessingTime.WithLabelValues(metrics.LabelProcessingQuery).Observe(float64(time.Since(t)))
+
 	metrics.QueriesSent.Inc()
 	if err != nil {
+		metrics.ProcessingErrors.WithLabelValues(metrics.LabelProcessingQuery).Inc()
 		metrics.QueriesFailed.Inc()
 		r.Retry = true
 		return r, fmt.Errorf("error calling sdk: %w", err)
 	}
-	metrics.QueriesCompleted.Inc()
 
 	r.Response = res
 	if res.Error != nil {
+		metrics.ProcessingErrors.WithLabelValues(metrics.LabelProcessingQuery).Inc()
 		metrics.QueriesErrored.Inc()
 		return r, fmt.Errorf("sdk returned an error: %s", res.Error.Message)
 	}
+	metrics.QueriesCompleted.Inc()
 	log.Info("stream processed", "method", p.Request.Method, "params", p.Request)
 	return r, nil
 }
