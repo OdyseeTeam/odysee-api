@@ -32,6 +32,8 @@ Database:
 PublishSourceDir: ./rundata/storage/publish
 GeoPublishSourceDir: ./rundata/storage/geopublish
 
+GeoPublishConcurrency: 3
+
 PaidTokenPrivKey: token_privkey.rsa
 
 LbrynetXServer: http://sdk.lbry.tech:5279/api
