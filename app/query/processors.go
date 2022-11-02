@@ -277,6 +277,12 @@ TagLoop:
 
 	switch accessType {
 	case accessTypePurchase, accessTypeRental:
+		var signErr error
+		if isLivestream {
+			signErr = errNeedSignedLivestreamUrl
+		} else {
+			signErr = errNeedSignedUrl
+		}
 		resp := &iapi.CustomerListResponse{}
 		err = iac.Call(ctx, "customer/list", map[string]string{"claim_id_filter": claim.ClaimID}, resp)
 		if err != nil {
@@ -297,7 +303,7 @@ TagLoop:
 				return false, errors.Err("rental expired")
 			}
 		}
-		return true, errNeedSignedUrl
+		return true, signErr
 	case accessTypeMemberOnly:
 		var (
 			perkType string
