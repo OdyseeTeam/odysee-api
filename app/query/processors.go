@@ -275,14 +275,12 @@ TagLoop:
 		iac = iac.Clone(iapi.WithEnvironment(iapi.EnvironTest))
 	}
 
+	signErr := errNeedSignedUrl
+	if isLivestream {
+		signErr = errNeedSignedLivestreamUrl
+	}
 	switch accessType {
 	case accessTypePurchase, accessTypeRental:
-		var signErr error
-		if isLivestream {
-			signErr = errNeedSignedLivestreamUrl
-		} else {
-			signErr = errNeedSignedUrl
-		}
 		resp := &iapi.CustomerListResponse{}
 		err = iac.Call(ctx, "customer/list", map[string]string{"claim_id_filter": claim.ClaimID}, resp)
 		if err != nil {
@@ -305,17 +303,10 @@ TagLoop:
 		}
 		return true, signErr
 	case accessTypeMemberOnly:
-		var (
-			perkType string
-			signErr  error
-		)
 		resp := &iapi.MembershipPerkCheck{}
+		perkType := iapiTypeMembershipVod
 		if isLivestream {
 			perkType = iapiTypeMembershipLiveStream
-			signErr = errNeedSignedLivestreamUrl
-		} else {
-			perkType = iapiTypeMembershipVod
-			signErr = errNeedSignedUrl
 		}
 		err = iac.Call(ctx, "membership_perk/check", map[string]string{"claim_id": claim.ClaimID, "type": perkType}, resp)
 		if err != nil {
@@ -326,12 +317,6 @@ TagLoop:
 		}
 		return true, signErr
 	case accessTypeUnlisted:
-		var signErr error
-		if isLivestream {
-			signErr = errNeedSignedLivestreamUrl
-		} else {
-			signErr = errNeedSignedUrl
-		}
 		// check signature and signature_ts params, error if not present
 		signature, ok := params["signature"]
 		if !ok {

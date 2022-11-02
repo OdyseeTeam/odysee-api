@@ -1,11 +1,13 @@
 package query
 
+// this should really be in lbry.go
 import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"math/big"
+
+	"github.com/OdyseeTeam/odysee-api/internal/errors"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbry.go/v2/schema/keys"
@@ -28,6 +30,7 @@ func ValidateSignatureFromClaim(channel *ljsonrpc.Claim, signature, signingTS, d
 	return validateSignature(channel.SigningChannel.ClaimID, signature, signingTS, data, pubKey)
 
 }
+
 func validateSignature(channelClaimID, signature, signingTS, data string, publicKey *btcec.PublicKey) error {
 	injest := sha256.Sum256(
 		createDigest(
@@ -51,7 +54,6 @@ func validateSignature(channelClaimID, signature, signingTS, data string, public
 }
 
 func isSignatureValid(signature [64]byte, publicKey *btcec.PublicKey, injest []byte) bool {
-
 	R := &big.Int{}
 	S := &big.Int{}
 	R.SetBytes(signature[:32])
