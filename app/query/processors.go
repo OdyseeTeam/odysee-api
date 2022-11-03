@@ -29,6 +29,8 @@ const (
 	accessTypePurchase   = "purchase"
 	accessTypeRental     = "rental"
 	accessTypeMemberOnly = "memberonly"
+	accessTypeUnlisted   = "unlisted"
+	accessTypeScheduled  = "scheduled"
 	accessTypeFree       = ""
 
 	iapiTypeMembershipVod        = "Exclusive content"
@@ -238,8 +240,14 @@ TagLoop:
 		case strings.HasPrefix(t, "rental:") || t == "c:rental":
 			accessType = accessTypeRental
 			break TagLoop
-		case strings.HasPrefix(t, "c:members-only"):
+		case t == "c:members-only":
 			accessType = accessTypeMemberOnly
+			break TagLoop
+		case t == "c:unlisted":
+			accessType = accessTypeUnlisted
+			break TagLoop
+		case (t == "c:scheduled:hide" || t == "c:scheduled:show") && claim.Value.GetStream().ReleaseTime > time.Now().Unix():
+			accessType = accessTypeScheduled
 			break TagLoop
 		}
 	}
@@ -267,6 +275,10 @@ TagLoop:
 		iac = iac.Clone(iapi.WithEnvironment(iapi.EnvironTest))
 	}
 
+	signErr := errNeedSignedUrl
+	if isLivestream {
+		signErr = errNeedSignedLivestreamUrl
+	}
 	switch accessType {
 	case accessTypePurchase, accessTypeRental:
 		resp := &iapi.CustomerListResponse{}
@@ -289,19 +301,12 @@ TagLoop:
 				return false, errors.Err("rental expired")
 			}
 		}
-		return true, errNeedSignedUrl
+		return true, signErr
 	case accessTypeMemberOnly:
-		var (
-			perkType string
-			signErr  error
-		)
 		resp := &iapi.MembershipPerkCheck{}
+		perkType := iapiTypeMembershipVod
 		if isLivestream {
 			perkType = iapiTypeMembershipLiveStream
-			signErr = errNeedSignedLivestreamUrl
-		} else {
-			perkType = iapiTypeMembershipVod
-			signErr = errNeedSignedUrl
 		}
 		err = iac.Call(ctx, "membership_perk/check", map[string]string{"claim_id": claim.ClaimID, "type": perkType}, resp)
 		if err != nil {
@@ -311,6 +316,25 @@ TagLoop:
 			return false, errors.Err("no access to members-only content")
 		}
 		return true, signErr
+	case accessTypeUnlisted:
+		// check signature and signature_ts params, error if not present
+		signature, ok := params["signature"]
+		if !ok {
+			return false, errors.Err("missing required signature param")
+		}
+
+		signatureTS, ok := params["signature_ts"]
+		if !ok {
+			return false, errors.Err("missing required signature_ts param")
+		}
+		err = ValidateSignatureFromClaim(claim, signature.(string), signatureTS.(string), claim.ClaimID)
+		if err != nil {
+			return false, err
+		}
+		return true, signErr
+
+	case accessTypeScheduled:
+		return false, errors.Err("claim release time is in the future, not ready to be viewed yet")
 	default:
 		return false, errors.Err("unknown access type")
 	}

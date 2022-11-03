@@ -8,6 +8,7 @@ require (
 	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/alecthomas/kong v0.2.17
 	github.com/bluele/factory-go v0.0.1
+	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/dgraph-io/ristretto v0.1.0
 	github.com/getsentry/sentry-go v0.12.0
@@ -61,7 +62,6 @@ require (
 	github.com/bluele/gcache v0.0.2 // indirect
 	github.com/bmizerany/pat v0.0.0-20170815010413-6226ea591a40 // indirect
 	github.com/brk0v/directio v0.0.0-20190225130936-69406e757cf7 // indirect
-	github.com/btcsuite/btcd v0.22.0-beta // indirect
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
 	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd // indirect
