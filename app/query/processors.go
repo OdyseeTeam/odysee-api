@@ -262,6 +262,31 @@ TagLoop:
 		return true, errNeedSignedUrl
 	}
 
+	signErr := errNeedSignedUrl
+	if isLivestream {
+		signErr = errNeedSignedLivestreamUrl
+	}
+
+	if accessType == accessTypeUnlisted {
+		// check signature and signature_ts params, error if not present
+		signature, ok := params["signature"]
+		if !ok {
+			return false, errors.Err("missing required signature param")
+		}
+
+		signatureTS, ok := params["signature_ts"]
+		if !ok {
+			return false, errors.Err("missing required signature_ts param")
+		}
+		validateErr := ValidateSignatureFromClaim(claim, signature.(string), signatureTS.(string), claim.ClaimID)
+		if validateErr != nil {
+			return false, validateErr
+		}
+		return true, signErr
+	} else if accessType == accessTypeScheduled {
+		return false, errors.Err("claim release time is in the future, not ready to be viewed yet")
+	}
+
 	cu, err := auth.GetCurrentUserData(ctx)
 	if err != nil {
 		return false, errors.Err("no user data in context: %w", err)
@@ -273,11 +298,6 @@ TagLoop:
 	}
 	if environ == iapi.EnvironTest {
 		iac = iac.Clone(iapi.WithEnvironment(iapi.EnvironTest))
-	}
-
-	signErr := errNeedSignedUrl
-	if isLivestream {
-		signErr = errNeedSignedLivestreamUrl
 	}
 	switch accessType {
 	case accessTypePurchase, accessTypeRental:
@@ -316,25 +336,6 @@ TagLoop:
 			return false, errors.Err("no access to members-only content")
 		}
 		return true, signErr
-	case accessTypeUnlisted:
-		// check signature and signature_ts params, error if not present
-		signature, ok := params["signature"]
-		if !ok {
-			return false, errors.Err("missing required signature param")
-		}
-
-		signatureTS, ok := params["signature_ts"]
-		if !ok {
-			return false, errors.Err("missing required signature_ts param")
-		}
-		err = ValidateSignatureFromClaim(claim, signature.(string), signatureTS.(string), claim.ClaimID)
-		if err != nil {
-			return false, err
-		}
-		return true, signErr
-
-	case accessTypeScheduled:
-		return false, errors.Err("claim release time is in the future, not ready to be viewed yet")
 	default:
 		return false, errors.Err("unknown access type")
 	}
