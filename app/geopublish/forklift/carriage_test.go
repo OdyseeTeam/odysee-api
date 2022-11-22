@@ -24,6 +24,9 @@ type carriageSuite struct {
 }
 
 func TestCarriageSuite(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping testing in short mode")
+	}
 	suite.Run(t, new(carriageSuite))
 }
 

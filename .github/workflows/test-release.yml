@@ -57,7 +57,7 @@ jobs:
           REFLECTOR_UPLINK: ${{ secrets.REFLECTOR_UPLINK }}
         run: |
           go install github.com/jandelgado/gcov2lcov@latest
-          go test -covermode=count -coverprofile=coverage.out ./... && gcov2lcov -infile=coverage.out -outfile=coverage.lcov
+          go test -short -covermode=count -coverprofile=coverage.out ./... && gcov2lcov -infile=coverage.out -outfile=coverage.lcov
 
       - name: Coveralls GitHub Action
         uses: coverallsapp/github-action@1.1.3
