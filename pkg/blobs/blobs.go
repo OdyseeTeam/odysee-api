@@ -44,13 +44,13 @@ type Uploader struct {
 }
 
 // NewSource initializes a blob splitter, takes source file and blobs destination path as arguments.
-func NewSource(filePath, blobsPath string) (*Source, error) {
+func NewSource(filePath, blobsPath string) *Source {
 	s := Source{
 		filePath:  filePath,
 		blobsPath: blobsPath,
 	}
 
-	return &s, nil
+	return &s
 }
 
 // NewStore initializes blob storage with a config dictionary.

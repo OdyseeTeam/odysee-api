@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"strconv"
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/geopublish/metrics"
@@ -16,8 +17,8 @@ import (
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/blobs"
 	"github.com/OdyseeTeam/odysee-api/pkg/fileanalyzer"
-	"github.com/lbryio/transcoder/pkg/logging"
-	"github.com/lbryio/transcoder/pkg/logging/zapadapter"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 
 	"github.com/hibiken/asynq"
 	"github.com/volatiletech/sqlboiler/queries/qm"
@@ -90,7 +91,9 @@ func (c *Carriage) ProcessTask(ctx context.Context, t *asynq.Task) error {
 		return fmt.Errorf("json.Unmarshal failed: %v: %w", err, asynq.SkipRetry)
 	}
 
-	r, err := c.Process(p)
+	logging.AddToContext(ctx, logging.TracedLogger(c.logger, p))
+
+	r, err := c.Process(ctx, p)
 	if err != nil {
 		r.Error = err.Error()
 	}
@@ -120,10 +123,10 @@ func (c *Carriage) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	return nil
 }
 
-func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error) {
+func (c *Carriage) Process(ctx context.Context, p UploadProcessPayload) (*UploadProcessResult, error) {
 	var t time.Time
 	r := &UploadProcessResult{UploadID: p.UploadID, UserID: p.UserID}
-	log := c.logger.With("upload_id", p.UploadID, "user_id", p.UserID)
+	log := logging.FromContext(ctx)
 
 	uploader := c.store.Uploader()
 
@@ -136,21 +139,25 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	}
 	log.Debug("stream analyzed", "info", info, "err", err)
 
-	src, err := blobs.NewSource(p.Path, c.blobsPath)
-	if err != nil {
-		return r, err
-	}
-
+	src := blobs.NewSource(p.Path, c.blobsPath)
 	t = time.Now()
 	stream, err := src.Split()
 	metrics.ProcessingTime.WithLabelValues(metrics.LabelProcessingBlobSplit).Observe(float64(time.Since(t)))
 	if err != nil {
 		metrics.ProcessingErrors.WithLabelValues(metrics.LabelProcessingBlobSplit).Inc()
+		log.Warn("failed to split stream", "err", err)
 		return r, err
 	}
+	log.Info("split stream into blobs", "duration", time.Since(t).Seconds())
+
 	streamSource := stream.GetSource()
 	r.SDHash = hex.EncodeToString(streamSource.GetSdHash())
-	defer os.RemoveAll(path.Join(c.blobsPath, r.SDHash))
+	defer func() {
+		err := os.RemoveAll(path.Join(c.blobsPath, r.SDHash))
+		if err != nil {
+			log.Warn("failed to remove blobs", "err", err)
+		}
+	}()
 
 	t = time.Now()
 	summary, err := uploader.Upload(src)
@@ -199,7 +206,7 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	}
 	delete(pp, "file_path")
 
-	log.Debug("sending request", "method", p.Request.Method, "params", p.Request)
+	log.Debug("request sent", "method", p.Request.Method, "params", p.Request)
 	t = time.Now()
 	res, err := caller.Call(context.Background(), p.Request)
 	metrics.ProcessingTime.WithLabelValues(metrics.LabelProcessingQuery).Observe(float64(time.Since(t)))
@@ -228,4 +235,18 @@ func (c *Carriage) RetryDelay(n int, err error, t *asynq.Task) time.Duration {
 		return time.Duration(n) * time.Minute
 	}
 	return 10 * time.Second
+}
+
+func (p UploadProcessPayload) GetTraceData() map[string]string {
+	return map[string]string{
+		"user_id":   strconv.Itoa(p.UserID),
+		"upload_id": p.UploadID,
+	}
+}
+
+func (p UploadProcessResult) GetTraceData() map[string]string {
+	return map[string]string{
+		"user_id":   strconv.Itoa(p.UserID),
+		"upload_id": p.UploadID,
+	}
 }

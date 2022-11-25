@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/geopublish/metrics"
-	"github.com/lbryio/transcoder/pkg/logging"
-	"github.com/lbryio/transcoder/pkg/logging/zapadapter"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/hibiken/asynq"
@@ -153,12 +153,12 @@ func (f *Forklift) Shutdown() {
 	f.asynqServer.Shutdown()
 }
 
-func (f *Forklift) EnqueueUploadProcessTask(p UploadProcessPayload) error {
+func (f *Forklift) AddUploadProcess(p UploadProcessPayload) error {
 	pb, err := json.Marshal(p)
 	if err != nil {
 		return err
 	}
-	f.options.logger.Info("sending upload for processing", "payload", string(pb))
+	log := logging.TracedLogger(f.options.logger, p)
 	t := asynq.NewTask(TypeUploadProcess, pb, asynq.MaxRetry(f.options.maxRetry))
 	_, err = f.asynqClient.Enqueue(
 		t,
@@ -167,6 +167,11 @@ func (f *Forklift) EnqueueUploadProcessTask(p UploadProcessPayload) error {
 		asynq.Retention(72*time.Hour),
 		// asynq.Queue("critical"),
 	)
+	if err != nil {
+		log.Warn("failed to queue upload for processing", "err", err)
+	} else {
+		log.Info("queued upload for processing")
+	}
 	return err
 }
 

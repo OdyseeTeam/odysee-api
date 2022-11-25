@@ -5,7 +5,6 @@ import (
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"logur.dev/logur"
 )
 
 type ctxKey int
@@ -13,9 +12,6 @@ type ctxKey int
 const loggingContextKey ctxKey = iota
 
 var (
-	loggers     = map[string]*zap.SugaredLogger{}
-	environment = EnvDebug
-
 	EnvDebug = "debug"
 	EnvProd  = "prod"
 )
@@ -51,17 +47,21 @@ type KVLogger interface {
 	With(keyvals ...interface{}) KVLogger
 }
 
-type NoopKVLogger struct {
-	logur.NoopKVLogger
-}
-
 type NoopLogger struct{}
+
+type NoopKVLogger struct{}
 
 func (NoopLogger) Debug(args ...interface{}) {}
 func (NoopLogger) Info(args ...interface{})  {}
 func (NoopLogger) Warn(args ...interface{})  {}
 func (NoopLogger) Error(args ...interface{}) {}
 func (NoopLogger) Fatal(args ...interface{}) {}
+
+func (NoopKVLogger) Trace(_ string, _ ...interface{}) {}
+func (NoopKVLogger) Debug(_ string, _ ...interface{}) {}
+func (NoopKVLogger) Info(_ string, _ ...interface{})  {}
+func (NoopKVLogger) Warn(_ string, _ ...interface{})  {}
+func (NoopKVLogger) Error(_ string, _ ...interface{}) {}
 
 func (l NoopLogger) With(args ...interface{}) Logger {
 	return l
@@ -84,7 +84,7 @@ func AddToContext(ctx context.Context, l KVLogger) context.Context {
 	return context.WithValue(ctx, loggingContextKey, l)
 }
 
-func GetFromContext(ctx context.Context) KVLogger {
+func FromContext(ctx context.Context) KVLogger {
 	l, ok := ctx.Value(loggingContextKey).(KVLogger)
 	if !ok {
 		return NoopKVLogger{}

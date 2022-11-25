@@ -49,7 +49,7 @@ var QueryColumns = struct {
 	CreatedAt: "created_at",
 	UpdatedAt: "updated_at",
 	Status:    "status",
-	Error:     "error",
+	Error:     "err",
 	Query:     "query",
 	Response:  "response",
 	ID:        "id",
@@ -148,8 +148,8 @@ func (*queryR) NewStruct() *queryR {
 type queryL struct{}
 
 var (
-	queryAllColumns            = []string{"created_at", "updated_at", "status", "error", "query", "response", "id", "user_id"}
-	queryColumnsWithoutDefault = []string{"updated_at", "status", "error", "query", "response", "user_id"}
+	queryAllColumns            = []string{"created_at", "updated_at", "status", "err", "query", "response", "id", "user_id"}
+	queryColumnsWithoutDefault = []string{"updated_at", "status", "err", "query", "response", "user_id"}
 	queryColumnsWithDefault    = []string{"created_at", "id"}
 	queryPrimaryKeyColumns     = []string{"id"}
 )

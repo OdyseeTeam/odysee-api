@@ -13,6 +13,8 @@ const LabelProcessingBlobSplit = "blob_split"
 const LabelProcessingReflection = "reflection"
 const LabelProcessingQuery = "query"
 
+const LabelType = "type"
+
 var (
 	UploadsCreated = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: ns,
@@ -30,6 +32,12 @@ var (
 		Namespace: ns,
 		Name:      "uploads_failed",
 	})
+
+	Errors = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: ns,
+		Name:      "errors",
+	}, []string{"type"})
+
 	UploadsDBErrors = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: ns,
 		Name:      "uploads_db_errors",
@@ -59,8 +67,13 @@ var (
 	ProcessingTime = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: ns,
 		Name:      "processing_time",
-		Buckets:   []float64{1, 5, 30, 60, 120, 300, 600},
+		Buckets:   []float64{1, 5, 15, 30, 45, 60, 120, 240, 300, 600, 1200},
 	}, []string{"stage"})
+	ProcessingSpeed = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: ns,
+		Name:      "processing_speed",
+		Buckets:   []float64{1, 2, 3, 4, 5},
+	})
 	ProcessingErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: ns,
 		Name:      "processing_errors",
@@ -71,6 +84,6 @@ func RegisterMetrics() {
 	prometheus.MustRegister(
 		UploadsCreated, UploadsProcessed, UploadsCanceled, UploadsFailed,
 		QueriesSent, QueriesCompleted, QueriesFailed, QueriesErrored,
-		QueueTasks, ProcessingTime, ProcessingErrors,
+		QueueTasks, ProcessingTime, ProcessingSpeed, ProcessingErrors,
 	)
 }

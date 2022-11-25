@@ -7,7 +7,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/ip"
 	"github.com/OdyseeTeam/odysee-api/models"
-	"github.com/lbryio/transcoder/pkg/logging"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 )
 
 type universalUserGetter struct {
@@ -24,7 +24,7 @@ func NewUniversalUserGetter(auther Authenticator, provider Provider, logger logg
 	}
 }
 
-func (g *universalUserGetter) GetFromRequest(r *http.Request) (*models.User, error) {
+func (g *universalUserGetter) FromRequest(r *http.Request) (*models.User, error) {
 	log := g.logger
 	token, err := g.auther.GetTokenFromRequest(r)
 	// No oauth token present in request, try legacy method

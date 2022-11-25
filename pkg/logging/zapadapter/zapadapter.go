@@ -1,8 +1,6 @@
 package zapadapter
 
 import (
-	"context"
-
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 
 	"go.uber.org/zap"
@@ -161,26 +159,6 @@ func (l *kvLogger) Error(msg string, keyvals ...interface{}) {
 // Error implements the Logur kvLogger interface.
 func (l *kvLogger) Fatal(msg string, keyvals ...interface{}) {
 	l.logger.Fatalw(msg, keyvals...)
-}
-
-func (l *kvLogger) TraceContext(_ context.Context, msg string, keyvals ...interface{}) {
-	l.Trace(msg, keyvals...)
-}
-
-func (l *kvLogger) DebugContext(_ context.Context, msg string, keyvals ...interface{}) {
-	l.Debug(msg, keyvals...)
-}
-
-func (l *kvLogger) InfoContext(_ context.Context, msg string, keyvals ...interface{}) {
-	l.Info(msg, keyvals...)
-}
-
-func (l *kvLogger) WarnContext(_ context.Context, msg string, keyvals ...interface{}) {
-	l.Warn(msg, keyvals...)
-}
-
-func (l *kvLogger) ErrorContext(_ context.Context, msg string, keyvals ...interface{}) {
-	l.Error(msg, keyvals...)
 }
 
 // ...

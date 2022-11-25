@@ -17,8 +17,7 @@ import (
 func TestSplit(t *testing.T) {
 	filePath := test.StaticAsset(t, "doc.pdf")
 
-	s, err := NewSource(filePath, t.TempDir())
-	require.NoError(t, err)
+	s := NewSource(filePath, t.TempDir())
 	pbs, err := s.Split()
 	require.NoError(t, err)
 	require.Equal(t, "doc.pdf", pbs.GetSource().Name)
