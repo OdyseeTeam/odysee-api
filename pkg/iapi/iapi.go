@@ -1,6 +1,7 @@
 package iapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 )
 
 const (
@@ -134,11 +137,24 @@ func (c *Client) prepareParams(params map[string]string) url.Values {
 	return data
 }
 
-func (c *Client) Call(path string, params map[string]string, target interface{}) error {
+func (c *Client) Call(ctx context.Context, path string, params map[string]string, target interface{}) error {
+	pp := c.prepareParams(params)
+	lp := map[string]string{}
+	for k := range pp {
+		var v string
+		if k == paramLegacyToken {
+			v = "****"
+		} else if len(pp[k]) > 0 {
+			v = pp[k][0]
+		}
+		lp[k] = v
+	}
+	log := logging.GetFromContext(ctx).With("params", lp)
+
 	r, err := http.NewRequest(
 		http.MethodPost,
 		fmt.Sprintf("%s/%s", c.options.server, path),
-		strings.NewReader(c.prepareParams(params).Encode()),
+		strings.NewReader(pp.Encode()),
 	)
 	if err != nil {
 		return err
@@ -153,9 +169,11 @@ func (c *Client) Call(path string, params map[string]string, target interface{})
 
 	resp, err := c.options.httpClient.Do(r)
 	if err != nil {
+		log.Debug("iapi request failed", "error", err)
 		return err
 	}
 	if resp.StatusCode >= 500 {
+		log.Debug("iapi server failure", "error_code", resp.StatusCode)
 		return fmt.Errorf("server returned non-OK status: %v", resp.StatusCode)
 	}
 	defer resp.Body.Close()
@@ -172,11 +190,15 @@ func (c *Client) Call(path string, params map[string]string, target interface{})
 	var bresp BaseResponse
 	err = json.Unmarshal(body, &bresp)
 	if err != nil {
+		log.Debug("iapi unmarshal failure", "error", err, "response_body", body)
 		return err
 	}
+
 	if !bresp.Success {
+		log.Debug("iapi error", "error", *bresp.Error)
 		return fmt.Errorf("%w: %s", APIError, *bresp.Error)
 	}
 
+	log.Debug("iapi result", "object", bresp)
 	return nil
 }

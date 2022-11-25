@@ -160,4 +160,12 @@ var controversialChannels = map[string]bool{
 	"729a26df96109959e617e2eef80b5c2b590b5fba": true,
 	"33513c58b93d0ef88b4a9195574f97863091a120": true,
 	"bab918fdbb3821adf112d6a5f36b0d4676ebe7b7": true,
+	"a6a125c99ba2a6c068a8b502fb08dda603f6f03a": true,
+	"fe6e65a6d69c9093cb0482d4d098598ec4403d61": true,
+	"2f98945fec7687d7ad2f8a47f88b1875ce102ca3": true,
+	"f73d3d42ae8c4f2cd347a81917a505340ef5fe47": true,
+	"c7aa6ca3ba6b0f17ffa83c8c8e69049908052cd8": true,
+	"40b9c2158d9c59b9ef8ee6998915802b021e4ac8": true,
+	"6d895d997ad67fe61dc08cbaa43a2df2fc89508b": true,
+	"22c4cd79217ffc56078c4a17f49ccc73d1693ad3": true,
 }

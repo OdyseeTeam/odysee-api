@@ -13,6 +13,8 @@ import (
 	"github.com/OdyseeTeam/odysee-api/app/auth"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/pkg/iapi"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
 	"github.com/OdyseeTeam/odysee-api/internal/metrics"
@@ -27,6 +29,8 @@ const (
 	accessTypePurchase   = "purchase"
 	accessTypeRental     = "rental"
 	accessTypeMemberOnly = "memberonly"
+	accessTypeUnlisted   = "unlisted"
+	accessTypeScheduled  = "scheduled"
 	accessTypeFree       = ""
 
 	iapiTypeMembershipVod        = "Exclusive content"
@@ -43,6 +47,7 @@ var rePurchaseFree = regexp.MustCompile(`(?i)does not have a purchase price`)
 // plus extra logic for looking up off-chain purchases, rentals and memberships.
 // Only `streaming_url` and `purchase_receipt` (if stream has a receipt associated with it) will be returned in the response.
 func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
+	var logger = zapadapter.NewKV(nil).With("module", "query.preprocessors")
 	var (
 		contentURL, metricLabel string
 		isPaidStream            bool
@@ -65,7 +70,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		return nil, errors.Err("missing uri parameter for 'get' method")
 	}
 	lbryUrl = uri.(string)
-	log := logger.Log().WithField("url", lbryUrl)
+	log := logger.With("url", lbryUrl)
 
 	claim, err := resolve(ctx, caller, query, lbryUrl)
 	if err != nil {
@@ -74,7 +79,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 	stream := claim.Value.GetStream()
 	pcfg := config.GetStreamsV5()
 
-	hasAccess, err := checkStreamAccess(ctx, claim)
+	hasAccess, err := checkStreamAccess(logging.AddToContext(ctx, logger), claim)
 	if !hasAccess {
 		return nil, err
 	} else if errors.Is(err, errNeedSignedUrl) {
@@ -153,7 +158,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 			// Assuming the stream is of a paid variety and we have just paid for the stream
 			metrics.LbrytvPurchases.Inc()
 			metrics.LbrytvPurchaseAmounts.Observe(float64(feeAmount))
-			log.Infof("made a purchase for %d LBC", feeAmount)
+			logger.With("made a purchase for %d LBC", feeAmount)
 			// This is needed so changes can propagate for the subsequent resolve
 			time.Sleep(1 * time.Second)
 			claim, err = resolve(ctx, caller, query, lbryUrl)
@@ -184,7 +189,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 			return nil, errors.Err("couldn't find purchase receipt for paid stream")
 		}
 
-		log.Debugf("creating stream token with stream id=%s, txid=%s, size=%v", claim.Name+"/"+claim.ClaimID, claim.PurchaseReceipt.Txid, size)
+		logger.Debug("stream token created", "stream", claim.Name+"/"+claim.ClaimID, "txid", claim.PurchaseReceipt.Txid, "size", size)
 		token, err := paid.CreateToken(claim.Name+"/"+claim.ClaimID, claim.PurchaseReceipt.Txid, size, paid.ExpTenSecPer100MB)
 		if err != nil {
 			return nil, err
@@ -229,14 +234,20 @@ func checkStreamAccess(ctx context.Context, claim *ljsonrpc.Claim) (bool, error)
 TagLoop:
 	for _, t := range claim.Value.Tags {
 		switch {
-		case strings.HasPrefix(t, "purchase:"):
+		case strings.HasPrefix(t, "purchase:") || t == "c:purchase":
 			accessType = accessTypePurchase
 			break TagLoop
-		case strings.HasPrefix(t, "rental:"):
+		case strings.HasPrefix(t, "rental:") || t == "c:rental":
 			accessType = accessTypeRental
 			break TagLoop
-		case strings.HasPrefix(t, "c:members-only"):
+		case t == "c:members-only":
 			accessType = accessTypeMemberOnly
+			break TagLoop
+		case t == "c:unlisted":
+			accessType = accessTypeUnlisted
+			break TagLoop
+		case (t == "c:scheduled:hide" || t == "c:scheduled:show") && claim.Value.GetStream().ReleaseTime > time.Now().Unix():
+			accessType = accessTypeScheduled
 			break TagLoop
 		}
 	}
@@ -251,6 +262,31 @@ TagLoop:
 		return true, errNeedSignedUrl
 	}
 
+	signErr := errNeedSignedUrl
+	if isLivestream {
+		signErr = errNeedSignedLivestreamUrl
+	}
+
+	if accessType == accessTypeUnlisted {
+		// check signature and signature_ts params, error if not present
+		signature, ok := params["signature"]
+		if !ok {
+			return false, errors.Err("missing required signature param")
+		}
+
+		signatureTS, ok := params["signature_ts"]
+		if !ok {
+			return false, errors.Err("missing required signature_ts param")
+		}
+		validateErr := ValidateSignatureFromClaim(claim, signature.(string), signatureTS.(string), claim.ClaimID)
+		if validateErr != nil {
+			return false, validateErr
+		}
+		return true, signErr
+	} else if accessType == accessTypeScheduled {
+		return false, errors.Err("claim release time is in the future, not ready to be viewed yet")
+	}
+
 	cu, err := auth.GetCurrentUserData(ctx)
 	if err != nil {
 		return false, errors.Err("no user data in context: %w", err)
@@ -263,11 +299,10 @@ TagLoop:
 	if environ == iapi.EnvironTest {
 		iac = iac.Clone(iapi.WithEnvironment(iapi.EnvironTest))
 	}
-
 	switch accessType {
 	case accessTypePurchase, accessTypeRental:
 		resp := &iapi.CustomerListResponse{}
-		err = iac.Call("customer/list", map[string]string{"claim_id_filter": claim.ClaimID}, resp)
+		err = iac.Call(ctx, "customer/list", map[string]string{"claim_id_filter": claim.ClaimID}, resp)
 		if err != nil {
 			return false, err
 		}
@@ -286,21 +321,14 @@ TagLoop:
 				return false, errors.Err("rental expired")
 			}
 		}
-		return true, errNeedSignedUrl
+		return true, signErr
 	case accessTypeMemberOnly:
-		var (
-			perkType string
-			signErr  error
-		)
 		resp := &iapi.MembershipPerkCheck{}
+		perkType := iapiTypeMembershipVod
 		if isLivestream {
 			perkType = iapiTypeMembershipLiveStream
-			signErr = errNeedSignedLivestreamUrl
-		} else {
-			perkType = iapiTypeMembershipVod
-			signErr = errNeedSignedUrl
 		}
-		err = iac.Call("membership_perk/check", map[string]string{"claim_id": claim.ClaimID, "type": perkType}, resp)
+		err = iac.Call(ctx, "membership_perk/check", map[string]string{"claim_id": claim.ClaimID, "type": perkType}, resp)
 		if err != nil {
 			return false, err
 		}

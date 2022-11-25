@@ -22,17 +22,20 @@ import (
 )
 
 const (
-	rentalURL      = "lbry://@gifprofile#7/rental1#8"
-	purchaseURL    = "lbry://@gifprofile#7/purchase1#2"
-	membersOnlyURL = "lbry://@gifprofile#7/members-only#7"
+	urlRental      = "lbry://@gifprofile#7/rental1#8"
+	urlPurchase    = "lbry://@gifprofile#7/purchase1#2"
+	urlMembersOnly = "lbry://@gifprofile#7/members-only#7"
 
-	expiredRentalURL = "lbry://@gifprofile#7/2222222222222#8"
-	activeRentalURL  = "lbry://@gifprofile#7/test-rental-2#2"
+	urlRentalExpired = "lbry://@gifprofile#7/2222222222222#8"
 
-	noAccessPaidURL        = "lbry://@PlayNice#4/Alexswar#c"
-	noAccessMembersOnlyURL = "lbry://@gifprofile#7/members-only-no-access#8"
+	urlRentalActive = "lbry://@gifprofile#7/test-rental-2#2"
 
-	livestreamURL = "lbry://@gifprofile:7/members-only-live-2:4"
+	urlNoAccessPaid        = "lbry://@PlayNice#4/Alexswar#c"
+	urlNoAccessMembersOnly = "lbry://@gifprofile#7/members-only-no-access#8"
+
+	urlLivestream = "lbry://@gifprofile#7/members-only-live-2#4"
+
+	urlV2PurchaseRental = "lbry://@gifprofile#7/purchase-and-rental-testnew#9"
 
 	falseIP = "8.8.8.8"
 )
@@ -102,14 +105,15 @@ func (s *paidContentSuite) TestUnauthorized() {
 	cases := []struct {
 		url, errString string
 	}{
-		{rentalURL, "authentication required"},
-		{purchaseURL, "authentication required"},
-		{membersOnlyURL, "authentication required"},
-		{livestreamURL, "authentication required"},
+		{urlRental, "authentication required"},
+		{urlPurchase, "authentication required"},
+		{urlMembersOnly, "authentication required"},
+		{urlLivestream, "authentication required"},
+		{urlV2PurchaseRental, "authentication required"},
 	}
 	for _, tc := range cases {
 		s.Run(tc.url, func() {
-			request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": tc.url})
+			request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": tc.url, iapi.ParamEnviron: iapi.EnvironTest})
 			ctx := auth.AttachCurrentUser(bgctx(), auth.NewCurrentUser(nil, falseIP, nil, errors.Err("anonymous")))
 			_, err := NewCaller(s.sdkAddress, 0).Call(ctx, request)
 			s.EqualError(err, tc.errString)
@@ -121,13 +125,13 @@ func (s *paidContentSuite) TestNoAccess() {
 	cases := []struct {
 		url, errString string
 	}{
-		{noAccessPaidURL, "no access to paid content"},
-		{expiredRentalURL, "rental expired"},
-		{noAccessMembersOnlyURL, "no access to members-only content"},
+		{urlNoAccessPaid, "no access to paid content"},
+		{urlRentalExpired, "rental expired"},
+		{urlNoAccessMembersOnly, "no access to members-only content"},
 	}
 	for _, tc := range cases {
 		s.Run(tc.url, func() {
-			request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": tc.url})
+			request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": tc.url, iapi.ParamEnviron: iapi.EnvironTest})
 			ctx := auth.AttachCurrentUser(bgctx(), s.cu)
 			resp, err := NewCaller(s.sdkAddress, s.user.ID).Call(ctx, request)
 			s.EqualError(err, tc.errString)
@@ -142,18 +146,19 @@ func (s *paidContentSuite) TestAccess() {
 		url, expectedStreamingUrl string
 		baseStreamingURL          string
 	}{
-		{url: activeRentalURL, expectedStreamingUrl: sp + "/22acd6a6ab1c83d8c265d652c3842420810006be/96a3e2?hash-hls=33c2dc5a5aaf863e469488009b9164a6&ip=8.8.8.8&hash=90c0a6f1859842493354b462cc857c0c"},
-		{url: purchaseURL, expectedStreamingUrl: sp + "/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4?hash-hls=4e42be75b03ce2237e8ff8284c794392&ip=8.8.8.8&hash=910a69e8e189288c29a5695314b48e89"},
-		{url: membersOnlyURL, expectedStreamingUrl: sp + "/7de672e799d17fc562ae7b381db1722a81856410/ad42aa?hash-hls=5e25826a1957b73084e85e5878fef08b&ip=8.8.8.8&hash=bcc9a904ae8621e910427f2eb3637be7"},
+		{url: urlRentalActive, expectedStreamingUrl: sp + "/22acd6a6ab1c83d8c265d652c3842420810006be/96a3e2?hash-hls=33c2dc5a5aaf863e469488009b9164a6&ip=8.8.8.8&hash=90c0a6f1859842493354b462cc857c0c"},
+		{url: urlPurchase, expectedStreamingUrl: sp + "/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4?hash-hls=4e42be75b03ce2237e8ff8284c794392&ip=8.8.8.8&hash=910a69e8e189288c29a5695314b48e89"},
+		{url: urlMembersOnly, expectedStreamingUrl: sp + "/7de672e799d17fc562ae7b381db1722a81856410/ad42aa?hash-hls=5e25826a1957b73084e85e5878fef08b&ip=8.8.8.8&hash=bcc9a904ae8621e910427f2eb3637be7"},
+		{url: urlV2PurchaseRental, expectedStreamingUrl: sp + "/970deae1469f2b4c7cc7286793b82676053ab3cd/2c2b26?hash-hls=eeb152996b8bc41279a7e76d8655a316&ip=8.8.8.8&hash=1acdcd58c789fac2d9813a5eca97e919"},
 		{
-			url:                  livestreamURL,
+			url:                  urlLivestream,
 			baseStreamingURL:     "https://cloud.odysee.live/secure/content/f9660d617e226959102e84436533638858d0b572/master.m3u8",
 			expectedStreamingUrl: "https://cloud.odysee.live/secure/content/f9660d617e226959102e84436533638858d0b572/master.m3u8?ip=8.8.8.8&hash=414505d9387c3809b11229bc3e238c62",
 		},
 	}
 	for _, tc := range cases {
 		s.Run(tc.url, func() {
-			params := map[string]interface{}{"uri": tc.url}
+			params := map[string]interface{}{"uri": tc.url, iapi.ParamEnviron: iapi.EnvironTest}
 			if tc.baseStreamingURL != "" {
 				params[ParamBaseStreamingUrl] = tc.baseStreamingURL
 			}

@@ -50,6 +50,9 @@ func (s *e2eSuite) TestProxyRoute() {
 }
 
 func (s *e2eSuite) TestPublishV3() {
+	if testing.Short() {
+		s.T().Skip("skipping testing in short mode")
+	}
 	if s.forkliftErr != nil {
 		s.T().Skipf(s.forkliftErr.Error())
 	}

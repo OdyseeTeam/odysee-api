@@ -48,27 +48,27 @@ func ProjectRoot() string {
 	return filepath.Dir(ex)
 }
 
-// IsProduction is true if we are running in a production environment
+// IsProduction is true if we are running in a production environment.
 func IsProduction() bool {
 	return Config.IsProduction()
 }
 
-// GetInternalAPIHost returns the address of internal-api server
+// GetInternalAPIHost returns the address of internal-api server.
 func GetInternalAPIHost() string {
 	return Config.Viper.GetString("InternalAPIHost")
 }
 
-// GetOauthProviderURL returns the address of OAuth provider
+// GetOauthProviderURL returns the address of OAuth provider.
 func GetOauthProviderURL() string {
 	return Config.Viper.GetStringMapString("oauth")["providerurl"]
 }
 
-// GetOauthClientID returns the address of OAuth client ID
+// GetOauthClientID returns the address of OAuth client ID.
 func GetOauthClientID() string {
 	return Config.Viper.GetStringMapString("oauth")["clientid"]
 }
 
-// GetOauthTokenURL returns the address of OAuth token retrieval endpoint
+// GetOauthTokenURL returns the address of OAuth token retrieval endpoint.
 func GetOauthTokenURL() string {
 	cfg := Config.Viper.GetStringMapString("oauth")
 	return cfg["providerurl"] + cfg["tokenpath"]
@@ -92,12 +92,12 @@ func GetAsynqRedisOpts() (asynq.RedisConnOpt, error) {
 	return redisOpts, nil
 }
 
-// GetDatabase returns postgresql database server connection config
+// GetDatabase returns postgresql database server connection config.
 func GetDatabase() cfg.DBConfig {
 	return Config.GetDatabase()
 }
 
-// GetSentryDSN returns sentry.io service DSN
+// GetSentryDSN returns sentry.io service DSN.
 func GetSentryDSN() string {
 	return Config.Viper.GetString("SentryDSN")
 }
@@ -114,32 +114,38 @@ func GetGeoPublishSourceDir() string {
 	return Config.Viper.GetString("GeoPublishSourceDir")
 }
 
-// ShouldLogResponses enables or disables full SDK responses logging
+// GetGeoPublishConcurrency sets the number of simultaneously processed uploads per each API instance.
+func GetGeoPublishConcurrency() int {
+	Config.Viper.SetDefault("GeoPublishConcurrency", 3)
+	return Config.Viper.GetInt("GeoPublishConcurrency")
+}
+
+// ShouldLogResponses enables or disables full SDK responses logging. Produces a lot of logging, use for debugging only.
 func ShouldLogResponses() bool {
 	return Config.Viper.GetBool("ShouldLogResponses")
 }
 
-// GetPaidTokenPrivKey returns absolute path to the private RSA key for generating paid tokens
+// GetPaidTokenPrivKey returns absolute path to the private RSA key for generating paid tokens.
 func GetPaidTokenPrivKey() string {
 	return Config.Viper.GetString("PaidTokenPrivKey")
 }
 
-// GetStreamsV5 returns config map for streams endpoint v5
+// GetStreamsV5 returns config map for v5 streams endpoint.
 func GetStreamsV5() map[string]string {
 	return Config.Viper.GetStringMapString("StreamsV5")
 }
 
-// GetStreamsV5 returns config map for streams endpoint v5
+// GetReflectorUpstream returns config map for publish reflector server.
 func GetReflectorUpstream() map[string]string {
 	return Config.Viper.GetStringMapString("ReflectorUpstream")
 }
 
-// GetAddress determines address to bind http API server to
+// GetAddress sets API HTTP binding address.
 func GetAddress() string {
 	return Config.Viper.GetString("Address")
 }
 
-// GetLbrynetServers returns the names/addresses of every SDK server
+// GetLbrynetServers returns the names/addresses of every SDK server.
 func GetLbrynetServers() map[string]string {
 	if Config.Viper.GetString(deprecatedLbrynetSetting) != "" &&
 		len(Config.Viper.GetStringMapString(lbrynetServers)) > 0 {

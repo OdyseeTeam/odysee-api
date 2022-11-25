@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"math/rand"
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/internal/metrics"
@@ -57,13 +58,13 @@ func (c *tokenCache) get(token string, retreiver func() (interface{}, error)) (*
 		if err != nil {
 			return nil, err
 		}
-		var ttl time.Duration
+		var baseTTL time.Duration
 		if cachedUser == nil {
-			ttl = ttlUnconfirmed
+			baseTTL = ttlUnconfirmed
 		} else {
-			ttl = ttlConfirmed
+			baseTTL = ttlConfirmed
 		}
-		c.cache.SetWithTTL(token, cachedUser, 1, ttl)
+		c.cache.SetWithTTL(token, cachedUser, 1, baseTTL+time.Duration(rand.Int63n(baseTTL.Nanoseconds())))
 	} else {
 		metrics.AuthTokenCacheHits.Inc()
 	}
