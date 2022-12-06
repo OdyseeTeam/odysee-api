@@ -43,9 +43,7 @@ func validateSignature(channelClaimID, signature, signingTS, data string, public
 		return errors.Err(err)
 	}
 	signatureBytes := [64]byte{}
-	for i, b := range sig {
-		signatureBytes[i] = b
-	}
+	copy(signatureBytes[:], sig)
 	sigValid := isSignatureValid(signatureBytes, publicKey, injest[:])
 	if !sigValid {
 		return errors.Err("could not validate the signature")
