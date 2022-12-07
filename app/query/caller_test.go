@@ -803,13 +803,13 @@ func TestCaller_GetPaidPurchased(t *testing.T) {
 	err := paid.GeneratePrivateKey()
 	require.NoError(t, err)
 
-	token, err := paid.CreateToken(claimName+"/"+claimID, txid, 585600621, paid.ExpTenSecPer100MB)
-	require.NoError(t, err)
-
 	request := jsonrpc.NewRequest(MethodGet, map[string]interface{}{"uri": uri})
 	resp, err := NewCaller(srv.URL, dummyUserID).Call(bgctx(), request)
 	require.NoError(t, err)
 	require.Nil(t, resp.Error)
+
+	token, err := paid.CreateToken(claimName+"/"+claimID, txid, 585600621, paid.ExpTenSecPer100MB)
+	require.NoError(t, err)
 
 	getResponse := &ljsonrpc.GetResponse{}
 	err = resp.GetObject(&getResponse)

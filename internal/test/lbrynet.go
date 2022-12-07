@@ -18,8 +18,10 @@ type SDKWallet struct {
 }
 
 const (
-	envPublicKey  = "REAL_WALLET_PUBLIC_KEY"
-	envPrivateKey = "REAL_WALLET_PRIVATE_KEY"
+	envPublicKey       = "REAL_WALLET_PUBLIC_KEY"
+	envPrivateKey      = "REAL_WALLET_PRIVATE_KEY"
+	envBuyerPublicKey  = "BUYER_WALLET_PUBLIC_KEY"
+	envBuyerPrivateKey = "BUYER_WALLET_PRIVATE_KEY"
 )
 
 func (w SDKWallet) walletID() string {
@@ -87,7 +89,21 @@ func InjectTestingWallet(userID int) (*SDKWallet, error) {
 
 	err := w.Unload()
 	if err != nil {
-		return nil, fmt.Errorf("error unloading wallet: %w", err)
+		return nil, fmt.Errorf("error unloading test wallet: %w", err)
+	}
+
+	return &w, w.Inject()
+}
+
+func InjectBuyerWallet(userID int) (*SDKWallet, error) {
+	if os.Getenv(envBuyerPrivateKey) == "" || os.Getenv(envBuyerPublicKey) == "" {
+		return nil, errors.New("missing env variables for buyer wallet")
+	}
+	w := SDKWallet{PrivateKey: os.Getenv(envBuyerPrivateKey), PublicKey: os.Getenv(envBuyerPublicKey), UserID: userID}
+
+	err := w.Unload()
+	if err != nil {
+		return nil, fmt.Errorf("error unloading buyer wallet: %w", err)
 	}
 
 	return &w, w.Inject()

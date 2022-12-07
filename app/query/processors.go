@@ -150,10 +150,17 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 			}
 			if purchaseRes.Error != nil {
 				if reAlreadyPurchased.MatchString(purchaseRes.Error.Message) {
+					if claim.PurchaseReceipt == nil {
+						log.Error("couldn't find purchase receipt for paid stream")
+						return nil, errors.Err("couldn't find purchase receipt for paid stream")
+					}
 					log.Debug("purchase_create says stream is already purchased")
+					purchaseTxId = claim.PurchaseReceipt.Txid
 				} else if rePurchaseFree.MatchString(purchaseRes.Error.Message) {
 					log.Debug("purchase_create says stream is free")
+					isPaidStream = false
 				} else {
+					log.Warn("purchase_create errored", "err", purchaseRes.Error.Message)
 					return nil, fmt.Errorf("purchase error: %v", purchaseRes.Error.Message)
 				}
 			} else {
@@ -193,8 +200,8 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 	sdHash := hex.EncodeToString(src.SdHash)[:6]
 	if isPaidStream {
 		size := src.GetSize()
-		fmt.Println("YOZ", claim.Name+"/"+claim.ClaimID, purchaseTxId, size, expirationFunc(size))
-		token, err := paid.CreateToken(claim.Name+"/"+claim.ClaimID, purchaseTxId, size, expirationFunc)
+
+		token, err := paid.CreateToken(claim.Name+"/"+claim.ClaimID, purchaseTxId, size, paid.ExpTenSecPer100MB)
 		if err != nil {
 			return nil, err
 		}
