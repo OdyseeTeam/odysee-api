@@ -54,6 +54,8 @@ jobs:
           OAUTH_TEST_PASSWORD: ${{ secrets.OAUTH_TEST_PASSWORD }}
           REAL_WALLET_PRIVATE_KEY: ${{ secrets.REAL_WALLET_PRIVATE_KEY }}
           REAL_WALLET_PUBLIC_KEY: ${{ secrets.REAL_WALLET_PUBLIC_KEY }}
+          BUYER_WALLET_PRIVATE_KEY: ${{ secrets.BUYER_WALLET_PRIVATE_KEY }}
+          BUYER_WALLET_PUBLIC_KEY: ${{ secrets.BUYER_WALLET_PUBLIC_KEY }}
           REFLECTOR_UPLINK: ${{ secrets.REFLECTOR_UPLINK }}
         run: |
           go install github.com/jandelgado/gcov2lcov@latest
