@@ -11,17 +11,19 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/OdyseeTeam/odysee-api/app/geopublish/forklift"
 	"github.com/OdyseeTeam/odysee-api/app/geopublish/metrics"
 	"github.com/OdyseeTeam/odysee-api/app/proxy"
 	"github.com/OdyseeTeam/odysee-api/app/query"
 	"github.com/OdyseeTeam/odysee-api/app/query/cache"
 	"github.com/OdyseeTeam/odysee-api/app/rpcerrors"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
+	"github.com/OdyseeTeam/odysee-api/apps/forklift"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/models"
+	"github.com/OdyseeTeam/odysee-api/pkg/belt"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+	"github.com/hibiken/asynq"
 
 	"github.com/gorilla/mux"
 	werrors "github.com/pkg/errors"
@@ -68,6 +70,7 @@ type Handler struct {
 	options  *HandlerOptions
 	composer *tusd.StoreComposer
 	udb      *UploadsDB
+	belt     *belt.Belt
 
 	preparedSDKQueries chan preparedQuery
 }
@@ -78,15 +81,10 @@ type HandlerOptions struct {
 	uploadPath string
 	tusConfig  *tusd.Config
 	db         boil.Executor
-	queue      *forklift.Forklift
+	belt       *belt.Belt
+	redisOpts  asynq.RedisConnOpt
 	logger     logging.KVLogger
 }
-
-// func WithLogger(logger logging.KVLogger) func(options *HandlerOptions) {
-// 	return func(options *HandlerOptions) {
-// 		options.Logger = logger
-// 	}
-// }
 
 // CanHandle checks if http.Request contains POSTed data in an accepted format.
 // Supposed to be used in gorilla mux router MatcherFunc.
@@ -117,9 +115,9 @@ func WithDB(db boil.Executor) func(options *HandlerOptions) {
 	}
 }
 
-func WithQueue(queue *forklift.Forklift) func(options *HandlerOptions) {
+func WithRedisOpts(redisOpts asynq.RedisConnOpt) func(options *HandlerOptions) {
 	return func(options *HandlerOptions) {
-		options.queue = queue
+		options.redisOpts = redisOpts
 	}
 }
 
@@ -164,13 +162,18 @@ func NewHandler(optionFuncs ...func(*HandlerOptions)) (*Handler, error) {
 	// via X-Forwarded-Proto
 	cfg.RespectForwardedHeaders = true
 
-	udb := UploadsDB{logger: h.options.logger, db: options.db, queue: options.queue}
+	udb := UploadsDB{logger: options.logger, db: options.db}
 	udb.listenToHandler(h)
 	cfg.NotifyCreatedUploads = true
 	cfg.NotifyTerminatedUploads = true
 	cfg.NotifyUploadProgress = true
-
 	h.udb = &udb
+
+	b, err := belt.New(options.redisOpts, belt.WithLogger(options.logger))
+	if err != nil {
+		return nil, err
+	}
+	h.belt = b
 
 	baseHandler, err := tusd.NewUnroutedHandler(*cfg)
 	if err != nil {
@@ -339,12 +342,25 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := logging.AddToContext(context.Background(), l)
-	err = h.udb.startProcessingUpload(ctx, info.ID, user, dstFilepath, rpcReq)
+	up, err := h.udb.startProcessingUpload(ctx, info.ID, user, dstFilepath)
 	if err != nil {
 		l.Error("upload processing failed", "err", err)
 		rpcerrors.Write(w, err)
 		return
 	}
+	err = h.belt.Put(forklift.TaskUpload, forklift.UploadPayload{
+		UploadID: id,
+		Path:     dstFilepath,
+		UserID:   user.ID,
+		Request:  rpcReq,
+	}, 10)
+	if err != nil {
+		h.udb.markUploadFailed(ctx, up, err.Error())
+		l.Error("enqueuing upload failed", "err", err)
+		rpcerrors.Write(w, err)
+		return
+	}
+
 	w.WriteHeader(http.StatusAccepted)
 }
 
@@ -388,7 +404,7 @@ func (h Handler) Status(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(pq.Response.JSON)
 	case models.QueryStatusFailed:
-		if pq.Response.IsZero() {
+		if !pq.Response.IsZero() {
 			w.Write(pq.Response.JSON)
 		} else {
 			rpcerrors.Write(w, errors.Err(pq.Error))

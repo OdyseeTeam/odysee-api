@@ -60,7 +60,7 @@ func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPre
 		WithTusConfig(tusCfg),
 		WithUploadPath(uploadPath),
 		WithDB(storage.DB),
-		WithQueue(fl),
+		WithRedisOpts(asynqRedisOpts),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize tus handler: %w", err)
