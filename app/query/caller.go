@@ -248,6 +248,7 @@ func (c *Caller) SendQuery(ctx context.Context, q *Query) (*jsonrpc.RPCResponse,
 		client := c.getRPCClient(q.Method())
 		r, err = client.CallRaw(q.Request)
 		c.Duration = time.Since(start).Seconds()
+		logger.Log().Debugf("sent request: %s %+v (%.2fs)", q.Method(), q.Params(), c.Duration)
 
 		// Generally a HTTP transport failure (connect error etc)
 		if err != nil {

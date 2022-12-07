@@ -128,43 +128,59 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 	}
 
 	// Lbrynet paid content logic below
+	var purchaseTxId string
 	feeAmount := stream.GetFee().GetAmount()
 	if feeAmount > 0 {
 		isPaidStream = true
 
-		purchaseQuery, err := NewQuery(jsonrpc.NewRequest(
-			MethodPurchaseCreate,
-			map[string]interface{}{
-				"url":      lbryUrl,
-				"blocking": true,
-			},
-		), query.WalletID)
-		if err != nil {
-			return nil, err
-		}
-		purchaseRes, err := caller.SendQuery(WithQuery(ctx, purchaseQuery), purchaseQuery)
-		if err != nil {
-			return nil, err
-		}
-		if purchaseRes.Error != nil {
-			if reAlreadyPurchased.MatchString(purchaseRes.Error.Message) {
-				log.Debug("purchase_create says stream is already purchased")
-			} else if rePurchaseFree.MatchString(purchaseRes.Error.Message) {
-				log.Debug("purchase_create says stream is free")
-			} else {
-				return nil, fmt.Errorf("purchase error: %v", purchaseRes.Error.Message)
-			}
-		} else {
-			// Assuming the stream is of a paid variety and we have just paid for the stream
-			metrics.LbrytvPurchases.Inc()
-			metrics.LbrytvPurchaseAmounts.Observe(float64(feeAmount))
-			logger.With("made a purchase for %d LBC", feeAmount)
-			// This is needed so changes can propagate for the subsequent resolve
-			time.Sleep(1 * time.Second)
-			claim, err = resolve(ctx, caller, query, lbryUrl)
+		if !claim.IsMyOutput {
+			purchaseQuery, err := NewQuery(jsonrpc.NewRequest(
+				MethodPurchaseCreate,
+				map[string]interface{}{
+					"url":      lbryUrl,
+					"blocking": true,
+				},
+			), query.WalletID)
 			if err != nil {
 				return nil, err
 			}
+			purchaseRes, err := caller.SendQuery(WithQuery(ctx, purchaseQuery), purchaseQuery)
+			if err != nil {
+				return nil, err
+			}
+			if purchaseRes.Error != nil {
+				if reAlreadyPurchased.MatchString(purchaseRes.Error.Message) {
+					if claim.PurchaseReceipt == nil {
+						log.Error("couldn't find purchase receipt for paid stream")
+						return nil, errors.Err("couldn't find purchase receipt for paid stream")
+					}
+					log.Debug("purchase_create says stream is already purchased")
+					purchaseTxId = claim.PurchaseReceipt.Txid
+				} else if rePurchaseFree.MatchString(purchaseRes.Error.Message) {
+					log.Debug("purchase_create says stream is free")
+					isPaidStream = false
+				} else {
+					log.Warn("purchase_create errored", "err", purchaseRes.Error.Message)
+					return nil, fmt.Errorf("purchase error: %v", purchaseRes.Error.Message)
+				}
+			} else {
+				metrics.LbrytvPurchases.Inc()
+				metrics.LbrytvPurchaseAmounts.Observe(float64(feeAmount))
+				logger.With("made a purchase for %d LBC", feeAmount)
+				// This is needed so changes can propagate for the subsequent resolve
+				time.Sleep(1 * time.Second)
+				claim, err = resolve(ctx, caller, query, lbryUrl)
+				if err != nil {
+					return nil, err
+				}
+				if claim.PurchaseReceipt == nil {
+					log.Error("stream was paid for but receipt not found in the resolve response")
+					return nil, errors.Err("couldn't find purchase receipt for paid stream")
+				}
+				purchaseTxId = claim.PurchaseReceipt.Txid
+			}
+		} else {
+			purchaseTxId = "owner"
 		}
 	}
 
@@ -184,16 +200,12 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 	sdHash := hex.EncodeToString(src.SdHash)[:6]
 	if isPaidStream {
 		size := src.GetSize()
-		if claim.PurchaseReceipt == nil {
-			log.Error("stream was paid for but receipt not found in the resolve response")
-			return nil, errors.Err("couldn't find purchase receipt for paid stream")
-		}
 
-		logger.Debug("stream token created", "stream", claim.Name+"/"+claim.ClaimID, "txid", claim.PurchaseReceipt.Txid, "size", size)
-		token, err := paid.CreateToken(claim.Name+"/"+claim.ClaimID, claim.PurchaseReceipt.Txid, size, paid.ExpTenSecPer100MB)
+		token, err := paid.CreateToken(claim.Name+"/"+claim.ClaimID, purchaseTxId, size, paid.ExpTenSecPer100MB)
 		if err != nil {
 			return nil, err
 		}
+		logger.Debug("stream token created", "stream", claim.Name+"/"+claim.ClaimID, "txid", purchaseTxId, "size", size)
 		cdnUrl := config.Config.Viper.GetString("PaidContentURL")
 		hasValidChannel := claim.SigningChannel != nil && claim.SigningChannel.ClaimID != ""
 		if hasValidChannel && controversialChannels[claim.SigningChannel.ClaimID] {
@@ -254,12 +266,6 @@ TagLoop:
 
 	if accessType == accessTypeFree {
 		return true, nil
-	}
-	if claim.IsMyOutput {
-		if isLivestream {
-			return true, errNeedSignedLivestreamUrl
-		}
-		return true, errNeedSignedUrl
 	}
 
 	signErr := errNeedSignedUrl
