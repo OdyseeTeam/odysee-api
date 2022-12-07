@@ -267,6 +267,12 @@ TagLoop:
 	if accessType == accessTypeFree {
 		return true, nil
 	}
+	if claim.IsMyOutput {
+		if isLivestream {
+			return true, errNeedSignedLivestreamUrl
+		}
+		return true, errNeedSignedUrl
+	}
 
 	signErr := errNeedSignedUrl
 	if isLivestream {
