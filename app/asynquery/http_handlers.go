@@ -20,6 +20,10 @@ type QueryHandler struct {
 	logger logging.KVLogger
 }
 
+func (h QueryHandler) Create(w http.ResponseWriter, r *http.Request) {
+
+}
+
 // Status returns status of the upload.
 // Possible response HTTP codes:
 // - 202: upload is currently being processed
@@ -50,10 +54,10 @@ func (h QueryHandler) Status(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch q.Status {
-	case models.QueryStatusSucceeded:
+	case models.AsynqueryStatusSucceeded:
 		w.WriteHeader(http.StatusOK)
 		w.Write(q.Response.JSON)
-	case models.QueryStatusFailed:
+	case models.AsynqueryStatusFailed:
 		if !q.Response.IsZero() {
 			w.Write(q.Response.JSON)
 		} else {

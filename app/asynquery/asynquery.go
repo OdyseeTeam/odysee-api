@@ -29,9 +29,10 @@ var (
 )
 
 type CallManager struct {
-	db     boil.Executor
-	logger logging.KVLogger
-	belt   *belt.Belt
+	db        boil.Executor
+	logger    logging.KVLogger
+	belt      *belt.Belt
+	respChans map[string]chan<- AsyncQueryResult
 }
 
 type Caller struct {
@@ -46,20 +47,15 @@ type AsyncQuery struct {
 }
 
 type AsyncQueryResult struct {
-	QueryID  int
-	Response *jsonrpc.RPCRequest
+	Query    AsyncQuery
+	Error    string
+	Response *jsonrpc.RPCResponse
 }
 
-type TaskHandler struct {
-	results chan<- AsyncQueryResult
-	db      boil.Executor
-	logger  logging.KVLogger
-}
-
-func NewCallManager(db boil.Executor, redisOpts asynq.RedisConnOpt, logger logging.KVLogger) (*CallManager, error) {
+func NewCallManager(redisOpts asynq.RedisConnOpt, logger logging.KVLogger) (*CallManager, error) {
 	m := CallManager{
-		db:     db,
-		logger: logger,
+		logger:    logger,
+		respChans: make(map[string]chan<- AsyncQueryResult),
 	}
 	b, err := belt.New(redisOpts, belt.WithConcurrency(10))
 	if err != nil {
@@ -78,47 +74,52 @@ func (c *Caller) Call(ctx context.Context, req *jsonrpc.RPCRequest) (*jsonrpc.RP
 	return nil, c.m.Add(c.userID, req)
 }
 
-func (m *CallManager) Add(userID int, req *jsonrpc.RPCRequest) error {
-	query := models.Query{
-		UserID: null.IntFrom(userID),
-		Status: models.QueryStatusReceived,
-	}
-	if err := query.Query.Marshal(req); err != nil {
-		return err
-	}
-	err := query.Insert(m.db, boil.Infer())
-	if err != nil {
-		return err
-	}
-	qp := AsyncQuery{
-		UserID:  userID,
-		QueryID: query.ID,
-		Request: req,
-	}
-
-	return m.belt.Put(TaskAsyncQuery, qp, 3)
+func (m *CallManager) SetResultChannel(method string, respChan chan<- AsyncQueryResult) {
+	m.logger.Debug("adding query result channel", "method", method)
+	m.respChans[method] = respChan
 }
 
-func (m *CallManager) get(ctx context.Context, id, userID int) (*models.Query, error) {
+func (m *CallManager) get(ctx context.Context, id, userID int) (*models.Asynquery, error) {
 	l := logging.FromContext(ctx)
 
 	mods := []qm.QueryMod{
-		models.QueryWhere.ID.EQ(id),
+		models.AsynqueryWhere.ID.EQ(id),
 	}
 	if userID > 0 {
-		mods = append(mods, models.QueryWhere.UserID.EQ(null.IntFrom(userID)))
+		mods = append(mods, models.AsynqueryWhere.UserID.EQ(null.IntFrom(userID)))
 	}
 
-	q, err := models.Queries(mods...).One(m.db)
+	q, err := models.Asynqueries(mods...).One(m.db)
 	if err != nil {
-		metrics.Errors.WithLabelValues("db").Inc()
+		InternalErrors.WithLabelValues("db").Inc()
 		l.Warn("could not retrieve asynquery", "err", err)
 		return nil, fmt.Errorf("could not retrieve async query record: %w", err)
 	}
 	return q, nil
 }
 
-func (m *CallManager) finish(ctx context.Context, id int, rpcRes *jsonrpc.RPCResponse, callErr string) error {
+// Add accepts JSON-RPC request for later asynchronous processing. This may be called from a different process that does Start()
+func (m *CallManager) Add(userID int, req *jsonrpc.RPCRequest) error {
+	qp := AsyncQuery{
+		UserID:  userID,
+		Request: req,
+	}
+
+	return m.belt.Put(TaskAsyncQuery, qp, 3)
+}
+
+func (m *CallManager) initQuery(aq AsyncQuery) (*models.Asynquery, error) {
+	q := models.Asynquery{
+		UserID: null.IntFrom(aq.UserID),
+		Status: models.AsynqueryStatusReceived,
+	}
+	if err := q.Query.Marshal(aq.Request); err != nil {
+		return nil, err
+	}
+	return &q, q.Insert(m.db, boil.Infer())
+}
+
+func (m *CallManager) finishQuery(ctx context.Context, id int, rpcRes *jsonrpc.RPCResponse, callErr string) error {
 	l := logging.FromContext(ctx)
 
 	q, err := m.get(ctx, id, 0)
@@ -128,7 +129,7 @@ func (m *CallManager) finish(ctx context.Context, id int, rpcRes *jsonrpc.RPCRes
 
 	resp := null.JSON{}
 	if err := resp.Marshal(rpcRes); err != nil {
-		metrics.Errors.WithLabelValues("db").Inc()
+		InternalErrors.WithLabelValues(labelAreaDB).Inc()
 		l.Warn("could not marshal rpc response", "err", err)
 		return fmt.Errorf("could not marshal rpc response: %w", err)
 	}
@@ -137,23 +138,31 @@ func (m *CallManager) finish(ctx context.Context, id int, rpcRes *jsonrpc.RPCRes
 	q.Error = callErr
 
 	if rpcRes.Error != nil || callErr != "" {
-		q.Status = models.QueryStatusFailed
+		q.Status = models.AsynqueryStatusFailed
 	} else {
-		q.Status = models.QueryStatusSucceeded
+		q.Status = models.AsynqueryStatusSucceeded
 	}
 
 	_, err = q.Update(m.db, boil.Infer())
 	if err != nil {
-		metrics.Errors.WithLabelValues("db").Inc()
+		InternalErrors.WithLabelValues(labelAreaDB).Inc()
 		l.Warn("error updating async query record", "err", err)
 		return fmt.Errorf("error updating async query record: %w", err)
 	}
+
 	return nil
 }
 
-func (m *CallManager) Start() (*belt.Belt, error) {
+// Start launches asynchronous query handlers and blocks until stopped.
+func (m *CallManager) Start(db boil.Executor) error {
+	m.db = db
+	registerServerMetrics()
 	m.belt.AddHandler(TaskAsyncQuery, m.HandleTask)
-	return m.belt, nil
+	return m.belt.StartHanders()
+}
+
+func (m *CallManager) Shutdown() {
+	m.belt.Shutdown()
 }
 
 func (m *CallManager) HandleTask(ctx context.Context, task *asynq.Task) error {
@@ -166,8 +175,15 @@ func (m *CallManager) HandleTask(ctx context.Context, task *asynq.Task) error {
 		m.logger.Warn("message unmarshal failed", "err", err)
 		return asynq.SkipRetry
 	}
-
 	log := logging.TracedLogger(m.logger, aq)
+	dbq, err := m.initQuery(aq)
+	if err != nil {
+		log.Warn("error initializing query", "err", err)
+		return err
+	}
+	aq.QueryID = dbq.ID
+
+	log = log.With("query_id", dbq.ID)
 
 	u, err := models.Users(
 		models.UserWhere.ID.EQ(aq.UserID),
@@ -188,34 +204,59 @@ func (m *CallManager) HandleTask(ctx context.Context, task *asynq.Task) error {
 	rc, _ := asynq.GetRetryCount(ctx)
 	lastTry := mr-rc == 0
 
-	metrics.QueriesSent.Inc()
+	QueriesSent.Inc()
 	if err != nil {
-		metrics.ProcessingErrors.WithLabelValues(metrics.LabelProcessingQuery).Inc()
-		metrics.QueriesFailed.Inc()
+		QueriesFailed.Inc()
 		log.Warn(sdkNetError.Error(), "err", err)
 		if lastTry {
-			m.finish(ctx, aq.QueryID, nil, err.Error())
+			resErrMsg := err.Error()
+			m.finishQuery(ctx, aq.QueryID, nil, err.Error())
+			if err != nil {
+				log.Warn("failed to finish query processing", "err", err)
+				resErrMsg = fmt.Sprintf("%s (also failed to finish query processing: %s)", resErrMsg, err.Error())
+			}
+			m.sendResult(aq, resErrMsg, nil)
 			return sdkNetError
 		}
 	}
 
 	if res.Error != nil {
-		metrics.ProcessingErrors.WithLabelValues(metrics.LabelProcessingQuery).Inc()
-		metrics.QueriesErrored.Inc()
-		log.Warn(sdkClientError.Error(), "err", res.Error.Message)
+		QueriesErrored.Inc()
+		log.Info(sdkClientError.Error(), "err", res.Error.Message)
 		if lastTry {
-			m.finish(ctx, aq.QueryID, res, res.Error.Message)
+			m.finishQuery(ctx, aq.QueryID, res, res.Error.Message)
+			if err != nil {
+				log.Warn("failed to finish query processing", "err", err)
+				return err
+			}
+			m.sendResult(aq, "", res)
 			return sdkClientError
 		}
 	}
-	metrics.QueriesCompleted.Inc()
+	QueriesCompleted.Inc()
 	log.Info("async query completed")
-	m.finish(ctx, aq.QueryID, res, "")
+	err = m.finishQuery(ctx, aq.QueryID, res, "")
+	if err != nil {
+		log.Warn("failed to finish query processing", "err", err)
+		return err
+	}
+	m.sendResult(aq, "", res)
 
 	return nil
 }
 
-func (h *TaskHandler) RetryDelay(n int, err error, t *asynq.Task) time.Duration {
+func (m *CallManager) sendResult(aq AsyncQuery, errorMessage string, res *jsonrpc.RPCResponse) {
+	if c, ok := m.respChans[aq.Request.Method]; ok {
+		m.logger.Debug("sending query result", "method", aq.Request.Method, "err", errorMessage)
+		c <- AsyncQueryResult{
+			Query:    aq,
+			Error:    errorMessage,
+			Response: res,
+		}
+	}
+}
+
+func (m *CallManager) RetryDelay(n int, err error, t *asynq.Task) time.Duration {
 	d := 10 * time.Second
 	if errors.Is(err, sdkNetError) {
 		return time.Duration(n) * d
