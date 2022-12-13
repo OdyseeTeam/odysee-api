@@ -1,4 +1,4 @@
-package geopublish
+package api
 
 import (
 	"fmt"
@@ -60,7 +60,7 @@ func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPre
 		WithTusConfig(tusCfg),
 		WithUploadPath(uploadPath),
 		WithDB(storage.DB),
-		WithQueue(fl),
+		WithRedisOpts(asynqRedisOpts),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize tus handler: %w", err)
@@ -68,7 +68,7 @@ func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPre
 
 	r := router
 	r.Use(tusHandler.Middleware)
-	r.HandleFunc("/", tusHandler.PostFile).Methods(http.MethodPost).Name("geopublish")
+	r.HandleFunc("/", tusHandler.PostFile).Methods(http.MethodPost).Name("forklift")
 	r.HandleFunc("/{id}", tusHandler.HeadFile).Methods(http.MethodHead)
 	r.HandleFunc("/{id}", tusHandler.PatchFile).Methods(http.MethodPatch)
 	r.HandleFunc("/{id}", tusHandler.DelFile).Methods(http.MethodDelete)

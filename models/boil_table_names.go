@@ -4,17 +4,21 @@
 package models
 
 var TableNames = struct {
-	GorpMigrations string
-	LbrynetServers string
-	Queries        string
-	QueryLog       string
-	Uploads        string
-	Users          string
+	Asynqueries     string
+	ForkliftUploads string
+	GorpMigrations  string
+	LbrynetServers  string
+	PublishQueries  string
+	QueryLog        string
+	Uploads         string
+	Users           string
 }{
-	GorpMigrations: "gorp_migrations",
-	LbrynetServers: "lbrynet_servers",
-	Queries:        "queries",
-	QueryLog:       "query_log",
-	Uploads:        "uploads",
-	Users:          "users",
+	Asynqueries:     "asynqueries",
+	ForkliftUploads: "forklift_uploads",
+	GorpMigrations:  "gorp_migrations",
+	LbrynetServers:  "lbrynet_servers",
+	PublishQueries:  "publish_queries",
+	QueryLog:        "query_log",
+	Uploads:         "uploads",
+	Users:           "users",
 }

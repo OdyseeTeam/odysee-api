@@ -23,7 +23,7 @@ type carriageSuite struct {
 	forkliftHelper *ForkliftTestHelper
 }
 
-func TestUploadHandlerSuite(t *testing.T) {
+func TestForkliftSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping testing in short mode")
 	}
@@ -31,7 +31,7 @@ func TestUploadHandlerSuite(t *testing.T) {
 }
 
 func (s *carriageSuite) TestProcessReel() {
-	c, err := NewUploadHandler(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
+	c, err := NewForklift(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
 	s.Require().NoError(err)
 
 	ts := time.Now().Format("2006-01-02-15-04-05-000")
@@ -88,7 +88,7 @@ func (s *carriageSuite) TestProcessReel() {
 }
 
 func (s *carriageSuite) TestProcessImage() {
-	c, err := NewUploadHandler(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
+	c, err := NewForklift(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
 	s.Require().NoError(err)
 
 	ts := time.Now().Format("2006-01-02-15-04-05-000")
@@ -142,7 +142,7 @@ func (s *carriageSuite) TestProcessImage() {
 }
 
 func (s *carriageSuite) TestProcessDoc() {
-	c, err := NewUploadHandler(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
+	c, err := NewForklift(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
 	s.Require().NoError(err)
 	ts := time.Now().Format("2006-01-02-15-04-05-000")
 	claimName := fmt.Sprintf("publishv3testdoc-%s", ts)

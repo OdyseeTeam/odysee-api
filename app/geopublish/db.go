@@ -1,18 +1,17 @@
 package geopublish
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/OdyseeTeam/odysee-api/app/geopublish/forklift"
 	"github.com/OdyseeTeam/odysee-api/app/geopublish/metrics"
+	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/models"
-	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 
-	tus "github.com/tus/tusd/pkg/handler"
+	"github.com/tus/tusd/pkg/handler"
 	"github.com/volatiletech/null"
 	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/volatiletech/sqlboiler/queries/qm"
@@ -22,61 +21,80 @@ import (
 type UploadsDB struct {
 	handler *Handler
 	db      boil.Executor
-	logger  logging.KVLogger
+	queue   *forklift.Forklift
+	logger  monitor.ModuleLogger
 }
 
-type markFunc func(ctx context.Context, hook tus.HookEvent, user *models.User) error
+type markFunc func(hook handler.HookEvent, user *models.User) error
 
-func (d *UploadsDB) guardUser(ctx context.Context, mf markFunc, exec boil.Executor, hook tus.HookEvent) error {
+func (d *UploadsDB) guardUser(mf markFunc, exec boil.Executor, hook handler.HookEvent) error {
 	user, err := d.handler.getUserFromRequest(&http.Request{
 		Header: hook.HTTPRequest.Header,
 	})
 	if err != nil {
 		return err
 	}
-	return mf(ctx, hook, user)
+	return mf(hook, user)
 }
 
 func (d *UploadsDB) listenToHandler(upHandler *Handler) {
 	d.handler = upHandler
-	log := d.logger
+	log := d.logger.Log()
+
+	go func() {
+		for {
+			log.Debug("getting upload result from queue")
+			res, err := d.queue.GetUploadProcessResult()
+			if err != nil {
+				log.Errorf("error getting result: %s", err)
+				continue
+			}
+			log.Debugf("got upload result: %+v", res)
+			err = d.saveUploadProcessingResult(res.UploadID, res.Response, res.Error)
+			if err != nil {
+				log.Errorf("error saving query result: %s", err)
+			} else {
+				metrics.UploadsProcessed.Inc()
+				log.Infof("upload %s processed", res.UploadID)
+			}
+		}
+	}()
 
 	go func() {
 		for {
 			var (
-				gerr  error
-				ename string
-				e     tus.HookEvent
+				gerr error
+				en   string
+				e    handler.HookEvent
 			)
-			l := d.logger.With("upload_id", e.Upload.ID)
-			ctx := logging.AddToContext(context.Background(), l)
-			log.Debug("listening to handler")
+			log.Infof("listening to handler")
 			select {
 			case e = <-upHandler.CreatedUploads:
 				metrics.UploadsCreated.Inc()
-				ename = "CreatedUploads"
-				err := d.guardUser(ctx, d.markUploadCreated, d.db, e)
+				en = "CreatedUploads"
+				err := d.guardUser(d.markUploadCreated, d.db, e)
 				if err != nil {
 					gerr = fmt.Errorf("error handling created uploads signal: %w", err)
 				}
 			case e = <-upHandler.UploadProgress:
-				ename = "UploadProgress"
-				err := d.guardUser(ctx, d.markUploadProgress, d.db, e)
+				en = "UploadProgress"
+				err := d.guardUser(d.markUploadProgress, d.db, e)
 				if err != nil {
 					gerr = fmt.Errorf("error handling upload progress signal: %w", err)
 				}
 			case e = <-upHandler.TerminatedUploads:
 				metrics.UploadsCanceled.Inc()
-				ename = "TerminatedUploads"
-				err := d.guardUser(ctx, d.markUploadTerminated, d.db, e)
+				en = "TerminatedUploads"
+				err := d.guardUser(d.markUploadTerminated, d.db, e)
 				if err != nil {
 					gerr = fmt.Errorf("error handling terminated upload signal: %w", err)
 				}
 			}
 			if gerr != nil {
-				l.Warn("upload signal error", "err", gerr)
+				metrics.UploadsDBErrors.Inc()
+				log.Error(gerr)
 			} else {
-				l.Debug("handled upload signal", "event_name", ename)
+				log.Infof("handled %s signal, upload id=%s", en, e.Upload.ID)
 			}
 		}
 
@@ -86,7 +104,7 @@ func (d *UploadsDB) listenToHandler(upHandler *Handler) {
 func (d *UploadsDB) get(id string, userID int) (*models.Upload, error) {
 	mods := []qm.QueryMod{
 		models.UploadWhere.ID.EQ(id),
-		qm.Load(models.UploadRels.Query),
+		qm.Load(models.UploadRels.PublishQuery),
 	}
 	if userID > 0 {
 		mods = append(mods, models.UploadWhere.UserID.EQ(null.IntFrom(userID)))
@@ -94,7 +112,17 @@ func (d *UploadsDB) get(id string, userID int) (*models.Upload, error) {
 	return models.Uploads(mods...).One(d.db)
 }
 
-func (d *UploadsDB) markUploadCreated(ctx context.Context, hook tus.HookEvent, user *models.User) error {
+func (d *UploadsDB) getQuery(id string) (*models.PublishQuery, error) {
+	r, err := models.PublishQueries(
+		models.PublishQueryWhere.UploadID.EQ(id),
+	).One(d.db)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get query with id=%s: %w", id, err)
+	}
+	return r, nil
+}
+
+func (d *UploadsDB) markUploadCreated(hook handler.HookEvent, user *models.User) error {
 	upload := models.Upload{
 		ID:     hook.Upload.ID,
 		UserID: null.IntFrom(user.ID),
@@ -104,7 +132,7 @@ func (d *UploadsDB) markUploadCreated(ctx context.Context, hook tus.HookEvent, u
 	return upload.Insert(d.db, boil.Infer())
 }
 
-func (d *UploadsDB) markUploadProgress(ctx context.Context, hook tus.HookEvent, user *models.User) error {
+func (d *UploadsDB) markUploadProgress(hook handler.HookEvent, user *models.User) error {
 	u, err := d.get(hook.Upload.ID, user.ID)
 	if err != nil {
 		return err
@@ -114,30 +142,56 @@ func (d *UploadsDB) markUploadProgress(ctx context.Context, hook tus.HookEvent, 
 	u.UpdatedAt = null.TimeFrom(time.Now())
 	_, err = u.Update(d.db, boil.Infer())
 	if err != nil {
-		metrics.Errors.WithLabelValues("db").Inc()
 		return err
 	}
 	return nil
 }
 
-func (d *UploadsDB) startProcessingUpload(ctx context.Context, id string, user *models.User, path string) (*models.Upload, error) {
+func (d *UploadsDB) processUpload(id string, user *models.User, path string, request *jsonrpc.RPCRequest) error {
 	up, err := d.get(id, user.ID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	up.Status = models.UploadStatusReceived
 	up.UpdatedAt = null.TimeFrom(time.Now())
 	up.Path = path
 	_, err = up.Update(d.db, boil.Infer())
 	if err != nil {
-		metrics.Errors.WithLabelValues("db").Inc()
-		return nil, err
+		return err
 	}
 
-	return up, nil
+	req := null.JSON{}
+	if err := req.Marshal(request); err != nil {
+		return err
+	}
+	uq := &models.PublishQuery{
+		UpdatedAt: null.TimeFrom(time.Now()),
+		Status:    models.PublishQueryStatusReceived,
+		Query:     req,
+	}
+
+	err = up.SetPublishQuery(d.db, true, uq)
+	if err != nil {
+		return err
+	}
+
+	err = d.queue.EnqueueUploadProcessTask(forklift.UploadProcessPayload{
+		UploadID: up.ID,
+		Path:     up.Path,
+		UserID:   up.UserID.Int,
+		Request:  request,
+	})
+	if err != nil {
+		dbErr := d.markUploadFailed(up, err.Error())
+		if dbErr != nil {
+			return fmt.Errorf("enqueuing failed: %w (db update failed as well: %s)", err, dbErr)
+		}
+		return fmt.Errorf("enqueuing failed: %w", err)
+	}
+	return nil
 }
 
-func (d *UploadsDB) markUploadTerminated(ctx context.Context, hook tus.HookEvent, user *models.User) error {
+func (d *UploadsDB) markUploadTerminated(hook handler.HookEvent, user *models.User) error {
 	u, err := d.get(hook.Upload.ID, user.ID)
 	if err != nil {
 		return err
@@ -146,60 +200,50 @@ func (d *UploadsDB) markUploadTerminated(ctx context.Context, hook tus.HookEvent
 	u.UpdatedAt = null.TimeFrom(time.Now())
 	_, err = u.Update(d.db, boil.Infer())
 	if err != nil {
-		metrics.Errors.WithLabelValues("db").Inc()
 		return err
 	}
 	return nil
 }
 
-func (d *UploadsDB) markUploadFailed(ctx context.Context, u *models.Upload, errMessage string) error {
-	u.Error = errMessage
+func (d *UploadsDB) markUploadFailed(u *models.Upload, e string) error {
+	u.Error = e
 	u.Status = models.UploadStatusFailed
 	u.UpdatedAt = null.TimeFrom(time.Now())
 	_, err := u.Update(d.db, boil.Infer())
 	if err != nil {
-		metrics.Errors.WithLabelValues("db").Inc()
 		return err
 	}
 	return nil
 }
 
-func (d *UploadsDB) markUploadFinished(ctx context.Context, u *models.Upload) error {
+func (d *UploadsDB) markUploadFinished(u *models.Upload) error {
 	u.Status = models.UploadStatusFinished
 	u.UpdatedAt = null.TimeFrom(time.Now())
 	_, err := u.Update(d.db, boil.Infer())
 	if err != nil {
-		metrics.Errors.WithLabelValues("db").Inc()
 		return err
 	}
 	err = os.RemoveAll(u.Path)
 	if err != nil {
-		metrics.Errors.WithLabelValues("storage").Inc()
 		return err
 	}
 	return nil
 }
 
-func (d *UploadsDB) finishUpload(ctx context.Context, id string, rpcRes *jsonrpc.RPCResponse, callErr string) error {
-	l := logging.FromContext(ctx)
+func (d *UploadsDB) saveUploadProcessingResult(id string, rpcRes *jsonrpc.RPCResponse, callErr string) error {
 	up, err := d.get(id, 0)
 	if err != nil {
-		l.Warn("error getting upload record", "err", err)
-		metrics.Errors.WithLabelValues("db").Inc()
-		return fmt.Errorf("error getting upload record: %w", err)
+		return err
 	}
 	if rpcRes == nil {
-		return d.markUploadFailed(ctx, up, callErr)
+		return d.markUploadFailed(up, callErr)
 	}
-	q := up.R.Query
-	if q == nil {
-		l.Warn("error getting upload query", "err", err)
-		metrics.Errors.WithLabelValues("db").Inc()
-		return errors.New("upload record is missing query")
+	q, err := d.getQuery(id)
+	if err != nil {
+		return err
 	}
 	resp := null.JSON{}
 	if err := resp.Marshal(rpcRes); err != nil {
-		metrics.Errors.WithLabelValues("db").Inc()
 		return err
 	}
 	q.UpdatedAt = null.TimeFrom(time.Now())
@@ -207,16 +251,15 @@ func (d *UploadsDB) finishUpload(ctx context.Context, id string, rpcRes *jsonrpc
 	q.Error = callErr
 
 	if rpcRes.Error != nil || callErr != "" {
-		q.Status = models.QueryStatusFailed
+		q.Status = models.PublishQueryStatusFailed
 	} else {
-		q.Status = models.QueryStatusSucceeded
+		q.Status = models.PublishQueryStatusSucceeded
 	}
-	d.markUploadFinished(ctx, up)
+	d.markUploadFinished(up)
 
 	_, err = q.Update(d.db, boil.Infer())
 	if err != nil {
-		metrics.Errors.WithLabelValues("db").Inc()
-		return fmt.Errorf("error updating upload record: %w", err)
+		return err
 	}
 	return nil
 }

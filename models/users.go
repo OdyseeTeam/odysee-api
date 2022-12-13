@@ -98,20 +98,23 @@ var UserWhere = struct {
 
 // UserRels is where relationship names are stored.
 var UserRels = struct {
-	LbrynetServer string
-	Queries       string
-	Uploads       string
+	LbrynetServer   string
+	Asynqueries     string
+	ForkliftUploads string
+	Uploads         string
 }{
-	LbrynetServer: "LbrynetServer",
-	Queries:       "Queries",
-	Uploads:       "Uploads",
+	LbrynetServer:   "LbrynetServer",
+	Asynqueries:     "Asynqueries",
+	ForkliftUploads: "ForkliftUploads",
+	Uploads:         "Uploads",
 }
 
 // userR is where relationships are stored.
 type userR struct {
-	LbrynetServer *LbrynetServer
-	Queries       QuerySlice
-	Uploads       UploadSlice
+	LbrynetServer   *LbrynetServer
+	Asynqueries     AsynquerySlice
+	ForkliftUploads ForkliftUploadSlice
+	Uploads         UploadSlice
 }
 
 // NewStruct creates a new relationship struct
@@ -402,22 +405,43 @@ func (o *User) LbrynetServer(mods ...qm.QueryMod) lbrynetServerQuery {
 	return query
 }
 
-// Queries retrieves all the query's Queries with an executor.
-func (o *User) Queries(mods ...qm.QueryMod) queryQuery {
+// Asynqueries retrieves all the asynquery's Asynqueries with an executor.
+func (o *User) Asynqueries(mods ...qm.QueryMod) asynqueryQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"queries\".\"user_id\"=?", o.ID),
+		qm.Where("\"asynqueries\".\"user_id\"=?", o.ID),
 	)
 
-	query := Queries(queryMods...)
-	queries.SetFrom(query.Query, "\"queries\"")
+	query := Asynqueries(queryMods...)
+	queries.SetFrom(query.Query, "\"asynqueries\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"queries\".*"})
+		queries.SetSelect(query.Query, []string{"\"asynqueries\".*"})
+	}
+
+	return query
+}
+
+// ForkliftUploads retrieves all the forklift_upload's ForkliftUploads with an executor.
+func (o *User) ForkliftUploads(mods ...qm.QueryMod) forkliftUploadQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"forklift_uploads\".\"user_id\"=?", o.ID),
+	)
+
+	query := ForkliftUploads(queryMods...)
+	queries.SetFrom(query.Query, "\"forklift_uploads\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"forklift_uploads\".*"})
 	}
 
 	return query
@@ -549,9 +573,9 @@ func (userL) LoadLbrynetServer(e boil.Executor, singular bool, maybeUser interfa
 	return nil
 }
 
-// LoadQueries allows an eager lookup of values, cached into the
+// LoadAsynqueries allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadQueries(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+func (userL) LoadAsynqueries(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
 	var slice []*User
 	var object *User
 
@@ -588,29 +612,29 @@ func (userL) LoadQueries(e boil.Executor, singular bool, maybeUser interface{}, 
 		return nil
 	}
 
-	query := NewQuery(qm.From(`queries`), qm.WhereIn(`user_id in ?`, args...))
+	query := NewQuery(qm.From(`asynqueries`), qm.WhereIn(`user_id in ?`, args...))
 	if mods != nil {
 		mods.Apply(query)
 	}
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load queries")
+		return errors.Wrap(err, "failed to eager load asynqueries")
 	}
 
-	var resultSlice []*Query
+	var resultSlice []*Asynquery
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice queries")
+		return errors.Wrap(err, "failed to bind eager loaded slice asynqueries")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on queries")
+		return errors.Wrap(err, "failed to close results in eager load on asynqueries")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for queries")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for asynqueries")
 	}
 
-	if len(queryAfterSelectHooks) != 0 {
+	if len(asynqueryAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -618,10 +642,10 @@ func (userL) LoadQueries(e boil.Executor, singular bool, maybeUser interface{}, 
 		}
 	}
 	if singular {
-		object.R.Queries = resultSlice
+		object.R.Asynqueries = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &queryR{}
+				foreign.R = &asynqueryR{}
 			}
 			foreign.R.User = object
 		}
@@ -631,9 +655,104 @@ func (userL) LoadQueries(e boil.Executor, singular bool, maybeUser interface{}, 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if queries.Equal(local.ID, foreign.UserID) {
-				local.R.Queries = append(local.R.Queries, foreign)
+				local.R.Asynqueries = append(local.R.Asynqueries, foreign)
 				if foreign.R == nil {
-					foreign.R = &queryR{}
+					foreign.R = &asynqueryR{}
+				}
+				foreign.R.User = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadForkliftUploads allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadForkliftUploads(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(qm.From(`forklift_uploads`), qm.WhereIn(`user_id in ?`, args...))
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load forklift_uploads")
+	}
+
+	var resultSlice []*ForkliftUpload
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice forklift_uploads")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on forklift_uploads")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for forklift_uploads")
+	}
+
+	if len(forkliftUploadAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.ForkliftUploads = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &forkliftUploadR{}
+			}
+			foreign.R.User = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.UserID) {
+				local.R.ForkliftUploads = append(local.R.ForkliftUploads, foreign)
+				if foreign.R == nil {
+					foreign.R = &forkliftUploadR{}
 				}
 				foreign.R.User = local
 				break
@@ -833,20 +952,20 @@ func (o *User) RemoveLbrynetServer(exec boil.Executor, related *LbrynetServer) e
 	return nil
 }
 
-// AddQueriesG adds the given related objects to the existing relationships
+// AddAsynqueriesG adds the given related objects to the existing relationships
 // of the user, optionally inserting them as new records.
-// Appends related to o.R.Queries.
+// Appends related to o.R.Asynqueries.
 // Sets related.R.User appropriately.
 // Uses the global database handle.
-func (o *User) AddQueriesG(insert bool, related ...*Query) error {
-	return o.AddQueries(boil.GetDB(), insert, related...)
+func (o *User) AddAsynqueriesG(insert bool, related ...*Asynquery) error {
+	return o.AddAsynqueries(boil.GetDB(), insert, related...)
 }
 
-// AddQueries adds the given related objects to the existing relationships
+// AddAsynqueries adds the given related objects to the existing relationships
 // of the user, optionally inserting them as new records.
-// Appends related to o.R.Queries.
+// Appends related to o.R.Asynqueries.
 // Sets related.R.User appropriately.
-func (o *User) AddQueries(exec boil.Executor, insert bool, related ...*Query) error {
+func (o *User) AddAsynqueries(exec boil.Executor, insert bool, related ...*Asynquery) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -856,9 +975,9 @@ func (o *User) AddQueries(exec boil.Executor, insert bool, related ...*Query) er
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"queries\" SET %s WHERE %s",
+				"UPDATE \"asynqueries\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
-				strmangle.WhereClause("\"", "\"", 2, queryPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, asynqueryPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -877,15 +996,15 @@ func (o *User) AddQueries(exec boil.Executor, insert bool, related ...*Query) er
 
 	if o.R == nil {
 		o.R = &userR{
-			Queries: related,
+			Asynqueries: related,
 		}
 	} else {
-		o.R.Queries = append(o.R.Queries, related...)
+		o.R.Asynqueries = append(o.R.Asynqueries, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &queryR{
+			rel.R = &asynqueryR{
 				User: o,
 			}
 		} else {
@@ -895,25 +1014,25 @@ func (o *User) AddQueries(exec boil.Executor, insert bool, related ...*Query) er
 	return nil
 }
 
-// SetQueriesG removes all previously related items of the
+// SetAsynqueriesG removes all previously related items of the
 // user replacing them completely with the passed
 // in related items, optionally inserting them as new records.
-// Sets o.R.User's Queries accordingly.
-// Replaces o.R.Queries with related.
-// Sets related.R.User's Queries accordingly.
+// Sets o.R.User's Asynqueries accordingly.
+// Replaces o.R.Asynqueries with related.
+// Sets related.R.User's Asynqueries accordingly.
 // Uses the global database handle.
-func (o *User) SetQueriesG(insert bool, related ...*Query) error {
-	return o.SetQueries(boil.GetDB(), insert, related...)
+func (o *User) SetAsynqueriesG(insert bool, related ...*Asynquery) error {
+	return o.SetAsynqueries(boil.GetDB(), insert, related...)
 }
 
-// SetQueries removes all previously related items of the
+// SetAsynqueries removes all previously related items of the
 // user replacing them completely with the passed
 // in related items, optionally inserting them as new records.
-// Sets o.R.User's Queries accordingly.
-// Replaces o.R.Queries with related.
-// Sets related.R.User's Queries accordingly.
-func (o *User) SetQueries(exec boil.Executor, insert bool, related ...*Query) error {
-	query := "update \"queries\" set \"user_id\" = null where \"user_id\" = $1"
+// Sets o.R.User's Asynqueries accordingly.
+// Replaces o.R.Asynqueries with related.
+// Sets related.R.User's Asynqueries accordingly.
+func (o *User) SetAsynqueries(exec boil.Executor, insert bool, related ...*Asynquery) error {
+	query := "update \"asynqueries\" set \"user_id\" = null where \"user_id\" = $1"
 	values := []interface{}{o.ID}
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, query)
@@ -926,7 +1045,7 @@ func (o *User) SetQueries(exec boil.Executor, insert bool, related ...*Query) er
 	}
 
 	if o.R != nil {
-		for _, rel := range o.R.Queries {
+		for _, rel := range o.R.Asynqueries {
 			queries.SetScanner(&rel.UserID, nil)
 			if rel.R == nil {
 				continue
@@ -935,23 +1054,23 @@ func (o *User) SetQueries(exec boil.Executor, insert bool, related ...*Query) er
 			rel.R.User = nil
 		}
 
-		o.R.Queries = nil
+		o.R.Asynqueries = nil
 	}
-	return o.AddQueries(exec, insert, related...)
+	return o.AddAsynqueries(exec, insert, related...)
 }
 
-// RemoveQueriesG relationships from objects passed in.
-// Removes related items from R.Queries (uses pointer comparison, removal does not keep order)
+// RemoveAsynqueriesG relationships from objects passed in.
+// Removes related items from R.Asynqueries (uses pointer comparison, removal does not keep order)
 // Sets related.R.User.
 // Uses the global database handle.
-func (o *User) RemoveQueriesG(related ...*Query) error {
-	return o.RemoveQueries(boil.GetDB(), related...)
+func (o *User) RemoveAsynqueriesG(related ...*Asynquery) error {
+	return o.RemoveAsynqueries(boil.GetDB(), related...)
 }
 
-// RemoveQueries relationships from objects passed in.
-// Removes related items from R.Queries (uses pointer comparison, removal does not keep order)
+// RemoveAsynqueries relationships from objects passed in.
+// Removes related items from R.Asynqueries (uses pointer comparison, removal does not keep order)
 // Sets related.R.User.
-func (o *User) RemoveQueries(exec boil.Executor, related ...*Query) error {
+func (o *User) RemoveAsynqueries(exec boil.Executor, related ...*Asynquery) error {
 	var err error
 	for _, rel := range related {
 		queries.SetScanner(&rel.UserID, nil)
@@ -967,16 +1086,167 @@ func (o *User) RemoveQueries(exec boil.Executor, related ...*Query) error {
 	}
 
 	for _, rel := range related {
-		for i, ri := range o.R.Queries {
+		for i, ri := range o.R.Asynqueries {
 			if rel != ri {
 				continue
 			}
 
-			ln := len(o.R.Queries)
+			ln := len(o.R.Asynqueries)
 			if ln > 1 && i < ln-1 {
-				o.R.Queries[i] = o.R.Queries[ln-1]
+				o.R.Asynqueries[i] = o.R.Asynqueries[ln-1]
 			}
-			o.R.Queries = o.R.Queries[:ln-1]
+			o.R.Asynqueries = o.R.Asynqueries[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+// AddForkliftUploadsG adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.ForkliftUploads.
+// Sets related.R.User appropriately.
+// Uses the global database handle.
+func (o *User) AddForkliftUploadsG(insert bool, related ...*ForkliftUpload) error {
+	return o.AddForkliftUploads(boil.GetDB(), insert, related...)
+}
+
+// AddForkliftUploads adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.ForkliftUploads.
+// Sets related.R.User appropriately.
+func (o *User) AddForkliftUploads(exec boil.Executor, insert bool, related ...*ForkliftUpload) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.UserID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"forklift_uploads\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
+				strmangle.WhereClause("\"", "\"", 2, forkliftUploadPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.UserID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			ForkliftUploads: related,
+		}
+	} else {
+		o.R.ForkliftUploads = append(o.R.ForkliftUploads, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &forkliftUploadR{
+				User: o,
+			}
+		} else {
+			rel.R.User = o
+		}
+	}
+	return nil
+}
+
+// SetForkliftUploadsG removes all previously related items of the
+// user replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.User's ForkliftUploads accordingly.
+// Replaces o.R.ForkliftUploads with related.
+// Sets related.R.User's ForkliftUploads accordingly.
+// Uses the global database handle.
+func (o *User) SetForkliftUploadsG(insert bool, related ...*ForkliftUpload) error {
+	return o.SetForkliftUploads(boil.GetDB(), insert, related...)
+}
+
+// SetForkliftUploads removes all previously related items of the
+// user replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.User's ForkliftUploads accordingly.
+// Replaces o.R.ForkliftUploads with related.
+// Sets related.R.User's ForkliftUploads accordingly.
+func (o *User) SetForkliftUploads(exec boil.Executor, insert bool, related ...*ForkliftUpload) error {
+	query := "update \"forklift_uploads\" set \"user_id\" = null where \"user_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.ForkliftUploads {
+			queries.SetScanner(&rel.UserID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.User = nil
+		}
+
+		o.R.ForkliftUploads = nil
+	}
+	return o.AddForkliftUploads(exec, insert, related...)
+}
+
+// RemoveForkliftUploadsG relationships from objects passed in.
+// Removes related items from R.ForkliftUploads (uses pointer comparison, removal does not keep order)
+// Sets related.R.User.
+// Uses the global database handle.
+func (o *User) RemoveForkliftUploadsG(related ...*ForkliftUpload) error {
+	return o.RemoveForkliftUploads(boil.GetDB(), related...)
+}
+
+// RemoveForkliftUploads relationships from objects passed in.
+// Removes related items from R.ForkliftUploads (uses pointer comparison, removal does not keep order)
+// Sets related.R.User.
+func (o *User) RemoveForkliftUploads(exec boil.Executor, related ...*ForkliftUpload) error {
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.UserID, nil)
+		if rel.R != nil {
+			rel.R.User = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("user_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.ForkliftUploads {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.ForkliftUploads)
+			if ln > 1 && i < ln-1 {
+				o.R.ForkliftUploads[i] = o.R.ForkliftUploads[ln-1]
+			}
+			o.R.ForkliftUploads = o.R.ForkliftUploads[:ln-1]
 			break
 		}
 	}

@@ -87,7 +87,7 @@ func (s *e2eSuite) TestPublishV3() {
 
 	Wait(s.T(), "upload settling into the database", 5*time.Second, 1000*time.Millisecond, func() error {
 		upload, err = models.Uploads(
-			models.UploadWhere.ID.EQ(uploadID), qm.Load(models.UploadRels.Query),
+			models.UploadWhere.ID.EQ(uploadID), qm.Load(models.UploadRels.PublishQuery),
 		).One(s.userHelper.DB)
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrWaitContinue
@@ -113,7 +113,7 @@ func (s *e2eSuite) TestPublishV3() {
 	}).Run(s.router, s.T())
 
 	Wait(s.T(), "upload settling into the database", 5*time.Second, 1000*time.Millisecond, func() error {
-		upload, err = models.Uploads(models.UploadWhere.ID.EQ(uploadID), qm.Load(models.UploadRels.Query)).One(s.userHelper.DB)
+		upload, err = models.Uploads(models.UploadWhere.ID.EQ(uploadID), qm.Load(models.UploadRels.PublishQuery)).One(s.userHelper.DB)
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrWaitContinue
 		} else if err != nil {
@@ -163,14 +163,14 @@ func (s *e2eSuite) TestPublishV3() {
 	}).Run(s.router, s.T())
 
 	Wait(s.T(), "upload postprocessing", 15*time.Second, 1000*time.Millisecond, func() error {
-		upload, err = models.Uploads(models.UploadWhere.ID.EQ(uploadID), qm.Load(models.UploadRels.Query)).One(s.userHelper.DB)
+		upload, err = models.Uploads(models.UploadWhere.ID.EQ(uploadID), qm.Load(models.UploadRels.PublishQuery)).One(s.userHelper.DB)
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrWaitContinue
 		} else if err != nil {
 			return err
 		}
 		if upload.Status == models.UploadStatusFinished {
-			s.Equal(models.QueryStatusSucceeded, upload.R.Query.Status)
+			s.Equal(models.PublishQueryStatusSucceeded, upload.R.PublishQuery.Status)
 			return nil
 		}
 		return ErrWaitContinue

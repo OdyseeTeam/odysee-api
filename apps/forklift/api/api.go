@@ -1,4 +1,4 @@
-package geopublish
+package api
 
 import (
 	"context"
@@ -11,26 +11,24 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/OdyseeTeam/odysee-api/app/geopublish/forklift"
 	"github.com/OdyseeTeam/odysee-api/app/proxy"
 	"github.com/OdyseeTeam/odysee-api/app/query"
-	"github.com/OdyseeTeam/odysee-api/app/query/cache"
 	"github.com/OdyseeTeam/odysee-api/app/rpcerrors"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
+	"github.com/OdyseeTeam/odysee-api/apps/forklift"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
-	"github.com/OdyseeTeam/odysee-api/internal/metrics"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/models"
+	"github.com/OdyseeTeam/odysee-api/pkg/belt"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+	"github.com/hibiken/asynq"
 
 	"github.com/gorilla/mux"
 	werrors "github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	tusd "github.com/tus/tusd/pkg/handler"
 	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/ybbus/jsonrpc"
 )
-
-var logger = monitor.NewModuleLogger("geopublish")
 
 const (
 	// fileFieldName refers to the POST field containing file upload
@@ -44,19 +42,18 @@ const (
 	module           = "geopublish"
 )
 
+var TusHeaders = []string{
+	"Http-Method-Override",
+	"Upload-Length",
+	"Upload-Offset",
+	"Tus-Resumable",
+	"Upload-Metadata",
+	"Upload-Defer-Length",
+	"Upload-Concat",
+}
+
 type UserGetter interface {
 	FromRequest(*http.Request) (*models.User, error)
-}
-
-type preparedQuery struct {
-	request  *jsonrpc.RPCRequest
-	fileInfo tusd.FileInfo
-}
-
-type completedQuery struct {
-	response *jsonrpc.RPCResponse
-	err      error
-	fileInfo tusd.FileInfo
 }
 
 // Handler handle media publishing on odysee-api, it implements TUS
@@ -67,10 +64,8 @@ type Handler struct {
 
 	options  *HandlerOptions
 	composer *tusd.StoreComposer
-	logger   monitor.ModuleLogger
 	udb      *UploadsDB
-
-	preparedSDKQueries chan preparedQuery
+	belt     *belt.Belt
 }
 
 type HandlerOptions struct {
@@ -79,14 +74,9 @@ type HandlerOptions struct {
 	uploadPath string
 	tusConfig  *tusd.Config
 	db         boil.Executor
-	queue      *forklift.Forklift
+	redisOpts  asynq.RedisConnOpt
+	logger     logging.KVLogger
 }
-
-// func WithLogger(logger logging.KVLogger) func(options *HandlerOptions) {
-// 	return func(options *HandlerOptions) {
-// 		options.Logger = logger
-// 	}
-// }
 
 // CanHandle checks if http.Request contains POSTed data in an accepted format.
 // Supposed to be used in gorilla mux router MatcherFunc.
@@ -117,9 +107,15 @@ func WithDB(db boil.Executor) func(options *HandlerOptions) {
 	}
 }
 
-func WithQueue(queue *forklift.Forklift) func(options *HandlerOptions) {
+func WithRedisOpts(redisOpts asynq.RedisConnOpt) func(options *HandlerOptions) {
 	return func(options *HandlerOptions) {
-		options.queue = queue
+		options.redisOpts = redisOpts
+	}
+}
+
+func WithLogger(logger logging.KVLogger) func(options *HandlerOptions) {
+	return func(options *HandlerOptions) {
+		options.logger = logger
 	}
 }
 
@@ -135,6 +131,7 @@ func NewHandler(optionFuncs ...func(*HandlerOptions)) (*Handler, error) {
 		// Logger: logging.NoopKVLogger{},
 		uploadPath: "./uploads",
 		tusConfig:  &tusd.Config{},
+		logger:     logging.NoopKVLogger{},
 	}
 	for _, optionFunc := range optionFuncs {
 		optionFunc(options)
@@ -157,14 +154,18 @@ func NewHandler(optionFuncs ...func(*HandlerOptions)) (*Handler, error) {
 	// via X-Forwarded-Proto
 	cfg.RespectForwardedHeaders = true
 
-	h.logger = monitor.NewModuleLogger(module)
-	udb := UploadsDB{logger: h.logger, db: options.db, queue: options.queue}
+	udb := UploadsDB{logger: options.logger, db: options.db}
 	udb.listenToHandler(h)
 	cfg.NotifyCreatedUploads = true
 	cfg.NotifyTerminatedUploads = true
 	cfg.NotifyUploadProgress = true
-
 	h.udb = &udb
+
+	b, err := belt.New(options.redisOpts, belt.WithLogger(options.logger))
+	if err != nil {
+		return nil, err
+	}
+	h.belt = b
 
 	baseHandler, err := tusd.NewUnroutedHandler(*cfg)
 	if err != nil {
@@ -179,37 +180,35 @@ func NewHandler(optionFuncs ...func(*HandlerOptions)) (*Handler, error) {
 
 // Notify checks if the file upload is complete and sends jSON RPC request to lbrynet server.
 func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
-	log := h.logger.WithFields(
-		logrus.Fields{
-			"method_handler": "Notify",
-		},
-	)
+	l := h.options.logger.With("method_handler", "Notify")
 
 	user, err := h.getUserFromRequest(r)
 	if authErr := proxy.GetAuthError(user, err); authErr != nil {
-		log.WithError(authErr).Error("failed to authorize user")
-		observeFailure(metrics.GetDuration(r), metrics.FailureKindAuth)
+		l.Warn("user auth failed", "err", authErr)
+		metricErrors.WithLabelValues(areaAuth).Inc()
 		rpcerrors.Write(w, authErr)
 		return
 	}
-	log = log.WithField("user_id", user.ID)
+	l = l.With("user_id", user.ID)
 
 	if sdkrouter.GetSDKAddress(user) == "" {
-		log.Errorf("user %d does not have sdk address assigned", user.ID)
-		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
-		rpcerrors.Write(w, errors.Err("user does not have sdk address assigned"))
+		l.Warn("no sdk assigned")
+		metricErrors.WithLabelValues("sdk_address").Inc()
+		rpcerrors.Write(w, errors.Err("user does not have sdk assigned"))
 		return
 	}
 
 	params := mux.Vars(r)
 	id := params["id"]
 	if id == "" {
-		err := fmt.Errorf("file id is required")
-		log.Error(err)
-		observeFailure(metrics.GetDuration(r), metrics.FailureKindClient)
+		err := fmt.Errorf("upload id is required")
+		l.Warn("param parse error", "err", err)
+		metricErrors.WithLabelValues(areaInput).Inc()
 		rpcerrors.Write(w, rpcerrors.NewInvalidParamsError(err))
 		return
 	}
+
+	l = l.With("upload_id", id)
 
 	lock, err := h.lockUpload(id)
 	if err != nil {
@@ -217,8 +216,8 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 			"upload_id": id,
 			"user_id":   strconv.Itoa(user.ID),
 		})
-		log.WithError(err).Error("failed to acquire file lock")
-		observeFailure(metrics.GetDuration(r), metrics.PublishLockFailure)
+		l.Warn("failed to acquire file lock", "err", err)
+		metricErrors.WithLabelValues(areaObjectLock).Inc()
 		rpcerrors.Write(w, err)
 		return
 	}
@@ -226,16 +225,16 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 
 	upload, err := h.composer.Core.GetUpload(r.Context(), id)
 	if err != nil {
-		log.WithError(err).Error("failed to get upload object")
-		observeFailure(metrics.GetDuration(r), metrics.PublishUploadObjectFailure)
+		l.Warn("failed to get upload object", "err", err)
+		metricErrors.WithLabelValues(areaObjectGet).Inc()
 		rpcerrors.Write(w, err)
 		return
 	}
 
 	info, err := upload.GetInfo(r.Context())
 	if err != nil {
-		log.WithError(err).Error("failed to get upload info")
-		observeFailure(metrics.GetDuration(r), metrics.PublishUploadObjectFailure)
+		l.Warn("failed to get upload info", "err", err)
+		metricErrors.WithLabelValues(areaObjectMeta).Inc()
 		rpcerrors.Write(w, err)
 		return
 	}
@@ -243,9 +242,9 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	// NOTE: don't use info.IsFinal as it's not reflect the upload
 	// completion at all
 	if info.Offset != info.Size { // upload is not yet completed
-		err := fmt.Errorf("upload is still in process")
-		log.WithError(err).Error("upload is still in process")
-		observeFailure(metrics.GetDuration(r), metrics.PublishUploadIncomplete)
+		err := fmt.Errorf("cannot notify, upload is not finished")
+		l.Warn("unfinished upload notify")
+		metricErrors.WithLabelValues("upload_unfinished").Inc()
 		rpcerrors.Write(w, err)
 		return
 	}
@@ -254,18 +253,18 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	// start the upload sequence.
 	uploadMD := info.MetaData
 	if len(uploadMD) == 0 {
-		err := fmt.Errorf("file metadata is required")
-		log.Error(err.Error())
-		observeFailure(metrics.GetDuration(r), metrics.FailureKindClient)
+		err := fmt.Errorf("missing file metadata")
+		l.Warn("missing file metadata")
+		metricErrors.WithLabelValues(areaInput).Inc()
 		w.Write(rpcerrors.ErrorToJSON(err))
 		return
 	}
 
 	origUploadName, ok := uploadMD["filename"]
 	if !ok || origUploadName == "" {
-		err := fmt.Errorf("file name is required")
-		log.Error(err.Error())
-		observeFailure(metrics.GetDuration(r), metrics.FailureKindClient)
+		err := fmt.Errorf("missing file name")
+		l.Warn("missing file name")
+		metricErrors.WithLabelValues(areaInput).Inc()
 		w.Write(rpcerrors.ErrorToJSON(err))
 		return
 
@@ -273,8 +272,9 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 
 	origUploadPath, ok := info.Storage["Path"]
 	if !ok || origUploadPath == "" { // shouldn't happen but check regardless
-		log.Errorf("file path property not found in storage info: %v", reflect.ValueOf(info.Storage).MapKeys())
-		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+		err := fmt.Errorf("missing file path")
+		l.Error("storage error", "err", err, "info", reflect.ValueOf(info.Storage).MapKeys())
+		metricErrors.WithLabelValues(areaObjectMeta).Inc()
 		rpcerrors.Write(w, err)
 		return
 	}
@@ -285,29 +285,32 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 
 	dstDir := filepath.Join(dir, strconv.Itoa(user.ID), info.ID)
 	if err := os.MkdirAll(dstDir, os.ModePerm); err != nil {
-		log.WithError(err).Errorf("failed to create directory: %s", dstDir)
-		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+		l.Error("failed to create directory", "err", err, "path", dstDir)
+		metricErrors.WithLabelValues(areaStorage).Inc()
 		rpcerrors.Write(w, err)
 		return
 	}
 
 	dstFilepath := filepath.Join(dstDir, origUploadName)
 	if err := os.Rename(origUploadPath, dstFilepath); err != nil {
-		log.WithError(err).Errorf("failed to rename uploaded file to: %s", dstFilepath)
-		observeFailure(metrics.GetDuration(r), metrics.FailureKindInternal)
+		l.Error("failed to rename file", "err", err, "path", dstDir, "dst_path", dstFilepath)
+		metricErrors.WithLabelValues(areaStorage).Inc()
 		rpcerrors.Write(w, err)
 		return
 	}
 
 	var rpcReq *jsonrpc.RPCRequest
 	if err := json.NewDecoder(r.Body).Decode(&rpcReq); err != nil {
-		observeFailure(metrics.GetDuration(r), metrics.FailureKindClientJSON)
+		l.Error("bad json input received", "err", err)
+		metricErrors.WithLabelValues(areaInput).Inc()
 		rpcerrors.Write(w, rpcerrors.NewJSONParseError(err))
 		return
 	}
 
 	rpcparams, ok := rpcReq.Params.(map[string]interface{})
 	if !ok {
+		l.Error("bad parameters received")
+		metricErrors.WithLabelValues(areaInput).Inc()
 		rpcerrors.Write(w, rpcerrors.NewInvalidParamsError(werrors.New("cannot parse params")))
 		return
 	}
@@ -325,16 +328,32 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 		filepath.Join(dir, info.ID),
 	)
 	if err := os.Remove(infoFile); err != nil {
-		log.WithError(err).Error("failed to remove upload info file")
+		metricErrors.WithLabelValues("storage").Inc()
+		l.Error("upload cleanup failed", err, "path", infoFile)
 		monitor.ErrorToSentry(err, map[string]string{"info_file": infoFile})
 	}
 
-	err = h.udb.processUpload(info.ID, user, dstFilepath, rpcReq)
+	ctx := logging.AddToContext(context.Background(), l)
+	up, err := h.udb.startProcessingUpload(ctx, info.ID, user, dstFilepath)
 	if err != nil {
-		log.WithError(err).Error("upload processing failed")
+		l.Error("upload processing failed", "err", err)
 		rpcerrors.Write(w, err)
 		return
 	}
+	err = h.belt.Put(forklift.TaskUpload, forklift.UploadPayload{
+		UploadID: id,
+		Path:     dstFilepath,
+		UserID:   user.ID,
+		Request:  rpcReq,
+	}, 10)
+	if err != nil {
+		h.udb.markUploadFailed(ctx, up, err.Error())
+		l.Error("enqueuing upload failed", "err", err)
+		metricErrors.WithLabelValues(areaQueue).Inc()
+		rpcerrors.Write(w, err)
+		return
+	}
+
 	w.WriteHeader(http.StatusAccepted)
 }
 
@@ -366,22 +385,22 @@ func (h Handler) Status(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pq, err := up.PublishQuery().One(h.udb.db)
+	q, err := up.Asynquery().One(h.udb.db)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
-		rpcerrors.Write(w, fmt.Errorf("error getting publish query: %w", err))
+		rpcerrors.Write(w, fmt.Errorf("error getting asynquery: %w", err))
 		return
 	}
 
-	switch pq.Status {
-	case models.PublishQueryStatusSucceeded:
+	switch q.Status {
+	case models.AsynqueryStatusSucceeded:
 		w.WriteHeader(http.StatusOK)
-		w.Write(pq.Response.JSON)
-	case models.PublishQueryStatusFailed:
-		if pq.Response.IsZero() {
-			w.Write(pq.Response.JSON)
+		w.Write(q.Response.JSON)
+	case models.AsynqueryStatusFailed:
+		if !q.Response.IsZero() {
+			w.Write(q.Response.JSON)
 		} else {
-			rpcerrors.Write(w, errors.Err(pq.Error))
+			rpcerrors.Write(w, errors.Err(q.Error))
 		}
 	default:
 		w.WriteHeader(http.StatusAccepted)
@@ -419,31 +438,4 @@ func (h *Handler) preCreateHook(hook tusd.HookEvent) error {
 
 func (h *Handler) getUserFromRequest(r *http.Request) (*models.User, error) {
 	return h.options.userGetter.FromRequest(r)
-}
-
-func getCaller(sdkAddress, filename string, userID int, qCache *cache.Cache) *query.Caller {
-	c := query.NewCaller(sdkAddress, userID)
-	c.Cache = qCache
-	c.AddPreflightHook(query.AllMethodsHook, func(_ *query.Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
-		q := query.GetQuery(ctx)
-		params := q.ParamsAsMap()
-		params[fileNameParam] = filename
-		q.Request.Params = params
-		return nil, nil
-	}, "")
-	return c
-}
-
-// observeFailure requires metrics.MeasureMiddleware middleware to be present on the request
-func observeFailure(d float64, kind string) {
-	metrics.ProxyE2ECallDurations.WithLabelValues(method).Observe(d)
-	metrics.ProxyE2ECallFailedDurations.WithLabelValues(method, kind).Observe(d)
-	metrics.ProxyE2ECallCounter.WithLabelValues(method).Inc()
-	metrics.ProxyE2ECallFailedCounter.WithLabelValues(method, kind).Inc()
-}
-
-// observeSuccess requires metrics.MeasureMiddleware middleware to be present on the request
-func observeSuccess(d float64) {
-	metrics.ProxyE2ECallDurations.WithLabelValues(method).Observe(d)
-	metrics.ProxyE2ECallCounter.WithLabelValues(method).Inc()
 }

@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"path"
-	"strconv"
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/geopublish/metrics"
@@ -91,9 +90,7 @@ func (c *Carriage) ProcessTask(ctx context.Context, t *asynq.Task) error {
 		return fmt.Errorf("json.Unmarshal failed: %v: %w", err, asynq.SkipRetry)
 	}
 
-	logging.AddToContext(ctx, logging.TracedLogger(c.logger, p))
-
-	r, err := c.Process(ctx, p)
+	r, err := c.Process(p)
 	if err != nil {
 		r.Error = err.Error()
 	}
@@ -123,10 +120,10 @@ func (c *Carriage) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	return nil
 }
 
-func (c *Carriage) Process(ctx context.Context, p UploadProcessPayload) (*UploadProcessResult, error) {
+func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error) {
 	var t time.Time
 	r := &UploadProcessResult{UploadID: p.UploadID, UserID: p.UserID}
-	log := logging.FromContext(ctx)
+	log := c.logger.With("upload_id", p.UploadID, "user_id", p.UserID)
 
 	uploader := c.store.Uploader()
 
@@ -140,24 +137,17 @@ func (c *Carriage) Process(ctx context.Context, p UploadProcessPayload) (*Upload
 	log.Debug("stream analyzed", "info", info, "err", err)
 
 	src := blobs.NewSource(p.Path, c.blobsPath)
+
 	t = time.Now()
 	stream, err := src.Split()
 	metrics.ProcessingTime.WithLabelValues(metrics.LabelProcessingBlobSplit).Observe(float64(time.Since(t)))
 	if err != nil {
 		metrics.ProcessingErrors.WithLabelValues(metrics.LabelProcessingBlobSplit).Inc()
-		log.Warn("failed to split stream", "err", err)
 		return r, err
 	}
-	log.Info("split stream into blobs", "duration", time.Since(t).Seconds())
-
 	streamSource := stream.GetSource()
 	r.SDHash = hex.EncodeToString(streamSource.GetSdHash())
-	defer func() {
-		err := os.RemoveAll(path.Join(c.blobsPath, r.SDHash))
-		if err != nil {
-			log.Warn("failed to remove blobs", "err", err)
-		}
-	}()
+	defer os.RemoveAll(path.Join(c.blobsPath, r.SDHash))
 
 	t = time.Now()
 	summary, err := uploader.Upload(src)
@@ -206,7 +196,7 @@ func (c *Carriage) Process(ctx context.Context, p UploadProcessPayload) (*Upload
 	}
 	delete(pp, "file_path")
 
-	log.Debug("request sent", "method", p.Request.Method, "params", p.Request)
+	log.Debug("sending request", "method", p.Request.Method, "params", p.Request)
 	t = time.Now()
 	res, err := caller.Call(context.Background(), p.Request)
 	metrics.ProcessingTime.WithLabelValues(metrics.LabelProcessingQuery).Observe(float64(time.Since(t)))
@@ -235,18 +225,4 @@ func (c *Carriage) RetryDelay(n int, err error, t *asynq.Task) time.Duration {
 		return time.Duration(n) * time.Minute
 	}
 	return 10 * time.Second
-}
-
-func (p UploadProcessPayload) GetTraceData() map[string]string {
-	return map[string]string{
-		"user_id":   strconv.Itoa(p.UserID),
-		"upload_id": p.UploadID,
-	}
-}
-
-func (p UploadProcessResult) GetTraceData() map[string]string {
-	return map[string]string{
-		"user_id":   strconv.Itoa(p.UserID),
-		"upload_id": p.UploadID,
-	}
 }

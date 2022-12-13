@@ -32,7 +32,6 @@ type Upload struct {
 	Error     string    `boil:"error" json:"error" toml:"error" yaml:"error"`
 	Size      int64     `boil:"size" json:"size" toml:"size" yaml:"size"`
 	Received  int64     `boil:"received" json:"received" toml:"received" yaml:"received"`
-	QueryID   null.Int  `boil:"query_id" json:"query_id,omitempty" toml:"query_id" yaml:"query_id,omitempty"`
 
 	R *uploadR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L uploadL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -48,7 +47,6 @@ var UploadColumns = struct {
 	Error     string
 	Size      string
 	Received  string
-	QueryID   string
 }{
 	ID:        "id",
 	UserID:    "user_id",
@@ -59,19 +57,9 @@ var UploadColumns = struct {
 	Error:     "error",
 	Size:      "size",
 	Received:  "received",
-	QueryID:   "query_id",
 }
 
 // Generated where
-
-type whereHelperint64 struct{ field string }
-
-func (w whereHelperint64) EQ(x int64) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
-func (w whereHelperint64) NEQ(x int64) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
-func (w whereHelperint64) LT(x int64) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
-func (w whereHelperint64) LTE(x int64) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
-func (w whereHelperint64) GT(x int64) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
-func (w whereHelperint64) GTE(x int64) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
 
 var UploadWhere = struct {
 	ID        whereHelperstring
@@ -83,7 +71,6 @@ var UploadWhere = struct {
 	Error     whereHelperstring
 	Size      whereHelperint64
 	Received  whereHelperint64
-	QueryID   whereHelpernull_Int
 }{
 	ID:        whereHelperstring{field: "\"uploads\".\"id\""},
 	UserID:    whereHelpernull_Int{field: "\"uploads\".\"user_id\""},
@@ -94,22 +81,21 @@ var UploadWhere = struct {
 	Error:     whereHelperstring{field: "\"uploads\".\"error\""},
 	Size:      whereHelperint64{field: "\"uploads\".\"size\""},
 	Received:  whereHelperint64{field: "\"uploads\".\"received\""},
-	QueryID:   whereHelpernull_Int{field: "\"uploads\".\"query_id\""},
 }
 
 // UploadRels is where relationship names are stored.
 var UploadRels = struct {
-	Query string
-	User  string
+	User         string
+	PublishQuery string
 }{
-	Query: "Query",
-	User:  "User",
+	User:         "User",
+	PublishQuery: "PublishQuery",
 }
 
 // uploadR is where relationships are stored.
 type uploadR struct {
-	Query *Query
-	User  *User
+	User         *User
+	PublishQuery *PublishQuery
 }
 
 // NewStruct creates a new relationship struct
@@ -121,8 +107,8 @@ func (*uploadR) NewStruct() *uploadR {
 type uploadL struct{}
 
 var (
-	uploadAllColumns            = []string{"id", "user_id", "path", "created_at", "updated_at", "status", "error", "size", "received", "query_id"}
-	uploadColumnsWithoutDefault = []string{"id", "user_id", "path", "updated_at", "status", "error", "size", "query_id"}
+	uploadAllColumns            = []string{"id", "user_id", "path", "created_at", "updated_at", "status", "error", "size", "received"}
+	uploadColumnsWithoutDefault = []string{"id", "user_id", "path", "updated_at", "status", "error", "size"}
 	uploadColumnsWithDefault    = []string{"created_at", "received"}
 	uploadPrimaryKeyColumns     = []string{"id"}
 )
@@ -386,20 +372,6 @@ func (q uploadQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// Query pointed to by the foreign key.
-func (o *Upload) Query(mods ...qm.QueryMod) queryQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("id=?", o.QueryID),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Queries(queryMods...)
-	queries.SetFrom(query.Query, "\"queries\"")
-
-	return query
-}
-
 // User pointed to by the foreign key.
 func (o *Upload) User(mods ...qm.QueryMod) userQuery {
 	queryMods := []qm.QueryMod{
@@ -414,109 +386,18 @@ func (o *Upload) User(mods ...qm.QueryMod) userQuery {
 	return query
 }
 
-// LoadQuery allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (uploadL) LoadQuery(e boil.Executor, singular bool, maybeUpload interface{}, mods queries.Applicator) error {
-	var slice []*Upload
-	var object *Upload
-
-	if singular {
-		object = maybeUpload.(*Upload)
-	} else {
-		slice = *maybeUpload.(*[]*Upload)
+// PublishQuery pointed to by the foreign key.
+func (o *Upload) PublishQuery(mods ...qm.QueryMod) publishQueryQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("upload_id=?", o.ID),
 	}
 
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &uploadR{}
-		}
-		if !queries.IsNil(object.QueryID) {
-			args = append(args, object.QueryID)
-		}
+	queryMods = append(queryMods, mods...)
 
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &uploadR{}
-			}
+	query := PublishQueries(queryMods...)
+	queries.SetFrom(query.Query, "\"publish_queries\"")
 
-			for _, a := range args {
-				if queries.Equal(a, obj.QueryID) {
-					continue Outer
-				}
-			}
-
-			if !queries.IsNil(obj.QueryID) {
-				args = append(args, obj.QueryID)
-			}
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(qm.From(`queries`), qm.WhereIn(`id in ?`, args...))
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Query")
-	}
-
-	var resultSlice []*Query
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Query")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for queries")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for queries")
-	}
-
-	if len(uploadAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.Query = foreign
-		if foreign.R == nil {
-			foreign.R = &queryR{}
-		}
-		foreign.R.Uploads = append(foreign.R.Uploads, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.QueryID, foreign.ID) {
-				local.R.Query = foreign
-				if foreign.R == nil {
-					foreign.R = &queryR{}
-				}
-				foreign.R.Uploads = append(foreign.R.Uploads, local)
-				break
-			}
-		}
-	}
-
-	return nil
+	return query
 }
 
 // LoadUser allows an eager lookup of values, cached into the
@@ -624,97 +505,101 @@ func (uploadL) LoadUser(e boil.Executor, singular bool, maybeUpload interface{},
 	return nil
 }
 
-// SetQueryG of the upload to the related item.
-// Sets o.R.Query to related.
-// Adds o to related.R.Uploads.
-// Uses the global database handle.
-func (o *Upload) SetQueryG(insert bool, related *Query) error {
-	return o.SetQuery(boil.GetDB(), insert, related)
-}
+// LoadPublishQuery allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (uploadL) LoadPublishQuery(e boil.Executor, singular bool, maybeUpload interface{}, mods queries.Applicator) error {
+	var slice []*Upload
+	var object *Upload
 
-// SetQuery of the upload to the related item.
-// Sets o.R.Query to related.
-// Adds o to related.R.Uploads.
-func (o *Upload) SetQuery(exec boil.Executor, insert bool, related *Query) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"uploads\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"query_id"}),
-		strmangle.WhereClause("\"", "\"", 2, uploadPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.QueryID, related.ID)
-	if o.R == nil {
-		o.R = &uploadR{
-			Query: related,
-		}
+	if singular {
+		object = maybeUpload.(*Upload)
 	} else {
-		o.R.Query = related
+		slice = *maybeUpload.(*[]*Upload)
 	}
 
-	if related.R == nil {
-		related.R = &queryR{
-			Uploads: UploadSlice{o},
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &uploadR{}
 		}
+		args = append(args, object.ID)
 	} else {
-		related.R.Uploads = append(related.R.Uploads, o)
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &uploadR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
 	}
 
-	return nil
-}
-
-// RemoveQueryG relationship.
-// Sets o.R.Query to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-// Uses the global database handle.
-func (o *Upload) RemoveQueryG(related *Query) error {
-	return o.RemoveQuery(boil.GetDB(), related)
-}
-
-// RemoveQuery relationship.
-// Sets o.R.Query to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *Upload) RemoveQuery(exec boil.Executor, related *Query) error {
-	var err error
-
-	queries.SetScanner(&o.QueryID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("query_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.R.Query = nil
-	if related == nil || related.R == nil {
+	if len(args) == 0 {
 		return nil
 	}
 
-	for i, ri := range related.R.Uploads {
-		if queries.Equal(o.QueryID, ri.QueryID) {
-			continue
-		}
-
-		ln := len(related.R.Uploads)
-		if ln > 1 && i < ln-1 {
-			related.R.Uploads[i] = related.R.Uploads[ln-1]
-		}
-		related.R.Uploads = related.R.Uploads[:ln-1]
-		break
+	query := NewQuery(qm.From(`publish_queries`), qm.WhereIn(`upload_id in ?`, args...))
+	if mods != nil {
+		mods.Apply(query)
 	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load PublishQuery")
+	}
+
+	var resultSlice []*PublishQuery
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice PublishQuery")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for publish_queries")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for publish_queries")
+	}
+
+	if len(uploadAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.PublishQuery = foreign
+		if foreign.R == nil {
+			foreign.R = &publishQueryR{}
+		}
+		foreign.R.Upload = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.ID == foreign.UploadID {
+				local.R.PublishQuery = foreign
+				if foreign.R == nil {
+					foreign.R = &publishQueryR{}
+				}
+				foreign.R.Upload = local
+				break
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -808,6 +693,65 @@ func (o *Upload) RemoveUser(exec boil.Executor, related *User) error {
 		}
 		related.R.Uploads = related.R.Uploads[:ln-1]
 		break
+	}
+	return nil
+}
+
+// SetPublishQueryG of the upload to the related item.
+// Sets o.R.PublishQuery to related.
+// Adds o to related.R.Upload.
+// Uses the global database handle.
+func (o *Upload) SetPublishQueryG(insert bool, related *PublishQuery) error {
+	return o.SetPublishQuery(boil.GetDB(), insert, related)
+}
+
+// SetPublishQuery of the upload to the related item.
+// Sets o.R.PublishQuery to related.
+// Adds o to related.R.Upload.
+func (o *Upload) SetPublishQuery(exec boil.Executor, insert bool, related *PublishQuery) error {
+	var err error
+
+	if insert {
+		related.UploadID = o.ID
+
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"publish_queries\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"upload_id"}),
+			strmangle.WhereClause("\"", "\"", 2, publishQueryPrimaryKeyColumns),
+		)
+		values := []interface{}{o.ID, related.UploadID}
+
+		if boil.DebugMode {
+			fmt.Fprintln(boil.DebugWriter, updateQuery)
+			fmt.Fprintln(boil.DebugWriter, values)
+		}
+
+		if _, err = exec.Exec(updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		related.UploadID = o.ID
+
+	}
+
+	if o.R == nil {
+		o.R = &uploadR{
+			PublishQuery: related,
+		}
+	} else {
+		o.R.PublishQuery = related
+	}
+
+	if related.R == nil {
+		related.R = &publishQueryR{
+			Upload: o,
+		}
+	} else {
+		related.R.Upload = o
 	}
 	return nil
 }
