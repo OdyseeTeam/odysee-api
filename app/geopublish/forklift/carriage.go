@@ -96,15 +96,17 @@ func (c *Carriage) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	}
 	br, err := json.Marshal(r)
 	if err != nil {
+		c.logger.Error("error serializing processing result", "err", err, "result", r)
 		return fmt.Errorf("error serializing processing result: %s (%w)", err, asynq.SkipRetry)
 	}
 
-	if err != nil {
-		c.logger.Warn("upload processing failed", "result", r, "payload", p)
+	if r.Error != "" {
 		perr := fmt.Errorf("upload processing failed: %s", r.Error)
 		if r.Retry {
+			c.logger.Warn("upload processing failed", "result", r, "payload", p)
 			return perr
 		}
+		c.logger.Error("upload processing failed fatally", "result", r, "payload", p)
 		_, err = c.resultWriter.Write(br)
 		if err != nil {
 			perr = fmt.Errorf("%s (also error writing result: %w)", perr, err)
@@ -114,7 +116,7 @@ func (c *Carriage) ProcessTask(ctx context.Context, t *asynq.Task) error {
 
 	_, err = c.resultWriter.Write(br)
 	if err != nil {
-		c.logger.Warn("writing result failed", "err", err)
+		c.logger.Error("writing result failed", "err", err)
 		return fmt.Errorf("error writing result: %w", err)
 	}
 	return nil
