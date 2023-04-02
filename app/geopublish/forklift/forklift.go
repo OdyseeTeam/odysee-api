@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/geopublish/metrics"
-	"github.com/lbryio/transcoder/pkg/logging"
-	"github.com/lbryio/transcoder/pkg/logging/zapadapter"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/hibiken/asynq"

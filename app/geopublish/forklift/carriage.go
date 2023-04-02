@@ -16,8 +16,8 @@ import (
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/blobs"
 	"github.com/OdyseeTeam/odysee-api/pkg/fileanalyzer"
-	"github.com/lbryio/transcoder/pkg/logging"
-	"github.com/lbryio/transcoder/pkg/logging/zapadapter"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 
 	"github.com/hibiken/asynq"
 	"github.com/volatiletech/sqlboiler/queries/qm"
