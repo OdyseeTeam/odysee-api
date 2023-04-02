@@ -7,7 +7,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/ip"
 	"github.com/OdyseeTeam/odysee-api/models"
-	"github.com/lbryio/transcoder/pkg/logging"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 )
 
 type universalUserGetter struct {

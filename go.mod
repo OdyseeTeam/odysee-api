@@ -22,7 +22,6 @@ require (
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20220815204100-2adb8af5b68c
 	github.com/lbryio/lbry.go/v3 v3.0.1-beta
 	github.com/lbryio/reflector.go v1.1.3-0.20220730181028-f5d30b1a6e79
-	github.com/lbryio/transcoder v0.18.1
 	github.com/lbryio/types v0.0.0-20220224142228-73610f6654a6
 	github.com/lib/pq v1.10.4
 	github.com/nsf/jsondiff v0.0.0-20190712045011-8443391ee9b6
@@ -90,6 +89,7 @@ require (
 	github.com/go-errors/errors v1.1.1 // indirect
 	github.com/go-gorp/gorp/v3 v3.0.2 // indirect
 	github.com/go-ini/ini v1.48.0 // indirect
+	github.com/go-openapi/swag v0.21.1 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/go-playground/validator/v10 v10.10.1 // indirect
@@ -99,6 +99,7 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/gomodule/redigo v1.8.8 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
@@ -117,6 +118,7 @@ require (
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/manveru/faker v0.0.0-20171103152722-9fbc68a78c4d // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
@@ -129,6 +131,7 @@ require (
 	github.com/opencontainers/runc v1.1.3 // indirect
 	github.com/oschwald/maxminddb-golang v1.8.0 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
+	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/pquerna/cachecontrol v0.1.0 // indirect
 	github.com/prometheus/common v0.34.0 // indirect
@@ -148,6 +151,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/zach-klippenstein/goregen v0.0.0-20160303162051-795b5e3961ea // indirect
 	go.uber.org/atomic v1.9.0 // indirect
+	go.uber.org/goleak v1.1.12 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
 	golang.org/x/mod v0.8.0 // indirect
@@ -156,6 +160,7 @@ require (
 	golang.org/x/text v0.8.0 // indirect
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65 // indirect
 	golang.org/x/tools v0.6.0 // indirect
+	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect

@@ -13,8 +13,8 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/iapi"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
-	"github.com/lbryio/transcoder/pkg/logging/zapadapter"
 )
 
 type cleanupFunc func() error
