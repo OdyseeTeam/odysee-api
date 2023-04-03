@@ -37,11 +37,8 @@ services:
     labels:
       com.centurylinklabs.watchtower.enable: false
   postgres:
-    image: postgres:11-alpine
-    command:
-      - -clogging_collector=on
-      - -clog_statement=all
-      - -clog_destination=stderr
+    image: postgres:12.5-alpine
+    command: ["postgres", "-c", "log_statement=all", "-c", "log_destination=stderr"]
     ports:
       - "5432:5432"
     volumes:
