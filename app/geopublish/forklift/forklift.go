@@ -162,10 +162,9 @@ func (f *Forklift) EnqueueUploadProcessTask(p UploadProcessPayload) error {
 	t := asynq.NewTask(TypeUploadProcess, pb, asynq.MaxRetry(f.options.maxRetry))
 	_, err = f.asynqClient.Enqueue(
 		t,
-		// asynq.Unique(24*time.Hour),
-		asynq.Timeout(1*time.Hour),
+		asynq.TaskID(p.UploadID),
+		asynq.Timeout(6*time.Hour),
 		asynq.Retention(72*time.Hour),
-		// asynq.Queue("critical"),
 	)
 	return err
 }

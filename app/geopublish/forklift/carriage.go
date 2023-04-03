@@ -201,7 +201,7 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	}
 	delete(pp, "file_path")
 
-	log.Debug("sending request", "method", p.Request.Method, "params", p.Request)
+	log.Debug("sending request", "method", p.Request.Method, "patched_fields", patch)
 	t = time.Now()
 	res, err := caller.Call(context.Background(), p.Request)
 	metrics.ProcessingTime.WithLabelValues(metrics.LabelProcessingQuery).Observe(float64(time.Since(t)))
