@@ -14,12 +14,28 @@ jobs:
   test:
     name: test
     runs-on: ubuntu-latest
-#    env:
-#      GOROOT: /usr/local/go
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: FedericoCarboni/setup-ffmpeg@v2
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '1.18.x'
+        id: go
+
+      - name: Retrieve release details
+        id: release_details
+        run: |
+          echo "APP_NAME=$(git describe --tags|sed -e 's/\-v.*//')" >> $GITHUB_ENV
+          echo "APP_VERSION=$(git describe --tags|sed 's/api-v\([0-9.]*\)-.*/\1/')" >> $GITHUB_ENV
+
+      - name: Release details
+        run: |
+            echo "::group::app ${{ env.APP_NAME }}"
+            echo "version ${{ env.APP_VERSION }}"
+            echo "env ${{ github.ref }}"
+            echo "::endgroup::"
 
       - name: Set up containers
         run: docker-compose up -d lbrynet postgres redis
@@ -30,16 +46,8 @@ jobs:
       - name: Check running containers
         run: docker ps -a
 
-      - name: Set up Go 1.18
-        uses: actions/setup-go@v3
-        with:
-          go-version: '1.18.x'
-        id: go
-
       - name: Run go vet
         run: go vet ./...
-
-      - uses: FedericoCarboni/setup-ffmpeg@v1
 
       - name: Prepare for tests
         run: make prepare_test
@@ -61,10 +69,9 @@ jobs:
           go install github.com/jandelgado/gcov2lcov@latest
           go test -short -covermode=count -coverprofile=coverage.out ./... && gcov2lcov -infile=coverage.out -outfile=coverage.lcov
 
-      - name: Coveralls GitHub Action
-        uses: coverallsapp/github-action@1.1.3
+      - uses: coverallsapp/github-action@v2
         with:
-          path-to-lcov: coverage.lcov
+          file: coverage.lcov
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   release:
@@ -74,31 +81,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '1.18.x'
+        id: go
 
       - run: git branch
 
       - name: Retrieve release details
         id: release
         run: |
-          echo "::set-output name=app::$(git describe --tags|sed -e 's/\-v.*//')"
-          echo "::set-output name=version::$(git describe --tags|sed -e 's/.*\-v//')"
+          echo "APP_NAME=$(git describe --tags|sed -e 's/\-v.*//')" >> $GITHUB_OUTPUT
+          echo "APP_VERSION=$(git describe --tags|sed 's/api-v\([0-9.]*\)-.*/\1/')" >> $GITHUB_OUTPUT
 
       - name: Release details
         run: |
-            echo "::group::${{ steps.release.outputs.app }}"
-            echo "version ${{ steps.release.outputs.version }}"
+            echo "::group::${{ steps.release.outputs.APP_NAME }}"
+            echo "version ${{ steps.release.outputs.APP_VERSION }}"
             echo "env ${{ github.ref }}"
             echo "::endgroup::"
-
-      - name: Set up Go 1.17
-        uses: actions/setup-go@v3
-        with:
-          go-version: '1.17.x'
-        id: go
 
       - name: Login to DockerHub
         uses: docker/login-action@v1
@@ -109,21 +113,21 @@ jobs:
       # odysee-api deployment
 
       - name: Build odysee-api
-        if: steps.release.outputs.app == 'api'
+        if: steps.release.outputs.APP_NAME == 'api'
         run: make oapi
 
       - name: Build and push odysee-api docker image
-        if: steps.release.outputs.app == 'api'
+        if: steps.release.outputs.APP_NAME == 'api'
         uses: docker/build-push-action@v2
         with:
           push: true
           context: .
           tags: |
-            odyseeteam/odysee-${{ steps.release.outputs.app }}:latest
-            odyseeteam/odysee-${{ steps.release.outputs.app }}:${{ steps.release.outputs.version }}
+            odyseeteam/odysee-${{ steps.release.outputs.APP_NAME }}:latest
+            odyseeteam/odysee-${{ steps.release.outputs.APP_NAME }}:${{ steps.release.outputs.APP_VERSION }}
 
       - name: Deploy odysee-api
-        if: steps.release.outputs.app == 'api'
+        if: steps.release.outputs.APP_NAME == 'api'
         uses: octokit/request-action@v2.x
         id: deploy-odysee-api
         env:
@@ -133,29 +137,29 @@ jobs:
           repository: odyseeteam/misc-deployment
           event_type: deploy-odysee
           client_payload: |
-            tag: ${{ steps.release.outputs.version }}
+            tag: ${{ steps.release.outputs.APP_VERSION }}
             ref: ${{ github.ref }}
             service: odysee-api
 
       # Watchman deployment
 
       - name: Build watchman
-        if: steps.release.outputs.app == 'watchman'
+        if: steps.release.outputs.APP_NAME == 'watchman'
         run: make watchman
 
       - name: Build watchman docker image
-        if: steps.release.outputs.app == 'watchman'
+        if: steps.release.outputs.APP_NAME == 'watchman'
         uses: docker/build-push-action@v2
         with:
           push: true
-          context: apps/${{ steps.release.outputs.app }}/
+          context: apps/${{ steps.release.outputs.APP_NAME }}/
           tags: |
-            odyseeteam/${{ steps.release.outputs.app }}:latest
-            odyseeteam/${{ steps.release.outputs.app }}:${{ steps.release.outputs.version }}
-          file: apps/${{ steps.release.outputs.app }}/Dockerfile
+            odyseeteam/${{ steps.release.outputs.APP_NAME }}:latest
+            odyseeteam/${{ steps.release.outputs.APP_NAME }}:${{ steps.release.outputs.APP_VERSION }}
+          file: apps/${{ steps.release.outputs.APP_NAME }}/Dockerfile
 
       - name: Deploy watchman
-        if: steps.release.outputs.app == 'watchman'
+        if: steps.release.outputs.APP_NAME == 'watchman'
         uses: octokit/request-action@v2.x
         id: deploy-watchman
         env:
@@ -165,6 +169,6 @@ jobs:
           repository: OdyseeTeam/misc-deployment
           event_type: deploy-odysee
           client_payload: |
-            tag: ${{ steps.release.outputs.version }}
+            tag: ${{ steps.release.outputs.APP_VERSION }}
             ref: ${{ github.ref }}
-            service: ${{ steps.release.outputs.app }}
+            service: ${{ steps.release.outputs.APP_NAME }}
