@@ -210,6 +210,7 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 		rpcerrors.Write(w, rpcerrors.NewInvalidParamsError(err))
 		return
 	}
+	log = log.WithField("upload_id", id)
 
 	lock, err := h.lockUpload(id)
 	if err != nil {

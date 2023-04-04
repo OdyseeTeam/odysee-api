@@ -146,12 +146,13 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 	tusRouter.PathPrefix("/").HandlerFunc(emptyHandler).Methods(http.MethodOptions)
 
 	var v3Handler *geopublish.Handler
+	plogger := zapadapter.NewKV(nil).With("module", "geopublish")
 	if opts.EnableV3Publish {
 		v3Router := r.PathPrefix("/api/v3").Subrouter()
 		v3Router.Use(defaultMiddlewares(oauthAuther, legacyProvider, sdkRouter))
-		ug := auth.NewUniversalUserGetter(oauthAuther, legacyProvider, zapadapter.NewKV(nil))
+		ug := auth.NewUniversalUserGetter(oauthAuther, legacyProvider, plogger)
 		gPath := config.GetGeoPublishSourceDir()
-		v3Handler, err = geopublish.InstallRoutes(v3Router.PathPrefix("/publish").Subrouter(), ug, gPath, "/api/v3/publish/")
+		v3Handler, err = geopublish.InstallRoutes(v3Router.PathPrefix("/publish").Subrouter(), ug, gPath, "/api/v3/publish/", plogger)
 		if err != nil {
 			panic(err)
 		}

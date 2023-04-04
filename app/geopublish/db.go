@@ -8,8 +8,10 @@ import (
 
 	"github.com/OdyseeTeam/odysee-api/app/geopublish/forklift"
 	"github.com/OdyseeTeam/odysee-api/app/geopublish/metrics"
+	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/models"
+	"github.com/hibiken/asynq"
 
 	"github.com/tus/tusd/pkg/handler"
 	"github.com/volatiletech/null"
@@ -140,7 +142,8 @@ func (d *UploadsDB) markUploadProgress(hook handler.HookEvent, user *models.User
 	u.Received = hook.Upload.Offset
 	u.Status = models.UploadStatusUploading
 	u.UpdatedAt = null.TimeFrom(time.Now())
-	_, err = u.Update(d.db, boil.Infer())
+
+	_, err = u.Update(d.db, boil.Whitelist(models.UploadColumns.Status, models.UploadColumns.Received, models.UploadColumns.UpdatedAt))
 	if err != nil {
 		return err
 	}
@@ -155,7 +158,7 @@ func (d *UploadsDB) processUpload(id string, user *models.User, path string, req
 	up.Status = models.UploadStatusReceived
 	up.UpdatedAt = null.TimeFrom(time.Now())
 	up.Path = path
-	_, err = up.Update(d.db, boil.Infer())
+	_, err = up.Update(d.db, boil.Whitelist(models.UploadColumns.Status, models.UploadColumns.Path, models.UploadColumns.UpdatedAt))
 	if err != nil {
 		return err
 	}
@@ -181,12 +184,18 @@ func (d *UploadsDB) processUpload(id string, user *models.User, path string, req
 		UserID:   up.UserID.Int,
 		Request:  request,
 	})
-	if err != nil {
+	switch {
+	case errors.Is(err, asynq.ErrDuplicateTask):
+		return errors.Err("duplicate task")
+	case err != nil:
 		dbErr := d.markUploadFailed(up, err.Error())
 		if dbErr != nil {
 			return fmt.Errorf("enqueuing failed: %w (db update failed as well: %s)", err, dbErr)
 		}
 		return fmt.Errorf("enqueuing failed: %w", err)
+	}
+	if err != nil {
+
 	}
 	return nil
 }
@@ -198,7 +207,7 @@ func (d *UploadsDB) markUploadTerminated(hook handler.HookEvent, user *models.Us
 	}
 	u.Status = models.UploadStatusTerminated
 	u.UpdatedAt = null.TimeFrom(time.Now())
-	_, err = u.Update(d.db, boil.Infer())
+	_, err = u.Update(d.db, boil.Whitelist(models.UploadColumns.Status, models.UploadColumns.UpdatedAt))
 	if err != nil {
 		return err
 	}
@@ -209,7 +218,7 @@ func (d *UploadsDB) markUploadFailed(u *models.Upload, e string) error {
 	u.Error = e
 	u.Status = models.UploadStatusFailed
 	u.UpdatedAt = null.TimeFrom(time.Now())
-	_, err := u.Update(d.db, boil.Infer())
+	_, err := u.Update(d.db, boil.Whitelist(models.UploadColumns.Status, models.UploadColumns.Error, models.UploadColumns.UpdatedAt))
 	if err != nil {
 		return err
 	}
@@ -219,7 +228,7 @@ func (d *UploadsDB) markUploadFailed(u *models.Upload, e string) error {
 func (d *UploadsDB) markUploadFinished(u *models.Upload) error {
 	u.Status = models.UploadStatusFinished
 	u.UpdatedAt = null.TimeFrom(time.Now())
-	_, err := u.Update(d.db, boil.Infer())
+	_, err := u.Update(d.db, boil.Whitelist(models.UploadColumns.Status, models.UploadColumns.UpdatedAt))
 	if err != nil {
 		return err
 	}

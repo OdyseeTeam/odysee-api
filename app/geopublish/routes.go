@@ -8,6 +8,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/app/geopublish/forklift"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
 	"github.com/OdyseeTeam/odysee-api/internal/storage"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
 
 	"github.com/gorilla/mux"
@@ -15,7 +16,7 @@ import (
 	tushandler "github.com/tus/tusd/pkg/handler"
 )
 
-func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPrefix string) (*Handler, error) {
+func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPrefix string, logger logging.KVLogger) (*Handler, error) {
 	redisOpts, err := config.GetRedisOpts()
 	if err != nil {
 		return nil, fmt.Errorf("cannot get redis config: %w", err)
@@ -34,7 +35,7 @@ func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPre
 		config.GetReflectorUpstream(),
 		asynqRedisOpts,
 		forklift.WithConcurrency(config.GetGeoPublishConcurrency()),
-		// forklift.WithLogger(logger),
+		forklift.WithLogger(logger),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize forklift: %w", err)

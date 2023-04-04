@@ -113,7 +113,11 @@ func (s *e2eSuite) TestPublishV3() {
 	}).Run(s.router, s.T())
 
 	Wait(s.T(), "upload settling into the database", 5*time.Second, 1000*time.Millisecond, func() error {
-		upload, err = models.Uploads(models.UploadWhere.ID.EQ(uploadID), qm.Load(models.UploadRels.PublishQuery)).One(s.userHelper.DB)
+		upload, err = models.Uploads(
+			models.UploadWhere.ID.EQ(uploadID),
+			models.UploadWhere.Status.EQ(models.UploadStatusUploading),
+			qm.Load(models.UploadRels.PublishQuery),
+		).One(s.userHelper.DB)
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrWaitContinue
 		} else if err != nil {
@@ -122,7 +126,7 @@ func (s *e2eSuite) TestPublishV3() {
 		return nil
 	})
 
-	s.Equal(models.UploadStatusUploading, upload.Status)
+	s.Empty(upload.Path)
 
 	(&test.HTTPTest{
 		Method: http.MethodGet,
@@ -175,6 +179,8 @@ func (s *e2eSuite) TestPublishV3() {
 		}
 		return ErrWaitContinue
 	})
+
+	s.NotEmpty(upload.Path)
 
 	statusResp := (&test.HTTPTest{
 		Method: http.MethodGet,
