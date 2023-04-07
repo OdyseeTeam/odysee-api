@@ -11,7 +11,6 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/hibiken/asynq"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
 )
 
@@ -21,24 +20,12 @@ const (
 	configName               = "oapi"
 )
 
-var Config *cfg.ConfigWrapper
-
-func init() {
-	Config = cfg.ReadConfig(configName)
-	c := Config
-	c.Viper.SetConfigName(configName)
-
-	c.Viper.SetEnvPrefix("LW")
-	c.Viper.SetDefault("Debug", false)
-
-	c.Viper.BindEnv("Debug")
-	c.Viper.BindEnv("Lbrynet")
-	c.Viper.BindEnv("SentryDSN")
-	c.Viper.BindEnv("DatabaseDSN")
-
-	c.Viper.SetDefault("Address", ":8080")
-	c.Viper.SetDefault("Host", "http://localhost:8080")
+type LoggingOpts struct {
+	level  string
+	format string
 }
+
+var Config *cfg.ConfigWrapper
 
 func ProjectRoot() string {
 	ex, err := os.Executable()
@@ -149,7 +136,7 @@ func GetAddress() string {
 func GetLbrynetServers() map[string]string {
 	if Config.Viper.GetString(deprecatedLbrynetSetting) != "" &&
 		len(Config.Viper.GetStringMapString(lbrynetServers)) > 0 {
-		logrus.Panicf("Both %s and %s are set. This is a highlander situation...there can be only 1.", deprecatedLbrynetSetting, lbrynetServers)
+		panic(fmt.Sprintf("only one of %s and %s can be set", deprecatedLbrynetSetting, lbrynetServers))
 	}
 
 	if len(Config.Viper.GetStringMapString(lbrynetServers)) > 0 {
@@ -199,10 +186,42 @@ func GetProfiling() bool {
 	return Config.Viper.GetBool("Profiling")
 }
 
+func GetLoggingOpts() LoggingOpts {
+	return LoggingOpts{
+		level:  Config.Viper.GetString("logging.level"),
+		format: Config.Viper.GetString("logging.format"),
+	}
+}
+
 func Override(key string, value interface{}) {
 	Config.Override(key, value)
 }
 
 func RestoreOverridden() {
 	Config.RestoreOverridden()
+}
+
+func (o LoggingOpts) Level() string {
+	return o.level
+}
+
+func (o LoggingOpts) Format() string {
+	return o.format
+}
+
+func init() {
+	Config = cfg.ReadConfig(configName)
+	c := Config
+	c.Viper.SetConfigName(configName)
+
+	c.Viper.SetEnvPrefix("LW")
+	c.Viper.SetDefault("Debug", false)
+
+	c.Viper.BindEnv("Debug")
+	c.Viper.BindEnv("Lbrynet")
+	c.Viper.BindEnv("SentryDSN")
+	c.Viper.BindEnv("DatabaseDSN")
+
+	c.Viper.SetDefault("Address", ":8080")
+	c.Viper.SetDefault("Host", "http://localhost:8080")
 }
