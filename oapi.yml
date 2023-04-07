@@ -61,4 +61,3 @@ ReflectorUpstream:
 Logging:
   Level: debug
   Format: console
-

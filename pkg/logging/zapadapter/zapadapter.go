@@ -13,6 +13,11 @@ import (
 var prodConfig = zap.NewProductionConfig()
 var devConfig = zap.NewDevelopmentConfig()
 
+type LoggingOpts struct {
+	level  string
+	format string
+}
+
 // logger is a Logur adapter for Uber's Zap.
 type logger struct {
 	logger *zap.SugaredLogger
@@ -67,6 +72,13 @@ func NewNamedKV(name string, opts logging.LoggingOpts) *kvLogger {
 		panic(err)
 	}
 	return NewKV(l.Named(name))
+}
+
+func NewLoggingOpts(level, format string) LoggingOpts {
+	return LoggingOpts{
+		level:  level,
+		format: format,
+	}
 }
 
 // Trace implements the Logur logger interface.
@@ -227,6 +239,14 @@ func (l *kvLogger) LevelEnabled(level logur.Level) bool {
 	}
 
 	return true
+}
+
+func (o LoggingOpts) Level() string {
+	return o.level
+}
+
+func (o LoggingOpts) Format() string {
+	return o.format
 }
 
 func init() {
