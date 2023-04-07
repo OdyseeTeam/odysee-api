@@ -56,6 +56,25 @@ var (
 		Name:      "queue_tasks",
 	}, []string{"status"})
 
+	EgressBytes = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: ns,
+		Name:      "egress_bytes_total",
+	})
+	EgressDuration = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: ns,
+		Name:      "egress_duration_total",
+	})
+	AnalysisDuration = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: ns,
+		Name:      "analysis_duration_total",
+	})
+	FileSize = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: ns,
+		Name:      "upload_size_mb",
+		Help:      "Distribution of upload sizes",
+		Buckets:   []float64{1, 100, 1000, 3000, 5000, 10000},
+	}, []string{"media_type"})
+
 	ProcessingTime = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: ns,
 		Name:      "processing_time",
@@ -72,5 +91,6 @@ func RegisterMetrics() {
 		UploadsCreated, UploadsProcessed, UploadsCanceled, UploadsFailed,
 		QueriesSent, QueriesCompleted, QueriesFailed, QueriesErrored,
 		QueueTasks, ProcessingTime, ProcessingErrors,
+		EgressBytes, EgressDuration, AnalysisDuration, FileSize,
 	)
 }

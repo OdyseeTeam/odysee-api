@@ -3,8 +3,6 @@ package logging
 import (
 	"context"
 
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"logur.dev/logur"
 )
 
@@ -13,25 +11,9 @@ type ctxKey int
 const loggingContextKey ctxKey = iota
 
 var (
-	loggers     = map[string]*zap.SugaredLogger{}
-	environment = EnvDebug
-
-	EnvDebug = "debug"
-	EnvProd  = "prod"
+	LevelDebug = "debug"
+	LevelInfo  = "info"
 )
-
-var Prod = zap.NewProductionConfig()
-var Dev = zap.NewDevelopmentConfig()
-
-func init() {
-	Prod.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	zap.ReplaceGlobals(Create("", Dev).Desugar())
-}
-
-func Create(name string, cfg zap.Config) *zap.SugaredLogger {
-	l, _ := cfg.Build()
-	return l.Named(name).Sugar()
-}
 
 type Logger interface {
 	Debug(args ...interface{})
@@ -49,6 +31,11 @@ type KVLogger interface {
 	Error(msg string, keyvals ...interface{})
 	Fatal(msg string, keyvals ...interface{})
 	With(keyvals ...interface{}) KVLogger
+}
+
+type LoggingOpts interface {
+	Level() string
+	Format() string
 }
 
 type NoopKVLogger struct {
