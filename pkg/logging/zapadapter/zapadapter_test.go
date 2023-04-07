@@ -38,17 +38,26 @@ func TestLogger_LogLevels(t *testing.T) {
 }
 
 func TestLogger_With(t *testing.T) {
-	// Create an observer to capture logs
 	observedLogs, logs := observer.New(zap.InfoLevel)
 	logger := New(zap.New(observedLogs)).With("key", "value")
 
 	logger.Info("message")
 
-	// Ensure that a single log entry was captured
 	assert.Equal(t, 1, logs.Len())
 
-	// Ensure that the log entry contains the expected key-value pair
 	logEntry := logs.All()[0]
 	assert.Equal(t, "value", logEntry.ContextMap()["key"])
 	assert.Equal(t, "message", logEntry.Message)
+}
+
+func TestNewNamedKV(t *testing.T) {
+	logger := NewNamedKV("testlogger", NewLoggingOpts("info", "json"))
+	logger.Info("message")
+
+	logger = NewNamedKV("testlogger", NewLoggingOpts("debug", "console"))
+	logger.Info("message")
+
+	assert.Panics(t, func() {
+		NewNamedKV("testlogger", NewLoggingOpts("", ""))
+	})
 }

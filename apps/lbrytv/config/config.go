@@ -224,4 +224,5 @@ func init() {
 
 	c.Viper.SetDefault("Address", ":8080")
 	c.Viper.SetDefault("Host", "http://localhost:8080")
+	c.Viper.SetDefault("Logging", map[string]string{"level": "debug", "format": "console"})
 }
