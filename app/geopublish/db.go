@@ -69,7 +69,6 @@ func (d *UploadsDB) listenToHandler(upHandler *Handler) {
 				en   string
 				e    handler.HookEvent
 			)
-			log.Infof("listening to handler")
 			select {
 			case e = <-upHandler.CreatedUploads:
 				metrics.UploadsCreated.Inc()
@@ -96,7 +95,7 @@ func (d *UploadsDB) listenToHandler(upHandler *Handler) {
 				metrics.UploadsDBErrors.Inc()
 				log.Error(gerr)
 			} else {
-				log.Infof("handled %s signal, upload id=%s", en, e.Upload.ID)
+				log.Debugf("handled %s signal, upload id=%s", en, e.Upload.ID)
 			}
 		}
 
