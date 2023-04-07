@@ -82,13 +82,16 @@ func NewCarriage(blobsPath string, resultWriter io.Writer, reflectorCfg map[stri
 
 func (c *Carriage) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	if t.Type() != TypeUploadProcess {
-		c.logger.Warn("cannot handle task", "type", t.Type())
+		c.logger.Error("cannot handle task", "type", t.Type())
 		return fmt.Errorf("cannot handle %s", t.Type())
 	}
 	var p UploadProcessPayload
 	if err := json.Unmarshal(t.Payload(), &p); err != nil {
+		c.logger.Error("json.Unmarshal failed", "err", err)
 		return fmt.Errorf("json.Unmarshal failed: %v: %w", err, asynq.SkipRetry)
 	}
+
+	log := c.logger.With("upload_id", p.UploadID, "user_id", p.UserID)
 
 	r, err := c.Process(p)
 	if err != nil {
@@ -96,19 +99,20 @@ func (c *Carriage) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	}
 	br, err := json.Marshal(r)
 	if err != nil {
-		c.logger.Error("error serializing processing result", "err", err, "result", r)
+		log.Error("error serializing processing result", "err", err, "result", r)
 		return fmt.Errorf("error serializing processing result: %s (%w)", err, asynq.SkipRetry)
 	}
 
 	if r.Error != "" {
 		perr := fmt.Errorf("upload processing failed: %s", r.Error)
 		if r.Retry {
-			c.logger.Warn("upload processing failed", "result", r, "payload", p)
+			log.Warn("upload processing failed", "payload", p, "result", r)
 			return perr
 		}
-		c.logger.Error("upload processing failed fatally", "result", r, "payload", p)
+		log.Warn("upload processing failed fatally", "payload", p, "result", r)
 		_, err = c.resultWriter.Write(br)
 		if err != nil {
+			log.Error("writing result failed", "err", err)
 			perr = fmt.Errorf("%s (also error writing result: %w)", perr, err)
 		}
 		return fmt.Errorf("%s (%w)", perr, asynq.SkipRetry)
@@ -116,7 +120,7 @@ func (c *Carriage) ProcessTask(ctx context.Context, t *asynq.Task) error {
 
 	_, err = c.resultWriter.Write(br)
 	if err != nil {
-		c.logger.Error("writing result failed", "err", err)
+		log.Error("writing result failed", "err", err)
 		return fmt.Errorf("error writing result: %w", err)
 	}
 	return nil
@@ -225,7 +229,7 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 		return r, fmt.Errorf("sdk returned an error: %s", res.Error.Message)
 	}
 	metrics.QueriesCompleted.Inc()
-	log.Info("stream processed", "method", p.Request.Method, "params", p.Request)
+	log.Info("stream processed", "method", p.Request.Method, "response", r.Response.Result)
 	return r, nil
 }
 
