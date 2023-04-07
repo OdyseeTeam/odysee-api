@@ -8,6 +8,14 @@ import (
 	"logur.dev/logur"
 )
 
+var prodConfig = zap.NewProductionConfig()
+var devConfig = zap.NewDevelopmentConfig()
+
+type LoggingOpts struct {
+	level  string
+	format string
+}
+
 // logger is a Logur adapter for Uber's Zap.
 type logger struct {
 	logger *zap.SugaredLogger
@@ -21,7 +29,7 @@ type kvLogger struct {
 }
 
 // NewKV returns a new Logur kvLogger.
-// If kvLogger is nil, a default instance is created.
+// If kvLogger is nil, a default global instance is used.
 func New(zlogger *zap.Logger) *logger {
 	if zlogger == nil {
 		zlogger = zap.L()
@@ -35,7 +43,7 @@ func New(zlogger *zap.Logger) *logger {
 }
 
 // NewKV returns a new Logur kvLogger.
-// If kvLogger is nil, a default instance is created.
+// If kvLogger is nil, a default global instance is used.
 func NewKV(logger *zap.Logger) *kvLogger {
 	if logger == nil {
 		logger = zap.L()
@@ -45,6 +53,29 @@ func NewKV(logger *zap.Logger) *kvLogger {
 	return &kvLogger{
 		logger: logger.Sugar(),
 		core:   logger.Core(),
+	}
+}
+
+func NewNamedKV(name string, opts logging.LoggingOpts) *kvLogger {
+	var cfg zap.Config
+
+	if opts.Level() == logging.LevelInfo {
+		cfg = zap.NewProductionConfig()
+	} else if opts.Level() == logging.LevelDebug {
+		cfg = zap.NewDevelopmentConfig()
+	}
+	cfg.Encoding = opts.Format()
+	l, err := cfg.Build()
+	if err != nil {
+		panic(err)
+	}
+	return NewKV(l.Named(name))
+}
+
+func NewLoggingOpts(level, format string) LoggingOpts {
+	return LoggingOpts{
+		level:  level,
+		format: format,
 	}
 }
 
@@ -186,4 +217,17 @@ func (l *kvLogger) LevelEnabled(level logur.Level) bool {
 	}
 
 	return true
+}
+
+func (o LoggingOpts) Level() string {
+	return o.level
+}
+
+func (o LoggingOpts) Format() string {
+	return o.format
+}
+
+func init() {
+	l, _ := devConfig.Build()
+	zap.ReplaceGlobals(l)
 }

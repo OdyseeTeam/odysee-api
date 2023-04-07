@@ -57,3 +57,7 @@ ReflectorUpstream:
   Bucket: blobs'
   Key: key
   Secret: secret
+
+Logging:
+  Level: debug
+  Format: console

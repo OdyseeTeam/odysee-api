@@ -132,6 +132,7 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	t = time.Now()
 	info, err := c.analyzer.Analyze(context.Background(), p.Path)
 	metrics.ProcessingTime.WithLabelValues(metrics.LabelProcessingAnalyze).Observe(float64(time.Since(t)))
+	metrics.AnalysisDuration.Add(float64(time.Since(t)))
 	if info == nil {
 		metrics.ProcessingErrors.WithLabelValues(metrics.LabelProcessingAnalyze).Inc()
 		return r, err
@@ -154,6 +155,9 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	t = time.Now()
 	summary, err := uploader.Upload(src)
 	metrics.ProcessingTime.WithLabelValues(metrics.LabelProcessingReflection).Observe(float64(time.Since(t)))
+	metrics.EgressDuration.Add(float64(time.Since(t)))
+	metrics.EgressBytes.Add(float64(streamSource.Size))
+	metrics.FileSize.WithLabelValues(info.MediaType.Name).Observe(float64(streamSource.Size))
 	if err != nil {
 		// The errors current uploader returns usually do not make sense to retry.
 		metrics.ProcessingErrors.WithLabelValues(metrics.LabelProcessingReflection).Inc()
