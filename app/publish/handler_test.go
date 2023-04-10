@@ -268,7 +268,7 @@ func Test_fetchFileInvalidInput(t *testing.T) {
 		{fmt.Sprintf("%v/files/404", ts.URL), "remote server returned non-OK status 404"},
 		{fmt.Sprintf("%v/files/400", ts.URL), "remote server returned non-OK status 400"},
 		{"/etc/passwd", `Get "/etc/passwd": unsupported protocol scheme ""`},
-		{"http://nonexistenthost/some_file.mp4", `dial tcp: lookup nonexistenthost:`},
+		{"http://nonexistenthost/some_file.mp4", `dial tcp: lookup nonexistenthost`},
 		{"http://nonexistenthost/", "couldn't determine remote file name"},
 		{ts.URL, `couldn't determine remote file name`},
 		{"/", "couldn't determine remote file name"},
