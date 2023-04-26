@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -27,6 +28,18 @@ import (
 )
 
 var bgctx = func() context.Context { return context.Background() }
+
+type riggedTimeSource struct {
+	FrozenTime time.Time
+}
+
+func (r riggedTimeSource) NowUnix() int64 {
+	return r.FrozenTime.Unix()
+}
+
+func (r riggedTimeSource) NowAfter(t time.Time) bool {
+	return r.FrozenTime.After(t)
+}
 
 func parseRawResponse(t *testing.T, rawCallResponse []byte, v interface{}) {
 	assert.NotNil(t, rawCallResponse)
@@ -211,12 +224,12 @@ func TestCaller_AddPreflightHookAmendingQueryParams(t *testing.T) {
 	c := NewCaller(srv.URL, 0)
 
 	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
-		params := GetQuery(ctx).ParamsAsMap()
+		params := GetFromContext(ctx).ParamsAsMap()
 		if params == nil {
-			GetQuery(ctx).Request.Params = map[string]string{"param": "123"}
+			GetFromContext(ctx).Request.Params = map[string]string{"param": "123"}
 		} else {
 			params["param"] = "123"
-			GetQuery(ctx).Request.Params = params
+			GetFromContext(ctx).Request.Params = params
 		}
 		return nil, nil
 	}, "")
@@ -359,7 +372,7 @@ func TestCaller_CloneWithoutHook(t *testing.T) {
 	c.AddPostflightHook(MethodResolve, func(c *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
 		// This will be cloned without the current hook but the previous one should increment `timesCalled` once again
 		cc := c.CloneWithoutHook(c.Endpoint(), MethodResolve, "lbrynext_resolve")
-		q := GetQuery(ctx)
+		q := GetFromContext(ctx)
 		_, err := cc.SendQuery(ctx, q)
 		assert.NoError(t, err)
 		return nil, nil
@@ -555,7 +568,7 @@ func TestCaller_CallQueryWithRetry(t *testing.T) {
 	// check that sdk loads the wallet and retries the query if the wallet was not initially loaded
 
 	c := NewCaller(addr, dummyUserID)
-	r, err := c.SendQuery(WithQuery(bgctx(), q), q)
+	r, err := c.SendQuery(AttachToContext(bgctx(), q), q)
 	require.NoError(t, err)
 	require.Nil(t, r.Error)
 }
@@ -585,10 +598,10 @@ func TestCaller_timeouts(t *testing.T) {
 		})
 	}()
 
-	_, err = c.SendQuery(WithQuery(bgctx(), q), q)
+	_, err = c.SendQuery(AttachToContext(bgctx(), q), q)
 	require.NoError(t, err)
 
-	_, err = c.SendQuery(WithQuery(bgctx(), q), q)
+	_, err = c.SendQuery(AttachToContext(bgctx(), q), q)
 	require.Error(t, err, `timeout awaiting response headers`)
 }
 
@@ -625,7 +638,7 @@ func TestCaller_DontReloadWalletAfterOtherErrors(t *testing.T) {
 		}),
 	)
 
-	r, err := c.SendQuery(WithQuery(bgctx(), q), q)
+	r, err := c.SendQuery(AttachToContext(bgctx(), q), q)
 	require.NoError(t, err)
 	require.Equal(t, "Couldn't find wallet: //", r.Error.Message)
 }
@@ -667,7 +680,7 @@ func TestCaller_DontReloadWalletIfAlreadyLoaded(t *testing.T) {
 		}),
 	)
 
-	r, err := c.SendQuery(WithQuery(bgctx(), q), q)
+	r, err := c.SendQuery(AttachToContext(bgctx(), q), q)
 
 	require.NoError(t, err)
 	require.Nil(t, r.Error)
@@ -1028,4 +1041,74 @@ func TestCaller_JSONRPCNotCut(t *testing.T) {
 
 	assert.Equal(t, channelIdscpy, req.Params.(map[string]interface{})["channel_ids"])
 	assert.Equal(t, req.Params.(map[string]interface{})["urls"], "what")
+}
+
+func TestCaller_preflightHookClaimSearch(t *testing.T) {
+	reqChan := test.ReqChan()
+	srv := test.MockHTTPServer(reqChan)
+	defer srv.Close()
+
+	timeSource = riggedTimeSource{time.Now()}
+	defer func() { timeSource = realTimeSource{} }()
+
+	c := NewCaller(srv.URL, 0)
+
+	cases := []struct {
+		params  map[string]interface{}
+		asserts func(t *testing.T, pp map[string]interface{})
+	}{
+		{
+			params: map[string]interface{}{"has_source": true},
+			asserts: func(t *testing.T, pp map[string]interface{}) {
+				assert.Contains(t, pp["not_tags"], ClaimTagUnlisted)
+				assert.Contains(t, pp["not_tags"], ClaimTagPrivate)
+			},
+		},
+		{
+			params: map[string]interface{}{"has_source": true, "not_tags": []string{ClaimTagPrivate}},
+			asserts: func(t *testing.T, pp map[string]interface{}) {
+				assert.Contains(t, pp["not_tags"], ClaimTagUnlisted)
+				assert.Contains(t, pp["not_tags"], ClaimTagPrivate)
+			},
+		},
+		{
+			params: map[string]interface{}{"has_source": false, "not_tags": []string{ClaimTagPrivate}},
+			asserts: func(t *testing.T, pp map[string]interface{}) {
+				assert.NotContains(t, pp["not_tags"], ClaimTagUnlisted)
+				assert.Contains(t, pp["not_tags"], ClaimTagPrivate)
+			},
+		},
+		{
+			params: map[string]interface{}{"has_source": true, "any_tags": []string{ClaimTagScheduledShow}, "release_time": fmt.Sprintf(">%v", timeSource.NowUnix()-86400)},
+			asserts: func(t *testing.T, pp map[string]interface{}) {
+				assert.EqualValues(t, fmt.Sprintf(">%v", timeSource.NowUnix()-86400), pp["release_time"])
+			},
+		},
+		{
+			params: map[string]interface{}{"has_source": true, "release_time": fmt.Sprintf(">%v", timeSource.NowUnix()-86400)},
+			asserts: func(t *testing.T, pp map[string]interface{}) {
+				assert.EqualValues(
+					t,
+					[]any{fmt.Sprintf(">%v", timeSource.NowUnix()-86400), fmt.Sprintf("<%v", timeSource.NowUnix())},
+					pp["release_time"])
+			},
+		},
+		{
+			params: map[string]interface{}{"has_source": true},
+			asserts: func(t *testing.T, pp map[string]interface{}) {
+				assert.EqualValues(t, fmt.Sprintf("<%v", timeSource.NowUnix()), pp["release_time"])
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(fmt.Sprintf("%+v", tc.params), func(t *testing.T) {
+			srv.NextResponse <- test.EmptyResponse()
+			c.Call(bgctx(), jsonrpc.NewRequest(MethodClaimSearch, tc.params))
+			req := <-reqChan
+			patchedRequest := test.StrToReq(t, req.Body)
+			pp, _ := patchedRequest.Params.(map[string]interface{})
+			tc.asserts(t, pp)
+		})
+	}
 }

@@ -426,7 +426,7 @@ func getCaller(sdkAddress, filename string, userID int, qCache *cache.Cache) *qu
 	c := query.NewCaller(sdkAddress, userID)
 	c.Cache = qCache
 	c.AddPreflightHook(query.AllMethodsHook, func(_ *query.Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
-		q := query.GetQuery(ctx)
+		q := query.GetFromContext(ctx)
 		params := q.ParamsAsMap()
 		params[fileNameParam] = filename
 		q.Request.Params = params
