@@ -17,6 +17,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/iapi"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
+	"github.com/mitchellh/mapstructure"
 
 	"github.com/OdyseeTeam/player-server/pkg/paid"
 
@@ -29,6 +30,7 @@ const (
 	ClaimTagPrivate       = "c:private"
 	ClaimTagUnlisted      = "c:unlisted"
 	ClaimTagScheduledShow = "c:scheduled:show"
+	ClaimTagScheduledHide = "c:scheduled:hide"
 
 	accessTypePurchase   = "purchase"
 	accessTypeRental     = "rental"
@@ -54,7 +56,33 @@ type TimeSource interface {
 	NowAfter(time.Time) bool
 }
 
+type ClaimSearchParams struct {
+	ClaimID               *string  `json:"claim_id,omitempty"`
+	TXID                  *string  `json:"txid,omitempty"`
+	Nout                  *uint    `json:"nout,omitempty"`
+	Name                  *string  `json:"name,omitempty"`
+	ClaimType             []string `json:"claim_type,omitempty"`
+	OrderBy               []string `json:"order_by,omitempty"`
+	LimitClaimsPerChannel *int     `json:"limit_claims_per_channel,omitempty"`
+	HasSource             *bool    `json:"has_source,omitempty"`
+	ReleaseTime           []string `json:"release_time,omitempty"`
+	ChannelIDs            []string `json:"channel_ids,omitempty"`
+	AnyTags               []string `json:"any_tags,omitempty"`
+	NotTags               []string `json:"not_tags,omitempty"`
+
+	Page     uint64 `json:"page"`
+	PageSize uint64 `json:"page_size"`
+}
+
 type realTimeSource struct{}
+
+func (c *ClaimSearchParams) AnyTagsContains(tags ...string) bool {
+	return sliceContains(c.AnyTags, tags...)
+}
+
+func (c *ClaimSearchParams) NotTagsContains(tags ...string) bool {
+	return sliceContains(c.NotTags, tags...)
+}
 
 func (ts realTimeSource) NowUnix() int64            { return time.Now().Unix() }
 func (ts realTimeSource) NowAfter(t time.Time) bool { return time.Now().After(t) }
@@ -74,7 +102,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		ID:      query.Request.ID,
 		JSONRPC: query.Request.JSONRPC,
 	}
-	responseResult := map[string]interface{}{
+	responseResult := map[string]any{
 		ParamStreamingUrl: "UNSET",
 	}
 
@@ -152,7 +180,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		if !claim.IsMyOutput {
 			purchaseQuery, err := NewQuery(jsonrpc.NewRequest(
 				MethodPurchaseCreate,
-				map[string]interface{}{
+				map[string]any{
 					"url":      lbryUrl,
 					"blocking": true,
 				},
@@ -372,7 +400,7 @@ TagLoop:
 func resolve(ctx context.Context, c *Caller, q *Query, url string) (*ljsonrpc.Claim, error) {
 	resolveQuery, err := NewQuery(jsonrpc.NewRequest(
 		MethodResolve,
-		map[string]interface{}{
+		map[string]any{
 			"urls":                     url,
 			"include_purchase_receipt": true,
 			"include_protobuf":         true,
@@ -408,56 +436,69 @@ func resolve(ctx context.Context, c *Caller, q *Query, url string) (*ljsonrpc.Cl
 // preflightHookClaimSearch patches tag parameters of RPC request to support scheduled and unlisted content.
 func preflightHookClaimSearch(_ *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
 	query := GetFromContext(ctx)
-	params := query.ParamsAsMap()
-	if hasSource, ok := params["has_source"].(bool); ok && hasSource {
-		notTags, _ := params["not_tags"].([]string)
-		anyTags, _ := params["any_tags"].([]string)
-		if !hasAnyTag(params["any_tags"], ClaimTagPrivate, ClaimTagUnlisted) {
-			if !hasTag(notTags, ClaimTagPrivate) {
-				notTags = append(notTags, ClaimTagPrivate)
+	origParams := query.ParamsAsMap()
+	params := &ClaimSearchParams{}
+	err := decode(origParams, params)
+	if err != nil {
+		return nil, fmt.Errorf("cannot decode query params: %w", err)
+	}
+	if params.HasSource != nil && *params.HasSource {
+		if !params.AnyTagsContains(ClaimTagPrivate, ClaimTagUnlisted) {
+			if !params.NotTagsContains(ClaimTagPrivate) {
+				params.NotTags = append(params.NotTags, ClaimTagPrivate)
 			}
-			if !hasTag(notTags, ClaimTagUnlisted) {
-				notTags = append(notTags, ClaimTagUnlisted)
+			if !params.NotTagsContains(ClaimTagUnlisted) {
+				params.NotTags = append(params.NotTags, ClaimTagUnlisted)
 			}
-			params["not_tags"] = notTags
+			origParams["not_tags"] = params.NotTags
 		}
-		if !hasTag(anyTags, ClaimTagScheduledShow) {
-			releaseTime, ok := params["release_time"].(string)
+		if !params.AnyTagsContains(ClaimTagScheduledShow, ClaimTagScheduledHide) {
 			t := timeSource.NowUnix()
-			if ok {
-				params["release_time"] = []string{releaseTime, fmt.Sprintf("<%d", t)}
+			if len(params.ReleaseTime) > 0 {
+				params.ReleaseTime = append(params.ReleaseTime, fmt.Sprintf("<%d", t))
 			} else {
-				params["release_time"] = fmt.Sprintf("<%d", t)
+				params.ReleaseTime = []string{fmt.Sprintf("<%d", t)}
 			}
+			origParams["release_time"] = params.ReleaseTime
 		}
 	}
 	return nil, nil
 }
 
-func hasAnyTag(tags any, anyTags ...string) bool {
-	stags, ok := tags.([]string)
-	if !ok {
-		return false
-	}
-	for _, t := range anyTags {
-		if hasTag(stags, t) {
-			return true
+func sliceContains[V comparable](cont []V, items ...V) bool {
+	for _, t := range cont {
+		for _, i := range items {
+			if t == i {
+				return true
+			}
 		}
 	}
 	return false
 }
 
-func hasTag(tags []string, tag string) bool {
-	for _, t := range tags {
-		if t == tag {
-			return true
-		}
+func decode(source, target any) error {
+	config := &mapstructure.DecoderConfig{
+		Metadata:         nil,
+		Result:           target,
+		TagName:          "json",
+		WeaklyTypedInput: true,
+		// DecodeHook: fixDecodeProto,
 	}
-	return false
+
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return err
+	}
+
+	err = decoder.Decode(source)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func getStatusResponse(_ *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
-	var response map[string]interface{}
+	var response map[string]any
 
 	rawResponse := `
 	{
