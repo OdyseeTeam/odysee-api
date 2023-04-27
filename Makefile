@@ -1,6 +1,6 @@
 date := $(shell date "+%Y-%m-%d-%H-%M")
-api_version := $(shell git describe --tags --match 'api-v*'|sed 's/api-v\([0-9.]*\)-.*/\1/')
-watchman_version := $(shell git describe --tags --match 'watchman-v*'|sed 's/api-v\([0-9.]*\)-.*/\1/')
+api_version := $(shell git describe --tags --match 'api-v*'|sed 's/api-v\([0-9.]*\)/\1/')
+watchman_version := $(shell git describe --tags --match 'watchman-v*'|sed 's/api-v\([0-9.]*\)/\1/')
 git_hash := $(shell git rev-parse --short HEAD)
 
 .PHONY: test
