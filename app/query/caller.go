@@ -56,11 +56,11 @@ type hookEntry struct {
 	name     string
 }
 
-func WithQuery(ctx context.Context, query *Query) context.Context {
+func AttachToContext(ctx context.Context, query *Query) context.Context {
 	return context.WithValue(ctx, contextKeyQuery, query)
 }
 
-func GetQuery(ctx context.Context) *Query {
+func GetFromContext(ctx context.Context) *Query {
 	return ctx.Value(contextKeyQuery).(*Query)
 }
 
@@ -155,8 +155,9 @@ func (c *Caller) AddPostflightHook(method string, hf Hook, name string) {
 }
 
 func (c *Caller) addDefaultHooks() {
-	c.AddPreflightHook("status", getStatusResponse, builtinHookName)
-	c.AddPreflightHook("get", preflightHookGet, builtinHookName)
+	c.AddPreflightHook(MethodStatus, getStatusResponse, builtinHookName)
+	c.AddPreflightHook(MethodGet, preflightHookGet, builtinHookName)
+	c.AddPreflightHook(MethodClaimSearch, preflightHookClaimSearch, builtinHookName)
 }
 
 func (c *Caller) CloneWithoutHook(endpoint, method, name string) *Caller {
@@ -199,7 +200,7 @@ func (c *Caller) Call(ctx context.Context, req *jsonrpc.RPCRequest) (*jsonrpc.RP
 
 	// Applying preflight hooks
 	var res *jsonrpc.RPCResponse
-	ctx = WithQuery(ctx, q)
+	ctx = AttachToContext(ctx, q)
 	for _, hook := range c.preflightHooks {
 		if isMatchingHook(q.Method(), hook) {
 			res, err = hook.function(c, ctx)

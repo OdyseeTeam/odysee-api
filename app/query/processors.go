@@ -11,13 +11,14 @@ import (
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/auth"
+	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
+	"github.com/OdyseeTeam/odysee-api/internal/metrics"
 	"github.com/OdyseeTeam/odysee-api/pkg/iapi"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
+	"github.com/mitchellh/mapstructure"
 
-	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
-	"github.com/OdyseeTeam/odysee-api/internal/metrics"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
@@ -26,6 +27,11 @@ import (
 )
 
 const (
+	ClaimTagPrivate       = "c:private"
+	ClaimTagUnlisted      = "c:unlisted"
+	ClaimTagScheduledShow = "c:scheduled:show"
+	ClaimTagScheduledHide = "c:scheduled:hide"
+
 	accessTypePurchase   = "purchase"
 	accessTypeRental     = "rental"
 	accessTypeMemberOnly = "memberonly"
@@ -43,6 +49,44 @@ var errNeedSignedLivestreamUrl = errors.Err("need signed url")
 var reAlreadyPurchased = regexp.MustCompile(`(?i)you already have a purchase`)
 var rePurchaseFree = regexp.MustCompile(`(?i)does not have a purchase price`)
 
+var timeSource TimeSource = realTimeSource{}
+
+type TimeSource interface {
+	NowUnix() int64
+	NowAfter(time.Time) bool
+}
+
+type ClaimSearchParams struct {
+	ClaimID               *string  `json:"claim_id,omitempty"`
+	TXID                  *string  `json:"txid,omitempty"`
+	Nout                  *uint    `json:"nout,omitempty"`
+	Name                  *string  `json:"name,omitempty"`
+	ClaimType             []string `json:"claim_type,omitempty"`
+	OrderBy               []string `json:"order_by,omitempty"`
+	LimitClaimsPerChannel *int     `json:"limit_claims_per_channel,omitempty"`
+	HasSource             *bool    `json:"has_source,omitempty"`
+	ReleaseTime           []string `json:"release_time,omitempty"`
+	ChannelIDs            []string `json:"channel_ids,omitempty"`
+	AnyTags               []string `json:"any_tags,omitempty"`
+	NotTags               []string `json:"not_tags,omitempty"`
+
+	Page     uint64 `json:"page"`
+	PageSize uint64 `json:"page_size"`
+}
+
+type realTimeSource struct{}
+
+func (c *ClaimSearchParams) AnyTagsContains(tags ...string) bool {
+	return sliceContains(c.AnyTags, tags...)
+}
+
+func (c *ClaimSearchParams) NotTagsContains(tags ...string) bool {
+	return sliceContains(c.NotTags, tags...)
+}
+
+func (ts realTimeSource) NowUnix() int64            { return time.Now().Unix() }
+func (ts realTimeSource) NowAfter(t time.Time) bool { return time.Now().After(t) }
+
 // preflightHookGet replaces `get` request from the client with `purchase_create` + `resolve` for paid streams
 // plus extra logic for looking up off-chain purchases, rentals and memberships.
 // Only `streaming_url` and `purchase_receipt` (if stream has a receipt associated with it) will be returned in the response.
@@ -52,13 +96,13 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		contentURL, metricLabel string
 		isPaidStream            bool
 	)
-	query := GetQuery(ctx)
+	query := GetFromContext(ctx)
 
 	response := &jsonrpc.RPCResponse{
 		ID:      query.Request.ID,
 		JSONRPC: query.Request.JSONRPC,
 	}
-	responseResult := map[string]interface{}{
+	responseResult := map[string]any{
 		ParamStreamingUrl: "UNSET",
 	}
 
@@ -136,7 +180,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		if !claim.IsMyOutput {
 			purchaseQuery, err := NewQuery(jsonrpc.NewRequest(
 				MethodPurchaseCreate,
-				map[string]interface{}{
+				map[string]any{
 					"url":      lbryUrl,
 					"blocking": true,
 				},
@@ -144,7 +188,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 			if err != nil {
 				return nil, err
 			}
-			purchaseRes, err := caller.SendQuery(WithQuery(ctx, purchaseQuery), purchaseQuery)
+			purchaseRes, err := caller.SendQuery(AttachToContext(ctx, purchaseQuery), purchaseQuery)
 			if err != nil {
 				return nil, err
 			}
@@ -237,7 +281,7 @@ func checkStreamAccess(ctx context.Context, claim *ljsonrpc.Claim) (bool, error)
 		accessType, environ string
 	)
 
-	params := GetQuery(ctx).ParamsAsMap()
+	params := GetFromContext(ctx).ParamsAsMap()
 	_, isLivestream := params["base_streaming_url"]
 	if p, ok := params[iapi.ParamEnviron]; ok {
 		environ, _ = p.(string)
@@ -255,10 +299,10 @@ TagLoop:
 		case t == "c:members-only":
 			accessType = accessTypeMemberOnly
 			break TagLoop
-		case t == "c:unlisted":
+		case t == ClaimTagUnlisted:
 			accessType = accessTypeUnlisted
 			break TagLoop
-		case (t == "c:scheduled:hide" || t == "c:scheduled:show") && claim.Value.GetStream().ReleaseTime > time.Now().Unix():
+		case (t == "c:scheduled:hide" || t == "c:scheduled:show") && claim.Value.GetStream().ReleaseTime > timeSource.NowUnix():
 			accessType = accessTypeScheduled
 			break TagLoop
 		}
@@ -329,7 +373,7 @@ TagLoop:
 			if purchase.Type != "rental" {
 				return false, errors.Err("incorrect purchase type")
 			}
-			if purchase.Type == "rental" && time.Now().After(purchase.ValidThrough) {
+			if purchase.Type == "rental" && timeSource.NowAfter(purchase.ValidThrough) {
 				return false, errors.Err("rental expired")
 			}
 		}
@@ -356,7 +400,7 @@ TagLoop:
 func resolve(ctx context.Context, c *Caller, q *Query, url string) (*ljsonrpc.Claim, error) {
 	resolveQuery, err := NewQuery(jsonrpc.NewRequest(
 		MethodResolve,
-		map[string]interface{}{
+		map[string]any{
 			"urls":                     url,
 			"include_purchase_receipt": true,
 			"include_protobuf":         true,
@@ -389,8 +433,72 @@ func resolve(ctx context.Context, c *Caller, q *Query, url string) (*ljsonrpc.Cl
 	return &claim, err
 }
 
+// preflightHookClaimSearch patches tag parameters of RPC request to support scheduled and unlisted content.
+func preflightHookClaimSearch(_ *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
+	query := GetFromContext(ctx)
+	origParams := query.ParamsAsMap()
+	params := &ClaimSearchParams{}
+	err := decode(origParams, params)
+	if err != nil {
+		return nil, fmt.Errorf("cannot decode query params: %w", err)
+	}
+	if params.HasSource != nil && *params.HasSource {
+		if !params.AnyTagsContains(ClaimTagPrivate, ClaimTagUnlisted) {
+			if !params.NotTagsContains(ClaimTagPrivate) {
+				params.NotTags = append(params.NotTags, ClaimTagPrivate)
+			}
+			if !params.NotTagsContains(ClaimTagUnlisted) {
+				params.NotTags = append(params.NotTags, ClaimTagUnlisted)
+			}
+			origParams["not_tags"] = params.NotTags
+		}
+		if !params.AnyTagsContains(ClaimTagScheduledShow, ClaimTagScheduledHide) {
+			t := timeSource.NowUnix()
+			if len(params.ReleaseTime) > 0 {
+				params.ReleaseTime = append(params.ReleaseTime, fmt.Sprintf("<%d", t))
+			} else {
+				params.ReleaseTime = []string{fmt.Sprintf("<%d", t)}
+			}
+			origParams["release_time"] = params.ReleaseTime
+		}
+	}
+	return nil, nil
+}
+
+func sliceContains[V comparable](cont []V, items ...V) bool {
+	for _, t := range cont {
+		for _, i := range items {
+			if t == i {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func decode(source, target any) error {
+	config := &mapstructure.DecoderConfig{
+		Metadata:         nil,
+		Result:           target,
+		TagName:          "json",
+		WeaklyTypedInput: true,
+		// DecodeHook: fixDecodeProto,
+	}
+
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return err
+	}
+
+	err = decoder.Decode(source)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func getStatusResponse(_ *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
-	var response map[string]interface{}
+	var response map[string]any
 
 	rawResponse := `
 	{
@@ -446,7 +554,7 @@ func getStatusResponse(_ *Caller, ctx context.Context) (*jsonrpc.RPCResponse, er
 	  }
 	`
 	json.Unmarshal([]byte(rawResponse), &response)
-	rpcResponse := GetQuery(ctx).newResponse()
+	rpcResponse := GetFromContext(ctx).newResponse()
 	rpcResponse.Result = response
 	return rpcResponse, nil
 }
