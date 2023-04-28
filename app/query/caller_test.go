@@ -1051,7 +1051,9 @@ func TestCaller_preflightHookClaimSearch(t *testing.T) {
 	timeSource = riggedTimeSource{time.Now()}
 	defer func() { timeSource = realTimeSource{} }()
 
-	c := NewCaller(srv.URL, 0)
+	releaseTime := roundDown(timeSource.NowUnix(), releaseTimeRoundDownSec)
+
+	caller := NewCaller(srv.URL, 0)
 
 	cases := []struct {
 		params  map[string]any
@@ -1068,7 +1070,7 @@ func TestCaller_preflightHookClaimSearch(t *testing.T) {
 			asserts: func(t *testing.T, pp map[string]any) {
 				assert.Contains(t, pp["not_tags"], ClaimTagUnlisted)
 				assert.Contains(t, pp["not_tags"], ClaimTagPrivate)
-				assert.EqualValues(t, []any{fmt.Sprintf("<%v", timeSource.NowUnix())}, pp["release_time"])
+				assert.EqualValues(t, []any{fmt.Sprintf("<%v", releaseTime)}, pp["release_time"])
 			},
 		},
 		{
@@ -1076,7 +1078,7 @@ func TestCaller_preflightHookClaimSearch(t *testing.T) {
 			asserts: func(t *testing.T, pp map[string]any) {
 				assert.Contains(t, pp["not_tags"], ClaimTagUnlisted)
 				assert.Contains(t, pp["not_tags"], ClaimTagPrivate)
-				assert.EqualValues(t, []any{fmt.Sprintf("<%v", timeSource.NowUnix())}, pp["release_time"])
+				assert.EqualValues(t, []any{fmt.Sprintf("<%v", releaseTime)}, pp["release_time"])
 			},
 		},
 		{
@@ -1094,17 +1096,17 @@ func TestCaller_preflightHookClaimSearch(t *testing.T) {
 			},
 		},
 		{
-			params: map[string]any{"has_source": true, "any_tags": []any{ClaimTagScheduledShow}, "release_time": fmt.Sprintf(">%v", timeSource.NowUnix()-86400)},
+			params: map[string]any{"has_source": true, "any_tags": []any{ClaimTagScheduledShow}, "release_time": fmt.Sprintf(">%v", releaseTime-86400)},
 			asserts: func(t *testing.T, pp map[string]any) {
-				assert.EqualValues(t, fmt.Sprintf(">%v", timeSource.NowUnix()-86400), pp["release_time"])
+				assert.EqualValues(t, fmt.Sprintf(">%v", releaseTime-86400), pp["release_time"])
 			},
 		},
 		{
-			params: map[string]any{"has_source": true, "release_time": fmt.Sprintf(">%v", timeSource.NowUnix()-86400)},
+			params: map[string]any{"has_source": true, "release_time": fmt.Sprintf(">%v", releaseTime-86400)},
 			asserts: func(t *testing.T, pp map[string]any) {
 				assert.EqualValues(
 					t,
-					[]any{fmt.Sprintf(">%v", timeSource.NowUnix()-86400), fmt.Sprintf("<%v", timeSource.NowUnix())},
+					[]any{fmt.Sprintf(">%v", releaseTime-86400), fmt.Sprintf("<%v", releaseTime)},
 					pp["release_time"])
 			},
 		},
@@ -1113,7 +1115,7 @@ func TestCaller_preflightHookClaimSearch(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf("%+v", tc.params), func(t *testing.T) {
 			srv.NextResponse <- test.EmptyResponse()
-			c.Call(bgctx(), jsonrpc.NewRequest(MethodClaimSearch, tc.params))
+			caller.Call(bgctx(), jsonrpc.NewRequest(MethodClaimSearch, tc.params))
 			req := <-reqChan
 			patchedRequest := test.StrToReq(t, req.Body)
 			pp, _ := patchedRequest.Params.(map[string]any)
