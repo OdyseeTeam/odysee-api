@@ -1051,7 +1051,7 @@ func TestCaller_preflightHookClaimSearch(t *testing.T) {
 	timeSource = riggedTimeSource{time.Now()}
 	defer func() { timeSource = realTimeSource{} }()
 
-	releaseTime := roundDown(timeSource.NowUnix(), releaseTimeRoundDownSec)
+	releaseTime := roundUp(timeSource.NowUnix(), releaseTimeRoundDownSec)
 
 	caller := NewCaller(srv.URL, 0)
 
