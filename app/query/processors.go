@@ -455,7 +455,7 @@ func preflightHookClaimSearch(_ *Caller, ctx context.Context) (*jsonrpc.RPCRespo
 			origParams["not_tags"] = params.NotTags
 		}
 		if !params.AnyTagsContains(ClaimTagScheduledShow, ClaimTagScheduledHide) {
-			t := roundDown(timeSource.NowUnix(), releaseTimeRoundDownSec)
+			t := roundUp(timeSource.NowUnix(), releaseTimeRoundDownSec)
 			if len(params.ReleaseTime) > 0 {
 				params.ReleaseTime = append(params.ReleaseTime, fmt.Sprintf("<%d", t))
 			} else {
@@ -478,8 +478,12 @@ func sliceContains[V comparable](cont []V, items ...V) bool {
 	return false
 }
 
-func roundDown(n, s int64) int64 {
-	return n - n%s
+func roundUp(n, s int64) int64 {
+	r := n % s
+	if r == 0 {
+		return n
+	}
+	return n + s - r
 }
 
 func decode(source, target any) error {
