@@ -44,3 +44,7 @@ max_line_length = 79
 # Go lang uses tabs by default
 [*.go]
 indent_style = tab
+
+[*.mmd]
+indent_style = space
+indent_size = 2

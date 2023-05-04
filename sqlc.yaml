@@ -1,0 +1,14 @@
+version: 1
+packages:
+  - path: "apps/upload/database"
+    name: "database"
+    engine: "postgresql"
+    schema: "apps/upload/database/migrations/"
+    queries: "apps/upload/database/queries.sql"
+rename:
+  url: "URL"
+overrides:
+  - column: "uploads.size"
+    go_type: "int64"
+  - column: "uploads.received"
+    go_type: "int64"

@@ -8,9 +8,12 @@ import (
 	"github.com/OdyseeTeam/odysee-api/config"
 )
 
+type DSNConfig interface {
+	GetFullDSN() string
+}
+
 type DBConfig struct {
 	appName, dsn, dbName, connOpts string
-	migrate                        bool
 }
 
 func DefaultDBConfig() *DBConfig {
@@ -18,7 +21,6 @@ func DefaultDBConfig() *DBConfig {
 		dsn:      "postgres://postgres:odyseeteam@localhost",
 		dbName:   "postgres",
 		connOpts: "sslmode=disable",
-		migrate:  true,
 	}
 }
 
@@ -42,23 +44,18 @@ func (c *DBConfig) ConnOpts(connOpts string) *DBConfig {
 	return c
 }
 
-func (c *DBConfig) NoMigration() *DBConfig {
-	c.migrate = false
-	return c
-}
-
 func (c *DBConfig) GetFullDSN() string {
 	return fmt.Sprintf("%s/%s?%s", c.dsn, c.dbName, c.connOpts)
 }
 
-func ConnectDB(config *DBConfig, migrationsFS embed.FS) (*sql.DB, error) {
+func ConnectDB(config DSNConfig, migrationsFS ...embed.FS) (*sql.DB, error) {
 	var err error
 	db, err := sql.Open("postgres", config.GetFullDSN())
 	if err != nil {
 		return nil, err
 	}
-	if config.migrate {
-		_, err := New(db, migrationsFS).MigrateUp(0)
+	if len(migrationsFS) > 0 {
+		_, err := New(db, migrationsFS[0]).MigrateUp(0)
 		if err != nil {
 			return nil, err
 		}

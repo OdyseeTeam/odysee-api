@@ -12,19 +12,6 @@ services:
       SDK_CONFIG: /daemon/daemon_settings.yml
     labels:
       com.centurylinklabs.watchtower.enable: true
-  oapi:
-    image: odyseeteam/odysee-api:latest
-    ports:
-      - 8080:8080
-    volumes:
-      - storage:/storage
-    environment:
-      LW_DEBUG: 1
-    depends_on:
-      - lbrynet
-      - postgres
-    labels:
-      com.centurylinklabs.watchtower.enable: true
   redis:
     image: redis:7
     container_name: redis
@@ -38,19 +25,32 @@ services:
       com.centurylinklabs.watchtower.enable: false
   postgres:
     image: postgres:12.5-alpine
+    container_name: postgres
     command: ["postgres", "-c", "log_statement=all", "-c", "log_destination=stderr"]
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/pgdata
     environment:
-      POSTGRES_USER: lbrytv
-      POSTGRES_PASSWORD: lbrytv
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: odyseeteam
       PGDATA: /pgdata
       TZ: "UTC"
       PGTZ: "UTC"
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    command: server /data
+    volumes:
+      - minio-data:/data
 
 volumes:
   pgdata: {}
   storage: {}
   redis-data: {}
+  minio-data: {}
