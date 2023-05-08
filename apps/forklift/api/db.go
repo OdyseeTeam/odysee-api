@@ -174,7 +174,7 @@ func (d *UploadsDB) markUploadFinished(ctx context.Context, u *models.ForkliftUp
 }
 
 func (d *UploadsDB) finishUpload(ctx context.Context, id string, rpcRes *jsonrpc.RPCResponse, callErr string) error {
-	l := logging.FromContext(ctx)
+	l := logging.GetFromContext(ctx)
 	up, err := d.get(id, 0)
 	if err != nil {
 		l.Warn("error getting upload record", "err", err)

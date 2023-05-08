@@ -13,7 +13,6 @@ import (
 
 	"github.com/OdyseeTeam/odysee-api/app/proxy"
 	"github.com/OdyseeTeam/odysee-api/app/query"
-	"github.com/OdyseeTeam/odysee-api/app/rpcerrors"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/apps/forklift"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
@@ -21,6 +20,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/belt"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+	"github.com/OdyseeTeam/odysee-api/pkg/rpcerrors"
 	"github.com/hibiken/asynq"
 
 	"github.com/gorilla/mux"
@@ -178,7 +178,7 @@ func NewHandler(optionFuncs ...func(*HandlerOptions)) (*Handler, error) {
 	return h, nil
 }
 
-// Notify checks if the file upload is complete and sends jSON RPC request to lbrynet server.
+// Notify finalizes the upload
 func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	l := h.options.logger.With("method_handler", "Notify")
 
@@ -273,7 +273,7 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	origUploadPath, ok := info.Storage["Path"]
 	if !ok || origUploadPath == "" { // shouldn't happen but check regardless
 		err := fmt.Errorf("missing file path")
-		l.Error("storage error", "err", err, "info", reflect.ValueOf(info.Storage).MapKeys())
+		l.Warn("storage error", "err", err, "info", reflect.ValueOf(info.Storage).MapKeys())
 		metricErrors.WithLabelValues(areaObjectMeta).Inc()
 		rpcerrors.Write(w, err)
 		return
@@ -285,7 +285,7 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 
 	dstDir := filepath.Join(dir, strconv.Itoa(user.ID), info.ID)
 	if err := os.MkdirAll(dstDir, os.ModePerm); err != nil {
-		l.Error("failed to create directory", "err", err, "path", dstDir)
+		l.Warn("failed to create directory", "err", err, "path", dstDir)
 		metricErrors.WithLabelValues(areaStorage).Inc()
 		rpcerrors.Write(w, err)
 		return
@@ -293,7 +293,7 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 
 	dstFilepath := filepath.Join(dstDir, origUploadName)
 	if err := os.Rename(origUploadPath, dstFilepath); err != nil {
-		l.Error("failed to rename file", "err", err, "path", dstDir, "dst_path", dstFilepath)
+		l.Warn("failed to rename file", "err", err, "path", dstDir, "dst_path", dstFilepath)
 		metricErrors.WithLabelValues(areaStorage).Inc()
 		rpcerrors.Write(w, err)
 		return
@@ -301,7 +301,7 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 
 	var rpcReq *jsonrpc.RPCRequest
 	if err := json.NewDecoder(r.Body).Decode(&rpcReq); err != nil {
-		l.Error("bad json input received", "err", err)
+		l.Warn("bad json input received", "err", err)
 		metricErrors.WithLabelValues(areaInput).Inc()
 		rpcerrors.Write(w, rpcerrors.NewJSONParseError(err))
 		return
@@ -309,7 +309,7 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 
 	rpcparams, ok := rpcReq.Params.(map[string]interface{})
 	if !ok {
-		l.Error("bad parameters received")
+		l.Warn("bad parameters received")
 		metricErrors.WithLabelValues(areaInput).Inc()
 		rpcerrors.Write(w, rpcerrors.NewInvalidParamsError(werrors.New("cannot parse params")))
 		return
@@ -329,14 +329,14 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	)
 	if err := os.Remove(infoFile); err != nil {
 		metricErrors.WithLabelValues("storage").Inc()
-		l.Error("upload cleanup failed", err, "path", infoFile)
+		l.Warn("upload cleanup failed", err, "path", infoFile)
 		monitor.ErrorToSentry(err, map[string]string{"info_file": infoFile})
 	}
 
 	ctx := logging.AddToContext(context.Background(), l)
 	up, err := h.udb.startProcessingUpload(ctx, info.ID, user, dstFilepath)
 	if err != nil {
-		l.Error("upload processing failed", "err", err)
+		l.Warn("upload processing failed", "err", err)
 		rpcerrors.Write(w, err)
 		return
 	}
@@ -348,7 +348,7 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	}, 10)
 	if err != nil {
 		h.udb.markUploadFailed(ctx, up, err.Error())
-		l.Error("enqueuing upload failed", "err", err)
+		l.Warn("enqueuing upload failed", "err", err)
 		metricErrors.WithLabelValues(areaQueue).Inc()
 		rpcerrors.Write(w, err)
 		return

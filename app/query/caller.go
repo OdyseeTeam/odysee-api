@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/query/cache"
-	"github.com/OdyseeTeam/odysee-api/app/rpcerrors"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/app/wallet"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
@@ -17,6 +16,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/lbrynet"
 	"github.com/OdyseeTeam/odysee-api/internal/metrics"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
+	"github.com/OdyseeTeam/odysee-api/pkg/rpcerrors"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/sirupsen/logrus"

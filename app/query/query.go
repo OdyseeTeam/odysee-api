@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/OdyseeTeam/odysee-api/app/rpcerrors"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
+	"github.com/OdyseeTeam/odysee-api/pkg/rpcerrors"
 
 	"github.com/ybbus/jsonrpc"
 )
