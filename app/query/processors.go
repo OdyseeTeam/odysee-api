@@ -325,6 +325,10 @@ TagLoop:
 		signErr = errNeedSignedLivestreamUrl
 	}
 
+	if isUserAMod(ctx, environ) {
+		return true, signErr
+	}
+	
 	if accessType == accessTypeUnlisted {
 		// check signature and signature_ts params, error if not present
 		signature, ok := params["signature"]
@@ -357,6 +361,7 @@ TagLoop:
 	if environ == iapi.EnvironTest {
 		iac = iac.Clone(iapi.WithEnvironment(iapi.EnvironTest))
 	}
+
 	switch accessType {
 	case accessTypePurchase, accessTypeRental:
 		resp := &iapi.CustomerListResponse{}
@@ -567,4 +572,27 @@ func getStatusResponse(_ *Caller, ctx context.Context) (*jsonrpc.RPCResponse, er
 	rpcResponse := GetFromContext(ctx).newResponse()
 	rpcResponse.Result = response
 	return rpcResponse, nil
+}
+
+// Check and weakly return if the user is a mod, if errors occur false is assumed
+func isUserAMod(ctx context.Context, environ string) bool {
+	cu, err := auth.GetCurrentUserData(ctx)
+	if err != nil {
+		return false
+	}
+
+	iac := cu.IAPIClient()
+	if iac == nil {
+		return false
+	}
+	if environ == iapi.EnvironTest {
+		iac = iac.Clone(iapi.WithEnvironment(iapi.EnvironTest))
+	}
+
+	var userResp iapi.UserMeResponse
+	err = iac.Call(ctx, "user/me", nil, &userResp)
+	if err != nil {
+		return false
+	}
+	return userResp.Success && userResp.Data.GlobalMod
 }
