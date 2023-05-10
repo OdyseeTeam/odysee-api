@@ -16,6 +16,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
 	"github.com/go-chi/jwtauth/v5"
 	tusd "github.com/tus/tusd/pkg/handler"
 	"github.com/tus/tusd/pkg/s3store"
@@ -44,6 +45,7 @@ type Launcher struct {
 	db          database.DBTX
 	handler     *Handler
 	httpServer  *http.Server
+	corsDomains []string
 	readyCancel context.CancelFunc
 }
 
@@ -105,8 +107,12 @@ func (c *Launcher) DB(db database.DBTX) *Launcher {
 	return c
 }
 
+func (c *Launcher) CORSDomains(domains []string) *Launcher {
+	c.corsDomains = domains
+	return c
+}
+
 func (l *Launcher) Build() (chi.Router, error) {
-	// tokenAuth := jwtauth.New("ES256", nil, l.publicKey)
 	validator, err := keybox.NewValidator(l.publicKey)
 	if err != nil {
 		return nil, err
@@ -115,9 +121,8 @@ func (l *Launcher) Build() (chi.Router, error) {
 	l.logger.Info("building upload handler")
 	readyCtx, readyCancel := context.WithCancel(context.Background())
 	handler := &Handler{
-		logger:  l.logger,
-		queries: database.New(l.db),
-		// jwtAuth:  tokenAuth,
+		logger:         l.logger,
+		queries:        database.New(l.db),
 		tokenValidator: validator,
 	}
 	l.readyCancel = readyCancel
@@ -127,9 +132,8 @@ func (l *Launcher) Build() (chi.Router, error) {
 	l.s3Store.UseIn(composer)
 
 	tusConfig := tusd.Config{
-		StoreComposer: composer,
-		BasePath:      l.prefix,
-		// PreUploadCreateCallback: handler.preCreateHook,
+		StoreComposer:           composer,
+		BasePath:                l.prefix,
 		RespectForwardedHeaders: true,
 		NotifyCreatedUploads:    true,
 		NotifyTerminatedUploads: true,
@@ -151,8 +155,16 @@ func (l *Launcher) Build() (chi.Router, error) {
 	handler.UnroutedHandler = tusdHandler
 
 	router := chi.NewRouter()
-	// router.Use(middleware.Logger)
 	router.Use(httpLogger.Middleware)
+	router.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   l.corsDomains,
+		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodHead, http.MethodDelete, http.MethodOptions},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Requested-With"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: false,
+		MaxAge:           300,
+	}))
+
 	router.Get("/livez", func(w http.ResponseWriter, r *http.Request) {
 		if readyCtx.Err() != nil {
 			http.Error(w, "upload service is shutting down", http.StatusServiceUnavailable)
@@ -164,20 +176,16 @@ func (l *Launcher) Build() (chi.Router, error) {
 		w.Write([]byte("OK"))
 	})
 	router.Route(l.prefix, func(r chi.Router) {
-		// r.Use(jwtauth.Verifier(tokenAuth))
 		r.Use(handler.authByToken)
 		r.Use(handler.Middleware)
-		// r.MethodFunc("OPTIONS", "/", handler.OptionsFile)
 		r.Post("/", handler.PostFile)
 		r.Head("/*", handler.HeadFile)
 		r.Patch("/*", handler.PatchFile)
 		r.Delete("/*", handler.DelFile)
-		// Notify?
 	})
 
 	httpServer := &http.Server{
-		Addr: l.httpAddress,
-		// Handler: handlers.LoggingHandler(os.Stdout, router),
+		Addr:    l.httpAddress,
 		Handler: l.router,
 	}
 
@@ -211,35 +219,6 @@ func (l *Launcher) Launch() {
 	}
 	l.logger.Info("http server stopped")
 }
-
-// preCreateHook validates user access request to publish handler before we
-// attempt to start the upload procedures.
-//
-// Note that usually this should be done as part of http middleware, but TUS
-// handlers overwrite the context with context background to avoid context
-// cancellation, and so any attempt to read values from request context won't
-// work here, until they can safely pass request context to TUS handler we need
-// to decouple before and after middleware to TUS hook callback functions.
-//
-// see: https://github.com/tus/tusd/pull/342
-// func (h *Handler) preCreateHook(hook tusd.HookEvent) error {
-// 	token, err := jwtauth.VerifyRequest(
-// 		h.jwtAuth, &http.Request{Header: hook.HTTPRequest.Header}, jwtauth.TokenFromHeader)
-// 	if err != nil {
-// 		return fmt.Errorf("cannot authenticate user: %w", err)
-// 	}
-// 	if token.Subject() == "" {
-// 		return fmt.Errorf("missing user id in token")
-// 	}
-// 	// if _, err := h.queries.CreateUpload(context.Background(), database.CreateUploadParams{
-// 	// 	UserID: uid,
-// 	// 	ID:     hook.Upload.ID,
-// 	// 	Size:   hook.Upload.Size,
-// 	// }); err != nil {
-// 	// 	return fmt.Errorf("upload record creation failed: %w", err)
-// 	// }
-// 	return nil
-// }
 
 func (h *Handler) listenToHooks() {
 	h.logger.Info("listening to upload signals")
@@ -358,14 +337,6 @@ func (h *Handler) extractUserIDFromRequest(r *http.Request) (string, error) {
 		return "", errors.New("missing user id in token")
 	}
 	return token.Subject(), nil
-}
-
-func extractUserIDFromPath(url string) string {
-	result := reExtractUserID.FindStringSubmatch(url)
-	if len(result) != 2 {
-		return ""
-	}
-	return result[1]
 }
 
 // extractUploadIDFromPath pulls the last segment from the url provided

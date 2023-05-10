@@ -101,7 +101,8 @@ func main() {
 		Store(store).
 		DB(db).
 		PublicKey(k).
-		Logger(logger)
+		Logger(logger).
+		CORSDomains(cfg.V.GetStringSlice("corsdomains"))
 
 	go func() {
 		trap := make(chan os.Signal, 1)
@@ -110,7 +111,7 @@ func main() {
 
 		launcher.StartShutdown()
 		// Wait for the readiness probe to detect the failure
-		<-time.After(30 * time.Second)
+		<-time.After(cfg.V.GetDuration("gracefulshutdown"))
 		launcher.ServerShutdown()
 		launcher.CompleteShutdown()
 		runCancel()

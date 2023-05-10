@@ -154,8 +154,8 @@ func (s *uploadSuite) TestUploadLarger() {
 	baseURL := "/v1/uploads/"
 	userID := int64(randomdata.Number(1, 1000000))
 	token, err := s.keyfob.GenerateToken(userID, time.Now().Add(time.Hour*24))
-	tokenHeader := fmt.Sprintf("Bearer %s", token)
 	s.Require().NoError(err)
+	tokenHeader := fmt.Sprintf("Bearer %s", token)
 
 	file := s.createRandomFile(fileSize)
 	defer file.Close()
@@ -232,6 +232,29 @@ func (s *uploadSuite) TestUploadLarger() {
 	})
 
 	s.Equal(file.Name(), upload.Filename)
+
+	response = (&test.HTTPTest{
+		Method: http.MethodHead,
+		URL:    tusUploadURL,
+		Code:   http.StatusOK,
+		ReqHeader: map[string]string{
+			AuthorizationHeader: tokenHeader,
+		},
+	}).RunHTTP(s.T())
+	fmt.Println(response.Header)
+	s.Equal(1, 2)
+
+	t2, err := s.keyfob.GenerateToken(userID+1, time.Now().Add(time.Hour*24))
+	s.Require().NoError(err)
+
+	(&test.HTTPTest{
+		Method: http.MethodHead,
+		URL:    tusUploadURL,
+		Code:   http.StatusNotFound,
+		ReqHeader: map[string]string{
+			AuthorizationHeader: fmt.Sprintf("Bearer %s", t2),
+		},
+	}).RunHTTP(s.T())
 }
 
 func (s *uploadSuite) TestUploadWrongToken() {

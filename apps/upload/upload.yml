@@ -11,3 +11,9 @@ Storage:
   Key: key
   Secret: secret
   Minio: true
+
+CORSDomains:
+  - http://*
+  - https://*
+
+GracefulShutdown: 5s
