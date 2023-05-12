@@ -328,7 +328,7 @@ TagLoop:
 	if isUserAMod(ctx, environ) {
 		return true, signErr
 	}
-	
+
 	if accessType == accessTypeUnlisted {
 		// check signature and signature_ts params, error if not present
 		signature, ok := params["signature"]
@@ -574,7 +574,7 @@ func getStatusResponse(_ *Caller, ctx context.Context) (*jsonrpc.RPCResponse, er
 	return rpcResponse, nil
 }
 
-// Check and weakly return if the user is a mod, if errors occur false is assumed
+// isUserAMod checks and weakly returns if the user is a mod, if errors occur false is assumed
 func isUserAMod(ctx context.Context, environ string) bool {
 	cu, err := auth.GetCurrentUserData(ctx)
 	if err != nil {
