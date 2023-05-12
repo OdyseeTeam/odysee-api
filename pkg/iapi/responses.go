@@ -44,6 +44,41 @@ type CustomerListResponse struct {
 	} `json:"data"`
 }
 
+type UserMeResponse struct {
+	Success bool        `json:"success"`
+	Error   interface{} `json:"error"`
+	Data    struct {
+		ID                  int      `json:"id"`
+		Language            string   `json:"language"`
+		GivenName           *string  `json:"given_name"`
+		FamilyName          *string  `json:"family_name"`
+		CreatedAt           string   `json:"created_at"`
+		UpdatedAt           string   `json:"updated_at"`
+		InvitedByID         int      `json:"invited_by_id"`
+		InvitedAt           string   `json:"invited_at"`
+		InvitesRemaining    int      `json:"invites_remaining"`
+		InviteRewardClaimed bool     `json:"invite_reward_claimed"`
+		IsEmailEnabled      bool     `json:"is_email_enabled"`
+		PublishID           int      `json:"publish_id"`
+		Country             string   `json:"country"`
+		IsOdyseeUser        bool     `json:"is_odysee_user"`
+		Location            *string  `json:"location"`
+		PrimaryEmail        string   `json:"primary_email"`
+		PasswordSet         bool     `json:"password_set"`
+		LatestClaimedEmail  *string  `json:"latest_claimed_email"`
+		HasVerifiedEmail    bool     `json:"has_verified_email"`
+		IsIdentityVerified  bool     `json:"is_identity_verified"`
+		IsRewardApproved    bool     `json:"is_reward_approved"`
+		Groups              []string `json:"groups"`
+		DeviceTypes         []string `json:"device_types"`
+		GlobalMod           bool     `json:"global_mod"`
+		ExperimentalUI      bool     `json:"experimental_ui"`
+		InternalFeature     bool     `json:"internal_feature"`
+		OdyseeMember        bool     `json:"odysee_member"`
+		PendingDeletion     bool     `json:"pending_deletion"`
+	} `json:"data"`
+}
+
 type MembershipPerkCheck struct {
 	Success bool        `json:"success"`
 	Error   interface{} `json:"error"`
