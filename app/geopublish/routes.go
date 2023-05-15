@@ -10,8 +10,8 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/storage"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
-
 	"github.com/gorilla/mux"
+
 	"github.com/tus/tusd/pkg/filestore"
 	tushandler "github.com/tus/tusd/pkg/handler"
 )
