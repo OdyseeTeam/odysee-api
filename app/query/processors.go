@@ -292,6 +292,9 @@ func checkStreamAccess(ctx context.Context, claim *ljsonrpc.Claim) (bool, error)
 TagLoop:
 	for _, t := range claim.Value.Tags {
 		switch {
+		case (t == "c:scheduled:hide" || t == "c:scheduled:show") && claim.Value.GetStream().ReleaseTime > timeSource.NowUnix():
+			accessType = accessTypeScheduled
+			break TagLoop
 		case strings.HasPrefix(t, "purchase:") || t == "c:purchase":
 			accessType = accessTypePurchase
 			break TagLoop
@@ -303,9 +306,6 @@ TagLoop:
 			break TagLoop
 		case t == ClaimTagUnlisted:
 			accessType = accessTypeUnlisted
-			break TagLoop
-		case (t == "c:scheduled:hide" || t == "c:scheduled:show") && claim.Value.GetStream().ReleaseTime > timeSource.NowUnix():
-			accessType = accessTypeScheduled
 			break TagLoop
 		}
 	}
