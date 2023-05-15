@@ -41,20 +41,6 @@ func TestNewValidator(t *testing.T) {
 	assert.Equal(t, base64.StdEncoding.EncodeToString(publicKeyBytes), testPubKey)
 }
 
-func TestNewPublicKeyFromURL(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(testPubKey))
-	}))
-	defer server.Close()
-
-	key, err := NewPublicKeyFromURL(server.URL)
-	require.NoError(t, err)
-	assert.NotNil(t, key)
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(key)
-	require.NoError(t, err)
-	assert.Equal(t, base64.StdEncoding.EncodeToString(publicKeyBytes), testPubKey)
-}
-
 func TestGenerateToken(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
@@ -76,4 +62,20 @@ func TestGenerateToken(t *testing.T) {
 	pt, err := km.Validator().ParseToken(token)
 	require.NoError(t, err)
 	assert.Equal(t, upid, pt.PrivateClaims()["upload_id"])
+}
+
+func TestPublicKeyHandler(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	kf, err := KeyfobFromString(testPrivKey)
+	require.NoError(err)
+
+	ts := httptest.NewServer(http.HandlerFunc(PublicKeyHandler(kf.PublicKey())))
+	defer ts.Close()
+
+	pubKey, err := NewPublicKeyFromURL(ts.URL)
+	require.NoError(err)
+
+	assert.Equal(pubKey, kf.PublicKey(), "retrieved public key does not match parsed public key")
 }

@@ -89,17 +89,27 @@ func ValidatorFromPublicKeyString(publicKey string) (*Validator, error) {
 func NewPublicKeyFromURL(keyURL string) (crypto.PublicKey, error) {
 	r, err := http.Get(keyURL)
 	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve public key: %e", err)
+		return nil, fmt.Errorf("unable to retrieve public key: %w", err)
 	}
-	k, err := ioutil.ReadAll(r.Body)
+	defer r.Body.Close()
+
+	pemData, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read public key: %e", err)
+		return nil, fmt.Errorf("unable to read public key: %w", err)
 	}
-	v, err := publicKeyFromString(string(k))
+
+	block, _ := pem.Decode(pemData)
+	fmt.Println(string(pemData))
+	if block == nil || block.Type != "PUBLIC KEY" {
+		return nil, fmt.Errorf("invalid PEM-encoded public key")
+	}
+
+	pubKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("unable to load public key: %e", err)
+		return nil, fmt.Errorf("unable to parse public key: %w", err)
 	}
-	return v, nil
+
+	return pubKey, nil
 }
 
 // GenerateToken generates a JWT token for a given user signed with the private key of the Keyfob.
