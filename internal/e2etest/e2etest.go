@@ -13,11 +13,8 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/iapi"
-	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
 )
-
-type cleanupFunc func() error
 
 type TestUser struct {
 	User        *models.User
@@ -32,13 +29,10 @@ type UserTestHelper struct {
 	SDKRouter   *sdkrouter.Router
 	Auther      auth.Authenticator
 	TestUser    *TestUser
-
-	cleanupFuncs []cleanupFunc
 }
 
 func (s *UserTestHelper) Setup(t *testing.T) error {
 	s.t = t
-	s.cleanupFuncs = []cleanupFunc{}
 	config.Override("LbrynetServers", "")
 
 	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
@@ -46,10 +40,7 @@ func (s *UserTestHelper) Setup(t *testing.T) error {
 		panic(err)
 	}
 	storage.SetDB(db)
-	s.cleanupFuncs = append(s.cleanupFuncs, func() error {
-		zapadapter.NewKV(nil).Info("cleaning up usertesthelper db")
-		return dbCleanup()
-	})
+	t.Cleanup(func() { dbCleanup() })
 	s.DB = db
 	s.SDKRouter = sdkrouter.New(config.GetLbrynetServers())
 
@@ -72,9 +63,9 @@ func (s *UserTestHelper) Setup(t *testing.T) error {
 		return err
 	}
 	s.t.Logf("set up wallet userid=%v", w.UserID)
-	s.cleanupFuncs = append(s.cleanupFuncs, func() error {
+	t.Cleanup(func() {
 		w.Unload()
-		return w.RemoveFile()
+		w.RemoveFile()
 	})
 
 	u, err := auther.Authenticate(s.TokenHeader, "127.0.0.1")
@@ -97,16 +88,11 @@ func (s *UserTestHelper) Setup(t *testing.T) error {
 		SDKAddress:  sdkrouter.GetSDKAddress(u),
 		CurrentUser: cu,
 	}
+
+	t.Cleanup(config.RestoreOverridden)
 	return nil
 }
 
 func (s *UserTestHelper) UserID() int {
 	return s.TestUser.User.ID
-}
-
-func (s *UserTestHelper) Cleanup() {
-	for _, f := range s.cleanupFuncs {
-		f()
-	}
-	config.RestoreOverridden()
 }
