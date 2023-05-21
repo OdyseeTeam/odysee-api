@@ -35,10 +35,9 @@ func Read(path, name, format string) (*Config, error) {
 	return &Config{V: v}, nil
 }
 
-func (c *Config) ReadS3Config(name string) S3Config {
-	var s3c S3Config
-	c.V.UnmarshalKey(name, &s3c)
-	return s3c
+func (c *Config) ReadS3Config(name string) (S3Config, error) {
+	var s3cfg S3Config
+	return s3cfg, c.V.UnmarshalKey(name, &s3cfg)
 }
 
 func (c *Config) ReadPostgresConfig(name string) PostgresConfig {
