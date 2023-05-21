@@ -1,4 +1,4 @@
-version: "3.2"
+version: "3.9"
 
 services:
   lbrynet:
@@ -34,6 +34,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: odyseeteam
+      POSTGRES_DB: oapi
       PGDATA: /pgdata
       TZ: "UTC"
       PGTZ: "UTC"

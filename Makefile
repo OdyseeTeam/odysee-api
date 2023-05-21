@@ -2,6 +2,8 @@ date := $(shell date "+%Y-%m-%d-%H-%M")
 api_version := $(shell git describe --tags --match 'api-v*'|sed 's/api-v\([0-9.]*\)-.*/\1/')
 watchman_version := $(shell git describe --tags --match 'watchman-v*'|sed 's/api-v\([0-9.]*\)-.*/\1/')
 git_hash := $(shell git rev-parse --short HEAD)
+forklift_version = latest
+upload_version = latest
 
 .PHONY: test
 test:
@@ -62,6 +64,22 @@ watchman:
 		-ldflags "-s -w -X github.com/OdyseeTeam/odysee-api/version.version=$(watchman_version) -X github.com/OdyseeTeam/odysee-api/version.commit=$(git_hash) -X github.com/OdyseeTeam/odysee-api/apps/version.buildDate=$(date)" \
 		./apps/watchman/cmd/watchman/
 
+forklift:
+	GOARCH=amd64 GOOS=linux go build \
+		-o dist/linux_amd64/forklift \
+		-ldflags "-s -w -X github.com/OdyseeTeam/odysee-api/version.version=$(forklift_version) \
+		-X github.com/OdyseeTeam/odysee-api/version.commit=$(git_hash) \
+		-X github.com/OdyseeTeam/odysee-api/apps/version.buildDate=$(date)" \
+		./apps/forklift/cmd/
+
+uploads:
+	GOARCH=amd64 GOOS=linux go build \
+		-o dist/linux_amd64/uploads \
+		-ldflags "-s -w -X github.com/OdyseeTeam/odysee-api/version.version=$(forklift_version) \
+		-X github.com/OdyseeTeam/odysee-api/version.commit=$(git_hash) \
+		-X github.com/OdyseeTeam/odysee-api/apps/version.buildDate=$(date)" \
+		./apps/uploads/cmd/
+
 cur_branch := $(shell git rev-parse --abbrev-ref HEAD)
 .PHONY: image
 image:
@@ -75,3 +93,9 @@ watchman_design:
 
 watchman_example:
 	goa example github.com/OdyseeTeam/odysee-api/apps/watchman/design -o apps/watchman
+
+uploads_image:
+	docker buildx build -t odyseeteam/uploads:dev --platform linux/amd64 -f ./build/uploads/Dockerfile .
+
+forklift_image:
+	docker buildx build -t odyseeteam/forklift:dev --platform linux/amd64 -f ./build/forklift/Dockerfile
