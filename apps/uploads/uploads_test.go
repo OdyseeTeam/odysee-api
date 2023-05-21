@@ -1,4 +1,4 @@
-package upload
+package uploads
 
 import (
 	"bytes"
@@ -8,32 +8,27 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	mrand "math/rand"
+	stdrand "math/rand"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
-	"github.com/OdyseeTeam/odysee-api/apps/upload/database"
+	"github.com/OdyseeTeam/odysee-api/apps/uploads/database"
 	"github.com/OdyseeTeam/odysee-api/internal/e2etest"
 	"github.com/OdyseeTeam/odysee-api/internal/test"
+	"github.com/OdyseeTeam/odysee-api/internal/testdeps"
+	"github.com/OdyseeTeam/odysee-api/pkg/configng"
 	"github.com/OdyseeTeam/odysee-api/pkg/keybox"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
-	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
 	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
-	"github.com/go-chi/chi/v5"
 
 	"github.com/Pallinder/go-randomdata"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/go-chi/chi/v5"
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/suite"
 	"github.com/tus/tusd/pkg/s3store"
@@ -46,7 +41,6 @@ type uploadSuite struct {
 	keyfob   *keybox.Keyfob
 	router   chi.Router
 	db       *sql.DB
-	cleanups []func()
 }
 
 func (s *uploadSuite) TestUpload() {
@@ -58,7 +52,7 @@ func (s *uploadSuite) TestUpload() {
 	fnb64 := base64.StdEncoding.EncodeToString([]byte("dummy.md"))
 	f := []byte("test file")
 
-	userID := int64(randomdata.Number(1, 1000000))
+	userID := int32(randomdata.Number(1, 1000000))
 	baseURL := "/v1/uploads/"
 	token, err := s.keyfob.GenerateToken(userID, time.Now().Add(time.Hour*24))
 	s.Require().NoError(err)
@@ -101,7 +95,7 @@ func (s *uploadSuite) TestUpload() {
 
 	e2etest.Wait(s.T(), "upload settling into database", 5*time.Second, 1000*time.Millisecond, func() error {
 		var err error
-		upload, err = queries.GetUpload(context.Background(), database.GetUploadParams{UserID: strconv.FormatInt(userID, 10), ID: uploadID})
+		upload, err = queries.GetUpload(context.Background(), database.GetUploadParams{UserID: userID, ID: uploadID})
 		if errors.Is(err, sql.ErrNoRows) {
 			return e2etest.ErrWaitContinue
 		} else if err != nil {
@@ -127,7 +121,7 @@ func (s *uploadSuite) TestUpload() {
 
 	e2etest.Wait(s.T(), "upload settling into database", 5*time.Second, 100*time.Millisecond, func() error {
 		var err error
-		upload, err = queries.GetUpload(context.Background(), database.GetUploadParams{UserID: strconv.FormatInt(userID, 10), ID: uploadID})
+		upload, err = queries.GetUpload(context.Background(), database.GetUploadParams{UserID: userID, ID: uploadID})
 		if errors.Is(err, sql.ErrNoRows) {
 			return e2etest.ErrWaitContinue
 		} else if err != nil {
@@ -152,7 +146,7 @@ func (s *uploadSuite) TestUploadLarger() {
 	var uploadID string
 
 	baseURL := "/v1/uploads/"
-	userID := int64(randomdata.Number(1, 1000000))
+	userID := int32(randomdata.Number(1, 1000000))
 	token, err := s.keyfob.GenerateToken(userID, time.Now().Add(time.Hour*24))
 	s.Require().NoError(err)
 	tokenHeader := fmt.Sprintf("Bearer %s", token)
@@ -184,7 +178,7 @@ func (s *uploadSuite) TestUploadLarger() {
 
 	e2etest.Wait(s.T(), "upload settling into database", 5*time.Second, 1000*time.Millisecond, func() error {
 		var err error
-		upload, err = queries.GetUpload(context.Background(), database.GetUploadParams{UserID: strconv.FormatInt(userID, 10), ID: uploadID})
+		upload, err = queries.GetUpload(context.Background(), database.GetUploadParams{UserID: userID, ID: uploadID})
 		if errors.Is(err, sql.ErrNoRows) {
 			return e2etest.ErrWaitContinue
 		} else if err != nil {
@@ -193,6 +187,9 @@ func (s *uploadSuite) TestUploadLarger() {
 		return nil
 	})
 	s.Equal(database.UploadStatusCreated, upload.Status)
+	s.Equal(fmt.Sprintf("%v", userID), upload.UserID)
+	s.Empty(upload.Filename)
+	s.Empty(upload.Key)
 
 	for i := uint64(0); i < fileSize; i += chunkSize {
 		end := i + chunkSize
@@ -220,7 +217,7 @@ func (s *uploadSuite) TestUploadLarger() {
 
 	e2etest.Wait(s.T(), "upload settling into database", 5*time.Second, 100*time.Millisecond, func() error {
 		var err error
-		upload, err = queries.GetUpload(context.Background(), database.GetUploadParams{UserID: strconv.FormatInt(userID, 10), ID: uploadID})
+		upload, err = queries.GetUpload(context.Background(), database.GetUploadParams{UserID: userID, ID: uploadID})
 		if errors.Is(err, sql.ErrNoRows) {
 			return e2etest.ErrWaitContinue
 		} else if err != nil {
@@ -232,6 +229,8 @@ func (s *uploadSuite) TestUploadLarger() {
 	})
 
 	s.Equal(file.Name(), upload.Filename)
+	s.Equal(database.UploadStatusCompleted, upload.Status)
+	s.Equal(strings.Split(uploadID, "+")[0], upload.Key)
 
 	response = (&test.HTTPTest{
 		Method: http.MethodHead,
@@ -241,8 +240,6 @@ func (s *uploadSuite) TestUploadLarger() {
 			AuthorizationHeader: tokenHeader,
 		},
 	}).RunHTTP(s.T())
-	fmt.Println(response.Header)
-	s.Equal(1, 2)
 
 	t2, err := s.keyfob.GenerateToken(userID+1, time.Now().Add(time.Hour*24))
 	s.Require().NoError(err)
@@ -268,7 +265,7 @@ func (s *uploadSuite) TestUploadWrongToken() {
 	var uploadID string
 
 	baseURL := "/v1/uploads/"
-	userID := int64(randomdata.Number(1, 1000000))
+	userID := int32(randomdata.Number(1, 1000000))
 	token, err := s.keyfob.GenerateToken(userID, time.Now().Add(24*time.Hour))
 	s.Require().NoError(err)
 	tokenHeader := fmt.Sprintf("Bearer %s", token)
@@ -280,7 +277,7 @@ func (s *uploadSuite) TestUploadWrongToken() {
 		{
 			http.StatusNotFound,
 			func() string {
-				token, err := s.keyfob.GenerateToken(int64(randomdata.Number(1000000, 9000000)), time.Now().Add(time.Hour*24))
+				token, err := s.keyfob.GenerateToken(int32(randomdata.Number(1000000, 9000000)), time.Now().Add(time.Hour*24))
 				s.Require().NoError(err)
 				return fmt.Sprintf("Bearer %s", token)
 			},
@@ -295,7 +292,7 @@ func (s *uploadSuite) TestUploadWrongToken() {
 		{
 			http.StatusUnauthorized,
 			func() string {
-				return "Bearer ZZZ"
+				return "Bearer " + randomdata.Alphanumeric(128)
 			},
 		},
 		{
@@ -311,21 +308,20 @@ func (s *uploadSuite) TestUploadWrongToken() {
 
 	tusUploadURL := testServer.URL + baseURL
 
-	wtg := wrongTokenGens[mrand.Intn(len(wrongTokenGens))]
-
 	// Try a wrong token for upload creation first.
 	(&test.HTTPTest{
 		Method: http.MethodPost,
 		URL:    tusUploadURL,
-		Code:   wtg.code,
+		Code:   http.StatusUnauthorized,
 		ReqHeader: map[string]string{
-			AuthorizationHeader: wtg.gen(),
+			AuthorizationHeader: "Bearer " + randomdata.Alphanumeric(128),
 			"Tus-Resumable":     "1.0.0",
 			"Upload-Metadata":   fmt.Sprintf("filename %s", base64.StdEncoding.EncodeToString([]byte(file.Name()))),
 			"Upload-Length":     fmt.Sprintf("%d", fileSize),
 		},
 	}).RunHTTP(s.T())
 
+	// Now create the upload and try continuation error scenarios afterwards.
 	response := (&test.HTTPTest{
 		Method: http.MethodPost,
 		URL:    tusUploadURL,
@@ -349,7 +345,7 @@ func (s *uploadSuite) TestUploadWrongToken() {
 
 	e2etest.Wait(s.T(), "upload settling into database", 5*time.Second, 1000*time.Millisecond, func() error {
 		var err error
-		upload, err = queries.GetUpload(context.Background(), database.GetUploadParams{UserID: strconv.FormatInt(userID, 10), ID: uploadID})
+		upload, err = queries.GetUpload(context.Background(), database.GetUploadParams{UserID: userID, ID: uploadID})
 		if errors.Is(err, sql.ErrNoRows) {
 			return e2etest.ErrWaitContinue
 		} else if err != nil {
@@ -360,7 +356,7 @@ func (s *uploadSuite) TestUploadWrongToken() {
 	s.Equal(database.UploadStatusCreated, upload.Status)
 
 	for i := uint64(0); i < fileSize; i += chunkSize {
-		wtg := wrongTokenGens[mrand.Intn(len(wrongTokenGens))]
+		wtg := wrongTokenGens[stdrand.Intn(len(wrongTokenGens))]
 
 		end := i + chunkSize
 		if end > fileSize {
@@ -387,86 +383,36 @@ func (s *uploadSuite) TestUploadWrongToken() {
 }
 
 func (s *uploadSuite) SetupSuite() {
-	config.Config.Override("PublishSourceDir", s.T().TempDir())
-	config.Config.Override("GeoPublishSourceDir", s.T().TempDir())
-
-	bucket := fmt.Sprintf("test-uploads-%s-%s", randomdata.Noun(), randomdata.Adjective())
-	sess, err := session.NewSession(
-		aws.NewConfig().
-			WithS3ForcePathStyle(true). // needed for minio
-			WithCredentials(credentials.NewStaticCredentials("minio", "minio123", "")).
-			WithEndpoint("http://localhost:9000").
-			WithRegion("us-east-1"),
-	)
+	upHelper, err := NewUploadTestHelper(s.T())
 	s.Require().NoError(err)
-	client := s3.New(sess)
-	store := s3store.New(bucket, client)
-	_, err = client.CreateBucket(&s3.CreateBucketInput{
-		Bucket: aws.String(bucket),
-	})
-	if err != nil {
-		if awsErr, ok := err.(awserr.Error); !ok || awsErr.Code() != "BucketAlreadyOwnedByYou" {
-			s.FailNow(err.Error())
-		}
-	}
-	s.cleanups = append(s.cleanups, func() {
-		listObjectsOutput, err := client.ListObjects(&s3.ListObjectsInput{
-			Bucket: aws.String(bucket),
-		})
-		if err != nil {
-			s.T().Logf("failed to list objects in bucket: %v", err)
-			return
-		}
 
-		for _, object := range listObjectsOutput.Contents {
-			s.T().Logf("deleting %s", *object.Key)
-			_, err = client.DeleteObject(&s3.DeleteObjectInput{
-				Bucket: aws.String(bucket),
-				Key:    object.Key,
-			})
-			if err != nil {
-				s.T().Logf("failed to delete object: %v", err)
-			}
-		}
-
-		_, err = client.DeleteBucket(&s3.DeleteBucketInput{
-			Bucket: aws.String(bucket),
-		})
-		if err != nil {
-			s.T().Logf("failed to delete bucket: %v", err)
-		}
-	})
+	client, err := configng.NewS3Client(upHelper.S3Config)
+	s.Require().NoError(err)
+	store := s3store.New(upHelper.S3Config.Bucket, client)
 
 	redisOpts, err := redis.ParseURL("redis://:odyredis@localhost:6379/0")
 	if err != nil {
 		panic(fmt.Errorf("cannot parse redis config: %w", err))
 	}
-	locker, err := redislocker.New(redisOpts)
-	if err != nil {
-		panic(fmt.Errorf("cannot start redislocker: %w", err))
-	}
-	s.T().Cleanup(func() {
-		redis.NewClient(redisOpts).FlushDB(context.Background())
-	})
+
+	redis.NewClient(redisOpts).FlushDB(context.Background())
+
+	redisHelper := testdeps.NewRedisTestHelper(s.T())
+
+	locker, err := redislocker.New(redisHelper.Opts)
+	s.Require().NoError(err)
 
 	kf, err := keybox.GenerateKeyfob()
 	s.Require().NoError(err)
 
-	db, cleanup, err := migrator.CreateTestDB(migrator.DefaultDBConfig(), database.MigrationsFS)
-	s.Require().NoError(err)
-	s.T().Cleanup(func() { cleanup() })
-
-	l := NewLauncher().FileLocker(locker).Store(store).DB(db).PublicKey(kf.PublicKey()).Logger(zapadapter.NewKV(nil))
+	l := NewLauncher().FileLocker(locker).Store(store).DB(upHelper.DB).PublicKey(kf.PublicKey()).Logger(zapadapter.NewKV(nil))
 	r, err := l.Build()
 	s.Require().NoError(err)
 
 	s.router = r
-	s.db = db
+	s.db = upHelper.DB
 	s.launcher = l
 	s.keyfob = kf
-}
-
-func (s *uploadSuite) TearDownSuite() {
 }
 
 func (s *uploadSuite) createRandomFile(fileSize uint64) *os.File {

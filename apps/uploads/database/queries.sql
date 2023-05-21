@@ -1,8 +1,8 @@
 -- name: CreateUpload :one
 INSERT INTO uploads (
-    id, user_id, size, status, filename, key
+    id, user_id, size, status, filename, key, sd_hash
 ) VALUES (
-  $1, $2, $3, 'created', '', ''
+  $1, $2, $3, 'created', '', '', ''
 )
 RETURNING *;
 
@@ -29,3 +29,11 @@ UPDATE uploads SET
     filename = $3,
     key = $4
 WHERE user_id = $1 AND id = $2;
+
+-- name: MarkUploadProcessed :exec
+UPDATE uploads SET
+    updated_at = NOW(),
+    status = 'processed',
+    sd_hash = $2,
+    meta = $3
+WHERE id = $1;

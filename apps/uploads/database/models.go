@@ -9,6 +9,8 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"time"
+
+	"github.com/tabbed/pqtype"
 )
 
 type UploadStatus string
@@ -18,6 +20,7 @@ const (
 	UploadStatusReceiving  UploadStatus = "receiving"
 	UploadStatusCompleted  UploadStatus = "completed"
 	UploadStatusTerminated UploadStatus = "terminated"
+	UploadStatusProcessed  UploadStatus = "processed"
 )
 
 func (e *UploadStatus) Scan(src interface{}) error {
@@ -57,7 +60,7 @@ func (ns NullUploadStatus) Value() (driver.Value, error) {
 
 type Upload struct {
 	ID        string
-	UserID    string
+	UserID    int32
 	Filename  string
 	Key       string
 	CreatedAt time.Time
@@ -65,4 +68,6 @@ type Upload struct {
 	Status    UploadStatus
 	Size      int64
 	Received  int64
+	SDHash    string
+	Meta      pqtype.NullRawMessage
 }

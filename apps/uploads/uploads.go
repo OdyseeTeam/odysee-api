@@ -1,4 +1,4 @@
-package upload
+package uploads
 
 import (
 	"context"
@@ -9,10 +9,15 @@ import (
 	stdlog "log"
 	"net/http"
 	"regexp"
+	"strconv"
+	"time"
 
-	"github.com/OdyseeTeam/odysee-api/apps/upload/database"
+	"github.com/OdyseeTeam/odysee-api/apps/uploads/database"
+	"github.com/OdyseeTeam/odysee-api/internal/tasks"
+	"github.com/OdyseeTeam/odysee-api/pkg/bus"
 	"github.com/OdyseeTeam/odysee-api/pkg/keybox"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+	"github.com/hibiken/asynq"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	"github.com/go-chi/chi/v5"
@@ -24,28 +29,25 @@ import (
 
 const (
 	AuthorizationHeader = "Authorization"
-
-	jwtSecret = "your-jwt-secret"
-	s3Bucket  = "your-s3-bucket"
 )
 
 var (
-	reExtractUserID = regexp.MustCompile(`^/[\w/]+/(\d+)/`)
 	reExtractFileID = regexp.MustCompile(`([^/]{32,})\/?$`)
 )
 
 type Launcher struct {
-	prefix      string
-	logger      logging.KVLogger
-	s3Store     s3store.S3Store
-	fileLocker  tusd.Locker
-	publicKey   crypto.PublicKey
-	httpAddress string
-	router      chi.Router
+	corsDomains []string
 	db          database.DBTX
+	fileLocker  tusd.Locker
+	httpAddress string
+	prefix      string
+	publicKey   crypto.PublicKey
+	router      chi.Router
+	busRedisURL string
+	s3Store     s3store.S3Store
 	handler     *Handler
 	httpServer  *http.Server
-	corsDomains []string
+	logger      logging.KVLogger
 	readyCancel context.CancelFunc
 }
 
@@ -54,9 +56,9 @@ type Launcher struct {
 // support fetching media from remote url.
 type Handler struct {
 	*tusd.UnroutedHandler
-	// config   *Launcher
-	queries *database.Queries
-	// composer *tusd.StoreComposer
+	bus            *bus.Client
+	bucketName     string
+	queries        *database.Queries
 	logger         logging.KVLogger
 	jwtAuth        *jwtauth.JWTAuth
 	tokenValidator *keybox.Validator
@@ -97,6 +99,11 @@ func (c *Launcher) PublicKey(publicKey crypto.PublicKey) *Launcher {
 	return c
 }
 
+func (c *Launcher) BusRedisURL(busRedisURL string) *Launcher {
+	c.busRedisURL = busRedisURL
+	return c
+}
+
 func (c *Launcher) HTTPAddress(address string) *Launcher {
 	c.httpAddress = address
 	return c
@@ -121,11 +128,25 @@ func (l *Launcher) Build() (chi.Router, error) {
 	l.logger.Info("building upload handler")
 	readyCtx, readyCancel := context.WithCancel(context.Background())
 	handler := &Handler{
+		bucketName:     l.s3Store.Bucket,
 		logger:         l.logger,
 		queries:        database.New(l.db),
 		tokenValidator: validator,
 	}
 	l.readyCancel = readyCancel
+
+	if l.busRedisURL != "" {
+		redisOpts, err := asynq.ParseRedisURI(l.busRedisURL)
+		if err != nil {
+			return nil, err
+		}
+		bus, err := bus.NewClient(redisOpts, l.logger)
+		if err != nil {
+			return nil, err
+		}
+		handler.bus = bus
+		l.logger.Info("bus client created")
+	}
 
 	composer := tusd.NewStoreComposer()
 	composer.UseLocker(l.fileLocker)
@@ -223,7 +244,7 @@ func (l *Launcher) Launch() {
 func (h *Handler) listenToHooks() {
 	h.logger.Info("listening to upload signals")
 
-	listen := func(ch chan tusd.HookEvent, eventHandler func(string, tusd.HookEvent)) {
+	listen := func(ch chan tusd.HookEvent, eventHandler func(uid int32, event tusd.HookEvent)) {
 		h.logger.Info("starting signal listener")
 		defer func() { h.logger.Info("stopping signal listener") }()
 		for {
@@ -240,7 +261,7 @@ func (h *Handler) listenToHooks() {
 		}
 	}
 
-	go listen(h.CreatedUploads, func(uid string, event tusd.HookEvent) {
+	go listen(h.CreatedUploads, func(uid int32, event tusd.HookEvent) {
 		p := database.CreateUploadParams{
 			UserID: uid,
 			ID:     event.Upload.ID,
@@ -249,11 +270,12 @@ func (h *Handler) listenToHooks() {
 		_, err := h.queries.CreateUpload(context.Background(), p)
 		if err != nil {
 			h.logger.Warn("creating upload failed", "user_id", uid, "upload_id", p.ID, "err", err)
+			return
 		}
 		h.logger.Info("upload created", "user_id", uid, "upload_id", p.ID)
 	})
 
-	go listen(h.UploadProgress, func(uid string, event tusd.HookEvent) {
+	go listen(h.UploadProgress, func(uid int32, event tusd.HookEvent) {
 		p := database.RecordUploadProgressParams{
 			UserID:   uid,
 			ID:       event.Upload.ID,
@@ -262,11 +284,12 @@ func (h *Handler) listenToHooks() {
 		err := h.queries.RecordUploadProgress(context.Background(), p)
 		if err != nil {
 			h.logger.Warn("recording upload progress failed", "user_id", p.UserID, "upload_id", p.ID, "err", err)
+			return
 		}
 		h.logger.Debug("upload progress", "user_id", uid, "upload_id", p.ID, "size", event.Upload.Size, "received", p.Received)
 	})
 
-	go listen(h.TerminatedUploads, func(uid string, event tusd.HookEvent) {
+	go listen(h.TerminatedUploads, func(uid int32, event tusd.HookEvent) {
 		p := database.MarkUploadTerminatedParams{
 			UserID: uid,
 			ID:     event.Upload.ID,
@@ -274,24 +297,19 @@ func (h *Handler) listenToHooks() {
 		err := h.queries.MarkUploadTerminated(context.Background(), p)
 		if err != nil {
 			h.logger.Warn("recording upload termination failed", "user_id", uid, "upload_id", p.ID, "err", err)
+			return
 		}
 		h.logger.Info("upload terminated", "user_id", uid, "upload_id", p.ID)
 	})
 
-	go listen(h.CompleteUploads, func(uid string, event tusd.HookEvent) {
-		p := database.MarkUploadCompletedParams{
-			UserID:   uid,
-			ID:       event.Upload.ID,
-			Filename: event.Upload.MetaData["filename"],
-			Key:      event.Upload.Storage["Key"],
-		}
-		err := h.queries.MarkUploadCompleted(context.Background(), p)
+	go listen(h.CompleteUploads, func(uid int32, event tusd.HookEvent) {
+		err := completeUpload(
+			h.queries, h.bus, uid, event.Upload.ID, event.Upload.MetaData["filename"], h.bucketName, event.Upload.Storage["Key"])
 		if err != nil {
-			h.logger.Warn("recording upload completion failed", "user_id", uid, "upload_id", p.ID, "err", err)
+			h.logger.Warn("completing upload failed", "user_id", uid, "upload_id", event.Upload.ID, "err", err)
+			return
 		}
-		h.logger.Info(
-			"upload completed",
-			"user_id", uid, "upload_id", p.ID, "filename", p.Filename, "size", event.Upload.Size)
+		h.logger.Info("upload completed", "user_id", uid, "upload_id", event.Upload.ID, "size", event.Upload.Size)
 	})
 	h.stopChan = make(chan struct{})
 }
@@ -323,20 +341,24 @@ func (h *Handler) authByToken(next http.Handler) http.Handler {
 	})
 }
 
-func (h *Handler) extractUserIDFromRequest(r *http.Request) (string, error) {
+func (h *Handler) extractUserIDFromRequest(r *http.Request) (int32, error) {
 	rt := jwtauth.TokenFromHeader(r)
 	token, err := h.tokenValidator.ParseToken(rt)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 
 	if err := jwt.Validate(token); err != nil {
-		return "", fmt.Errorf("cannot validate token: %w", err)
+		return 0, fmt.Errorf("cannot validate token: %w", err)
 	}
 	if token.Subject() == "" {
-		return "", errors.New("missing user id in token")
+		return 0, errors.New("missing user id in token")
 	}
-	return token.Subject(), nil
+	uid, err := strconv.ParseInt(token.Subject(), 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("cannot parse user id: %w", err)
+	}
+	return int32(uid), nil
 }
 
 // extractUploadIDFromPath pulls the last segment from the url provided
@@ -346,4 +368,39 @@ func extractUploadIDFromPath(url string) string {
 		return ""
 	}
 	return result[1]
+}
+
+func completeUpload(queries *database.Queries, b *bus.Client, uid int32, uploadID, fileName, bucket, key string) error {
+	p := database.MarkUploadCompletedParams{
+		UserID:   uid,
+		ID:       uploadID,
+		Filename: fileName,
+		Key:      key,
+	}
+	err := queries.MarkUploadCompleted(context.Background(), p)
+	if err != nil {
+		return err
+	}
+
+	if b != nil {
+		if err != nil {
+			return err
+		}
+		err = b.Put(
+			tasks.TaskReflectUpload,
+			tasks.ReflectUploadPayload{
+				UploadID: p.ID,
+				UserID:   uid,
+				FileName: p.Filename,
+				FileLocation: tasks.FileLocationS3{
+					Key:    p.Key,
+					Bucket: bucket,
+				},
+			}, 10, 6*time.Hour, 72*time.Hour,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

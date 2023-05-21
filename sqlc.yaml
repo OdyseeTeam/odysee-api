@@ -1,12 +1,13 @@
 version: 1
 packages:
-  - path: "apps/upload/database"
+  - path: "apps/uploads/database"
     name: "database"
     engine: "postgresql"
-    schema: "apps/upload/database/migrations/"
-    queries: "apps/upload/database/queries.sql"
+    schema: "apps/uploads/database/migrations/"
+    queries: "apps/uploads/database/queries.sql"
 rename:
   url: "URL"
+  sd_hash: "SDHash"
 overrides:
   - column: "uploads.size"
     go_type: "int64"

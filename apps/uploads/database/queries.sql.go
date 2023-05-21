@@ -7,20 +7,22 @@ package database
 
 import (
 	"context"
+
+	"github.com/tabbed/pqtype"
 )
 
 const createUpload = `-- name: CreateUpload :one
 INSERT INTO uploads (
-    id, user_id, size, status, filename, key
+    id, user_id, size, status, filename, key, sd_hash
 ) VALUES (
-  $1, $2, $3, 'created', '', ''
+  $1, $2, $3, 'created', '', '', ''
 )
-RETURNING id, user_id, filename, key, created_at, updated_at, status, size, received
+RETURNING id, user_id, filename, key, created_at, updated_at, status, size, received, sd_hash, meta
 `
 
 type CreateUploadParams struct {
 	ID     string
-	UserID string
+	UserID int32
 	Size   int64
 }
 
@@ -37,17 +39,19 @@ func (q *Queries) CreateUpload(ctx context.Context, arg CreateUploadParams) (Upl
 		&i.Status,
 		&i.Size,
 		&i.Received,
+		&i.SDHash,
+		&i.Meta,
 	)
 	return i, err
 }
 
 const getUpload = `-- name: GetUpload :one
-SELECT id, user_id, filename, key, created_at, updated_at, status, size, received FROM uploads
+SELECT id, user_id, filename, key, created_at, updated_at, status, size, received, sd_hash, meta FROM uploads
 WHERE user_id = $1 AND id = $2
 `
 
 type GetUploadParams struct {
-	UserID string
+	UserID int32
 	ID     string
 }
 
@@ -64,6 +68,8 @@ func (q *Queries) GetUpload(ctx context.Context, arg GetUploadParams) (Upload, e
 		&i.Status,
 		&i.Size,
 		&i.Received,
+		&i.SDHash,
+		&i.Meta,
 	)
 	return i, err
 }
@@ -78,7 +84,7 @@ WHERE user_id = $1 AND id = $2
 `
 
 type MarkUploadCompletedParams struct {
-	UserID   string
+	UserID   int32
 	ID       string
 	Filename string
 	Key      string
@@ -94,6 +100,26 @@ func (q *Queries) MarkUploadCompleted(ctx context.Context, arg MarkUploadComplet
 	return err
 }
 
+const markUploadProcessed = `-- name: MarkUploadProcessed :exec
+UPDATE uploads SET
+    updated_at = NOW(),
+    status = 'processed',
+    sd_hash = $2,
+    meta = $3
+WHERE id = $1
+`
+
+type MarkUploadProcessedParams struct {
+	ID     string
+	SDHash string
+	Meta   pqtype.NullRawMessage
+}
+
+func (q *Queries) MarkUploadProcessed(ctx context.Context, arg MarkUploadProcessedParams) error {
+	_, err := q.db.ExecContext(ctx, markUploadProcessed, arg.ID, arg.SDHash, arg.Meta)
+	return err
+}
+
 const markUploadTerminated = `-- name: MarkUploadTerminated :exec
 UPDATE uploads SET
     updated_at = NOW(),
@@ -102,7 +128,7 @@ WHERE user_id = $1 AND id = $2
 `
 
 type MarkUploadTerminatedParams struct {
-	UserID string
+	UserID int32
 	ID     string
 }
 
@@ -119,7 +145,7 @@ WHERE user_id = $1 AND id = $2 AND status IN ('receiving', 'created')
 `
 
 type RecordUploadProgressParams struct {
-	UserID   string
+	UserID   int32
 	ID       string
 	Received int64
 }

@@ -1,4 +1,4 @@
-package upload
+package uploads
 
 import (
 	"net/http"
