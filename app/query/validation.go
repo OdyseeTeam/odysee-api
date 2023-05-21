@@ -67,7 +67,7 @@ func createDigest(pieces ...[]byte) []byte {
 	return digest
 }
 
-// rev reverses a byte slice. useful for switching endian-ness
+// reverseBytes reverses a byte slice. useful for switching endian-ness
 func reverseBytes(b []byte) []byte {
 	r := make([]byte, len(b))
 	for left, right := 0, len(b)-1; left < right; left, right = left+1, right-1 {
