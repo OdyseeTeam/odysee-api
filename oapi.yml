@@ -24,9 +24,9 @@ OAuth:
   ProviderURL: https://sso.odysee.com/auth/realms/Users
   TokenPath: /protocol/openid-connect/token
 
-DatabaseDSN: postgres://lbrytv:lbrytv@localhost
+DatabaseDSN: postgres://postgres:odyseeteam@localhost
 Database:
-  DBName: lbrytv
+  DBName: oapi
   Options: sslmode=disable
 
 PublishSourceDir: ./rundata/storage/publish
@@ -49,7 +49,8 @@ RPCTimeouts:
   transaction_list: 4m
   publish: 4m
 
-Redis: redis://:odyredis@localhost:6379/1
+RedisLocker: redis://:odyredis@localhost:6379/1
+RedisBus: redis://:odyredis@localhost:6379/2
 
 ReflectorUpstream:
   DatabaseDSN: 'user:password@tcp(localhost:3306)/blobs'

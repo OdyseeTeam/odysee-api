@@ -43,7 +43,7 @@ func (s *asynquerySuite) TestSuccessCallback() {
 		s.NotEmpty(r.Response.Result.(map[string]any)["available"])
 		s.Equal(query.MethodWalletBalance, r.Query.Request.Method)
 		s.Equal(s.userHelper.UserID(), r.Query.UserID)
-		s.NotEmpty(r.Query.QueryID)
+		s.NotEmpty(r.Query.ID)
 	case <-ctx.Done():
 		s.T().Log("waiting too long")
 		s.T().FailNow()
@@ -67,7 +67,7 @@ func (s *asynquerySuite) TestErrorCallback() {
 		s.NotNil(r.Response.Error)
 		s.Equal(query.MethodPublish, r.Query.Request.Method)
 		s.Equal(s.userHelper.UserID(), r.Query.UserID)
-		s.NotEmpty(r.Query.QueryID)
+		s.NotEmpty(r.Query.ID)
 	case <-ctx.Done():
 		s.T().Log("waiting too long")
 		s.T().FailNow()

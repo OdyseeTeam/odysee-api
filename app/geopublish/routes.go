@@ -17,7 +17,7 @@ import (
 )
 
 func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPrefix string, logger logging.KVLogger) (*Handler, error) {
-	redisOpts, err := config.GetRedisOpts()
+	redisOpts, err := config.GetRedisBusOpts()
 	if err != nil {
 		return nil, fmt.Errorf("cannot get redis config: %w", err)
 	}

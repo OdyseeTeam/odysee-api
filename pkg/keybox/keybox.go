@@ -113,8 +113,8 @@ func NewPublicKeyFromURL(keyURL string) (crypto.PublicKey, error) {
 }
 
 // GenerateToken generates a JWT token for a given user signed with the private key of the Keyfob.
-func (kf Keyfob) GenerateToken(userID int64, expiry time.Time, fields ...string) (string, error) {
-	b := jwt.NewBuilder().Issuer("api.odysee.com").Subject(strconv.FormatInt(userID, 10)).Expiration(expiry)
+func (kf Keyfob) GenerateToken(userID int32, expiry time.Time, fields ...string) (string, error) {
+	b := jwt.NewBuilder().Issuer("api.odysee.com").Subject(strconv.Itoa(int(userID))).Expiration(expiry)
 	for i := 0; i < len(fields); i += 2 {
 		b = b.Claim(fields[i], fields[i+1])
 	}

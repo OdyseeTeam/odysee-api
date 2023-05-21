@@ -1,17 +1,18 @@
 package forklift
 
 import (
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 const ns = "forklift"
 const LabelFatal = "fatal"
 const LabelCommon = "common"
-const LabelProcessingTotal = "total"
-const LabelProcessingAnalyze = "analyze"
-const LabelProcessingBlobSplit = "blob_split"
-const LabelProcessingReflection = "reflection"
-const LabelProcessingQuery = "query"
+const LabelRetrieve = "retrieve"
+const LabelAnalyze = "analyze"
+const LabelSplit = "split"
+const LabelUpstream = "upstream"
 
 var (
 	QueueTasks = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -34,4 +35,12 @@ func RegisterMetrics() {
 	prometheus.MustRegister(
 		QueueTasks, ProcessingTime, ProcessingErrors,
 	)
+}
+
+func observeDuration(stage string, start time.Time) {
+	ProcessingTime.WithLabelValues(stage).Observe(float64(time.Since(start)))
+}
+
+func observeError(stage string) {
+	ProcessingErrors.WithLabelValues(stage).Inc()
 }

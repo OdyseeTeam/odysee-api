@@ -26,7 +26,7 @@ func main() {
 	monitor.ConfigureSentry(config.GetSentryDSN(), version.GetDevVersion(), monitor.LogMode())
 	defer sentry.Flush(2 * time.Second)
 
-	db, err := migrator.ConnectDB(migrator.DBConfigFromApp(config.GetDatabase()).NoMigration(), storage.MigrationsFS)
+	db, err := migrator.ConnectDB(migrator.DBConfigFromApp(config.GetDatabase()))
 	if err != nil {
 		panic(err)
 	}

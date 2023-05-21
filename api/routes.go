@@ -111,7 +111,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 	store := filestore.New(uploadPath)
 	store.UseIn(composer)
 
-	redisOpts, err := config.GetRedisOpts()
+	redisOpts, err := config.GetRedisLockerOpts()
 	if err != nil {
 		panic(err)
 	}

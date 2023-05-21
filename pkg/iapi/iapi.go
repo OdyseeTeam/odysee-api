@@ -149,7 +149,7 @@ func (c *Client) Call(ctx context.Context, path string, params map[string]string
 		}
 		lp[k] = v
 	}
-	log := logging.FromContext(ctx).With("params", lp)
+	log := logging.GetFromContext(ctx).With("params", lp)
 
 	r, err := http.NewRequest(
 		http.MethodPost,

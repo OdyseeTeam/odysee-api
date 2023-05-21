@@ -197,9 +197,5 @@ func (s *carriageSuite) SetupSuite() {
 	if errors.Is(err, ErrMissingEnv) {
 		s.T().Skipf(err.Error())
 	}
-}
-
-func (s *carriageSuite) TearDownSuite() {
-	config.RestoreOverridden()
-	s.userHelper.Cleanup()
+	s.T().Cleanup(config.RestoreOverridden)
 }

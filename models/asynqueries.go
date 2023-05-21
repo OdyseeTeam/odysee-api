@@ -23,13 +23,14 @@ import (
 
 // Asynquery is an object representing the database table.
 type Asynquery struct {
-	ID        int       `boil:"id" json:"id" toml:"id" yaml:"id"`
-	UserID    null.Int  `boil:"user_id" json:"user_id,omitempty" toml:"user_id" yaml:"user_id,omitempty"`
+	ID        string    `boil:"id" json:"id" toml:"id" yaml:"id"`
+	UserID    int       `boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
 	CreatedAt time.Time `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt null.Time `boil:"updated_at" json:"updated_at,omitempty" toml:"updated_at" yaml:"updated_at,omitempty"`
 	Status    string    `boil:"status" json:"status" toml:"status" yaml:"status"`
 	Error     string    `boil:"error" json:"error" toml:"error" yaml:"error"`
-	Query     null.JSON `boil:"query" json:"query,omitempty" toml:"query" yaml:"query,omitempty"`
+	UploadID  string    `boil:"upload_id" json:"upload_id" toml:"upload_id" yaml:"upload_id"`
+	Body      null.JSON `boil:"body" json:"body,omitempty" toml:"body" yaml:"body,omitempty"`
 	Response  null.JSON `boil:"response" json:"response,omitempty" toml:"response" yaml:"response,omitempty"`
 
 	R *asynqueryR `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -43,7 +44,8 @@ var AsynqueryColumns = struct {
 	UpdatedAt string
 	Status    string
 	Error     string
-	Query     string
+	UploadID  string
+	Body      string
 	Response  string
 }{
 	ID:        "id",
@@ -52,11 +54,21 @@ var AsynqueryColumns = struct {
 	UpdatedAt: "updated_at",
 	Status:    "status",
 	Error:     "error",
-	Query:     "query",
+	UploadID:  "upload_id",
+	Body:      "body",
 	Response:  "response",
 }
 
 // Generated where
+
+type whereHelperstring struct{ field string }
+
+func (w whereHelperstring) EQ(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
+func (w whereHelperstring) NEQ(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
+func (w whereHelperstring) LT(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
+func (w whereHelperstring) LTE(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
+func (w whereHelperstring) GT(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
+func (w whereHelperstring) GTE(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
 
 type whereHelperint struct{ field string }
 
@@ -66,29 +78,6 @@ func (w whereHelperint) LT(x int) qm.QueryMod  { return qmhelper.Where(w.field, 
 func (w whereHelperint) LTE(x int) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
 func (w whereHelperint) GT(x int) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
 func (w whereHelperint) GTE(x int) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
-
-type whereHelpernull_Int struct{ field string }
-
-func (w whereHelpernull_Int) EQ(x null.Int) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, false, x)
-}
-func (w whereHelpernull_Int) NEQ(x null.Int) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, true, x)
-}
-func (w whereHelpernull_Int) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
-func (w whereHelpernull_Int) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
-func (w whereHelpernull_Int) LT(x null.Int) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelpernull_Int) LTE(x null.Int) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelpernull_Int) GT(x null.Int) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelpernull_Int) GTE(x null.Int) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
 
 type whereHelpertime_Time struct{ field string }
 
@@ -134,15 +123,6 @@ func (w whereHelpernull_Time) GTE(x null.Time) qm.QueryMod {
 	return qmhelper.Where(w.field, qmhelper.GTE, x)
 }
 
-type whereHelperstring struct{ field string }
-
-func (w whereHelperstring) EQ(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
-func (w whereHelperstring) NEQ(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
-func (w whereHelperstring) LT(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
-func (w whereHelperstring) LTE(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
-func (w whereHelperstring) GT(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
-func (w whereHelperstring) GTE(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
-
 type whereHelpernull_JSON struct{ field string }
 
 func (w whereHelpernull_JSON) EQ(x null.JSON) qm.QueryMod {
@@ -167,38 +147,37 @@ func (w whereHelpernull_JSON) GTE(x null.JSON) qm.QueryMod {
 }
 
 var AsynqueryWhere = struct {
-	ID        whereHelperint
-	UserID    whereHelpernull_Int
+	ID        whereHelperstring
+	UserID    whereHelperint
 	CreatedAt whereHelpertime_Time
 	UpdatedAt whereHelpernull_Time
 	Status    whereHelperstring
 	Error     whereHelperstring
-	Query     whereHelpernull_JSON
+	UploadID  whereHelperstring
+	Body      whereHelpernull_JSON
 	Response  whereHelpernull_JSON
 }{
-	ID:        whereHelperint{field: "\"asynqueries\".\"id\""},
-	UserID:    whereHelpernull_Int{field: "\"asynqueries\".\"user_id\""},
+	ID:        whereHelperstring{field: "\"asynqueries\".\"id\""},
+	UserID:    whereHelperint{field: "\"asynqueries\".\"user_id\""},
 	CreatedAt: whereHelpertime_Time{field: "\"asynqueries\".\"created_at\""},
 	UpdatedAt: whereHelpernull_Time{field: "\"asynqueries\".\"updated_at\""},
 	Status:    whereHelperstring{field: "\"asynqueries\".\"status\""},
 	Error:     whereHelperstring{field: "\"asynqueries\".\"error\""},
-	Query:     whereHelpernull_JSON{field: "\"asynqueries\".\"query\""},
+	UploadID:  whereHelperstring{field: "\"asynqueries\".\"upload_id\""},
+	Body:      whereHelpernull_JSON{field: "\"asynqueries\".\"body\""},
 	Response:  whereHelpernull_JSON{field: "\"asynqueries\".\"response\""},
 }
 
 // AsynqueryRels is where relationship names are stored.
 var AsynqueryRels = struct {
-	User            string
-	ForkliftUploads string
+	User string
 }{
-	User:            "User",
-	ForkliftUploads: "ForkliftUploads",
+	User: "User",
 }
 
 // asynqueryR is where relationships are stored.
 type asynqueryR struct {
-	User            *User
-	ForkliftUploads ForkliftUploadSlice
+	User *User
 }
 
 // NewStruct creates a new relationship struct
@@ -210,9 +189,9 @@ func (*asynqueryR) NewStruct() *asynqueryR {
 type asynqueryL struct{}
 
 var (
-	asynqueryAllColumns            = []string{"id", "user_id", "created_at", "updated_at", "status", "error", "query", "response"}
-	asynqueryColumnsWithoutDefault = []string{"user_id", "updated_at", "status", "error", "query", "response"}
-	asynqueryColumnsWithDefault    = []string{"id", "created_at"}
+	asynqueryAllColumns            = []string{"id", "user_id", "created_at", "updated_at", "status", "error", "upload_id", "body", "response"}
+	asynqueryColumnsWithoutDefault = []string{"id", "user_id", "updated_at", "status", "error", "upload_id", "body", "response"}
+	asynqueryColumnsWithDefault    = []string{"created_at"}
 	asynqueryPrimaryKeyColumns     = []string{"id"}
 )
 
@@ -489,27 +468,6 @@ func (o *Asynquery) User(mods ...qm.QueryMod) userQuery {
 	return query
 }
 
-// ForkliftUploads retrieves all the forklift_upload's ForkliftUploads with an executor.
-func (o *Asynquery) ForkliftUploads(mods ...qm.QueryMod) forkliftUploadQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"forklift_uploads\".\"asynquery_id\"=?", o.ID),
-	)
-
-	query := ForkliftUploads(queryMods...)
-	queries.SetFrom(query.Query, "\"forklift_uploads\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"forklift_uploads\".*"})
-	}
-
-	return query
-}
-
 // LoadUser allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (asynqueryL) LoadUser(e boil.Executor, singular bool, maybeAsynquery interface{}, mods queries.Applicator) error {
@@ -527,9 +485,7 @@ func (asynqueryL) LoadUser(e boil.Executor, singular bool, maybeAsynquery interf
 		if object.R == nil {
 			object.R = &asynqueryR{}
 		}
-		if !queries.IsNil(object.UserID) {
-			args = append(args, object.UserID)
-		}
+		args = append(args, object.UserID)
 
 	} else {
 	Outer:
@@ -539,14 +495,12 @@ func (asynqueryL) LoadUser(e boil.Executor, singular bool, maybeAsynquery interf
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.UserID) {
+				if a == obj.UserID {
 					continue Outer
 				}
 			}
 
-			if !queries.IsNil(obj.UserID) {
-				args = append(args, obj.UserID)
-			}
+			args = append(args, obj.UserID)
 
 		}
 	}
@@ -601,107 +555,12 @@ func (asynqueryL) LoadUser(e boil.Executor, singular bool, maybeAsynquery interf
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.UserID, foreign.ID) {
+			if local.UserID == foreign.ID {
 				local.R.User = foreign
 				if foreign.R == nil {
 					foreign.R = &userR{}
 				}
 				foreign.R.Asynqueries = append(foreign.R.Asynqueries, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadForkliftUploads allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (asynqueryL) LoadForkliftUploads(e boil.Executor, singular bool, maybeAsynquery interface{}, mods queries.Applicator) error {
-	var slice []*Asynquery
-	var object *Asynquery
-
-	if singular {
-		object = maybeAsynquery.(*Asynquery)
-	} else {
-		slice = *maybeAsynquery.(*[]*Asynquery)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &asynqueryR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &asynqueryR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(qm.From(`forklift_uploads`), qm.WhereIn(`asynquery_id in ?`, args...))
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load forklift_uploads")
-	}
-
-	var resultSlice []*ForkliftUpload
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice forklift_uploads")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on forklift_uploads")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for forklift_uploads")
-	}
-
-	if len(forkliftUploadAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.ForkliftUploads = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &forkliftUploadR{}
-			}
-			foreign.R.Asynquery = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.AsynqueryID) {
-				local.R.ForkliftUploads = append(local.R.ForkliftUploads, foreign)
-				if foreign.R == nil {
-					foreign.R = &forkliftUploadR{}
-				}
-				foreign.R.Asynquery = local
 				break
 			}
 		}
@@ -745,7 +604,7 @@ func (o *Asynquery) SetUser(exec boil.Executor, insert bool, related *User) erro
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.UserID, related.ID)
+	o.UserID = related.ID
 	if o.R == nil {
 		o.R = &asynqueryR{
 			User: related,
@@ -765,196 +624,6 @@ func (o *Asynquery) SetUser(exec boil.Executor, insert bool, related *User) erro
 	return nil
 }
 
-// RemoveUserG relationship.
-// Sets o.R.User to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-// Uses the global database handle.
-func (o *Asynquery) RemoveUserG(related *User) error {
-	return o.RemoveUser(boil.GetDB(), related)
-}
-
-// RemoveUser relationship.
-// Sets o.R.User to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *Asynquery) RemoveUser(exec boil.Executor, related *User) error {
-	var err error
-
-	queries.SetScanner(&o.UserID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("user_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.R.User = nil
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.Asynqueries {
-		if queries.Equal(o.UserID, ri.UserID) {
-			continue
-		}
-
-		ln := len(related.R.Asynqueries)
-		if ln > 1 && i < ln-1 {
-			related.R.Asynqueries[i] = related.R.Asynqueries[ln-1]
-		}
-		related.R.Asynqueries = related.R.Asynqueries[:ln-1]
-		break
-	}
-	return nil
-}
-
-// AddForkliftUploadsG adds the given related objects to the existing relationships
-// of the asynquery, optionally inserting them as new records.
-// Appends related to o.R.ForkliftUploads.
-// Sets related.R.Asynquery appropriately.
-// Uses the global database handle.
-func (o *Asynquery) AddForkliftUploadsG(insert bool, related ...*ForkliftUpload) error {
-	return o.AddForkliftUploads(boil.GetDB(), insert, related...)
-}
-
-// AddForkliftUploads adds the given related objects to the existing relationships
-// of the asynquery, optionally inserting them as new records.
-// Appends related to o.R.ForkliftUploads.
-// Sets related.R.Asynquery appropriately.
-func (o *Asynquery) AddForkliftUploads(exec boil.Executor, insert bool, related ...*ForkliftUpload) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			queries.Assign(&rel.AsynqueryID, o.ID)
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"forklift_uploads\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"asynquery_id"}),
-				strmangle.WhereClause("\"", "\"", 2, forkliftUploadPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			queries.Assign(&rel.AsynqueryID, o.ID)
-		}
-	}
-
-	if o.R == nil {
-		o.R = &asynqueryR{
-			ForkliftUploads: related,
-		}
-	} else {
-		o.R.ForkliftUploads = append(o.R.ForkliftUploads, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &forkliftUploadR{
-				Asynquery: o,
-			}
-		} else {
-			rel.R.Asynquery = o
-		}
-	}
-	return nil
-}
-
-// SetForkliftUploadsG removes all previously related items of the
-// asynquery replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.Asynquery's ForkliftUploads accordingly.
-// Replaces o.R.ForkliftUploads with related.
-// Sets related.R.Asynquery's ForkliftUploads accordingly.
-// Uses the global database handle.
-func (o *Asynquery) SetForkliftUploadsG(insert bool, related ...*ForkliftUpload) error {
-	return o.SetForkliftUploads(boil.GetDB(), insert, related...)
-}
-
-// SetForkliftUploads removes all previously related items of the
-// asynquery replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.Asynquery's ForkliftUploads accordingly.
-// Replaces o.R.ForkliftUploads with related.
-// Sets related.R.Asynquery's ForkliftUploads accordingly.
-func (o *Asynquery) SetForkliftUploads(exec boil.Executor, insert bool, related ...*ForkliftUpload) error {
-	query := "update \"forklift_uploads\" set \"asynquery_id\" = null where \"asynquery_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.ForkliftUploads {
-			queries.SetScanner(&rel.AsynqueryID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.Asynquery = nil
-		}
-
-		o.R.ForkliftUploads = nil
-	}
-	return o.AddForkliftUploads(exec, insert, related...)
-}
-
-// RemoveForkliftUploadsG relationships from objects passed in.
-// Removes related items from R.ForkliftUploads (uses pointer comparison, removal does not keep order)
-// Sets related.R.Asynquery.
-// Uses the global database handle.
-func (o *Asynquery) RemoveForkliftUploadsG(related ...*ForkliftUpload) error {
-	return o.RemoveForkliftUploads(boil.GetDB(), related...)
-}
-
-// RemoveForkliftUploads relationships from objects passed in.
-// Removes related items from R.ForkliftUploads (uses pointer comparison, removal does not keep order)
-// Sets related.R.Asynquery.
-func (o *Asynquery) RemoveForkliftUploads(exec boil.Executor, related ...*ForkliftUpload) error {
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.AsynqueryID, nil)
-		if rel.R != nil {
-			rel.R.Asynquery = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("asynquery_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.ForkliftUploads {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.ForkliftUploads)
-			if ln > 1 && i < ln-1 {
-				o.R.ForkliftUploads[i] = o.R.ForkliftUploads[ln-1]
-			}
-			o.R.ForkliftUploads = o.R.ForkliftUploads[:ln-1]
-			break
-		}
-	}
-
-	return nil
-}
-
 // Asynqueries retrieves all the records using an executor.
 func Asynqueries(mods ...qm.QueryMod) asynqueryQuery {
 	mods = append(mods, qm.From("\"asynqueries\""))
@@ -962,13 +631,13 @@ func Asynqueries(mods ...qm.QueryMod) asynqueryQuery {
 }
 
 // FindAsynqueryG retrieves a single record by ID.
-func FindAsynqueryG(iD int, selectCols ...string) (*Asynquery, error) {
+func FindAsynqueryG(iD string, selectCols ...string) (*Asynquery, error) {
 	return FindAsynquery(boil.GetDB(), iD, selectCols...)
 }
 
 // FindAsynquery retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindAsynquery(exec boil.Executor, iD int, selectCols ...string) (*Asynquery, error) {
+func FindAsynquery(exec boil.Executor, iD string, selectCols ...string) (*Asynquery, error) {
 	asynqueryObj := &Asynquery{}
 
 	sel := "*"
@@ -1535,12 +1204,12 @@ func (o *AsynquerySlice) ReloadAll(exec boil.Executor) error {
 }
 
 // AsynqueryExistsG checks if the Asynquery row exists.
-func AsynqueryExistsG(iD int) (bool, error) {
+func AsynqueryExistsG(iD string) (bool, error) {
 	return AsynqueryExists(boil.GetDB(), iD)
 }
 
 // AsynqueryExists checks if the Asynquery row exists.
-func AsynqueryExists(exec boil.Executor, iD int) (bool, error) {
+func AsynqueryExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
 	sql := "select exists(select 1 from \"asynqueries\" where \"id\"=$1 limit 1)"
 

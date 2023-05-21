@@ -61,9 +61,18 @@ func GetOauthTokenURL() string {
 	return cfg["providerurl"] + cfg["tokenpath"]
 }
 
-// GetRedisOpts returns Redis connection options in the official redis client format.
-func GetRedisOpts() (*redis.Options, error) {
-	opts, err := redis.ParseURL(Config.Viper.GetString("redis"))
+// GetRedisLockerOpts returns Redis connection options in the official redis client format.
+func GetRedisLockerOpts() (*redis.Options, error) {
+	opts, err := redis.ParseURL(Config.Viper.GetString("RedisLocker"))
+	if err != nil {
+		return nil, err
+	}
+	return opts, nil
+}
+
+// GetRedisBusOpts returns Redis connection options in the official redis client format.
+func GetRedisBusOpts() (*redis.Options, error) {
+	opts, err := redis.ParseURL(Config.Viper.GetString("RedisBus"))
 	if err != nil {
 		return nil, err
 	}

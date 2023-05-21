@@ -54,20 +54,10 @@ func makeCacheKey(cols boil.Columns, nzDefaults []string) string {
 // Enum values for asynquery_status
 const (
 	AsynqueryStatusReceived  = "received"
+	AsynqueryStatusPreparing = "preparing"
 	AsynqueryStatusForwarded = "forwarded"
 	AsynqueryStatusFailed    = "failed"
 	AsynqueryStatusSucceeded = "succeeded"
-)
-
-// Enum values for forklift_upload_status
-const (
-	ForkliftUploadStatusCreated    = "created"
-	ForkliftUploadStatusUploading  = "uploading"
-	ForkliftUploadStatusReceived   = "received"
-	ForkliftUploadStatusTerminated = "terminated"
-	ForkliftUploadStatusAbandoned  = "abandoned"
-	ForkliftUploadStatusFailed     = "failed"
-	ForkliftUploadStatusFinished   = "finished"
 )
 
 // Enum values for publish_query_status
