@@ -18,7 +18,6 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/go-redis/redis/v8"
-	"github.com/tus/tusd/pkg/s3store"
 )
 
 var cli struct {
@@ -68,8 +67,6 @@ func serve(logger logging.KVLogger) {
 		logger.Fatal("s3 client failed", "err", err)
 	}
 
-	store := s3store.New(s3cfg.Bucket, client)
-
 	redisOpts, err := redis.ParseURL(cfg.V.GetString("RedisLocker"))
 	if err != nil {
 		logger.Fatal("redis config parse failed", "err", err)
@@ -92,14 +89,16 @@ func serve(logger logging.KVLogger) {
 
 	runCtx, runCancel := context.WithCancel(context.Background())
 
-	launcher := uploads.NewLauncher().
-		FileLocker(locker).
-		Store(store).
-		DB(db).
-		PublicKey(k).
-		Logger(logger).
-		CORSDomains(cfg.V.GetStringSlice("CORSDomains")).
-		BusRedisURL(cfg.V.GetString("RedisBus"))
+	launcher := uploads.NewLauncher(
+		uploads.WithFileLocker(locker),
+		uploads.WithS3Client(client),
+		uploads.WithS3Bucket(s3cfg.Bucket),
+		uploads.WithDB(db),
+		uploads.WithPublicKey(k),
+		uploads.WithLogger(logger),
+		uploads.WithCORSDomains(cfg.V.GetStringSlice("CORSDomains")),
+		uploads.WithBusRedisURL(cfg.V.GetString("RedisBus")),
+	)
 
 	go func() {
 		trap := make(chan os.Signal, 1)

@@ -15,7 +15,6 @@ import (
 	"github.com/Pallinder/go-randomdata"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
@@ -41,15 +40,6 @@ func NewUploadTestHelper(t *testing.T) (*UploadTestHelper, error) {
 	client, err := configng.NewS3Client(s3cfg)
 	if err != nil {
 		return nil, err
-	}
-
-	_, err = client.CreateBucket(&s3.CreateBucketInput{
-		Bucket: aws.String(s3cfg.Bucket),
-	})
-	if err != nil {
-		if awsErr, ok := err.(awserr.Error); !ok || awsErr.Code() != "BucketAlreadyOwnedByYou" {
-			return nil, err
-		}
 	}
 
 	t.Cleanup(func() {

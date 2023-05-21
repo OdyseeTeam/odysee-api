@@ -31,7 +31,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/suite"
-	"github.com/tus/tusd/pkg/s3store"
 )
 
 type uploadSuite struct {
@@ -187,7 +186,7 @@ func (s *uploadSuite) TestUploadLarger() {
 		return nil
 	})
 	s.Equal(database.UploadStatusCreated, upload.Status)
-	s.Equal(fmt.Sprintf("%v", userID), upload.UserID)
+	s.Equal(userID, upload.UserID)
 	s.Empty(upload.Filename)
 	s.Empty(upload.Key)
 
@@ -388,7 +387,6 @@ func (s *uploadSuite) SetupSuite() {
 
 	client, err := configng.NewS3Client(upHelper.S3Config)
 	s.Require().NoError(err)
-	store := s3store.New(upHelper.S3Config.Bucket, client)
 
 	redisOpts, err := redis.ParseURL("redis://:odyredis@localhost:6379/0")
 	if err != nil {
@@ -405,7 +403,14 @@ func (s *uploadSuite) SetupSuite() {
 	kf, err := keybox.GenerateKeyfob()
 	s.Require().NoError(err)
 
-	l := NewLauncher().FileLocker(locker).Store(store).DB(upHelper.DB).PublicKey(kf.PublicKey()).Logger(zapadapter.NewKV(nil))
+	l := NewLauncher(
+		WithFileLocker(locker),
+		WithS3Client(client),
+		WithS3Bucket(upHelper.S3Config.Bucket),
+		WithDB(upHelper.DB),
+		WithPublicKey(kf.PublicKey()),
+		WithLogger(zapadapter.NewKV(nil)),
+	)
 	r, err := l.Build()
 	s.Require().NoError(err)
 
