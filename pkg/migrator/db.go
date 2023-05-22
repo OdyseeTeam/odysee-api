@@ -4,12 +4,11 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
-
-	"github.com/OdyseeTeam/odysee-api/config"
 )
 
 type DSNConfig interface {
-	GetFullDSN() string
+	DBName() string
+	FullDSN() string
 }
 
 type DBConfig struct {
@@ -48,9 +47,9 @@ func (c *DBConfig) GetFullDSN() string {
 	return fmt.Sprintf("%s/%s?%s", c.dsn, c.dbName, c.connOpts)
 }
 
-func ConnectDB(config DSNConfig, migrationsFS ...embed.FS) (*sql.DB, error) {
+func ConnectDB(cfg DSNConfig, migrationsFS ...embed.FS) (*sql.DB, error) {
 	var err error
-	db, err := sql.Open("postgres", config.GetFullDSN())
+	db, err := sql.Open("postgres", cfg.GetFullDSN())
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +63,6 @@ func ConnectDB(config DSNConfig, migrationsFS ...embed.FS) (*sql.DB, error) {
 	return db, nil
 }
 
-func DBConfigFromApp(cfg config.DBConfig) *DBConfig {
-	return DefaultDBConfig().DSN(cfg.Connection).Name(cfg.DBName)
+func DBConfigFromApp(cfg DSNConfig) *DBConfig {
+	return DefaultDBConfig().DSN(cfg.GetFullDSN()).Name(cfg.DBName)
 }

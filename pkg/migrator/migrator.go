@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/OdyseeTeam/odysee-api/internal/monitor"
-	"github.com/sirupsen/logrus"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 
 	"github.com/lib/pq"
 	migrate "github.com/rubenv/sql-migrate"
@@ -19,7 +19,7 @@ type Migrator struct {
 	db     *sql.DB
 	ms     migrate.MigrationSet
 	source *migrate.EmbedFileSystemMigrationSource
-	log    monitor.ModuleLogger
+	logger logging.KVLogger
 }
 
 func New(db *sql.DB, fs embed.FS) Migrator {
@@ -31,7 +31,7 @@ func New(db *sql.DB, fs embed.FS) Migrator {
 			FileSystem: fs,
 			Root:       "migrations",
 		},
-		log: monitor.NewModuleLogger("migrator"),
+		logger: zapadapter.NewKV(nil),
 	}
 }
 
@@ -41,7 +41,7 @@ func (m Migrator) MigrateUp(max int) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	m.log.WithFields(logrus.Fields{"count": n}).Info("migrations applied")
+	m.logger.Info("migrations applied", "count", n)
 	return n, nil
 }
 
@@ -51,7 +51,7 @@ func (m Migrator) MigrateDown(max int) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	m.log.WithFields(logrus.Fields{"count": n}).Info("migrations unapplied")
+	m.logger.Info("migrations unapplied", "count", n)
 	return n, nil
 }
 
@@ -69,7 +69,7 @@ func (m Migrator) CreateDB(dbName string) error {
 	if err != nil {
 		return err
 	}
-	m.log.WithFields(logrus.Fields{"db": dbName}).Info("database created")
+	m.logger.Info("migrations applied", "db", dbName)
 	return nil
 }
 
@@ -79,6 +79,6 @@ func (m Migrator) DropDB(dbName string) error {
 	if err != nil {
 		return err
 	}
-	m.log.WithFields(logrus.Fields{"db": dbName}).Info("database dropped")
+	m.logger.Info("database dropped", "db", dbName)
 	return nil
 }
