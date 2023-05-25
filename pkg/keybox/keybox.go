@@ -29,6 +29,22 @@ type Validator struct {
 	publicKey crypto.PublicKey
 }
 
+// NewKeyfob creates a new Keyfob from an existing private key.
+func NewKeyfob(privateKey crypto.PrivateKey) (*Keyfob, error) {
+	if privateKey == nil {
+		return nil, errors.New("empty private key supplied")
+	}
+	edpk, ok := privateKey.(*ecdsa.PrivateKey)
+	if !ok {
+		return nil, errors.New("private key is not an ecdsa private key")
+	}
+	kf := &Keyfob{
+		privateKey: edpk,
+		publicKey:  edpk.Public(),
+	}
+	return kf, nil
+}
+
 // GenerateKeyfob generates a new Keyfob containing a public and a private key.
 func GenerateKeyfob() (*Keyfob, error) {
 	pvk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -42,19 +58,16 @@ func GenerateKeyfob() (*Keyfob, error) {
 	return kf, nil
 }
 
-// NewKeyfob creates a new Keyfob from an existing private key.
-func NewKeyfob(privateKey crypto.PrivateKey) (*Keyfob, error) {
-	edpk, ok := privateKey.(*ecdsa.PrivateKey)
+func NewValidator(publicKey crypto.PublicKey) (*Validator, error) {
+	k, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
-		return nil, errors.New("private key is not an issue private key")
+		return nil, errors.New("not an ECDSA public key")
 	}
-	kf := &Keyfob{
-		privateKey: edpk,
-		publicKey:  edpk.Public(),
-	}
-	return kf, nil
+	v := &Validator{publicKey: k}
+	return v, nil
 }
 
+// KeyfobFromString creates a Keyfob from an existing private key supplied as a base64 string.
 func KeyfobFromString(privateKey string) (*Keyfob, error) {
 	pvk, err := privateKeyFromString(privateKey)
 	if err != nil {
@@ -67,15 +80,6 @@ func KeyfobFromString(privateKey string) (*Keyfob, error) {
 	return kf, nil
 }
 
-func NewValidator(publicKey crypto.PublicKey) (*Validator, error) {
-	k, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		return nil, errors.New("not an ECDSA public key")
-	}
-	v := &Validator{publicKey: k}
-	return v, nil
-}
-
 func ValidatorFromPublicKeyString(publicKey string) (*Validator, error) {
 	v := &Validator{}
 	var err error
@@ -86,7 +90,7 @@ func ValidatorFromPublicKeyString(publicKey string) (*Validator, error) {
 	return v, nil
 }
 
-func NewPublicKeyFromURL(keyURL string) (crypto.PublicKey, error) {
+func PublicKeyFromURL(keyURL string) (crypto.PublicKey, error) {
 	r, err := http.Get(keyURL)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve public key: %w", err)
@@ -133,6 +137,10 @@ func (kf Keyfob) GenerateToken(userID int32, expiry time.Time, fields ...string)
 
 func (kf Keyfob) PublicKey() crypto.PublicKey {
 	return kf.publicKey
+}
+
+func (kf Keyfob) PrivateKey() crypto.PrivateKey {
+	return kf.privateKey
 }
 
 // NewValidator creates a new Validator from the public key.

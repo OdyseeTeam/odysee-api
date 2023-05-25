@@ -41,7 +41,7 @@ func TestNewValidator(t *testing.T) {
 	assert.Equal(t, base64.StdEncoding.EncodeToString(publicKeyBytes), testPubKey)
 }
 
-func TestGenerateToken(t *testing.T) {
+func TestKeyfobFromStringGenerateToken(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
@@ -74,7 +74,7 @@ func TestPublicKeyHandler(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(PublicKeyHandler(kf.PublicKey())))
 	defer ts.Close()
 
-	pubKey, err := NewPublicKeyFromURL(ts.URL)
+	pubKey, err := PublicKeyFromURL(ts.URL)
 	require.NoError(err)
 
 	assert.Equal(pubKey, kf.PublicKey(), "retrieved public key does not match parsed public key")

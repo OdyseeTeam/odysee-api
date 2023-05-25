@@ -54,7 +54,7 @@ func main() {
 }
 
 func serve(logger logging.KVLogger) {
-	cfg, err := configng.Read(".", "uploads", "yaml")
+	cfg, err := configng.Read("./config", "uploads", "yaml")
 	if err != nil {
 		logger.Fatal("config reading failed", "err", err)
 	}
@@ -76,7 +76,7 @@ func serve(logger logging.KVLogger) {
 		logger.Fatal("redislocker launch failed", "err", err)
 	}
 
-	k, err := keybox.NewPublicKeyFromURL(cfg.V.GetString("PublicKeyURL"))
+	k, err := keybox.PublicKeyFromURL(cfg.V.GetString("PublicKeyURL"))
 	if err != nil {
 		logger.Fatal("public key loading failed", "url", cfg.V.GetString("PublicKeyURL"), "err", err)
 	}

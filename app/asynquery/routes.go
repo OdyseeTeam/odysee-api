@@ -6,15 +6,19 @@ import (
 
 	"github.com/OdyseeTeam/odysee-api/pkg/keybox"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+
 	"github.com/gorilla/mux"
 	"github.com/hibiken/asynq"
+	"github.com/volatiletech/sqlboiler/boil"
 )
 
 type Launcher struct {
-	privateKey  crypto.PrivateKey
-	busRedisURL string
-	logger      logging.KVLogger
-	readyCancel context.CancelFunc
+	busRedisOpts asynq.RedisConnOpt
+	db           boil.Executor
+	logger       logging.KVLogger
+	manager      *CallManager
+	privateKey   crypto.PrivateKey
+	readyCancel  context.CancelFunc
 }
 
 type LauncherOption func(*Launcher)
@@ -25,9 +29,14 @@ func WithPrivateKey(privateKey crypto.PrivateKey) LauncherOption {
 	}
 }
 
-func WithBusRedisURL(busRedisURL string) LauncherOption {
+func WithDB(db boil.Executor) LauncherOption {
 	return func(l *Launcher) {
-		l.busRedisURL = busRedisURL
+		l.db = db
+	}
+}
+func WithBusRedisOpts(redisOpts asynq.RedisConnOpt) LauncherOption {
+	return func(l *Launcher) {
+		l.busRedisOpts = redisOpts
 	}
 }
 
@@ -58,18 +67,27 @@ func (l *Launcher) InstallRoutes(r *mux.Router) error {
 	if err != nil {
 		return err
 	}
-	redisOpts, err := asynq.ParseRedisURI(l.busRedisURL)
+	manager, err := NewCallManager(l.busRedisOpts, l.db, l.logger)
 	if err != nil {
 		return err
 	}
-	cm, err := NewCallManager(redisOpts, l.logger)
-	if err != nil {
-		return err
-	}
-	handler := NewHandler(cm, l.logger, keyfob)
+	l.manager = manager
+	handler := NewHandler(manager, l.logger, keyfob)
 	r.HandleFunc("/api/v1/asynqueries/auth/pubkey", keybox.PublicKeyHandler(keyfob)).Methods("GET")
 	r.HandleFunc("/api/v1/asynqueries/auth/upload-token", handler.RetrieveUploadToken).Methods("POST")
-	r.HandleFunc("/api/v1/asynqueries", handler.Create).Methods("POST")
 	r.HandleFunc("/api/v1/asynqueries/{id}", handler.Get).Methods("GET")
+	r.HandleFunc("/api/v1/asynqueries/", handler.Create).Methods("POST")
 	return nil
+}
+
+func (l *Launcher) Start() error {
+	err := l.manager.Start()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Launcher) Shutdown() {
+	l.manager.Shutdown()
 }

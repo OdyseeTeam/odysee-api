@@ -14,6 +14,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/iapi"
 	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
+	"github.com/stretchr/testify/require"
 )
 
 type TestUser struct {
@@ -32,64 +33,55 @@ type UserTestHelper struct {
 }
 
 func (s *UserTestHelper) Setup(t *testing.T) error {
+	require := require.New(t)
 	s.t = t
 	config.Override("LbrynetServers", "")
 
 	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(err)
 	storage.SetDB(db)
-	t.Cleanup(func() { dbCleanup() })
-	s.DB = db
-	s.SDKRouter = sdkrouter.New(config.GetLbrynetServers())
+
+	sdkr := sdkrouter.New(config.GetLbrynetServers())
 
 	th, err := test.GetTestTokenHeader()
-	if err != nil {
-		return err
-	}
-	s.TokenHeader = th
+	require.NoError(err)
 
 	auther, err := wallet.NewOauthAuthenticator(
 		config.GetOauthProviderURL(), config.GetOauthClientID(),
-		config.GetInternalAPIHost(), s.SDKRouter)
-	if err != nil {
-		return err
-	}
-	s.Auther = auther
+		config.GetInternalAPIHost(), sdkr)
+	require.NoError(err)
 
 	w, err := test.InjectTestingWallet(test.TestUserID)
-	if err != nil {
-		return err
-	}
+	require.NoError(err)
 	s.t.Logf("set up wallet userid=%v", w.UserID)
-	t.Cleanup(func() {
-		w.Unload()
-		w.RemoveFile()
-	})
 
-	u, err := auther.Authenticate(s.TokenHeader, "127.0.0.1")
-	if err != nil {
-		return err
-	}
+	u, err := auther.Authenticate(th, "127.0.0.1")
+	require.NoError(err)
 
 	iac, err := iapi.NewClient(
 		iapi.WithOAuthToken(strings.TrimPrefix(th, wallet.TokenPrefix)),
 		iapi.WithRemoteIP("8.8.8.8"),
 	)
-	if err != nil {
-		return err
-	}
+	require.NoError(err)
 
 	cu := auth.NewCurrentUser(u, "8.8.8.8", iac, nil)
 
+	t.Cleanup(func() {
+		dbCleanup()
+		w.Unload()
+		w.RemoveFile()
+	})
+	t.Cleanup(config.RestoreOverridden)
+
+	s.Auther = auther
+	s.SDKRouter = sdkr
+	s.TokenHeader = th
+	s.DB = db
 	s.TestUser = &TestUser{
 		User:        u,
 		SDKAddress:  sdkrouter.GetSDKAddress(u),
 		CurrentUser: cu,
 	}
-
-	t.Cleanup(config.RestoreOverridden)
 	return nil
 }
 

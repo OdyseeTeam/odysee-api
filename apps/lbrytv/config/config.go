@@ -71,21 +71,8 @@ func GetRedisLockerOpts() (*redis.Options, error) {
 }
 
 // GetRedisBusOpts returns Redis connection options in the official redis client format.
-func GetRedisBusOpts() (*redis.Options, error) {
-	opts, err := redis.ParseURL(Config.Viper.GetString("RedisBus"))
-	if err != nil {
-		return nil, err
-	}
-	return opts, nil
-}
-
-// GetAsynqRedisOpts rreturns Redis connection options ready for asynq package.
-func GetAsynqRedisOpts() (asynq.RedisConnOpt, error) {
-	redisOpts, err := asynq.ParseRedisURI(Config.Viper.GetString("redis"))
-	if err != nil {
-		return nil, err
-	}
-	return redisOpts, nil
+func GetRedisBusOpts() (asynq.RedisConnOpt, error) {
+	return asynq.ParseRedisURI("RedisBus")
 }
 
 // GetDatabase returns postgresql database server connection config.
@@ -124,6 +111,11 @@ func ShouldLogResponses() bool {
 // GetPaidTokenPrivKey returns absolute path to the private RSA key for generating paid tokens.
 func GetPaidTokenPrivKey() string {
 	return Config.Viper.GetString("PaidTokenPrivKey")
+}
+
+// GetPaidTokenPrivKey returns absolute path to the private RSA key for generating paid tokens.
+func GetUploadTokenPrivateKey() string {
+	return Config.Viper.GetString("UploadTokenPrivateKey")
 }
 
 // GetStreamsV5 returns config map for v5 streams endpoint.

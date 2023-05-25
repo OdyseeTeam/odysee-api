@@ -7,8 +7,8 @@ import (
 )
 
 type DSNConfig interface {
-	DBName() string
-	FullDSN() string
+	GetFullDSN() string
+	GetDBName() string
 }
 
 type DBConfig struct {
@@ -47,6 +47,10 @@ func (c *DBConfig) GetFullDSN() string {
 	return fmt.Sprintf("%s/%s?%s", c.dsn, c.dbName, c.connOpts)
 }
 
+func (c *DBConfig) GetDBName() string {
+	return c.dbName
+}
+
 func ConnectDB(cfg DSNConfig, migrationsFS ...embed.FS) (*sql.DB, error) {
 	var err error
 	db, err := sql.Open("postgres", cfg.GetFullDSN())
@@ -64,5 +68,5 @@ func ConnectDB(cfg DSNConfig, migrationsFS ...embed.FS) (*sql.DB, error) {
 }
 
 func DBConfigFromApp(cfg DSNConfig) *DBConfig {
-	return DefaultDBConfig().DSN(cfg.GetFullDSN()).Name(cfg.DBName)
+	return DefaultDBConfig().DSN(cfg.GetFullDSN()).Name(cfg.GetDBName())
 }

@@ -17,11 +17,11 @@ import (
 )
 
 func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPrefix string, logger logging.KVLogger) (*Handler, error) {
-	redisOpts, err := config.GetRedisBusOpts()
+	redisOpts, err := config.GetRedisLockerOpts()
 	if err != nil {
 		return nil, fmt.Errorf("cannot get redis config: %w", err)
 	}
-	asynqRedisOpts, err := config.GetAsynqRedisOpts()
+	asynqRedisOpts, err := config.GetRedisBusOpts()
 	if err != nil {
 		return nil, fmt.Errorf("cannot get redis config: %w", err)
 	}

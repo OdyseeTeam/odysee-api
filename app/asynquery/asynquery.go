@@ -23,10 +23,12 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
+const FilePathParam = "file_path"
+
 var (
 	sdkNetError    = errors.New("network level sdk error")
 	sdkClientError = errors.New("client level sdk error")
-	reFilePathURL  = regexp.MustCompile(`^https?://(.+)/(\w+)/\w+/([a-zA-Z0-9]+)$`)
+	reFilePathURL  = regexp.MustCompile(`^https?://([^/]+)/.+/([a-zA-Z0-9]{32,})$`)
 )
 
 type CallManager struct {
@@ -42,7 +44,6 @@ type Caller struct {
 
 type FileLocation struct {
 	Server   string
-	Version  string
 	UploadID string
 }
 
@@ -52,9 +53,10 @@ type Result struct {
 	Response *jsonrpc.RPCResponse
 }
 
-func NewCallManager(redisOpts asynq.RedisConnOpt, logger logging.KVLogger) (*CallManager, error) {
+func NewCallManager(redisOpts asynq.RedisConnOpt, db boil.Executor, logger logging.KVLogger) (*CallManager, error) {
 	m := CallManager{
 		logger: logger,
+		db:     db,
 	}
 	b, err := bus.New(redisOpts, bus.WithConcurrency(10))
 	if err != nil {
@@ -70,8 +72,7 @@ func (m *CallManager) NewCaller(userID int) *Caller {
 }
 
 // Start launches asynchronous query handlers and blocks until stopped.
-func (m *CallManager) Start(db boil.Executor) error {
-	m.db = db
+func (m *CallManager) Start() error {
 	registerServerMetrics()
 	m.bus.AddHandler(tasks.TaskAsynqueryMerge, m.HandleMerge)
 	return m.bus.StartHandlers()
@@ -81,7 +82,7 @@ func (m *CallManager) Shutdown() {
 	m.bus.Shutdown()
 }
 
-// Call accepts JSON-RPC request for later asynchronous processing. This may be called from a different process.
+// Call accepts JSON-RPC request for later asynchronous processing.
 func (m *CallManager) Call(userID int, req *jsonrpc.RPCRequest) (*models.Asynquery, error) {
 	p := req.Params.(map[string]interface{})
 	fp, err := parseFilePath(p["file_path"].(string))
@@ -94,6 +95,7 @@ func (m *CallManager) Call(userID int, req *jsonrpc.RPCRequest) (*models.Asynque
 		m.logger.Warn("error adding query record", "err", err, "user_id", userID)
 		return nil, err
 	}
+	m.logger.Info("query record added", "id", aq.ID, "user_id", userID, "upload_id", fp.UploadID)
 
 	return aq, nil
 }
@@ -214,11 +216,12 @@ func (m *CallManager) createQueryRecord(userID int, request *jsonrpc.RPCRequest,
 	return &q, q.Insert(m.db, boil.Infer())
 }
 
-func (m *CallManager) getQueryRecord(ctx context.Context, uploadID string, userID int32) (*models.Asynquery, error) {
+func (m *CallManager) getQueryRecord(ctx context.Context, queryID string, userID int32) (*models.Asynquery, error) {
 	l := logging.GetFromContext(ctx)
 
 	mods := []qm.QueryMod{
-		models.AsynqueryWhere.UploadID.EQ(uploadID),
+		// models.AsynqueryWhere.UploadID.EQ(uploadID),
+		models.AsynqueryWhere.ID.EQ(queryID),
 	}
 	if userID > 0 {
 		mods = append(mods, models.AsynqueryWhere.UserID.EQ(int(userID)))
@@ -278,13 +281,13 @@ func (m *CallManager) RetryDelay(n int, err error, t *asynq.Task) time.Duration 
 func parseFilePath(filePath string) (*FileLocation, error) {
 	matches := reFilePathURL.FindStringSubmatch(filePath)
 	if len(matches) < 3 {
-		return nil, fmt.Errorf("invalid file path: %s", filePath)
+		return nil, fmt.Errorf("invalid file location: %s", filePath)
 	}
 	fl := &FileLocation{
-		Server:   matches[0],
-		Version:  matches[1],
+		Server:   matches[1],
 		UploadID: matches[2],
 	}
+	fmt.Println(fl)
 	return fl, nil
 }
 

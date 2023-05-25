@@ -16,13 +16,14 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/keybox"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/rpcerrors"
+	"github.com/mitchellh/mapstructure"
 	"github.com/ybbus/jsonrpc"
 
 	"github.com/gorilla/mux"
 )
 
 const (
-	UploadServiceURL = "https://uploads.na-backend.odysee.com/v1/uploads/"
+	UploadServiceURL = "https://uploads-v4.na-backend.odysee.com/v1/uploads/"
 	StatusProceed    = "proceed"
 	StatusAuthError  = "auth_error"
 )
@@ -33,7 +34,7 @@ type QueryHandler struct {
 	keyfob      *keybox.Keyfob
 }
 
-type UploadPayload struct {
+type UploadTokenResponse struct {
 	Token    string `json:"token"`
 	Location string `json:"location"`
 }
@@ -75,12 +76,13 @@ func (h QueryHandler) RetrieveUploadToken(w http.ResponseWriter, r *http.Request
 	}
 	resp, err := json.Marshal(Response{
 		Status:  StatusProceed,
-		Payload: UploadPayload{Token: token, Location: UploadServiceURL},
+		Payload: UploadTokenResponse{Token: token, Location: UploadServiceURL},
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Add("location", UploadServiceURL)
 	w.Write(resp)
 }
 
@@ -130,8 +132,11 @@ func (h QueryHandler) Get(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+
+	log := h.logger.With("query_id", queryID)
 	user, err := auth.FromRequest(r)
 	if err != nil {
+		log.Info("unauthorized request")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -139,10 +144,12 @@ func (h QueryHandler) Get(w http.ResponseWriter, r *http.Request) {
 	aq, err := h.callManager.getQueryRecord(context.TODO(), queryID, int32(user.ID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			log.Info("query not found")
 			w.WriteHeader(http.StatusNotFound)
-		} else {
-			rpcerrors.Write(w, err)
+			return
 		}
+		log.Info("query retrieval error", "err", err)
+		rpcerrors.Write(w, err)
 		return
 	}
 
@@ -157,8 +164,32 @@ func (h QueryHandler) Get(w http.ResponseWriter, r *http.Request) {
 			rpcerrors.Write(w, errors.Err(aq.Error))
 		}
 	default:
-		w.WriteHeader(http.StatusAccepted)
+		w.WriteHeader(http.StatusOK)
 	}
+}
+
+func (r *Response) UnmarshalJSON(data []byte) error {
+	type responseAlias Response // Alias to avoid recursion
+	aux := &responseAlias{
+		Payload: json.RawMessage{},
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	*r = Response(*aux)
+	switch r.Status {
+	case "proceed":
+		var payload UploadTokenResponse
+		if err := mapstructure.Decode(r.Payload, &payload); err != nil {
+			return fmt.Errorf("error decoding payload: %w", err)
+		}
+		r.Payload = payload
+	default:
+		return errors.Err("unknown status")
+	}
+
+	return nil
 }
 
 func isMethodAllowed(method string) bool {

@@ -33,7 +33,7 @@ func main() {
 	}
 	logger := zapadapter.NewKV(nil)
 
-	cfg, err := configng.Read(".", "upload", "yaml")
+	cfg, err := configng.Read("./config", "upload", "yaml")
 	if err != nil {
 		panic(err)
 	}
