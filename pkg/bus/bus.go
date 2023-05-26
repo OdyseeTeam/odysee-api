@@ -148,7 +148,11 @@ func (b *Bus) StartHandlers() error {
 			}
 		}
 	}()
-	return b.asynqServer.Run(mux)
+	err := b.asynqServer.Run(mux)
+	if err != nil {
+		b.options.logger.Error("error running bus", "error", err)
+	}
+	return err
 }
 
 func (b *Bus) Shutdown() {

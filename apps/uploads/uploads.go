@@ -166,7 +166,7 @@ func (l *Launcher) Build() (chi.Router, error) {
 
 	readyCtx, readyCancel := context.WithCancel(context.Background())
 
-	l.logger.Info("building upload handler")
+	l.logger.Info("building uploads handler")
 	store := s3store.New(l.s3bucket, l.s3client)
 	handler := &Handler{
 		s3bucket:       l.s3bucket,
@@ -187,6 +187,8 @@ func (l *Launcher) Build() (chi.Router, error) {
 		}
 		handler.bus = bus
 		l.logger.Info("bus client created")
+	} else {
+		l.logger.Warn("skipping bus config as no redis url was provided")
 	}
 
 	composer := tusd.NewStoreComposer()
@@ -254,24 +256,22 @@ func (l *Launcher) Build() (chi.Router, error) {
 	l.router = router
 	l.httpServer = httpServer
 	handler.listenToHooks()
+	l.logger.Info("uploads handler built")
 	return router, nil
 }
 
-func (l *Launcher) ServerShutdown() {
+func (l *Launcher) CompleteShutdown() {
 	err := l.httpServer.Shutdown(context.Background())
 	if err != nil {
 		l.logger.Info("error encountered while stopping http server", "err", err)
 	}
+	l.logger.Info("shutting down upload listeners")
+	close(l.handler.stopChan)
 }
 
 func (l *Launcher) StartShutdown() {
 	l.logger.Info("shutting down liveness handler")
 	l.readyCancel()
-}
-
-func (l *Launcher) CompleteShutdown() {
-	l.logger.Info("shutting down upload listeners")
-	close(l.handler.stopChan)
 }
 
 func (l *Launcher) Launch() {

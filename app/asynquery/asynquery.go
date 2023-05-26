@@ -28,7 +28,7 @@ const FilePathParam = "file_path"
 var (
 	sdkNetError    = errors.New("network level sdk error")
 	sdkClientError = errors.New("client level sdk error")
-	reFilePathURL  = regexp.MustCompile(`^https?://([^/]+)/.+/([a-zA-Z0-9]{32,})$`)
+	reFilePathURL  = regexp.MustCompile(`^https?://([^/]+)/.+/([a-zA-Z0-9\+]{32,})$`)
 )
 
 type CallManager struct {
@@ -53,6 +53,12 @@ type Result struct {
 	Response *jsonrpc.RPCResponse
 }
 
+type queryParams struct {
+	id       string
+	uploadID string
+	userID   int32
+}
+
 func NewCallManager(redisOpts asynq.RedisConnOpt, db boil.Executor, logger logging.KVLogger) (*CallManager, error) {
 	m := CallManager{
 		logger: logger,
@@ -63,7 +69,7 @@ func NewCallManager(redisOpts asynq.RedisConnOpt, db boil.Executor, logger loggi
 		return nil, err
 	}
 	m.bus = b
-
+	logger.Info("asynquery manager created", "concurrency", 10)
 	return &m, nil
 }
 
@@ -111,17 +117,20 @@ func (m *CallManager) HandleMerge(ctx context.Context, task *asynq.Task) error {
 		return asynq.SkipRetry
 	}
 	log := logging.TracedLogger(m.logger, payload)
+	log.Debug("task received")
 
 	u, err := models.Users(
 		models.UserWhere.ID.EQ(int(payload.UserID)),
 		qm.Load(models.UserRels.LbrynetServer),
 	).OneG()
 	if err != nil {
-		return fmt.Errorf("error getting sdk address for user %v: %w", payload.UserID, err)
+		log.Info("error getting sdk address for user")
+		return asynq.SkipRetry
 	}
 
-	aq, err := m.getQueryRecord(context.TODO(), payload.UploadID, payload.UserID)
+	aq, err := m.getQueryRecord(context.TODO(), queryParams{uploadID: payload.UploadID, userID: payload.UserID})
 	if err != nil {
+		log.Info("error getting query record", "err", err)
 		return err
 	}
 
@@ -132,7 +141,7 @@ func (m *CallManager) HandleMerge(ctx context.Context, task *asynq.Task) error {
 	request := &jsonrpc.RPCRequest{}
 	err = aq.Body.Unmarshal(request)
 	if err != nil {
-		log.Error("failed to unmarshal query body", "err", err)
+		log.Info("failed to unmarshal query body", "err", err)
 		return asynq.SkipRetry
 	}
 
@@ -216,15 +225,18 @@ func (m *CallManager) createQueryRecord(userID int, request *jsonrpc.RPCRequest,
 	return &q, q.Insert(m.db, boil.Infer())
 }
 
-func (m *CallManager) getQueryRecord(ctx context.Context, queryID string, userID int32) (*models.Asynquery, error) {
+func (m *CallManager) getQueryRecord(ctx context.Context, params queryParams) (*models.Asynquery, error) {
 	l := logging.GetFromContext(ctx)
 
-	mods := []qm.QueryMod{
-		// models.AsynqueryWhere.UploadID.EQ(uploadID),
-		models.AsynqueryWhere.ID.EQ(queryID),
+	mods := []qm.QueryMod{}
+	if params.id != "" {
+		mods = append(mods, models.AsynqueryWhere.ID.EQ(params.id))
 	}
-	if userID > 0 {
-		mods = append(mods, models.AsynqueryWhere.UserID.EQ(int(userID)))
+	if params.uploadID != "" {
+		mods = append(mods, models.AsynqueryWhere.UploadID.EQ(params.uploadID))
+	}
+	if params.userID > 0 {
+		mods = append(mods, models.AsynqueryWhere.UserID.EQ(int(params.userID)))
 	}
 
 	q, err := models.Asynqueries(mods...).One(m.db)
@@ -239,9 +251,10 @@ func (m *CallManager) getQueryRecord(ctx context.Context, queryID string, userID
 func (m *CallManager) finalizeQueryRecord(ctx context.Context, queryID string, response *jsonrpc.RPCResponse, callErr string) error {
 	l := logging.GetFromContext(ctx)
 
-	q, err := m.getQueryRecord(ctx, queryID, 0)
+	q, err := models.Asynqueries(models.AsynqueryWhere.ID.EQ(queryID)).One(m.db)
 	if err != nil {
-		return err
+		InternalErrors.WithLabelValues("db").Inc()
+		return fmt.Errorf("could not retrieve async query record: %w", err)
 	}
 
 	jr := null.JSON{}
@@ -287,7 +300,6 @@ func parseFilePath(filePath string) (*FileLocation, error) {
 		Server:   matches[1],
 		UploadID: matches[2],
 	}
-	fmt.Println(fl)
 	return fl, nil
 }
 

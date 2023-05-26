@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -68,8 +69,9 @@ func (test *HTTPTest) Run(handler http.Handler, t *testing.T) *httptest.Response
 
 func (test *HTTPTest) RunHTTP(t *testing.T) *http.Response {
 	t.Helper()
+	require := require.New(t)
 	request, err := http.NewRequest(test.Method, test.URL, test.ReqBody)
-	require.NoError(t, err)
+	require.NoError(err)
 
 	for key, value := range test.ReqHeader {
 		request.Header.Set(key, value)
@@ -77,34 +79,41 @@ func (test *HTTPTest) RunHTTP(t *testing.T) *http.Response {
 
 	client := &http.Client{}
 	response, err := client.Do(request)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer response.Body.Close()
-
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(err)
 
 	if response.StatusCode != test.Code {
-		t.Errorf("Expected %v %s as status code (got %v %s)", test.Code, http.StatusText(test.Code), response.StatusCode, http.StatusText(response.StatusCode))
+		var details string
+		if response.StatusCode == http.StatusNotFound {
+			details = fmt.Sprintf(", url: %s", test.URL)
+		} else {
+			body, _ := ioutil.ReadAll(response.Body)
+			details = fmt.Sprintf(", body: %s", body)
+		}
+		t.Errorf(
+			"Expected %v %s as status code (got %v %s)%s",
+			test.Code, http.StatusText(test.Code),
+			response.StatusCode, http.StatusText(response.StatusCode),
+			details,
+		)
 	}
 
 	for key, value := range test.ResHeader {
 		header := response.Header.Get(key)
-
 		if value != header {
 			t.Errorf("Expected '%s' as '%s' (got '%s')", value, key, header)
 		}
 	}
 
-	if test.ResBody != "" && string(body) != test.ResBody {
-		t.Errorf("Expected '%s' as body (got '%s'", test.ResBody, string(body))
-	}
-
-	if test.ResContains != "" && !strings.Contains(string(body), test.ResContains) {
-		t.Errorf("Expected '%s' to be present in response (got '%s'", test.ResContains, string(body))
+	if test.ResBody != "" || test.ResContains != "" {
+		defer response.Body.Close()
+		body, err := ioutil.ReadAll(response.Body)
+		require.NoError(err)
+		if test.ResBody != "" && string(body) != test.ResBody {
+			t.Errorf("Expected '%s' as body (got '%s'", test.ResBody, string(body))
+		}
+		if test.ResContains != "" && !strings.Contains(string(body), test.ResContains) {
+			t.Errorf("Expected '%s' to be present in response (got '%s'", test.ResContains, string(body))
+		}
 	}
 
 	return response

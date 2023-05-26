@@ -108,7 +108,6 @@ func serve(logger logging.KVLogger) {
 		launcher.StartShutdown()
 		// Wait for the readiness probe to detect the failure
 		<-time.After(cfg.V.GetDuration("gracefulshutdown"))
-		launcher.ServerShutdown()
 		launcher.CompleteShutdown()
 		runCancel()
 	}()

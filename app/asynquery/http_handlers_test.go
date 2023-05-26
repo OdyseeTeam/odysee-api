@@ -42,6 +42,7 @@ func TestAsynqueryHandlerSuite(t *testing.T) {
 
 func (s *asynqueryHandlerSuite) TestRetrieveUploadToken() {
 	ts := httptest.NewServer(s.router)
+	defer ts.Close()
 
 	resp := (&test.HTTPTest{
 		Method: http.MethodPost,
@@ -95,10 +96,10 @@ func (s *asynqueryHandlerSuite) TestCreate() {
 	}).Run(s.router, s.T())
 	loc, err := url.Parse(resp.Header().Get("Location"))
 	s.Require().NoError(err)
-	s.Regexp(`./[\w\d]{32}`, loc.Path)
+	s.Regexp(`[\w\d]{32}`, loc.Path)
 
 	var query *models.Asynquery
-	e2etest.Wait(s.T(), "upload settling into the database", 5*time.Second, 1000*time.Millisecond, func() error {
+	e2etest.Wait(s.T(), "query settling in the database", 5*time.Second, 1000*time.Millisecond, func() error {
 		mods := []qm.QueryMod{
 			models.AsynqueryWhere.UploadID.EQ(uploadID),
 			models.AsynqueryWhere.UserID.EQ(s.userHelper.UserID()),

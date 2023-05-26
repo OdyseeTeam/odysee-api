@@ -123,6 +123,7 @@ func (l *Launcher) Build() (*bus.Bus, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize reflector store: %w", err)
 	}
+	l.logger.Info("reflector store initialized")
 
 	f := &Forklift{
 		analyzer:  analyzer,
@@ -140,6 +141,7 @@ func (l *Launcher) Build() (*bus.Bus, error) {
 	b.AddHandler(tasks.TaskReflectUpload, f.HandleTask)
 	f.bus = b
 
+	l.logger.Info("forklift initialized")
 	return b, nil
 }
 
@@ -155,6 +157,8 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 	}
 
 	log := logging.TracedLogger(f.logger, payload)
+
+	log.Debug("task received")
 	start := time.Now()
 	file, err := f.retriever.Retrieve(context.TODO(), payload.UploadID, payload.FileLocation)
 	if err != nil {

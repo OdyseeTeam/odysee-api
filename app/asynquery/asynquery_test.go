@@ -67,7 +67,7 @@ func (s *asynquerySuite) SetupSuite() {
 	s.userHelper = &e2etest.UserTestHelper{}
 	s.Require().NoError(s.userHelper.Setup(s.T()))
 
-	ro, err := config.GetAsynqRedisOpts()
+	ro, err := config.GetRedisBusOpts()
 	s.Require().NoError(err)
 	m, err := NewCallManager(ro, s.userHelper.DB, zapadapter.NewKV(nil))
 	s.Require().NoError(err)

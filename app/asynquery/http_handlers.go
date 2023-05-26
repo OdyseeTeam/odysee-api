@@ -98,8 +98,8 @@ func (h QueryHandler) Create(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Write(resp)
 		w.WriteHeader(http.StatusUnauthorized)
+		w.Write(resp)
 		return
 	}
 	var rpcReq *jsonrpc.RPCRequest
@@ -141,7 +141,9 @@ func (h QueryHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	aq, err := h.callManager.getQueryRecord(context.TODO(), queryID, int32(user.ID))
+	aq, err := h.callManager.getQueryRecord(context.TODO(), queryParams{
+		id: queryID, userID: int32(user.ID),
+	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			log.Info("query not found")

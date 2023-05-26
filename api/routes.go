@@ -22,6 +22,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/middleware"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/internal/status"
+	"github.com/OdyseeTeam/odysee-api/internal/storage"
 	"github.com/OdyseeTeam/odysee-api/pkg/keybox"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
@@ -160,7 +161,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 		}
 	}
 
-	keybox, err := keybox.KeyfobFromString(config.GetPaidTokenPrivKey())
+	keyfob, err := keybox.KeyfobFromString(config.GetPaidTokenPrivKey())
 	if err != nil {
 		panic(err)
 	}
@@ -172,8 +173,8 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 	launcher := asynquery.NewLauncher(
 		asynquery.WithBusRedisOpts(busRedisOpts),
 		asynquery.WithLogger(zapadapter.NewKV(nil)),
-		asynquery.WithPrivateKey(keybox.PrivateKey()),
-		asynquery.WithDB(nil),
+		asynquery.WithPrivateKey(keyfob.PrivateKey()),
+		asynquery.WithDB(storage.DB),
 	)
 
 	err = launcher.InstallRoutes(v1Router)

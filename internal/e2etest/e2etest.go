@@ -33,6 +33,7 @@ type UserTestHelper struct {
 }
 
 func (s *UserTestHelper) Setup(t *testing.T) error {
+	t.Helper()
 	require := require.New(t)
 	s.t = t
 	config.Override("LbrynetServers", "")
@@ -53,7 +54,7 @@ func (s *UserTestHelper) Setup(t *testing.T) error {
 
 	w, err := test.InjectTestingWallet(test.TestUserID)
 	require.NoError(err)
-	s.t.Logf("set up wallet userid=%v", w.UserID)
+	t.Logf("set up wallet userid=%v", w.UserID)
 
 	u, err := auther.Authenticate(th, "127.0.0.1")
 	require.NoError(err)

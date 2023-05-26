@@ -25,8 +25,8 @@ import (
 
 type forkliftSuite struct {
 	suite.Suite
-	helper   *ForkliftTestHelper
-	upHelper *uploads.UploadTestHelper
+	helper   *TestHelper
+	upHelper *uploads.TestHelper
 	s3c      *s3.Client
 }
 
@@ -132,8 +132,9 @@ func (s *forkliftSuite) TestHandleTask() {
 }
 
 func (s *forkliftSuite) SetupSuite() {
-	flHelper := &ForkliftTestHelper{}
-	err := flHelper.Setup(s.T())
+	var err error
+	s.helper, err = NewTestHelper(s.T())
+	s.Require().NoError(err)
 
 	if err != nil {
 		if errors.Is(err, ErrMissingEnv) {
@@ -143,15 +144,11 @@ func (s *forkliftSuite) SetupSuite() {
 		}
 	}
 
-	upHelper, err := uploads.NewUploadTestHelper(s.T())
+	s.upHelper, err = uploads.NewTestHelper(s.T())
 	s.Require().NoError(err)
 
-	s3c, err := configng.NewS3ClientV2(upHelper.S3Config)
+	s.s3c, err = configng.NewS3ClientV2(s.upHelper.S3Config)
 	s.Require().NoError(err)
-
-	s.s3c = s3c
-	s.helper = flHelper
-	s.upHelper = upHelper
 }
 
 func putFileIntoBucket(client *s3.Client, bucket, key string, file *os.File) error {

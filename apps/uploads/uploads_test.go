@@ -29,7 +29,6 @@ import (
 
 	"github.com/Pallinder/go-randomdata"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -175,7 +174,7 @@ func (s *uploadSuite) TestUploadLarger() {
 
 	var upload database.Upload
 
-	e2etest.Wait(s.T(), "upload settling into database", 5*time.Second, 1000*time.Millisecond, func() error {
+	e2etest.Wait(s.T(), "upload settling in the database", 5*time.Second, 1000*time.Millisecond, func() error {
 		var err error
 		upload, err = queries.GetUpload(context.Background(), database.GetUploadParams{UserID: userID, ID: uploadID})
 		if errors.Is(err, sql.ErrNoRows) {
@@ -214,7 +213,7 @@ func (s *uploadSuite) TestUploadLarger() {
 		}).RunHTTP(s.T())
 	}
 
-	e2etest.Wait(s.T(), "upload settling into database", 5*time.Second, 100*time.Millisecond, func() error {
+	e2etest.Wait(s.T(), "upload settling in the database", 5*time.Second, 100*time.Millisecond, func() error {
 		var err error
 		upload, err = queries.GetUpload(context.Background(), database.GetUploadParams{UserID: userID, ID: uploadID})
 		if errors.Is(err, sql.ErrNoRows) {
@@ -382,18 +381,11 @@ func (s *uploadSuite) TestUploadWrongToken() {
 }
 
 func (s *uploadSuite) SetupSuite() {
-	upHelper, err := NewUploadTestHelper(s.T())
+	upHelper, err := NewTestHelper(s.T())
 	s.Require().NoError(err)
 
 	client, err := configng.NewS3Client(upHelper.S3Config)
 	s.Require().NoError(err)
-
-	redisOpts, err := redis.ParseURL("redis://:odyredis@localhost:6379/0")
-	if err != nil {
-		panic(fmt.Errorf("cannot parse redis config: %w", err))
-	}
-
-	redis.NewClient(redisOpts).FlushDB(context.Background())
 
 	redisHelper := testdeps.NewRedisTestHelper(s.T())
 

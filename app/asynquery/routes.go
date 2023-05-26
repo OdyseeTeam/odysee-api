@@ -63,6 +63,7 @@ func NewLauncher(options ...LauncherOption) *Launcher {
 }
 
 func (l *Launcher) InstallRoutes(r *mux.Router) error {
+	l.logger.Info("installing routes")
 	keyfob, err := keybox.NewKeyfob(l.privateKey)
 	if err != nil {
 		return err
@@ -77,12 +78,14 @@ func (l *Launcher) InstallRoutes(r *mux.Router) error {
 	r.HandleFunc("/api/v1/asynqueries/auth/upload-token", handler.RetrieveUploadToken).Methods("POST")
 	r.HandleFunc("/api/v1/asynqueries/{id}", handler.Get).Methods("GET")
 	r.HandleFunc("/api/v1/asynqueries/", handler.Create).Methods("POST")
+	l.logger.Info("routes installed")
 	return nil
 }
 
 func (l *Launcher) Start() error {
 	err := l.manager.Start()
 	if err != nil {
+		l.logger.Error("failed to start asynquery manager", "err", err)
 		return err
 	}
 	return nil

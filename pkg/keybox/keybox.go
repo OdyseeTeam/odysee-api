@@ -103,7 +103,6 @@ func PublicKeyFromURL(keyURL string) (crypto.PublicKey, error) {
 	}
 
 	block, _ := pem.Decode(pemData)
-	fmt.Println(string(pemData))
 	if block == nil || block.Type != "PUBLIC KEY" {
 		return nil, fmt.Errorf("invalid PEM-encoded public key")
 	}
