@@ -71,7 +71,7 @@ func NewValidator(publicKey crypto.PublicKey) (*Validator, error) {
 func KeyfobFromString(privateKey string) (*Keyfob, error) {
 	pvk, err := privateKeyFromString(privateKey)
 	if err != nil {
-		return nil, fmt.Errorf("unable to load private key from string: %e", err)
+		return nil, fmt.Errorf("unable to load private key from string: %w", err)
 	}
 	kf, err := NewKeyfob(pvk)
 	if err != nil {
@@ -85,7 +85,7 @@ func ValidatorFromPublicKeyString(publicKey string) (*Validator, error) {
 	var err error
 	v.publicKey, err = publicKeyFromString(publicKey)
 	if err != nil {
-		return nil, fmt.Errorf("unable to load public key: %e", err)
+		return nil, fmt.Errorf("unable to load public key: %w", err)
 	}
 	return v, nil
 }
@@ -162,6 +162,9 @@ func (v Validator) ParseToken(token string) (jwt.Token, error) {
 func privateKeyFromString(key string) (any, error) {
 	privateKeyBytes, err := base64.StdEncoding.DecodeString(key)
 	if err != nil {
+		if _, ok := err.(base64.CorruptInputError); ok {
+			return nil, errors.New("base64 input is corrupt")
+		}
 		return nil, err
 	}
 

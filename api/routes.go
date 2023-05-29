@@ -161,7 +161,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 		}
 	}
 
-	keyfob, err := keybox.KeyfobFromString(config.GetPaidTokenPrivKey())
+	keyfob, err := keybox.KeyfobFromString(config.GetUploadTokenPrivateKey())
 	if err != nil {
 		panic(err)
 	}

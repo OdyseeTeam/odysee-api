@@ -45,43 +45,6 @@ func TestStartAndServeUntilShutdown(t *testing.T) {
 	server.Start()
 	go server.ServeUntilShutdown()
 
-	url := fmt.Sprintf("http://%v/", server.Address())
-
-	// Retry 10 times to give the server a chance to start
-	for i := 0; i < 10; i++ {
-		time.Sleep(100 * time.Millisecond)
-		response, err = http.Get(url)
-		if err == nil {
-			break
-		}
-	}
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, http.StatusOK, response.StatusCode)
-	server.stopChan <- syscall.SIGINT
-
-	// Retry 10 times to give the server a chance to shut down
-	for i := 0; i < 10; i++ {
-		time.Sleep(100 * time.Millisecond)
-		_, err = http.Get(url)
-		if err != nil {
-			break
-		}
-	}
-	assert.Error(t, err)
-}
-
-func TestHeaders(t *testing.T) {
-	var (
-		err      error
-		response *http.Response
-	)
-
-	server := randomServer(sdkrouter.New(config.GetLbrynetServers()))
-	server.Start()
-	go server.ServeUntilShutdown()
-
 	url := fmt.Sprintf("http://%v/api/v1/proxy", server.Address())
 
 	request, _ := http.NewRequest("OPTIONS", url, nil)
@@ -96,10 +59,20 @@ func TestHeaders(t *testing.T) {
 		}
 	}
 
+	assert.Equal(t, http.StatusOK, response.StatusCode)
+	assert.Equal(t, "*", response.Header.Get("Access-Control-Allow-Origin"))
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
-	assert.Equal(t, "*", response.Header.Get("Access-Control-Allow-Origin"))
-
 	server.stopChan <- syscall.SIGINT
+
+	// Retry 10 times to give the server a chance to shut down
+	for i := 0; i < 10; i++ {
+		time.Sleep(100 * time.Millisecond)
+		_, err = http.Get(url)
+		if err != nil {
+			break
+		}
+	}
+	assert.Error(t, err)
 }

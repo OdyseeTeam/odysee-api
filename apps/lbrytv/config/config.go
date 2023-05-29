@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	cfg "github.com/OdyseeTeam/odysee-api/config"
@@ -72,7 +73,7 @@ func GetRedisLockerOpts() (*redis.Options, error) {
 
 // GetRedisBusOpts returns Redis connection options in the official redis client format.
 func GetRedisBusOpts() (asynq.RedisConnOpt, error) {
-	return asynq.ParseRedisURI("RedisBus")
+	return asynq.ParseRedisURI(Config.Viper.GetString("RedisBus"))
 }
 
 // GetDatabase returns postgresql database server connection config.
@@ -113,9 +114,9 @@ func GetPaidTokenPrivKey() string {
 	return Config.Viper.GetString("PaidTokenPrivKey")
 }
 
-// GetPaidTokenPrivKey returns absolute path to the private RSA key for generating paid tokens.
+// GetUploadTokenPrivateKey returns absolute path to the private RSA key for generating paid tokens.
 func GetUploadTokenPrivateKey() string {
-	return Config.Viper.GetString("UploadTokenPrivateKey")
+	return strings.TrimSpace(Config.Viper.GetString("UploadTokenPrivateKey"))
 }
 
 // GetStreamsV5 returns config map for v5 streams endpoint.

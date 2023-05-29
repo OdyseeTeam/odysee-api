@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/geopublish/metrics"
@@ -29,6 +30,8 @@ var (
 	sdkNetError    = errors.New("network level sdk error")
 	sdkClientError = errors.New("client level sdk error")
 	reFilePathURL  = regexp.MustCompile(`^https?://([^/]+)/.+/([a-zA-Z0-9\+]{32,})$`)
+
+	onceMetrics sync.Once
 )
 
 type CallManager struct {
@@ -79,7 +82,7 @@ func (m *CallManager) NewCaller(userID int) *Caller {
 
 // Start launches asynchronous query handlers and blocks until stopped.
 func (m *CallManager) Start() error {
-	registerServerMetrics()
+	onceMetrics.Do(registerMetrics)
 	m.bus.AddHandler(tasks.TaskAsynqueryMerge, m.HandleMerge)
 	return m.bus.StartHandlers()
 }

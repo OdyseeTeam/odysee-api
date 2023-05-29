@@ -54,7 +54,7 @@ var (
 	// }, []string{"stage"})
 )
 
-func registerServerMetrics() {
+func registerMetrics() {
 	prometheus.MustRegister(
 		QueriesSent, QueriesCompleted, QueriesFailed, QueriesErrored,
 	)

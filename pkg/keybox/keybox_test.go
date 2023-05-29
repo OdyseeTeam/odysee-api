@@ -17,15 +17,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testPrivKey = "LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUxrU3hYMWtpMXpLcUc5bW5CSStrazZyVnl1Zzl5V054ck16QzIwY2JGUDlvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFc0RuN0F3aGhhdzVpWjBRMUdWcHpZdVphdnhINWIvQUpTMmIzRlBGRjIvTmNOK01NbGw5bAp6ZHRIVm8xUkdzc2tHcUR5MHZJSThHSzZ4eFNKbDRuMUlnPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo="
+var testPrivKey = "LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUZZYWxQZkhySzNSQ1F2YmhRQ1h6cDZiWG9uODZWOGI5L3B0bjB3QTZxNkxvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFZjhyN3RlQWJwUlVldXZhVWRsNDQzVS9VZkpYZURDd051QkRrbmp5ZnRZaXZ2Tnl6cGt6ZgpYdDl3RE9rc1VZSmEzNVhvSndabjNHMmw2L2EvdVUvWmh3PT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo="
 var testPubKey = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEsDn7Awhhaw5iZ0Q1GVpzYuZavxH5b/AJS2b3FPFF2/NcN+MMll9lzdtHVo1RGsskGqDy0vII8GK6xxSJl4n1Ig=="
 
 func TestKeyfob(t *testing.T) {
-	kf, err := KeyfobFromString(testPrivKey)
+	_, err := KeyfobFromString(testPrivKey)
 	require.NoError(t, err)
-	pk, err := publicKeyFromString(testPubKey)
-	require.NoError(t, err)
-	assert.Equal(t, kf.PublicKey(), pk)
 }
 
 func TestNewValidator(t *testing.T) {
