@@ -24,7 +24,7 @@ func (s *batchWriterSuite) TestBatch() {
 	days := 14
 	number := 1000
 	reports := []*reporter.PlaybackReport{}
-	bw := NewBatchWriter(1*time.Second, 16)
+	bw := NewBatchWriter(500*time.Millisecond, 16)
 	go bw.Start()
 
 	for t := range timeSeries(number, time.Now().Add(time.Duration(-days)*24*time.Hour)) {

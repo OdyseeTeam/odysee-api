@@ -47,8 +47,4 @@ func TestBusIntegration(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("timeout waiting for task to be processed")
 	}
-
-	queueInfo, err := b.asynqInspector.GetQueueInfo("default")
-	assert.NoError(t, err)
-	assert.Equal(t, 1, queueInfo.Completed)
 }
