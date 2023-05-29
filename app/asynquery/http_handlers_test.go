@@ -2,6 +2,7 @@ package asynquery
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -38,6 +39,15 @@ type asynqueryHandlerSuite struct {
 
 func TestAsynqueryHandlerSuite(t *testing.T) {
 	suite.Run(t, new(asynqueryHandlerSuite))
+}
+
+func (s *asynqueryHandlerSuite) TestPublicKey() {
+	ts := httptest.NewServer(s.router)
+	defer ts.Close()
+
+	pubKey, err := keybox.PublicKeyFromURL(ts.URL + "/api/v1/asynqueries/auth/pubkey")
+	s.Require().NoError(err)
+	s.Require().IsType(&ecdsa.PublicKey{}, pubKey)
 }
 
 func (s *asynqueryHandlerSuite) TestRetrieveUploadToken() {

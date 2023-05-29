@@ -68,7 +68,7 @@ func TestPublicKeyHandler(t *testing.T) {
 	kf, err := KeyfobFromString(testPrivKey)
 	require.NoError(err)
 
-	ts := httptest.NewServer(http.HandlerFunc(PublicKeyHandler(kf.PublicKey())))
+	ts := httptest.NewServer(http.HandlerFunc(kf.PublicKeyHandler))
 	defer ts.Close()
 
 	pubKey, err := PublicKeyFromURL(ts.URL)

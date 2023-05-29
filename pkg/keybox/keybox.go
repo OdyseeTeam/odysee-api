@@ -147,6 +147,23 @@ func (kf Keyfob) Validator() *Validator {
 	return &Validator{publicKey: kf.PublicKey()}
 }
 
+// PublicKeyHandler returns a HTTP handler that delivers marshaled public key over HTTP request.
+func (kf Keyfob) PublicKeyHandler(w http.ResponseWriter, r *http.Request) {
+	pkb, err := x509.MarshalPKIXPublicKey(kf.PublicKey())
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error marshaling pubkey: %s", err), http.StatusInternalServerError)
+		return
+	}
+
+	pemData := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: pkb,
+	})
+
+	w.Header().Set("Content-Type", "application/x-pem-file")
+	w.Write(pemData)
+}
+
 // ParseToken validates and parses a JWT token using the public key of the Validator structure,
 // and returns the private claims as a map[string]interface{}.
 func (v Validator) ParseToken(token string) (jwt.Token, error) {

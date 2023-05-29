@@ -74,7 +74,7 @@ func (l *Launcher) InstallRoutes(r *mux.Router) error {
 	}
 	l.manager = manager
 	handler := NewHandler(manager, l.logger, keyfob)
-	r.HandleFunc("/asynqueries/auth/pubkey", keybox.PublicKeyHandler(keyfob)).Methods("GET")
+	r.HandleFunc("/asynqueries/auth/pubkey", keyfob.PublicKeyHandler).Methods("GET")
 	r.HandleFunc("/asynqueries/auth/upload-token", handler.RetrieveUploadToken).Methods("POST")
 	r.HandleFunc("/asynqueries/{id}", handler.Get).Methods("GET")
 	r.HandleFunc("/asynqueries/", handler.Create).Methods("POST")
