@@ -287,7 +287,7 @@ func (s *publishV4Suite) SetupSuite() {
 	require.NoError(s.userHelper.Setup(t))
 
 	// Asynquery routes setup
-	s.asynqueryRouter = mux.NewRouter()
+	s.asynqueryRouter = mux.NewRouter().PathPrefix("/api/v1").Subrouter()
 	s.asynqueryLauncher = asynquery.NewLauncher(
 		asynquery.WithBusRedisOpts(s.redisHelper.AsynqOpts),
 		asynquery.WithLogger(zapadapter.NewKV(nil)),

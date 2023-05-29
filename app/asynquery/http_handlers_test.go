@@ -138,7 +138,7 @@ func (s *asynqueryHandlerSuite) TestCreate() {
 func (s *asynqueryHandlerSuite) SetupSuite() {
 	s.userHelper = &e2etest.UserTestHelper{}
 	s.Require().NoError(s.userHelper.Setup(s.T()))
-	s.router = mux.NewRouter()
+	s.router = mux.NewRouter().PathPrefix("/api/v1").Subrouter()
 
 	kf, err := keybox.GenerateKeyfob()
 	s.Require().NoError(err)
