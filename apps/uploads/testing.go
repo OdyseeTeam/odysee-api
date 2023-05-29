@@ -28,7 +28,7 @@ type TestHelper struct {
 func NewTestHelper(t *testing.T) (*TestHelper, error) {
 	th := &TestHelper{}
 	s3cfg := configng.S3Config{
-		Endpoint: "http://localhost:9000",
+		Endpoint: "http://localhost:9002",
 		Bucket:   fmt.Sprintf("test-uploads-%s-%s", randomdata.Noun(), randomdata.Adjective()),
 		Region:   "us-east-1",
 		Key:      "minio",

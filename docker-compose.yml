@@ -42,11 +42,11 @@ services:
     image: minio/minio:latest
     container_name: minio
     ports:
-      - "9000:9000"
+      - "9002:9002"
     environment:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: minio123
-    command: server /data
+    command: server /data --address :9002
     volumes:
       - minio-data:/data
 

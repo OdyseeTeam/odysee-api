@@ -9,7 +9,7 @@ RedisBus: redis://:odyredis@localhost:6379/2
 PublicKeyURL: https://api.na-backend.odysee.com/api/v1/es256.key
 
 Storage:
-  Endpoint: http://localhost:9000
+  Endpoint: http://localhost:9002
   Region: us-east-1
   Bucket: uploads
   Key: minio
