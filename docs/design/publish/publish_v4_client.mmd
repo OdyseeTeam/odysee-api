@@ -1,0 +1,45 @@
+---
+title: Publish v4 Flow
+---
+sequenceDiagram
+    %% autonumber
+    actor Client
+    participant OAPI as Odysee API
+    participant Upload as Upload Service
+    participant Forklift as Forklift Service
+
+    Client->>OAPI: POST /api/v1/asynqueries/uploads/
+    activate OAPI
+    OAPI->>OAPI: token auth
+    OAPI-->>Client: 201 Created (<<token>>, <<location>>)
+    deactivate OAPI
+
+    Client->>Upload: POST /, <<token>>
+    activate Upload
+    Upload->>Upload: validate upload token
+    Upload-->>Client: 201 Created (Location: <<upload-url>>)
+
+    loop TUS Upload
+        Client->>Upload: PATCH /:upload-id, <<token>>
+        Upload-->>Client: 204 No Content
+    end
+    deactivate Upload
+
+    Client->>OAPI: POST /api/v1/asynqueries/
+    activate OAPI
+    note Left of OAPI: stream_create {file_path: <<upload-url>>}
+    OAPI-->>Client: 201 (Location: ./<<query-id>>)
+    deactivate OAPI
+
+    loop Status Check
+      Client->>OAPI: GET /api/v1/asynqueries/:query-id
+      activate OAPI
+      alt pending
+        OAPI-->>Client: 204 No Content
+      else completed
+        OAPI-->>Client: 200 OK (JSON-RPC response)
+      else not found
+        OAPI-->>Client: 404 Not Found
+      end
+      deactivate OAPI
+    end
