@@ -1,15 +1,15 @@
 Database:
-  DSN: postgres://:odyseeteam@localhost
+  DSN: postgres://postgres:odyseeteam@host.docker.internal/uploads?sslmode=disable
   DBName: uploads
   AutoMigrations: true
 
-RedisLocker: redis://:odyredis@localhost:6379/1
-RedisBus: redis://:odyredis@localhost:6379/2
+RedisLocker: redis://:odyredis@host.docker.internal:6379/1
+RedisBus: redis://:odyredis@host.docker.internal:6379/2
 
-PublicKeyURL: https://api.na-backend.odysee.com/api/v1/es256.key
+PublicKeyURL: https://api.na-backend.dev.odysee.com/api/v1/asynqueries/auth/pubkey
 
 Storage:
-  Endpoint: http://localhost:9002
+  Endpoint: http://host.docker.internal:9002
   Region: us-east-1
   Bucket: uploads
   Key: minio
@@ -20,4 +20,4 @@ CORSDomains:
   - http://*
   - https://*
 
-GracefulShutdown: 5s
+GracefulShutdown: 3s

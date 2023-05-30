@@ -13,12 +13,13 @@ import (
 )
 
 type Launcher struct {
-	busRedisOpts asynq.RedisConnOpt
-	db           boil.Executor
-	logger       logging.KVLogger
-	manager      *CallManager
-	privateKey   crypto.PrivateKey
-	readyCancel  context.CancelFunc
+	busRedisOpts     asynq.RedisConnOpt
+	db               boil.Executor
+	logger           logging.KVLogger
+	manager          *CallManager
+	privateKey       crypto.PrivateKey
+	readyCancel      context.CancelFunc
+	uploadServiceURL string
 }
 
 type LauncherOption func(*Launcher)
@@ -52,9 +53,16 @@ func WithReadyCancel(readyCancel context.CancelFunc) LauncherOption {
 	}
 }
 
+func WithUploadServiceURL(url string) LauncherOption {
+	return func(l *Launcher) {
+		l.uploadServiceURL = url
+	}
+}
+
 func NewLauncher(options ...LauncherOption) *Launcher {
 	launcher := &Launcher{
-		logger: logging.NoopKVLogger{},
+		logger:           logging.NoopKVLogger{},
+		uploadServiceURL: "https://uploads-v4.na-backend.odysee.com/v1/uploads/",
 	}
 	for _, option := range options {
 		option(launcher)
@@ -73,9 +81,9 @@ func (l *Launcher) InstallRoutes(r *mux.Router) error {
 		return err
 	}
 	l.manager = manager
-	handler := NewHandler(manager, l.logger, keyfob)
+	handler := NewHandler(manager, l.logger, keyfob, l.uploadServiceURL)
 	r.HandleFunc("/asynqueries/auth/pubkey", keyfob.PublicKeyHandler).Methods("GET")
-	r.HandleFunc("/asynqueries/auth/upload-token", handler.RetrieveUploadToken).Methods("POST")
+	r.HandleFunc("/asynqueries/uploads/", handler.CreateUpload).Methods("POST")
 	r.HandleFunc("/asynqueries/{id}", handler.Get).Methods("GET")
 	r.HandleFunc("/asynqueries/", handler.Create).Methods("POST")
 	l.logger.Info("routes installed")

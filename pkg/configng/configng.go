@@ -16,7 +16,7 @@ type S3Config struct {
 
 type PostgresConfig struct {
 	DSN            string
-	dbName         string
+	DBName         string
 	AutoMigrations bool
 }
 
@@ -52,7 +52,7 @@ func (c PostgresConfig) GetFullDSN() string {
 }
 
 func (c PostgresConfig) GetDBName() string {
-	return c.dbName
+	return c.DBName
 }
 
 func (c PostgresConfig) MigrateOnConnect() bool {

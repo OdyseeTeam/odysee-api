@@ -50,26 +50,26 @@ func (s *asynqueryHandlerSuite) TestPublicKey() {
 	s.Require().IsType(&ecdsa.PublicKey{}, pubKey)
 }
 
-func (s *asynqueryHandlerSuite) TestRetrieveUploadToken() {
+func (s *asynqueryHandlerSuite) TestCreateUpload() {
 	ts := httptest.NewServer(s.router)
 	defer ts.Close()
 
 	resp := (&test.HTTPTest{
 		Method: http.MethodPost,
-		URL:    ts.URL + "/api/v1/asynqueries/auth/upload-token",
+		URL:    ts.URL + "/api/v1/asynqueries/uploads/",
 		ReqHeader: map[string]string{
 			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
 		},
 		Code: http.StatusOK,
 	}).Run(s.router, s.T())
 
-	s.Equal(UploadServiceURL, resp.Header().Get("Location"))
+	s.Equal(s.launcher.uploadServiceURL, resp.Header().Get("Location"))
 	rr := &Response{}
 	s.Require().NoError(json.Unmarshal(resp.Body.Bytes(), rr))
 	s.Empty(rr.Error)
-	s.Require().Equal(StatusProceed, rr.Status)
+	s.Require().Equal(StatusSuccess, rr.Status)
 	s.NotEmpty(rr.Payload.(UploadTokenResponse).Token)
-	s.Equal(UploadServiceURL, rr.Payload.(UploadTokenResponse).Location)
+	s.Equal(s.launcher.uploadServiceURL, rr.Payload.(UploadTokenResponse).Location)
 }
 
 func (s *asynqueryHandlerSuite) TestCreate() {
@@ -137,12 +137,8 @@ func (s *asynqueryHandlerSuite) TestCreate() {
 		ReqHeader: map[string]string{
 			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
 		},
-		Code: http.StatusOK,
+		Code: http.StatusNoContent,
 	}).Run(s.router, s.T())
-
-	// var rr *StreamCreateResponse
-	// s.Require().NoError(json.Unmarshal(resp.Body.Bytes(), rr))
-
 }
 
 func (s *asynqueryHandlerSuite) SetupSuite() {
@@ -159,6 +155,7 @@ func (s *asynqueryHandlerSuite) SetupSuite() {
 		WithLogger(zapadapter.NewKV(nil)),
 		WithPrivateKey(kf.PrivateKey()),
 		WithDB(s.userHelper.DB),
+		WithUploadServiceURL("https://uploads.odysee.com/v1/uploads/"),
 	)
 	s.router.Use(auth.Middleware(s.userHelper.Auther))
 

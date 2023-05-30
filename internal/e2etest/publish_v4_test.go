@@ -74,7 +74,7 @@ func (s *publishV4Suite) TestPublish() {
 	// Getting the upload token
 	resp = (&test.HTTPTest{
 		Method: http.MethodPost,
-		URL:    s.asynqueryServer.URL + "/api/v1/asynqueries/auth/upload-token",
+		URL:    s.asynqueryServer.URL + "/api/v1/asynqueries/uploads/",
 		Code:   http.StatusOK,
 		ReqHeader: map[string]string{
 			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
@@ -88,7 +88,7 @@ func (s *publishV4Suite) TestPublish() {
 	require.Nil(err)
 	require.NoError(json.Unmarshal(body, rr))
 	assert.Empty(rr.Error)
-	require.Equal(asynquery.StatusProceed, rr.Status)
+	require.Equal(asynquery.StatusSuccess, rr.Status)
 	assert.NotEmpty(rr.Payload.(asynquery.UploadTokenResponse).Token)
 
 	uploadTokenHeader := fmt.Sprintf("Bearer %s", rr.Payload.(asynquery.UploadTokenResponse).Token)

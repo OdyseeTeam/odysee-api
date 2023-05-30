@@ -13,8 +13,8 @@ import (
 )
 
 var cli struct {
-	BlobsPath string `required:"" help:"Directory to store split blobs before sending them off to reflector"`
-	Debug     bool   `help:"Enable verbose logging"`
+	Serve struct{} `cmd:"" help:"Start forklift service"`
+	Debug bool     `help:"Enable verbose logging"`
 }
 
 type loggingConfig struct {
@@ -22,18 +22,28 @@ type loggingConfig struct {
 }
 
 func main() {
-	kong.Parse(&cli)
-	lcfg := loggingConfig{}
+	ctx := kong.Parse(&cli)
+
+	logCfg := loggingConfig{}
 	if cli.Debug {
-		lcfg.format = "console"
-		lcfg.level = logging.LevelDebug
+		logCfg.format = "console"
+		logCfg.level = logging.LevelDebug
 	} else {
-		lcfg.format = "json"
-		lcfg.level = logging.LevelDebug
+		logCfg.format = "json"
+		logCfg.level = logging.LevelDebug
 	}
 	logger := zapadapter.NewKV(nil)
 
-	cfg, err := configng.Read("./config", "upload", "yaml")
+	switch ctx.Command() {
+	case "serve":
+		serve(logger)
+	default:
+		logger.Fatal("unknown command", "name", ctx.Command())
+	}
+}
+
+func serve(logger logging.KVLogger) {
+	cfg, err := configng.Read("./config", "forklift", "yaml")
 	if err != nil {
 		panic(err)
 	}
@@ -56,7 +66,7 @@ func main() {
 
 	l := forklift.NewLauncher(
 		forklift.WithLogger(logger),
-		forklift.WithReflectorConfig(cfg.V.GetStringMapString("Reflector")),
+		forklift.WithReflectorConfig(cfg.V.GetStringMapString("ReflectorStorage")),
 		forklift.WithConcurrency(cfg.V.GetInt("Concurrency")),
 		forklift.WithBlobPath(cfg.V.GetString("BlobPath")),
 		forklift.WithRetriever(forklift.NewS3Retriever(cfg.V.GetString("UploadPath"), client)),

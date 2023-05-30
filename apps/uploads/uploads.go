@@ -75,7 +75,7 @@ func NewLauncher(options ...LauncherOption) *Launcher {
 	launcher := &Launcher{
 		logger:      logging.NoopKVLogger{},
 		prefix:      "/v1/uploads",
-		httpAddress: ":8080",
+		httpAddress: "0.0.0.0:8080",
 	}
 
 	for _, opt := range options {
@@ -173,6 +173,7 @@ func (l *Launcher) Build() (chi.Router, error) {
 		logger:         l.logger,
 		queries:        database.New(l.db),
 		tokenValidator: validator,
+		stopChan:       make(chan struct{}),
 	}
 	l.readyCancel = readyCancel
 
@@ -250,17 +251,28 @@ func (l *Launcher) Build() (chi.Router, error) {
 
 	httpServer := &http.Server{
 		Addr:    l.httpAddress,
-		Handler: l.router,
+		Handler: router,
 	}
 
 	l.router = router
 	l.httpServer = httpServer
-	handler.listenToHooks()
+	l.handler = handler
 	l.logger.Info("uploads handler built")
+	handler.listenToHooks()
 	return router, nil
 }
 
+func (l *Launcher) Launch() {
+	l.logger.Info("launching http server", "address", l.httpAddress)
+	err := l.httpServer.ListenAndServe()
+	if err != nil && err != http.ErrServerClosed {
+		l.logger.Error("http server returned error", "err", err)
+	}
+	l.logger.Info("http server stopped")
+}
+
 func (l *Launcher) CompleteShutdown() {
+	l.logger.Info("shutting down http server")
 	err := l.httpServer.Shutdown(context.Background())
 	if err != nil {
 		l.logger.Info("error encountered while stopping http server", "err", err)
@@ -272,14 +284,6 @@ func (l *Launcher) CompleteShutdown() {
 func (l *Launcher) StartShutdown() {
 	l.logger.Info("shutting down liveness handler")
 	l.readyCancel()
-}
-
-func (l *Launcher) Launch() {
-	err := l.httpServer.ListenAndServe()
-	if err != nil && err != http.ErrServerClosed {
-		l.logger.Error("http server returned error", "err", err)
-	}
-	l.logger.Info("http server stopped")
 }
 
 func (h *Handler) listenToHooks() {

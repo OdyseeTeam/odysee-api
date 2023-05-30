@@ -23,15 +23,24 @@ import (
 )
 
 const (
-	UploadServiceURL = "https://uploads-v4.na-backend.odysee.com/v1/uploads/"
-	StatusProceed    = "proceed"
-	StatusAuthError  = "auth_error"
+	StatusSuccess   = "success"
+	StatusAuthError = "auth_error"
 )
 
 type QueryHandler struct {
-	callManager *CallManager
-	logger      logging.KVLogger
-	keyfob      *keybox.Keyfob
+	callManager      *CallManager
+	logger           logging.KVLogger
+	keyfob           *keybox.Keyfob
+	uploadServiceURL string
+}
+
+func NewHandler(callManager *CallManager, logger logging.KVLogger, keyfob *keybox.Keyfob, uploadServiceURL string) QueryHandler {
+	return QueryHandler{
+		callManager:      callManager,
+		logger:           logger,
+		keyfob:           keyfob,
+		uploadServiceURL: uploadServiceURL,
+	}
 }
 
 type UploadTokenResponse struct {
@@ -45,15 +54,7 @@ type Response struct {
 	Payload any    `json:"payload" omitempty:""`
 }
 
-func NewHandler(callManager *CallManager, logger logging.KVLogger, keyfob *keybox.Keyfob) QueryHandler {
-	return QueryHandler{
-		callManager: callManager,
-		logger:      logger,
-		keyfob:      keyfob,
-	}
-}
-
-func (h QueryHandler) RetrieveUploadToken(w http.ResponseWriter, r *http.Request) {
+func (h QueryHandler) CreateUpload(w http.ResponseWriter, r *http.Request) {
 	responses.AddJSONContentType(w)
 	u, err := auth.FromRequest(r)
 	if err != nil {
@@ -75,14 +76,14 @@ func (h QueryHandler) RetrieveUploadToken(w http.ResponseWriter, r *http.Request
 		return
 	}
 	resp, err := json.Marshal(Response{
-		Status:  StatusProceed,
-		Payload: UploadTokenResponse{Token: token, Location: UploadServiceURL},
+		Status:  StatusSuccess,
+		Payload: UploadTokenResponse{Token: token, Location: h.uploadServiceURL},
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Add("location", UploadServiceURL)
+	w.Header().Add("location", h.uploadServiceURL)
 	w.Write(resp)
 }
 
@@ -160,13 +161,14 @@ func (h QueryHandler) Get(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(aq.Response.JSON)
 	case models.AsynqueryStatusFailed:
+		w.WriteHeader(http.StatusOK)
 		if !aq.Response.IsZero() {
 			w.Write(aq.Response.JSON)
 		} else {
 			rpcerrors.Write(w, errors.Err(aq.Error))
 		}
 	default:
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
@@ -181,7 +183,7 @@ func (r *Response) UnmarshalJSON(data []byte) error {
 
 	*r = Response(*aux)
 	switch r.Status {
-	case "proceed":
+	case StatusSuccess:
 		var payload UploadTokenResponse
 		if err := mapstructure.Decode(r.Payload, &payload); err != nil {
 			return fmt.Errorf("error decoding payload: %w", err)

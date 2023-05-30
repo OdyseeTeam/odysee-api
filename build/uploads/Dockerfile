@@ -6,6 +6,6 @@ EXPOSE 8080
 
 WORKDIR /app
 COPY ./dist/linux_amd64/uploads /app
-COPY ./apps/uploads/config/uploads.yml /app
+COPY ./apps/uploads/config/uploads.yml /app/config/uploads.yml
 
 CMD ["/app/uploads", "serve"]

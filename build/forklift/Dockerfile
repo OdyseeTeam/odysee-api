@@ -7,6 +7,6 @@ COPY --from=ffmpeg /build/ffprobe /usr/local/bin/
 
 WORKDIR /app
 COPY ./dist/linux_amd64/forklift /app
-COPY ./apps/forklift/config/forklift.yml /app
+COPY ./apps/forklift/config/forklift.yml /app/config/forklift.yml
 
-CMD ["/app/uploads", "serve"]
+CMD ["/app/forklift", "serve"]

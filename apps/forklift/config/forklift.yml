@@ -1,5 +1,5 @@
 Database:
-  DSN: postgres://:odyseeteam@localhost
+  DSN: postgres://postgres:odyseeteam@localhost/uploads?sslmode=disable
   DBName: uploads
   AutoMigrations: true
 
