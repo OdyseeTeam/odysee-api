@@ -31,7 +31,13 @@ const (
 	ClaimTagUnlisted      = "c:unlisted"
 	ClaimTagScheduledShow = "c:scheduled:show"
 	ClaimTagScheduledHide = "c:scheduled:hide"
+)
 
+var (
+	ErrClaimNotFound = errors.Err("couldn't find claim")
+)
+
+const (
 	accessTypePurchase   = "purchase"
 	accessTypeRental     = "rental"
 	accessTypeMemberOnly = "memberonly"
@@ -435,7 +441,7 @@ func resolve(ctx context.Context, c *Caller, q *Query, url string) (*ljsonrpc.Cl
 	}
 	// Empty claim ID means that resolve error has been returned
 	if claim.ClaimID == "" {
-		return nil, errors.Err("couldn't find claim")
+		return nil, ErrClaimNotFound
 	}
 	return &claim, err
 }

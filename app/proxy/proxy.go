@@ -148,6 +148,10 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if errors.Is(err, query.ErrClaimNotFound) {
+			logger.Log().Errorf(err.Error())
+			return
+		}
 		monitor.ErrorToSentry(err, map[string]string{"request": fmt.Sprintf("%+v", rpcReq), "response": fmt.Sprintf("%+v", rpcRes)})
 		observeFailure(metrics.GetDuration(r), rpcReq.Method, metrics.FailureKindNet)
 		metrics.ProxyCallFailedDurations.WithLabelValues(rpcReq.Method, c.Endpoint(), origin, metrics.FailureKindNet).Observe(c.Duration)
