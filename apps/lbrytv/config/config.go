@@ -119,6 +119,11 @@ func GetUploadTokenPrivateKey() string {
 	return strings.TrimSpace(Config.Viper.GetString("UploadTokenPrivateKey"))
 }
 
+// GetUploadServiceURL returns url to the v4 upload service.
+func GetUploadServiceURL() string {
+	return Config.Viper.GetString("UploadServiceURL")
+}
+
 // GetStreamsV5 returns config map for v5 streams endpoint.
 func GetStreamsV5() map[string]string {
 	return Config.Viper.GetStringMapString("StreamsV5")

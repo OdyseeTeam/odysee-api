@@ -175,6 +175,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 		asynquery.WithLogger(zapadapter.NewKV(nil)),
 		asynquery.WithPrivateKey(keyfob.PrivateKey()),
 		asynquery.WithDB(storage.DB),
+		asynquery.WithUploadServiceURL(config.GetUploadServiceURL()),
 	)
 
 	err = launcher.InstallRoutes(v1Router)
