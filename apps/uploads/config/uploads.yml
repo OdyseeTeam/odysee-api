@@ -4,7 +4,7 @@ Database:
   AutoMigrations: true
 
 RedisLocker: redis://:odyredis@host.docker.internal:6379/1
-RedisBus: redis://:odyredis@host.docker.internal:6379/2
+RedisBusForklift: redis://:odyredis@host.docker.internal:6379/4
 
 PublicKeyURL: https://api.na-backend.dev.odysee.com/api/v1/asynqueries/auth/pubkey
 
