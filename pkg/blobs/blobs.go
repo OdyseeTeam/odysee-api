@@ -27,7 +27,7 @@ const (
 
 type Source struct {
 	filePath      string
-	blobsPath     string
+	blobPath      string
 	finalPath     string
 	stream        *pb.Stream
 	blobsManifest []string
@@ -44,31 +44,31 @@ type Uploader struct {
 }
 
 // NewSource initializes a blob splitter, takes source file and blobs destination path as arguments.
-func NewSource(filePath, blobsPath string) (*Source, error) {
+func NewSource(filePath, blobPath string) *Source {
 	s := Source{
-		filePath:  filePath,
-		blobsPath: blobsPath,
+		filePath: filePath,
+		blobPath: blobPath,
 	}
 
-	return &s, nil
+	return &s
 }
 
 // NewStore initializes blob storage with a config dictionary.
 // Required parameters in the config map are MySQL DSN and S3 config for the reflector.
-func NewStore(cfg map[string]string) (*Store, error) {
+func NewStore(reflectorConfig map[string]string) (*Store, error) {
 	db := &db.SQL{
 		LogQueries: false,
 	}
-	err := db.Connect(cfg["databasedsn"])
+	err := db.Connect(reflectorConfig["databasedsn"])
 	if err != nil {
 		return nil, err
 	}
 
 	return &Store{
-		cfg: cfg,
+		cfg: reflectorConfig,
 		db:  db,
 		dbs: store.NewDBBackedStore(store.NewS3Store(
-			cfg["key"], cfg["secret"], cfg["region"], cfg["bucket"],
+			reflectorConfig["key"], reflectorConfig["secret"], reflectorConfig["region"], reflectorConfig["bucket"],
 		), db, false),
 	}, nil
 }
@@ -103,7 +103,7 @@ func (s *Source) Split() (*pb.Stream, error) {
 		},
 	}
 
-	s.finalPath = path.Join(s.blobsPath, enc.SDBlob().HashHex())
+	s.finalPath = path.Join(s.blobPath, enc.SDBlob().HashHex())
 	err = os.MkdirAll(s.finalPath, os.ModePerm)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create directory for blobs: %w", err)
@@ -112,7 +112,7 @@ func (s *Source) Split() (*pb.Stream, error) {
 	s.blobsManifest = make([]string, len(encodedStream))
 
 	for i, b := range encodedStream {
-		err := ioutil.WriteFile(path.Join(s.blobsPath, enc.SDBlob().HashHex(), b.HashHex()), b, os.ModePerm)
+		err := ioutil.WriteFile(path.Join(s.blobPath, enc.SDBlob().HashHex(), b.HashHex()), b, os.ModePerm)
 		if err != nil {
 			return nil, fmt.Errorf("cannot write blob: %w", err)
 		}

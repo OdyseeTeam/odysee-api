@@ -51,6 +51,15 @@ func makeCacheKey(cols boil.Columns, nzDefaults []string) string {
 	return str
 }
 
+// Enum values for asynquery_status
+const (
+	AsynqueryStatusReceived  = "received"
+	AsynqueryStatusPreparing = "preparing"
+	AsynqueryStatusForwarded = "forwarded"
+	AsynqueryStatusFailed    = "failed"
+	AsynqueryStatusSucceeded = "succeeded"
+)
+
 // Enum values for publish_query_status
 const (
 	PublishQueryStatusReceived  = "received"

@@ -1,11 +1,16 @@
 package wallet
 
 import (
+	"context"
+	"database/sql"
 	"net/http"
 
+	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/models"
+	"github.com/sirupsen/logrus"
 
 	"github.com/volatiletech/null"
+	"github.com/volatiletech/sqlboiler/boil"
 )
 
 type Authenticator interface {
@@ -43,6 +48,31 @@ type PostProcessAuthenticator struct {
 
 func NewPostProcessAuthenticator(auther Authenticator, postFunc func(*models.User) (*models.User, error)) *PostProcessAuthenticator {
 	return &PostProcessAuthenticator{auther, postFunc}
+}
+
+func CreateTestUser(rt *sdkrouter.Router, exec boil.ContextBeginner, id int) (*models.User, error) {
+	var localUser *models.User
+
+	err := inTx(context.Background(), exec, func(tx *sql.Tx) error {
+		l := logrus.WithFields(logrus.Fields{})
+		localUser, err := getOrCreateLocalUser(tx, models.User{ID: id}, l)
+		if err != nil {
+			return err
+		}
+
+		if localUser.LbrynetServerID.IsZero() {
+			err := assignSDKServerToUser(tx, localUser, rt.LeastLoaded(), l)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return localUser, err
 }
 
 func (a *PostProcessAuthenticator) Authenticate(token, ip string) (*models.User, error) {

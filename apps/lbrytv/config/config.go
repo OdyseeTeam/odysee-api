@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	cfg "github.com/OdyseeTeam/odysee-api/config"
@@ -61,22 +62,18 @@ func GetOauthTokenURL() string {
 	return cfg["providerurl"] + cfg["tokenpath"]
 }
 
-// GetRedisOpts returns Redis connection options in the official redis client format.
-func GetRedisOpts() (*redis.Options, error) {
-	opts, err := redis.ParseURL(Config.Viper.GetString("redis"))
+// GetRedisLockerOpts returns Redis connection options in the official redis client format.
+func GetRedisLockerOpts() (*redis.Options, error) {
+	opts, err := redis.ParseURL(Config.Viper.GetString("RedisLocker"))
 	if err != nil {
 		return nil, err
 	}
 	return opts, nil
 }
 
-// GetAsynqRedisOpts rreturns Redis connection options ready for asynq package.
-func GetAsynqRedisOpts() (asynq.RedisConnOpt, error) {
-	redisOpts, err := asynq.ParseRedisURI(Config.Viper.GetString("redis"))
-	if err != nil {
-		return nil, err
-	}
-	return redisOpts, nil
+// GetRedisBusOpts returns Redis connection options in the official redis client format.
+func GetRedisBusOpts() (asynq.RedisConnOpt, error) {
+	return asynq.ParseRedisURI(Config.Viper.GetString("RedisBus"))
 }
 
 // GetDatabase returns postgresql database server connection config.
@@ -115,6 +112,16 @@ func ShouldLogResponses() bool {
 // GetPaidTokenPrivKey returns absolute path to the private RSA key for generating paid tokens.
 func GetPaidTokenPrivKey() string {
 	return Config.Viper.GetString("PaidTokenPrivKey")
+}
+
+// GetUploadTokenPrivateKey returns absolute path to the private RSA key for generating paid tokens.
+func GetUploadTokenPrivateKey() string {
+	return strings.TrimSpace(Config.Viper.GetString("UploadTokenPrivateKey"))
+}
+
+// GetUploadServiceURL returns url to the v4 upload service.
+func GetUploadServiceURL() string {
+	return Config.Viper.GetString("UploadServiceURL")
 }
 
 // GetStreamsV5 returns config map for v5 streams endpoint.

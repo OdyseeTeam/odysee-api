@@ -29,7 +29,7 @@ var dbMigrateDown = &cobra.Command{
 		}
 
 		dbConfig := config.GetDatabase()
-		db, err := migrator.ConnectDB(migrator.DefaultDBConfig().DSN(dbConfig.Connection).Name(dbConfig.DBName).NoMigration(), storage.MigrationsFS)
+		db, err := migrator.ConnectDB(migrator.DefaultDBConfig().DSN(dbConfig.Connection).Name(dbConfig.DBName))
 		if err != nil {
 			panic(err)
 		}

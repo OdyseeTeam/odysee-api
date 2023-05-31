@@ -85,14 +85,14 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 	return user, err
 }
 
-func inTx(ctx context.Context, db *sql.DB, f func(tx *sql.Tx) error) error {
+func inTx(ctx context.Context, exec boil.ContextBeginner, f func(tx *sql.Tx) error) error {
 	var (
 		tx  *sql.Tx
 		err error
 	)
 
 	for i := 0; i < txMaxRetries; i++ {
-		tx, err = db.BeginTx(ctx, nil)
+		tx, err = exec.BeginTx(ctx, nil)
 		if err != nil {
 			return err
 		}
@@ -320,8 +320,9 @@ func createWallet(addr string, userID int) error {
 
 // LoadWallet loads an existing wallet in the LbrynetServer.
 // May return errors:
-//  WalletAlreadyLoaded - wallet is already loaded and operational
-//  WalletNotFound - wallet file does not exist and won't be loaded.
+//
+//	WalletAlreadyLoaded - wallet is already loaded and operational
+//	WalletNotFound - wallet file does not exist and won't be loaded.
 func LoadWallet(addr string, userID int) error {
 	op := metrics.StartOperation(opName, "load")
 	defer op.End()
@@ -336,8 +337,9 @@ func LoadWallet(addr string, userID int) error {
 
 // UnloadWallet unloads an existing wallet from the LbrynetServer.
 // May return errors:
-//  WalletAlreadyLoaded - wallet is already loaded and operational
-//  WalletNotFound - wallet file does not exist and won't be loaded.
+//
+//	WalletAlreadyLoaded - wallet is already loaded and operational
+//	WalletNotFound - wallet file does not exist and won't be loaded.
 func UnloadWallet(addr string, userID int) error {
 	_, err := ljsonrpc.NewClient(addr).WalletRemove(sdkrouter.WalletID(userID))
 	if err != nil {

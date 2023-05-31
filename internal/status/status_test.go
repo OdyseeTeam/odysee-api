@@ -227,7 +227,3 @@ func (s *statusSuite) SetupSuite() {
 	s.userHelper = &e2etest.UserTestHelper{}
 	s.Require().NoError(s.userHelper.Setup(s.T()))
 }
-
-func (s *statusSuite) TearDownSuite() {
-	s.userHelper.Cleanup()
-}

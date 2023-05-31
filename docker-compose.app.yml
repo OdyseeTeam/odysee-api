@@ -1,0 +1,17 @@
+version: "3.2"
+
+services:
+  oapi:
+    image: odyseeteam/odysee-api:latest
+    container_name: oapi
+    ports:
+      - 8080:8080
+    volumes:
+      - storage:/storage
+    environment:
+      LW_DEBUG: 1
+    depends_on:
+      - lbrynet
+      - postgres
+    labels:
+      com.centurylinklabs.watchtower.enable: true

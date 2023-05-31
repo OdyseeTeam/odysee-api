@@ -13,7 +13,6 @@ const contextKey ctxKey = iota
 func FromRequest(r *http.Request) string {
 	v := r.Context().Value(contextKey)
 	if v == nil {
-		logger.Log().Warn("ip.FromRequest was called but ip.Middleware wasn't applied")
 		return ""
 	}
 	return v.(string)

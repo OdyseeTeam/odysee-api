@@ -15,12 +15,12 @@ import (
 	"github.com/OdyseeTeam/odysee-api/app/proxy"
 	"github.com/OdyseeTeam/odysee-api/app/query"
 	"github.com/OdyseeTeam/odysee-api/app/query/cache"
-	"github.com/OdyseeTeam/odysee-api/app/rpcerrors"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/metrics"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/models"
+	"github.com/OdyseeTeam/odysee-api/pkg/rpcerrors"
 
 	"github.com/gorilla/mux"
 	werrors "github.com/pkg/errors"
@@ -45,7 +45,7 @@ const (
 )
 
 type UserGetter interface {
-	GetFromRequest(*http.Request) (*models.User, error)
+	FromRequest(*http.Request) (*models.User, error)
 }
 
 type preparedQuery struct {
@@ -419,7 +419,7 @@ func (h *Handler) preCreateHook(hook tusd.HookEvent) error {
 }
 
 func (h *Handler) getUserFromRequest(r *http.Request) (*models.User, error) {
-	return h.options.userGetter.GetFromRequest(r)
+	return h.options.userGetter.FromRequest(r)
 }
 
 func getCaller(sdkAddress, filename string, userID int, qCache *cache.Cache) *query.Caller {

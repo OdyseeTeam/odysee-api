@@ -169,7 +169,7 @@ func (c *Client) Call(ctx context.Context, path string, params map[string]string
 
 	resp, err := c.options.httpClient.Do(r)
 	if err != nil {
-		log.Debug("iapi request failed", "error", err)
+		log.Debug("iapi request failed", "err", err)
 		return err
 	}
 	if resp.StatusCode >= 500 {
@@ -190,12 +190,12 @@ func (c *Client) Call(ctx context.Context, path string, params map[string]string
 	var bresp BaseResponse
 	err = json.Unmarshal(body, &bresp)
 	if err != nil {
-		log.Debug("iapi unmarshal failure", "error", err, "response_body", body)
+		log.Debug("iapi unmarshal failure", "err", err, "response_body", body)
 		return err
 	}
 
 	if !bresp.Success {
-		log.Debug("iapi error", "error", *bresp.Error)
+		log.Debug("iapi error", "err", *bresp.Error)
 		return fmt.Errorf("%w: %s", APIError, *bresp.Error)
 	}
 

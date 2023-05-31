@@ -117,8 +117,8 @@ type uploadL struct{}
 
 var (
 	uploadAllColumns            = []string{"id", "user_id", "path", "created_at", "updated_at", "status", "error", "size", "received"}
-	uploadColumnsWithoutDefault = []string{"user_id", "path", "updated_at", "status", "error", "size"}
-	uploadColumnsWithDefault    = []string{"id", "created_at", "received"}
+	uploadColumnsWithoutDefault = []string{"id", "user_id", "path", "updated_at", "status", "error", "size"}
+	uploadColumnsWithDefault    = []string{"created_at", "received"}
 	uploadPrimaryKeyColumns     = []string{"id"}
 )
 

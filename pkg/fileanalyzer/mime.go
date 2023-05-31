@@ -1,9 +1,5 @@
 package fileanalyzer
 
-type MediaType struct {
-	MIME, Name, Extension string
-}
-
 var extensions = map[string]MediaType{
 	".a":        {"application/octet-stream", "binary", ""},
 	".ai":       {"application/postscript", "image", ""},

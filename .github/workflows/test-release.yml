@@ -38,7 +38,7 @@ jobs:
             echo "::endgroup::"
 
       - name: Set up containers
-        run: docker-compose up -d lbrynet postgres redis
+        run: docker-compose up -d
 
       - name: Set up containers
         run: docker-compose -f apps/watchman/docker-compose.yml up -d clickhouse geoipupdate

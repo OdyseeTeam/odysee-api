@@ -16,26 +16,38 @@ type Analyzer struct {
 	ffprobePath string
 }
 
-type Analyzed struct {
-	filePath  string
-	header    []byte
-	MediaInfo *MediaInfo
-	MediaType *MediaType
+type StreamInfo struct {
+	header       []byte
+	RealFilePath string
+	FileName     string
+	MediaInfo    *MediaInfo
+	MediaType    *MediaType
 }
 
 type MediaInfo struct {
-	Duration      int
-	Width, Height int
+	Duration int
+	Width    int
+	Height   int
+}
+
+type MediaType struct {
+	MIME, Name, Extension string
 }
 
 func NewAnalyzer() (*Analyzer, error) {
 	return &Analyzer{}, nil
 }
 
-func (a *Analyzer) Analyze(ctx context.Context, filePath string) (*Analyzed, error) {
-	d := &Analyzed{filePath: filePath}
+func (a *Analyzer) Analyze(ctx context.Context, realFilePath, fileName string) (*StreamInfo, error) {
+	if fileName == "" {
+		fileName = path.Base(realFilePath)
+	}
+	s := &StreamInfo{
+		FileName:     fileName,
+		RealFilePath: realFilePath,
+	}
 	header := make([]byte, 261)
-	file, err := os.Open(filePath)
+	file, err := os.Open(realFilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -45,26 +57,26 @@ func (a *Analyzer) Analyze(ctx context.Context, filePath string) (*Analyzed, err
 	if err != nil {
 		return nil, err
 	}
-	d.header = header
+	s.header = header
 
-	err = d.GetMediaType()
+	err = s.DetectMediaType()
 	if err != nil {
 		return nil, err
 	}
-	err = d.GetMediaInfo(ctx)
-	return d, err
+	err = s.DetectMediaInfo(ctx)
+	return s, err
 }
 
-// GetMediaInfo attempts to read video stream metadata and saves a set of attributes
+// DetectMediaInfo attempts to read video stream metadata and saves a set of attributes
 // for use in SDK stream_create calls.
-func (d *Analyzed) GetMediaInfo(ctx context.Context) error {
-	if d.MediaType == nil {
-		return errors.New("GetMediaType must be called first")
+func (si *StreamInfo) DetectMediaInfo(ctx context.Context) error {
+	if si.MediaType == nil {
+		return errors.New("DetectMediaType must be called first")
 	}
-	if d.MediaType.Name != "video" && d.MediaType.Name != "image" && d.MediaType.Name != "audio" {
-		return fmt.Errorf("no media info for '%s' type", d.MediaType.Name)
+	if si.MediaType.Name != "video" && si.MediaType.Name != "image" && si.MediaType.Name != "audio" {
+		return fmt.Errorf("no media info for '%s' type", si.MediaType.Name)
 	}
-	data, err := ffprobe.ProbeURL(ctx, d.filePath)
+	data, err := ffprobe.ProbeURL(ctx, si.RealFilePath)
 	if err != nil {
 		return fmt.Errorf("error running ffprobe: %w", err)
 	}
@@ -77,10 +89,10 @@ func (d *Analyzed) GetMediaInfo(ctx context.Context) error {
 		stream         *ffprobe.Stream
 		needStreamType string
 	)
-	if d.MediaType.Name == "image" {
+	if si.MediaType.Name == "image" {
 		needStreamType = "video"
 	} else {
-		needStreamType = d.MediaType.Name
+		needStreamType = si.MediaType.Name
 	}
 	for _, s := range data.Streams {
 		if s.CodecType == needStreamType {
@@ -95,16 +107,16 @@ func (d *Analyzed) GetMediaInfo(ctx context.Context) error {
 	info.Duration = int(data.Format.Duration().Seconds())
 	info.Width = stream.Width
 	info.Height = stream.Height
-	d.MediaInfo = info
+	si.MediaInfo = info
 
 	return nil
 }
 
-func (d *Analyzed) GetMediaType() error {
+func (si *StreamInfo) DetectMediaType() error {
 	var fileExt, detExt string
-	fileExt = path.Ext(d.filePath)
+	fileExt = path.Ext(si.FileName)
 
-	kind, _ := filetype.Match(d.header)
+	kind, _ := filetype.Match(si.header)
 	if kind == filetype.Unknown {
 		detExt = fileExt
 	} else {
@@ -126,12 +138,12 @@ func (d *Analyzed) GetMediaType() error {
 	fileExt = "." + fileExt
 	t, ok := extensions[fileExt]
 	if !ok {
-		d.MediaType = &MediaType{
+		si.MediaType = &MediaType{
 			MIME: fmt.Sprintf("application/x-ext-%s", strings.TrimPrefix(fileExt, ".")),
 			Name: "binary",
 		}
 	} else {
-		d.MediaType = &t
+		si.MediaType = &t
 	}
 	return nil
 }

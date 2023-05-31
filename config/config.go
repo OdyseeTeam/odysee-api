@@ -32,6 +32,14 @@ func ReadConfig(configName string) *ConfigWrapper {
 	return c
 }
 
+func (c DBConfig) GetFullDSN() string {
+	return c.Connection
+}
+
+func (c DBConfig) GetDBName() string {
+	return c.DBName
+}
+
 func (c *ConfigWrapper) initPaths() {
 	c.Viper.SetConfigName(c.configName)
 	c.Viper.AddConfigPath("./config/")
@@ -63,6 +71,7 @@ func (c *ConfigWrapper) GetDatabase() DBConfig {
 
 // Override sets a setting key value to whatever you supply.
 // Useful in tests:
+//
 //	config.Override("Lbrynet", "http://www.google.com:8080/api/proxy")
 //	defer config.RestoreOverridden()
 //	...

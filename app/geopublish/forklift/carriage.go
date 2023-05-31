@@ -134,7 +134,7 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	uploader := c.store.Uploader()
 
 	t = time.Now()
-	info, err := c.analyzer.Analyze(context.Background(), p.Path)
+	info, err := c.analyzer.Analyze(context.Background(), p.Path, "")
 	metrics.ProcessingTime.WithLabelValues(metrics.LabelProcessingAnalyze).Observe(float64(time.Since(t)))
 	metrics.AnalysisDuration.Add(float64(time.Since(t)))
 	if info == nil {
@@ -143,10 +143,7 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	}
 	log.Debug("stream analyzed", "info", info, "err", err)
 
-	src, err := blobs.NewSource(p.Path, c.blobsPath)
-	if err != nil {
-		return r, err
-	}
+	src := blobs.NewSource(p.Path, c.blobsPath)
 
 	t = time.Now()
 	stream, err := src.Split()

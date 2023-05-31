@@ -1,9 +1,11 @@
 package zapadapter
 
 import (
+	stdlog "log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
@@ -60,4 +62,24 @@ func TestNewNamedKV(t *testing.T) {
 	assert.Panics(t, func() {
 		NewNamedKV("testlogger", NewLoggingOpts("", ""))
 	})
+}
+
+func TestKVLogger_Write(t *testing.T) {
+	core, recordedLogs := observer.New(zapcore.InfoLevel)
+	zapLogger := zap.New(core)
+	kvLogger := NewKV(zapLogger)
+	stdLogger := stdlog.New(kvLogger, "", 0)
+	logMessage := "This is a log message from the standard logger"
+	structLogMessage := `event="ChunkWriteComplete" id="8a254f1b8061c2f74a76f6aa8ef59d8e" bytesWritten="26214400"`
+	stdLogger.Output(2, logMessage)
+	stdLogger.Output(2, structLogMessage)
+
+	require.Equal(t, 2, recordedLogs.Len())
+
+	logEntry := recordedLogs.All()[0]
+	assert.Equal(t, logMessage, logEntry.Message)
+	structLogEntry := recordedLogs.All()[1]
+	assert.Equal(t, "ChunkWriteComplete", structLogEntry.Message)
+	assert.Equal(t, "8a254f1b8061c2f74a76f6aa8ef59d8e", structLogEntry.ContextMap()["id"])
+	assert.Equal(t, "26214400", structLogEntry.ContextMap()["bytesWritten"])
 }

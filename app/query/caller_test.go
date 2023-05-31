@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/query/cache"
-	"github.com/OdyseeTeam/odysee-api/app/rpcerrors"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/app/wallet"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/test"
+	"github.com/OdyseeTeam/odysee-api/pkg/rpcerrors"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
 	"github.com/Pallinder/go-randomdata"
 

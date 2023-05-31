@@ -24,9 +24,9 @@ OAuth:
   ProviderURL: https://sso.odysee.com/auth/realms/Users
   TokenPath: /protocol/openid-connect/token
 
-DatabaseDSN: postgres://lbrytv:lbrytv@localhost
+DatabaseDSN: postgres://postgres:odyseeteam@localhost
 Database:
-  DBName: lbrytv
+  DBName: oapi
   Options: sslmode=disable
 
 PublishSourceDir: ./rundata/storage/publish
@@ -35,6 +35,12 @@ GeoPublishSourceDir: ./rundata/storage/geopublish
 GeoPublishConcurrency: 3
 
 PaidTokenPrivKey: token_privkey.rsa
+
+# Change this key for production!
+# You can re-generate the key by running:
+# openssl ecparam -genkey -name prime256v1 -noout -out private_key.pem && base64 -i private_key.pem
+UploadTokenPrivateKey: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUZZYWxQZkhySzNSQ1F2YmhRQ1h6cDZiWG9uODZWOGI5L3B0bjB3QTZxNkxvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFZjhyN3RlQWJwUlVldXZhVWRsNDQzVS9VZkpYZURDd051QkRrbmp5ZnRZaXZ2Tnl6cGt6ZgpYdDl3RE9rc1VZSmEzNVhvSndabjNHMmw2L2EvdVUvWmh3PT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
+UploadServiceURL: http://localhost:8980/v1/uploads/
 
 LbrynetXServer: http://sdk.lbry.tech:5279/api
 LbrynetXPercentage: 0
@@ -49,7 +55,8 @@ RPCTimeouts:
   transaction_list: 4m
   publish: 4m
 
-Redis: redis://:odyredis@localhost:6379/1
+RedisLocker: redis://:odyredis@localhost:6379/1
+RedisBus: redis://:odyredis@localhost:6379/2
 
 ReflectorUpstream:
   DatabaseDSN: 'user:password@tcp(localhost:3306)/blobs'

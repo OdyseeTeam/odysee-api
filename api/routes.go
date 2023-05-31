@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/OdyseeTeam/odysee-api/app/asynquery"
 	"github.com/OdyseeTeam/odysee-api/app/auth"
 	"github.com/OdyseeTeam/odysee-api/app/geopublish"
 	gpmetrics "github.com/OdyseeTeam/odysee-api/app/geopublish/metrics"
@@ -21,6 +22,8 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/middleware"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/internal/status"
+	"github.com/OdyseeTeam/odysee-api/internal/storage"
+	"github.com/OdyseeTeam/odysee-api/pkg/keybox"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
@@ -111,7 +114,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 	store := filestore.New(uploadPath)
 	store.UseIn(composer)
 
-	redisOpts, err := config.GetRedisOpts()
+	redisOpts, err := config.GetRedisLockerOpts()
 	if err != nil {
 		panic(err)
 	}
@@ -157,6 +160,30 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 			panic(err)
 		}
 	}
+
+	keyfob, err := keybox.KeyfobFromString(config.GetUploadTokenPrivateKey())
+	if err != nil {
+		panic(err)
+	}
+
+	busRedisOpts, err := config.GetRedisBusOpts()
+	if err != nil {
+		panic(err)
+	}
+	launcher := asynquery.NewLauncher(
+		asynquery.WithBusRedisOpts(busRedisOpts),
+		asynquery.WithLogger(zapadapter.NewKV(nil)),
+		asynquery.WithPrivateKey(keyfob.PrivateKey()),
+		asynquery.WithDB(storage.DB),
+		asynquery.WithUploadServiceURL(config.GetUploadServiceURL()),
+	)
+
+	err = launcher.InstallRoutes(v1Router)
+	if err != nil {
+		panic(err)
+	}
+
+	go launcher.Start()
 
 	onceMetrics.Do(func() {
 		gpmetrics.RegisterMetrics()

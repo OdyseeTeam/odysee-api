@@ -30,7 +30,7 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-type e2eSuite struct {
+type publishV3Suite struct {
 	suite.Suite
 
 	userHelper     *UserTestHelper
@@ -39,7 +39,7 @@ type e2eSuite struct {
 	forkliftErr    error
 }
 
-func (s *e2eSuite) TestProxyRoute() {
+func (s *publishV3Suite) TestProxyRoute() {
 	(&test.HTTPTest{
 		Method:      http.MethodPost,
 		URL:         "/api/v1/proxy",
@@ -49,7 +49,7 @@ func (s *e2eSuite) TestProxyRoute() {
 	}).Run(s.router, s.T())
 }
 
-func (s *e2eSuite) TestPublishV3() {
+func (s *publishV3Suite) TestPublish() {
 	if testing.Short() {
 		s.T().Skip("skipping testing in short mode")
 	}
@@ -83,7 +83,6 @@ func (s *e2eSuite) TestPublishV3() {
 
 	uploadID := filepath.Base(loc.Path)
 	var upload *models.Upload
-	time.Sleep(2 * time.Second)
 
 	Wait(s.T(), "upload settling into the database", 5*time.Second, 1000*time.Millisecond, func() error {
 		upload, err = models.Uploads(
@@ -206,7 +205,7 @@ func (s *e2eSuite) TestPublishV3() {
 
 }
 
-func (s *e2eSuite) SetupSuite() {
+func (s *publishV3Suite) SetupSuite() {
 	config.Config.Override("PublishSourceDir", s.T().TempDir())
 	config.Config.Override("GeoPublishSourceDir", s.T().TempDir())
 
@@ -222,11 +221,6 @@ func (s *e2eSuite) SetupSuite() {
 	api.InstallRoutes(s.router, s.userHelper.SDKRouter, &api.RoutesOptions{EnableV3Publish: true})
 }
 
-// func (s *e2eSuite) TearDownSuite() {
-// 	s.userHelper.Cleanup()
-// 	config.Config.RestoreOverridden()
-// }
-
 func TestE2ESuite(t *testing.T) {
-	suite.Run(t, new(e2eSuite))
+	suite.Run(t, new(publishV3Suite))
 }

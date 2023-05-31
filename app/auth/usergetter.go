@@ -24,7 +24,7 @@ func NewUniversalUserGetter(auther Authenticator, provider Provider, logger logg
 	}
 }
 
-func (g *universalUserGetter) GetFromRequest(r *http.Request) (*models.User, error) {
+func (g *universalUserGetter) FromRequest(r *http.Request) (*models.User, error) {
 	log := g.logger
 	token, err := g.auther.GetTokenFromRequest(r)
 	// No oauth token present in request, try legacy method

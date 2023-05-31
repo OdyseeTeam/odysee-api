@@ -4,6 +4,7 @@
 package models
 
 var TableNames = struct {
+	Asynqueries    string
 	GorpMigrations string
 	LbrynetServers string
 	PublishQueries string
@@ -11,6 +12,7 @@ var TableNames = struct {
 	Uploads        string
 	Users          string
 }{
+	Asynqueries:    "asynqueries",
 	GorpMigrations: "gorp_migrations",
 	LbrynetServers: "lbrynet_servers",
 	PublishQueries: "publish_queries",

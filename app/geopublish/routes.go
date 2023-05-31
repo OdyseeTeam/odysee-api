@@ -10,18 +10,18 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/storage"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
-
 	"github.com/gorilla/mux"
+
 	"github.com/tus/tusd/pkg/filestore"
 	tushandler "github.com/tus/tusd/pkg/handler"
 )
 
 func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPrefix string, logger logging.KVLogger) (*Handler, error) {
-	redisOpts, err := config.GetRedisOpts()
+	redisOpts, err := config.GetRedisLockerOpts()
 	if err != nil {
 		return nil, fmt.Errorf("cannot get redis config: %w", err)
 	}
-	asynqRedisOpts, err := config.GetAsynqRedisOpts()
+	asynqRedisOpts, err := config.GetRedisBusOpts()
 	if err != nil {
 		return nil, fmt.Errorf("cannot get redis config: %w", err)
 	}

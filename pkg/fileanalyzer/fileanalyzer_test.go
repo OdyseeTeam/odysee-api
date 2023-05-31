@@ -97,7 +97,7 @@ func (s *analyzerSuite) TestAnalyze() {
 			a, err := NewAnalyzer()
 			s.Require().NoError(err)
 
-			d, err := a.Analyze(context.Background(), filePath)
+			d, err := a.Analyze(context.Background(), filePath, "")
 			s.Require().Equal(c.getMediaInfoError, err)
 			if c.mimeType != "" {
 				s.Equal(c.mimeType, d.MediaType.MIME)

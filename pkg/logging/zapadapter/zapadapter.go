@@ -1,7 +1,8 @@
 package zapadapter
 
 import (
-	"context"
+	"regexp"
+	"strings"
 
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 
@@ -12,6 +13,8 @@ import (
 
 var prodConfig = zap.NewProductionConfig()
 var devConfig = zap.NewDevelopmentConfig()
+
+var reLegacyStructLog = regexp.MustCompile(`(\w+)="([^"]+)"`)
 
 type LoggingOpts struct {
 	level  string
@@ -26,8 +29,8 @@ type logger struct {
 
 // kvLogger is a Logur adapter for Uber's Zap.
 type kvLogger struct {
-	logger *zap.SugaredLogger
-	core   zapcore.Core
+	zapLogger *zap.SugaredLogger
+	core      zapcore.Core
 }
 
 // NewKV returns a new Logur kvLogger.
@@ -53,8 +56,8 @@ func NewKV(logger *zap.Logger) *kvLogger {
 	logger = logger.WithOptions(zap.AddCallerSkip(1))
 
 	return &kvLogger{
-		logger: logger.Sugar(),
-		core:   logger.Core(),
+		zapLogger: logger.Sugar(),
+		core:      logger.Core(),
 	}
 }
 
@@ -154,7 +157,7 @@ func (l *logger) LevelEnabled(level logur.Level) bool {
 // Trace implements the Logur kvLogger interface.
 func (l *kvLogger) Trace(msg string, keyvals ...interface{}) {
 	// Fall back to Debug
-	l.logger.Debugw(msg, keyvals...)
+	l.zapLogger.Debugw(msg, keyvals...)
 }
 
 // Debug implements the Logur kvLogger interface.
@@ -162,7 +165,7 @@ func (l *kvLogger) Debug(msg string, keyvals ...interface{}) {
 	if !l.core.Enabled(zap.DebugLevel) {
 		return
 	}
-	l.logger.Debugw(msg, keyvals...)
+	l.zapLogger.Debugw(msg, keyvals...)
 }
 
 // Info implements the Logur kvLogger interface.
@@ -170,7 +173,7 @@ func (l *kvLogger) Info(msg string, keyvals ...interface{}) {
 	if !l.core.Enabled(zap.InfoLevel) {
 		return
 	}
-	l.logger.Infow(msg, keyvals...)
+	l.zapLogger.Infow(msg, keyvals...)
 }
 
 // Warn implements the Logur kvLogger interface.
@@ -178,7 +181,7 @@ func (l *kvLogger) Warn(msg string, keyvals ...interface{}) {
 	if !l.core.Enabled(zap.WarnLevel) {
 		return
 	}
-	l.logger.Warnw(msg, keyvals...)
+	l.zapLogger.Warnw(msg, keyvals...)
 }
 
 // Error implements the Logur kvLogger interface.
@@ -186,40 +189,20 @@ func (l *kvLogger) Error(msg string, keyvals ...interface{}) {
 	if !l.core.Enabled(zap.ErrorLevel) {
 		return
 	}
-	l.logger.Errorw(msg, keyvals...)
+	l.zapLogger.Errorw(msg, keyvals...)
 }
 
 // Error implements the Logur kvLogger interface.
 func (l *kvLogger) Fatal(msg string, keyvals ...interface{}) {
-	l.logger.Fatalw(msg, keyvals...)
-}
-
-func (l *kvLogger) TraceContext(_ context.Context, msg string, keyvals ...interface{}) {
-	l.Trace(msg, keyvals...)
-}
-
-func (l *kvLogger) DebugContext(_ context.Context, msg string, keyvals ...interface{}) {
-	l.Debug(msg, keyvals...)
-}
-
-func (l *kvLogger) InfoContext(_ context.Context, msg string, keyvals ...interface{}) {
-	l.Info(msg, keyvals...)
-}
-
-func (l *kvLogger) WarnContext(_ context.Context, msg string, keyvals ...interface{}) {
-	l.Warn(msg, keyvals...)
-}
-
-func (l *kvLogger) ErrorContext(_ context.Context, msg string, keyvals ...interface{}) {
-	l.Error(msg, keyvals...)
+	l.zapLogger.Fatalw(msg, keyvals...)
 }
 
 // ...
 func (l *kvLogger) With(keyvals ...interface{}) logging.KVLogger {
-	newLogger := l.logger.With(keyvals...)
+	newLogger := l.zapLogger.With(keyvals...)
 	return &kvLogger{
-		logger: newLogger,
-		core:   newLogger.Desugar().Core(),
+		zapLogger: newLogger,
+		core:      newLogger.Desugar().Core(),
 	}
 }
 
@@ -239,6 +222,24 @@ func (l *kvLogger) LevelEnabled(level logur.Level) bool {
 	}
 
 	return true
+}
+
+// Write writes the log data to the Zap logger.
+func (l *kvLogger) Write(p []byte) (n int, err error) {
+	message := strings.TrimSpace(string(p))
+	matches := reLegacyStructLog.FindAllStringSubmatch(message, -1)
+	if len(matches) == 0 {
+		l.zapLogger.Info(message)
+		return len(p), nil
+	}
+	fields := make([]any, 0, len(matches)-1)
+	for _, m := range matches[1:] {
+		fields = append(fields, m[1], m[2])
+	}
+	event := matches[0][2]
+	l.zapLogger.Infow(event, fields...)
+
+	return len(p), nil
 }
 
 func (o LoggingOpts) Level() string {

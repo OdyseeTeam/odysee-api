@@ -17,7 +17,6 @@ import (
 	"github.com/OdyseeTeam/odysee-api/app/auth"
 	"github.com/OdyseeTeam/odysee-api/app/query"
 	"github.com/OdyseeTeam/odysee-api/app/query/cache"
-	"github.com/OdyseeTeam/odysee-api/app/rpcerrors"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/internal/audit"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
@@ -26,6 +25,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/internal/responses"
 	"github.com/OdyseeTeam/odysee-api/models"
+	"github.com/OdyseeTeam/odysee-api/pkg/rpcerrors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/ybbus/jsonrpc"
@@ -148,6 +148,10 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if errors.Is(err, query.ErrClaimNotFound) {
+			logger.Log().Errorf(err.Error())
+			return
+		}
 		monitor.ErrorToSentry(err, map[string]string{"request": fmt.Sprintf("%+v", rpcReq), "response": fmt.Sprintf("%+v", rpcRes)})
 		observeFailure(metrics.GetDuration(r), rpcReq.Method, metrics.FailureKindNet)
 		metrics.ProxyCallFailedDurations.WithLabelValues(rpcReq.Method, c.Endpoint(), origin, metrics.FailureKindNet).Observe(c.Duration)
