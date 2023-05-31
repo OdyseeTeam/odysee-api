@@ -45,7 +45,9 @@ RPCTimeouts:
   transaction_list: 4m
   publish: 4m
 
-Redis: redis://:odyredis@redis:6379/1
+RedisLocker: redis://:odyredis@redis:6379/1
+RedisBus: redis://:odyredis@redis:6379/2
+RedisBusAsynquery: redis://:odyredis@redis:6379/3
 
 ReflectorUpstream:
   DatabaseDSN: 'user:password@tcp(host.com)/blobs'

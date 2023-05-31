@@ -70,7 +70,7 @@ func serve(logger logging.KVLogger) {
 		forklift.WithConcurrency(cfg.V.GetInt("Concurrency")),
 		forklift.WithBlobPath(cfg.V.GetString("BlobPath")),
 		forklift.WithRetriever(forklift.NewS3Retriever(cfg.V.GetString("UploadPath"), client)),
-		forklift.WithRedisURL(cfg.V.GetString("RedisBus")),
+		forklift.WithRedisURL(cfg.V.GetString("RedisBusForklift")),
 		forklift.WithDB(db),
 	)
 

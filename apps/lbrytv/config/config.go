@@ -71,9 +71,14 @@ func GetRedisLockerOpts() (*redis.Options, error) {
 	return opts, nil
 }
 
-// GetRedisBusOpts returns Redis connection options in the official redis client format.
+// GetRedisBusOpts returns Redis connection options in the Redis URL format.
 func GetRedisBusOpts() (asynq.RedisConnOpt, error) {
 	return asynq.ParseRedisURI(Config.Viper.GetString("RedisBus"))
+}
+
+// GetRedisBusAsynqueryOpts returns Redis connection options for asynquery bus.
+func GetRedisBusAsynqueryOpts() (asynq.RedisConnOpt, error) {
+	return asynq.ParseRedisURI(Config.Viper.GetString("RedisBusAsynquery"))
 }
 
 // GetDatabase returns postgresql database server connection config.
