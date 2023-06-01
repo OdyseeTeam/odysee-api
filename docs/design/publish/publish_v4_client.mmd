@@ -2,11 +2,9 @@
 title: Publish v4 Flow
 ---
 sequenceDiagram
-    %% autonumber
     actor Client
     participant OAPI as Odysee API
     participant Upload as Upload Service
-    participant Forklift as Forklift Service
 
     Client->>OAPI: POST /api/v1/asynqueries/uploads/
     activate OAPI
@@ -14,7 +12,7 @@ sequenceDiagram
     OAPI-->>Client: 201 Created (<<token>>, <<location>>)
     deactivate OAPI
 
-    Client->>Upload: POST /, <<token>>
+    Client->>Upload: POST /:location, <<token>>
     activate Upload
     Upload->>Upload: validate upload token
     Upload-->>Client: 201 Created (Location: <<upload-url>>)
