@@ -24,6 +24,14 @@ import (
 
 var ErrReflector = errors.New("errors found while uploading blobs to reflector")
 
+type Retriever interface {
+	Retrieve(context.Context, string, tasks.FileLocationS3) (*LocalFile, error)
+}
+
+type Deleter interface {
+	Delete(context.Context, tasks.FileLocationS3) error
+}
+
 type Launcher struct {
 	blobPath        string
 	redisURL        string
@@ -87,6 +95,7 @@ func WithDB(db database.DBTX) LauncherOption {
 		l.db = db
 	}
 }
+
 func NewLauncher(options ...LauncherOption) *Launcher {
 	launcher := &Launcher{
 		logger:      logging.NoopKVLogger{},
@@ -163,7 +172,7 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 	file, err := f.retriever.Retrieve(context.TODO(), payload.UploadID, payload.FileLocation)
 	if err != nil {
 		log.Warn("failed to retrieve file", "err", err)
-		return asynq.SkipRetry
+		return err
 	}
 	defer file.Cleanup()
 	observeDuration(LabelRetrieve, start)
@@ -255,6 +264,13 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 		return err
 	}
 	log.Debug("upload processed")
+
+	if c, ok := f.retriever.(Deleter); ok {
+		err := c.Delete(context.TODO(), payload.FileLocation)
+		if err != nil {
+			log.Warn("failed to complete retrieved file", "err", err)
+		}
+	}
 
 	err = f.bus.Client().Put(tasks.TaskAsynqueryMerge, tasks.AsynqueryMergePayload{
 		UploadID: payload.UploadID,
