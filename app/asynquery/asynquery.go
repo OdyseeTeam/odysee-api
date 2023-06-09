@@ -109,6 +109,7 @@ func (m *CallManager) Call(userID int, req *jsonrpc.RPCRequest) (*models.Asynque
 	return aq, nil
 }
 
+// HandleMerge handles signals about completed uploads from forklift.
 func (m *CallManager) HandleMerge(ctx context.Context, task *asynq.Task) error {
 	if task.Type() != tasks.TaskAsynqueryMerge {
 		m.logger.Warn("cannot handle task", "type", task.Type())

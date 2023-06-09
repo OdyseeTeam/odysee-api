@@ -11,6 +11,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/apps/uploads/database"
 	"github.com/OdyseeTeam/odysee-api/pkg/bus"
 	"github.com/OdyseeTeam/odysee-api/pkg/configng"
+	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
 	"github.com/Pallinder/go-randomdata"
 
@@ -95,7 +96,18 @@ func (th *TestHelper) CreateUpload(filePath string, bus *bus.Client) (*database.
 		ID:     uploadID,
 		Size:   s,
 	})
-	completeUpload(th.Queries, bus, up.UserID, up.ID, path.Base(filePath), th.S3Config.Bucket, uploadKey)
+	// Simulate upload complete event
+	handler := Handler{
+		s3bucket: th.S3Config.Bucket,
+		logger:   zapadapter.NewKV(nil),
+		queries:  th.Queries,
+	}
+	handler.completeUpload(database.MarkUploadCompletedParams{
+		UserID:   up.UserID,
+		ID:       up.ID,
+		Filename: path.Base(filePath),
+		Key:      uploadKey,
+	})
 	return &up, err
 }
 

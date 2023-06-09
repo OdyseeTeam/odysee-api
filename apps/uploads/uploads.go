@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/apps/uploads/database"
@@ -17,6 +18,9 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/bus"
 	"github.com/OdyseeTeam/odysee-api/pkg/keybox"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -27,6 +31,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	tusd "github.com/tus/tusd/pkg/handler"
+	"github.com/tus/tusd/pkg/prometheuscollector"
 	"github.com/tus/tusd/pkg/s3store"
 )
 
@@ -35,6 +40,8 @@ const (
 )
 
 var (
+	onceMetrics sync.Once
+
 	reExtractFileID = regexp.MustCompile(`([^/]{32,})\/?$`)
 )
 
@@ -215,7 +222,7 @@ func (l *Launcher) Build() (chi.Router, error) {
 
 	tusdHandler, err := tusd.NewUnroutedHandler(tusConfig)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to create tusd handler: %v", err)
+		return nil, fmt.Errorf("unable to create tusd handler: %v", err)
 	}
 	handler.UnroutedHandler = tusdHandler
 
@@ -230,6 +237,24 @@ func (l *Launcher) Build() (chi.Router, error) {
 		MaxAge:           300,
 	}))
 
+	onceMetrics.Do(func() {
+		registerMetrics()
+		redislocker.RegisterMetrics()
+		tusMetrics := prometheuscollector.New(handler.Metrics)
+		prometheus.MustRegister(tusMetrics)
+	})
+
+	// Public endpoints
+	router.Route(l.prefix, func(r chi.Router) {
+		r.Use(handler.authByToken)
+		r.Use(handler.Middleware)
+		r.Post("/", handler.PostFile)
+		r.Head("/*", handler.HeadFile)
+		r.Patch("/*", handler.PatchFile)
+		r.Delete("/*", handler.DelFile)
+	})
+
+	// Internal endpoints
 	router.Get("/livez", func(w http.ResponseWriter, r *http.Request) {
 		if readyCtx.Err() != nil {
 			http.Error(w, "upload service is shutting down", http.StatusServiceUnavailable)
@@ -240,13 +265,8 @@ func (l *Launcher) Build() (chi.Router, error) {
 	router.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("OK"))
 	})
-	router.Route(l.prefix, func(r chi.Router) {
-		r.Use(handler.authByToken)
-		r.Use(handler.Middleware)
-		r.Post("/", handler.PostFile)
-		r.Head("/*", handler.HeadFile)
-		r.Patch("/*", handler.PatchFile)
-		r.Delete("/*", handler.DelFile)
+	router.Get("/internal/metrics", func(w http.ResponseWriter, r *http.Request) {
+		promhttp.Handler().ServeHTTP(w, r)
 	})
 
 	httpServer := &http.Server{
@@ -314,6 +334,7 @@ func (h *Handler) listenToHooks() {
 		}
 		_, err := h.queries.CreateUpload(context.Background(), p)
 		if err != nil {
+			sqlErrors.Inc()
 			h.logger.Warn("creating upload failed", "user_id", uid, "upload_id", p.ID, "err", err)
 			return
 		}
@@ -328,6 +349,7 @@ func (h *Handler) listenToHooks() {
 		}
 		err := h.queries.RecordUploadProgress(context.Background(), p)
 		if err != nil {
+			sqlErrors.Inc()
 			h.logger.Warn("recording upload progress failed", "user_id", p.UserID, "upload_id", p.ID, "err", err)
 			return
 		}
@@ -341,6 +363,7 @@ func (h *Handler) listenToHooks() {
 		}
 		err := h.queries.MarkUploadTerminated(context.Background(), p)
 		if err != nil {
+			sqlErrors.Inc()
 			h.logger.Warn("recording upload termination failed", "user_id", uid, "upload_id", p.ID, "err", err)
 			return
 		}
@@ -348,10 +371,23 @@ func (h *Handler) listenToHooks() {
 	})
 
 	go listen(h.CompleteUploads, func(uid int32, event tusd.HookEvent) {
-		err := completeUpload(
-			h.queries, h.bus, uid, event.Upload.ID, event.Upload.MetaData["filename"], h.s3bucket, event.Upload.Storage["Key"])
+		p := database.MarkUploadCompletedParams{
+			UserID:   uid,
+			ID:       event.Upload.ID,
+			Filename: event.Upload.MetaData["filename"],
+			Key:      event.Upload.Storage["Key"],
+		}
+		err := h.queries.MarkUploadCompleted(context.Background(), p)
+		if err != nil {
+			sqlErrors.Inc()
+			h.logger.Warn("recording upload completion failed", "user_id", uid, "upload_id", p.ID, "err", err)
+			return
+		}
+
+		err = h.completeUpload(p)
 		if err != nil {
 			h.logger.Warn("completing upload failed", "user_id", uid, "upload_id", event.Upload.ID, "err", err)
+			redisErrors.Inc()
 			return
 		}
 		h.logger.Info("upload completed", "user_id", uid, "upload_id", event.Upload.ID, "size", event.Upload.Size)
@@ -367,6 +403,7 @@ func (h *Handler) authByToken(next http.Handler) http.Handler {
 
 		if err != nil {
 			h.logger.Info("failed to extract token from request", "err", err)
+			userAuthErrors.Inc()
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
@@ -386,6 +423,7 @@ func (h *Handler) authByToken(next http.Handler) http.Handler {
 	})
 }
 
+// extractUserIDFromRequest retrieves token from request header and extracts user id from it
 func (h *Handler) extractUserIDFromRequest(r *http.Request) (int32, error) {
 	rt := jwtauth.TokenFromHeader(r)
 	token, err := h.tokenValidator.ParseToken(rt)
@@ -415,33 +453,20 @@ func extractUploadIDFromPath(url string) string {
 	return result[1]
 }
 
-func completeUpload(queries *database.Queries, b *bus.Client, uid int32, uploadID, fileName, bucket, key string) error {
-	p := database.MarkUploadCompletedParams{
-		UserID:   uid,
-		ID:       uploadID,
-		Filename: fileName,
-		Key:      key,
-	}
-	err := queries.MarkUploadCompleted(context.Background(), p)
-	if err != nil {
-		return err
-	}
-
-	if b != nil {
-		if err != nil {
-			return err
-		}
-		err = b.Put(
+// completeUpload sends a task to the bus to reflect the upload to the user's bucket
+func (h *Handler) completeUpload(uploadParams database.MarkUploadCompletedParams) error {
+	if h.bus != nil {
+		err := h.bus.Put(
 			tasks.TaskReflectUpload,
 			tasks.ReflectUploadPayload{
-				UploadID: p.ID,
-				UserID:   uid,
-				FileName: p.Filename,
+				UploadID: uploadParams.ID,
+				UserID:   uploadParams.UserID,
+				FileName: uploadParams.Filename,
 				FileLocation: tasks.FileLocationS3{
-					Key:    p.Key,
-					Bucket: bucket,
+					Key:    uploadParams.Key,
+					Bucket: h.s3bucket,
 				},
-			}, 10, 6*time.Hour, 72*time.Hour,
+			}, 10, 72*time.Hour, 72*time.Hour,
 		)
 		if err != nil {
 			return err
