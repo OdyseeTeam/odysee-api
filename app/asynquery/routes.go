@@ -3,6 +3,7 @@ package asynquery
 import (
 	"context"
 	"crypto"
+	"net/http"
 
 	"github.com/OdyseeTeam/odysee-api/pkg/keybox"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
@@ -82,10 +83,12 @@ func (l *Launcher) InstallRoutes(r *mux.Router) error {
 	}
 	l.manager = manager
 	handler := NewHandler(manager, l.logger, keyfob, l.uploadServiceURL)
-	r.HandleFunc("/asynqueries/auth/pubkey", keyfob.PublicKeyHandler).Methods("GET")
-	r.HandleFunc("/asynqueries/uploads/", handler.CreateUpload).Methods("POST")
-	r.HandleFunc("/asynqueries/{id}", handler.Get).Methods("GET")
-	r.HandleFunc("/asynqueries/", handler.Create).Methods("POST")
+	r = r.PathPrefix("/asynqueries").Subrouter()
+	r.PathPrefix("/").HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}).Methods(http.MethodOptions)
+	r.HandleFunc("/auth/pubkey", keyfob.PublicKeyHandler).Methods("GET")
+	r.HandleFunc("/uploads/", handler.CreateUpload).Methods("POST")
+	r.HandleFunc("/{id}", handler.Get).Methods("GET")
+	r.HandleFunc("/", handler.Create).Methods("POST")
 	l.logger.Info("routes installed")
 	return nil
 }
