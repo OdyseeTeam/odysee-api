@@ -21,8 +21,11 @@ var (
 	})
 )
 
-func registerMetrics() {
-	prometheus.MustRegister(
+func registerMetrics(registry prometheus.Registerer) {
+	if registry == nil {
+		registry = prometheus.DefaultRegisterer
+	}
+	registry.MustRegister(
 		userAuthErrors, sqlErrors, redisErrors,
 	)
 }

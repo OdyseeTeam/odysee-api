@@ -237,12 +237,16 @@ func (l *Launcher) Build() (chi.Router, error) {
 		MaxAge:           300,
 	}))
 
+	registry := prometheus.NewRegistry()
 	onceMetrics.Do(func() {
-		registerMetrics()
-		redislocker.RegisterMetrics()
+		registerMetrics(registry)
+		redislocker.RegisterMetrics(registry)
 		tusMetrics := prometheuscollector.New(handler.Metrics)
-		prometheus.MustRegister(tusMetrics)
+		registry.MustRegister(tusMetrics)
 	})
+	promHandler := promhttp.InstrumentMetricHandler(
+		registry, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
+	)
 
 	// Public endpoints
 	router.Route(l.prefix, func(r chi.Router) {
@@ -265,9 +269,8 @@ func (l *Launcher) Build() (chi.Router, error) {
 	router.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("OK"))
 	})
-	router.Get("/internal/metrics", func(w http.ResponseWriter, r *http.Request) {
-		promhttp.Handler().ServeHTTP(w, r)
-	})
+
+	router.Get("/internal/metrics", promHandler.ServeHTTP)
 
 	httpServer := &http.Server{
 		Addr:    l.httpAddress,

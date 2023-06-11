@@ -186,8 +186,8 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 	go launcher.Start()
 
 	onceMetrics.Do(func() {
-		gpmetrics.RegisterMetrics()
-		redislocker.RegisterMetrics()
+		gpmetrics.RegisterMetrics(nil)
+		redislocker.RegisterMetrics(nil)
 		if !opts.EnableV3Publish {
 			tus2metrics := prometheuscollector.New(tusHandler.Metrics)
 			prometheus.MustRegister(tus2metrics)
