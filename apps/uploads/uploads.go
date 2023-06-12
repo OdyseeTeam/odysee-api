@@ -402,6 +402,10 @@ func (h *Handler) listenToHooks() {
 // authByToken sends a 401 Unauthorized response for unverified tokens and 404 if no matching upload found for user.
 func (h *Handler) authByToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			next.ServeHTTP(w, r)
+			return
+		}
 		userID, err := h.extractUserIDFromRequest(r)
 
 		if err != nil {
@@ -429,6 +433,9 @@ func (h *Handler) authByToken(next http.Handler) http.Handler {
 // extractUserIDFromRequest retrieves token from request header and extracts user id from it
 func (h *Handler) extractUserIDFromRequest(r *http.Request) (int32, error) {
 	rt := jwtauth.TokenFromHeader(r)
+	if rt == "" {
+		return 0, errors.New("missing authentication token in request")
+	}
 	token, err := h.tokenValidator.ParseToken(rt)
 	if err != nil {
 		return 0, err

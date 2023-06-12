@@ -269,8 +269,9 @@ func (s *uploadSuite) TestUploadWrongToken() {
 	tokenHeader := fmt.Sprintf("Bearer %s", token)
 
 	wrongTokenGens := []struct {
-		code int
-		gen  func() string
+		code             int
+		tokenGenerator   func() string
+		responseContains string
 	}{
 		{
 			http.StatusNotFound,
@@ -279,6 +280,7 @@ func (s *uploadSuite) TestUploadWrongToken() {
 				s.Require().NoError(err)
 				return fmt.Sprintf("Bearer %s", token)
 			},
+			"",
 		},
 		{
 			http.StatusUnauthorized,
@@ -286,18 +288,22 @@ func (s *uploadSuite) TestUploadWrongToken() {
 				token, err := s.keyfob.GenerateToken(userID, time.Now().Add(-24*time.Hour))
 				s.Require().NoError(err)
 				return fmt.Sprintf("Bearer %s", token)
-			}},
+			},
+			"",
+		},
 		{
 			http.StatusUnauthorized,
 			func() string {
 				return "Bearer " + randomdata.Alphanumeric(128)
 			},
+			"",
 		},
 		{
 			http.StatusUnauthorized,
 			func() string {
 				return ""
 			},
+			"missing authentication token in request",
 		},
 	}
 
@@ -305,6 +311,13 @@ func (s *uploadSuite) TestUploadWrongToken() {
 	defer file.Close()
 
 	tusUploadURL := testServer.URL + baseURL
+
+	// CORS preflight request should work without authentication.
+	(&test.HTTPTest{
+		Method: http.MethodOptions,
+		URL:    tusUploadURL,
+		Code:   http.StatusOK,
+	}).RunHTTP(s.T())
 
 	// Try a wrong token for upload creation first.
 	(&test.HTTPTest{
@@ -370,12 +383,13 @@ func (s *uploadSuite) TestUploadWrongToken() {
 			URL:    tusUploadURL,
 			Code:   wtg.code,
 			ReqHeader: map[string]string{
-				AuthorizationHeader: wtg.gen(),
+				AuthorizationHeader: wtg.tokenGenerator(),
 				"Tus-Resumable":     "1.0.0",
 				"Upload-Offset":     fmt.Sprintf("%d", i),
 				"Content-Type":      "application/offset+octet-stream",
 			},
-			ReqBody: bytes.NewReader(chunk),
+			ReqBody:     bytes.NewReader(chunk),
+			ResContains: wtg.responseContains,
 		}).RunHTTP(s.T())
 	}
 }
