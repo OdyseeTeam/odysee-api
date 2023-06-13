@@ -54,9 +54,9 @@ type QueryCreatedPayload struct {
 }
 
 type Response struct {
-	Status  string
-	Error   string `json:",omitempty"`
-	Payload any    `json:",omitempty"`
+	Status  string `json:"status"`
+	Error   string `json:"error,omitempty"`
+	Payload any    `json:"payload,omitempty"`
 }
 
 func (h QueryHandler) CreateUpload(w http.ResponseWriter, r *http.Request) {

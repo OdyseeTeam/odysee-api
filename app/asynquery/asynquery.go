@@ -29,7 +29,7 @@ const FilePathParam = "file_path"
 var (
 	sdkNetError    = errors.New("network level sdk error")
 	sdkClientError = errors.New("client level sdk error")
-	reFilePathURL  = regexp.MustCompile(`^https?://([^/]+)/.+/([a-zA-Z0-9\+_]{32,})$`)
+	reFilePathURL  = regexp.MustCompile(`^https?://([^/]+)/.+/([a-zA-Z0-9\+_\.\-]{32,})$`)
 
 	onceMetrics sync.Once
 )
