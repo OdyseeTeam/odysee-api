@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
+
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -17,7 +18,7 @@ func AddJSONContentType(w http.ResponseWriter) {
 	w.Header().Add("content-type", "application/json; charset=utf-8")
 }
 
-func WriteJSON(w http.ResponseWriter, d interface{}) {
+func WriteJSON(w http.ResponseWriter, d any) {
 	rb, err := json.MarshalIndent(d, "", "  ")
 	if err != nil {
 		w.Write([]byte("error marshaling object: " + err.Error()))

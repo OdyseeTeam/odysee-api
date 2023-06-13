@@ -26,7 +26,7 @@ sequenceDiagram
     Client->>OAPI: POST /api/v1/asynqueries/
     activate OAPI
     note Left of OAPI: stream_create {file_path: <<upload-url>>}
-    OAPI-->>Client: 201 (Location: ./<<query-id>>)
+    OAPI-->>Client: 201 Created (<<query-id>>)
     deactivate OAPI
 
     loop Status Check

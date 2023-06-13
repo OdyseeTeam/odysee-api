@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	StatusSuccess   = "success"
-	StatusAuthError = "auth_error"
+	StatusAuthError          = "auth_error"
+	StatusUploadTokenCreated = "upload_token_created"
+	StatusQueryCreated       = "query_created"
 )
 
 type QueryHandler struct {
@@ -43,15 +44,19 @@ func NewHandler(callManager *CallManager, logger logging.KVLogger, keyfob *keybo
 	}
 }
 
-type UploadTokenResponse struct {
+type UploadTokenCreatedPayload struct {
 	Token    string `json:"token"`
 	Location string `json:"location"`
 }
 
+type QueryCreatedPayload struct {
+	QueryID string `json:"query_id"`
+}
+
 type Response struct {
-	Status  string `json:"status"`
-	Error   string `json:"error" omitempty:""`
-	Payload any    `json:"payload" omitempty:""`
+	Status  string
+	Error   string `json:",omitempty"`
+	Payload any    `json:",omitempty"`
 }
 
 func (h QueryHandler) CreateUpload(w http.ResponseWriter, r *http.Request) {
@@ -76,8 +81,8 @@ func (h QueryHandler) CreateUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp, err := json.Marshal(Response{
-		Status:  StatusSuccess,
-		Payload: UploadTokenResponse{Token: token, Location: h.uploadServiceURL},
+		Status:  StatusUploadTokenCreated,
+		Payload: UploadTokenCreatedPayload{Token: token, Location: h.uploadServiceURL},
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -91,16 +96,11 @@ func (h QueryHandler) Create(w http.ResponseWriter, r *http.Request) {
 	responses.AddJSONContentType(w)
 	u, err := auth.FromRequest(r)
 	if err != nil {
-		resp, jerr := json.Marshal(Response{
+		w.WriteHeader(http.StatusUnauthorized)
+		responses.WriteJSON(w, Response{
 			Status: StatusAuthError,
 			Error:  err.Error(),
 		})
-		if jerr != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write(resp)
 		return
 	}
 	var rpcReq *jsonrpc.RPCRequest
@@ -117,8 +117,13 @@ func (h QueryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		rpcerrors.Write(w, rpcerrors.NewInternalError(err))
 		return
 	}
-	w.Header().Add("location", fmt.Sprintf("./%s", aq.ID))
 	w.WriteHeader(http.StatusCreated)
+	responses.WriteJSON(w, Response{
+		Status: StatusQueryCreated,
+		Payload: QueryCreatedPayload{
+			QueryID: aq.ID,
+		},
+	})
 }
 
 // Get returns current details for the upload.
@@ -182,16 +187,30 @@ func (r *Response) UnmarshalJSON(data []byte) error {
 	}
 
 	*r = Response(*aux)
+	var payload any
 	switch r.Status {
-	case StatusSuccess:
-		var payload UploadTokenResponse
-		if err := mapstructure.Decode(r.Payload, &payload); err != nil {
-			return fmt.Errorf("error decoding payload: %w", err)
-		}
-		r.Payload = payload
+	case StatusQueryCreated:
+		payload = QueryCreatedPayload{}
+	case StatusUploadTokenCreated:
+		payload = UploadTokenCreatedPayload{}
 	default:
 		return errors.Err("unknown status")
 	}
+
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		Metadata:         nil,
+		Result:           &payload,
+		TagName:          "json",
+		WeaklyTypedInput: true,
+	})
+	if err != nil {
+		return fmt.Errorf("error configuring payload decoder: %w", err)
+	}
+
+	if err := decoder.Decode(r.Payload); err != nil {
+		return fmt.Errorf("error decoding payload: %w", err)
+	}
+	r.Payload = payload
 
 	return nil
 }
