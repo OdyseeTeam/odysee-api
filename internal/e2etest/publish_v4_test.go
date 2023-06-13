@@ -88,10 +88,10 @@ func (s *publishV4Suite) TestPublish() {
 	require.Nil(err)
 	require.NoError(json.Unmarshal(body, rr))
 	assert.Empty(rr.Error)
-	require.Equal(asynquery.StatusSuccess, rr.Status)
-	assert.NotEmpty(rr.Payload.(asynquery.UploadTokenResponse).Token)
+	require.Equal(asynquery.StatusUploadTokenCreated, rr.Status)
+	assert.NotEmpty(rr.Payload.(asynquery.UploadTokenCreatedPayload).Token)
 
-	uploadTokenHeader := fmt.Sprintf("Bearer %s", rr.Payload.(asynquery.UploadTokenResponse).Token)
+	uploadTokenHeader := fmt.Sprintf("Bearer %s", rr.Payload.(asynquery.UploadTokenCreatedPayload).Token)
 
 	uploadFile := s.createRandomFile(fileSize)
 	defer uploadFile.Close()
