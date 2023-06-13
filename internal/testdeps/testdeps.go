@@ -2,6 +2,7 @@ package testdeps
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"github.com/go-redis/redis/v8"
@@ -10,7 +11,7 @@ import (
 )
 
 const (
-	RedisTestURL = "redis://:odyredis@localhost:6379/0"
+	baseRedisTestURL = "redis://:odyredis@localhost:6379/"
 )
 
 type RedisTestHelper struct {
@@ -20,11 +21,18 @@ type RedisTestHelper struct {
 	URL       string
 }
 
-func NewRedisTestHelper(t *testing.T) *RedisTestHelper {
+func NewRedisTestHelper(t *testing.T, args ...int) *RedisTestHelper {
 	t.Helper()
-	redisOpts, err := redis.ParseURL(RedisTestURL)
+	var db int
+
+	if len(args) > 0 {
+		db = args[0]
+	}
+	url := baseRedisTestURL + strconv.Itoa(db)
+	redisOpts, err := redis.ParseURL(url)
+
 	require.NoError(t, err)
-	asynqOpts, err := asynq.ParseRedisURI(RedisTestURL)
+	asynqOpts, err := asynq.ParseRedisURI(url)
 	require.NoError(t, err)
 	c := redis.NewClient(redisOpts)
 	c.FlushDB(context.Background())
@@ -36,6 +44,6 @@ func NewRedisTestHelper(t *testing.T) *RedisTestHelper {
 		AsynqOpts: asynqOpts,
 		Client:    c,
 		Opts:      redisOpts,
-		URL:       RedisTestURL,
+		URL:       url,
 	}
 }

@@ -34,7 +34,8 @@ type Deleter interface {
 
 type Launcher struct {
 	blobPath        string
-	redisURL        string
+	incomingBusURL  string
+	resultsBusURL   string
 	reflectorConfig map[string]string
 	retriever       Retriever
 	logger          logging.KVLogger
@@ -43,13 +44,13 @@ type Launcher struct {
 }
 
 type Forklift struct {
-	analyzer  *fileanalyzer.Analyzer
-	blobPath  string
-	bus       *bus.Bus
-	logger    logging.KVLogger
-	retriever Retriever
-	store     *blobs.Store
-	queries   *database.Queries
+	analyzer   *fileanalyzer.Analyzer
+	blobPath   string
+	logger     logging.KVLogger
+	retriever  Retriever
+	store      *blobs.Store
+	queries    *database.Queries
+	resultsBus *bus.Client
 }
 
 type LauncherOption func(l *Launcher)
@@ -66,9 +67,15 @@ func WithBlobPath(blobPath string) LauncherOption {
 	}
 }
 
-func WithRedisURL(redisURL string) LauncherOption {
+func WithIncomingBusURL(incomingBusURL string) LauncherOption {
 	return func(l *Launcher) {
-		l.redisURL = redisURL
+		l.incomingBusURL = incomingBusURL
+	}
+}
+
+func WithResultsBusURL(incomingBusURL string) LauncherOption {
+	return func(l *Launcher) {
+		l.resultsBusURL = incomingBusURL
 	}
 }
 
@@ -111,7 +118,11 @@ func NewLauncher(options ...LauncherOption) *Launcher {
 }
 
 func (l *Launcher) Build() (*bus.Bus, error) {
-	redisOpts, err := asynq.ParseRedisURI(l.redisURL)
+	incomingRedisOpts, err := asynq.ParseRedisURI(l.incomingBusURL)
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to redis: %w", err)
+	}
+	redisResultsBusOpts, err := asynq.ParseRedisURI(l.resultsBusURL)
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to redis: %w", err)
 	}
@@ -143,12 +154,17 @@ func (l *Launcher) Build() (*bus.Bus, error) {
 		queries:   database.New(l.db),
 	}
 
-	b, err := bus.New(redisOpts, bus.WithLogger(l.logger), bus.WithConcurrency(l.concurrency))
+	b, err := bus.New(incomingRedisOpts, bus.WithLogger(l.logger), bus.WithConcurrency(l.concurrency))
 	if err != nil {
 		return nil, fmt.Errorf("unable to start task bus: %w", err)
 	}
 	b.AddHandler(tasks.TaskReflectUpload, f.HandleTask)
-	f.bus = b
+
+	rb, err := bus.NewClient(redisResultsBusOpts, l.logger)
+	if err != nil {
+		return nil, fmt.Errorf("unable to start results bus client: %w", err)
+	}
+	f.resultsBus = rb
 
 	l.logger.Info("forklift initialized")
 	return b, nil
@@ -272,7 +288,7 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 		}
 	}
 
-	err = f.bus.Client().Put(tasks.TaskAsynqueryMerge, tasks.AsynqueryMergePayload{
+	err = f.resultsBus.Put(tasks.TaskAsynqueryMerge, tasks.AsynqueryMergePayload{
 		UploadID: payload.UploadID,
 		UserID:   payload.UserID,
 		Meta:     meta,

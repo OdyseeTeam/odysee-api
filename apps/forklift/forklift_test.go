@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/OdyseeTeam/odysee-api/apps/uploads"
 	"github.com/OdyseeTeam/odysee-api/apps/uploads/database"
 	"github.com/OdyseeTeam/odysee-api/internal/tasks"
 	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/OdyseeTeam/odysee-api/internal/testdeps"
+	"github.com/OdyseeTeam/odysee-api/pkg/bus"
 	"github.com/OdyseeTeam/odysee-api/pkg/configng"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 
@@ -39,22 +41,27 @@ func TestForkliftSuite(t *testing.T) {
 
 func (s *forkliftSuite) TestHandleTask() {
 	redisHelper := testdeps.NewRedisTestHelper(s.T())
+	redisResultsHelper := testdeps.NewRedisTestHelper(s.T(), 1)
 
 	retriever := NewS3Retriever(s.T().TempDir(), s.s3c)
 	l := NewLauncher(
 		WithReflectorConfig(s.helper.ReflectorConfig),
 		WithBlobPath(s.T().TempDir()),
 		WithRetriever(retriever),
-		WithRedisURL(redisHelper.URL),
+		WithIncomingBusURL(redisHelper.URL),
+		WithResultsBusURL(redisResultsHelper.URL),
 		WithLogger(zapadapter.NewKV(nil)),
 		WithDB(s.upHelper.DB),
 	)
 
-	bus, err := l.Build()
+	incomingBus, err := l.Build()
+	s.Require().NoError(err)
+
+	resultsBus, err := bus.New(redisResultsHelper.AsynqOpts, bus.WithLogger(zapadapter.NewKV(nil)))
 	s.Require().NoError(err)
 
 	merges := make(chan tasks.AsynqueryMergePayload)
-	bus.AddHandler(tasks.TaskAsynqueryMerge, func(_ context.Context, task *asynq.Task) error {
+	resultsBus.AddHandler(tasks.TaskAsynqueryMerge, func(_ context.Context, task *asynq.Task) error {
 		fmt.Println("got incoming task")
 		var payload tasks.AsynqueryMergePayload
 		err := json.Unmarshal(task.Payload(), &payload)
@@ -63,9 +70,11 @@ func (s *forkliftSuite) TestHandleTask() {
 		return nil
 	})
 
-	go bus.StartHandlers()
+	go incomingBus.StartHandlers()
+	go resultsBus.StartHandlers()
 	defer func() {
-		bus.Shutdown()
+		resultsBus.Shutdown()
+		incomingBus.Shutdown()
 	}()
 
 	cases := []struct {
@@ -121,13 +130,16 @@ func (s *forkliftSuite) TestHandleTask() {
 
 	for _, c := range cases {
 		s.T().Logf("creating upload for %s", c.fileName)
-		upload, err := s.upHelper.CreateUpload(c.fileName, bus.Client())
+		upload, err := s.upHelper.CreateUpload(c.fileName, incomingBus.Client())
 		s.Require().NoError(err)
 		s.T().Logf("created upload for %s", c.fileName)
 
-		payload := <-merges
-
-		c.expected(upload, payload)
+		select {
+		case payload := <-merges:
+			c.expected(upload, payload)
+		case <-time.After(30 * time.Second):
+			s.Fail("timeout waiting for task to be processed")
+		}
 	}
 }
 

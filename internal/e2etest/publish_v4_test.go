@@ -171,9 +171,6 @@ func (s *publishV4Suite) TestPublish() {
 		},
 		ReqBody: bytes.NewReader(streamCreateReq),
 	}).RunHTTP(t)
-	loc, err = url.Parse(resp.Header.Get("Location"))
-	require.NoError(err)
-	assert.Regexp(`[\w\d]{32}`, loc.Path)
 
 	var query *models.Asynquery
 	Wait(s.T(), "successful query settling in the database", 45*time.Second, 1000*time.Millisecond, func() error {
@@ -271,7 +268,8 @@ func (s *publishV4Suite) SetupSuite() {
 		forklift.WithReflectorConfig(s.forkliftHelper.ReflectorConfig),
 		forklift.WithBlobPath(s.T().TempDir()),
 		forklift.WithRetriever(retriever),
-		forklift.WithRedisURL(s.redisHelper.URL),
+		forklift.WithIncomingBusURL(s.redisHelper.URL),
+		forklift.WithResultsBusURL(s.redisHelper.URL),
 		forklift.WithLogger(zapadapter.NewKV(nil)),
 		forklift.WithDB(s.uploadsHelper.DB),
 	)

@@ -2,7 +2,7 @@ package forklift
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"os"
 	"path"
 
@@ -37,7 +37,7 @@ func NewS3Retriever(tempPath string, client *s3.Client) *s3Retriever {
 func (r *s3Retriever) Retrieve(ctx context.Context, uploadID string, loc tasks.FileLocationS3) (*LocalFile, error) {
 	sf, err := os.Create(path.Join(r.tempPath, uploadID))
 	if err != nil {
-		return nil, errors.New("failed to create local upload file")
+		return nil, fmt.Errorf("failed to create local upload file (%s): %w", path.Join(r.tempPath, uploadID), err)
 	}
 	defer sf.Close()
 

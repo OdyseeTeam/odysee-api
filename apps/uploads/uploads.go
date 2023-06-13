@@ -492,6 +492,7 @@ func (h *Handler) completeUpload(uploadParams database.MarkUploadCompletedParams
 		if err != nil {
 			return err
 		}
+		h.logger.Info("forklift notified", "upload_id", uploadParams.ID, "user_id", uploadParams.UserID)
 	}
 	return nil
 }
