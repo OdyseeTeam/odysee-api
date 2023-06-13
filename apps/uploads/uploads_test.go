@@ -317,6 +317,14 @@ func (s *uploadSuite) TestUploadWrongToken() {
 		Method: http.MethodOptions,
 		URL:    tusUploadURL,
 		Code:   http.StatusOK,
+		ReqHeader: map[string]string{
+			"Access-Control-Request-Headers": "authorization, tus-resumable, upload-length,upload-metadata",
+			"Access-Control-Request-Method":  "POST",
+			"Origin":                         "http://localhost:9090",
+		},
+		ResHeader: map[string]string{
+			"Access-Control-Allow-Origin": "http://localhost:9090",
+		},
 	}).RunHTTP(s.T())
 
 	// Try a wrong token for upload creation first.
@@ -416,6 +424,7 @@ func (s *uploadSuite) SetupSuite() {
 		WithDB(upHelper.DB),
 		WithPublicKey(kf.PublicKey()),
 		WithLogger(zapadapter.NewKV(nil)),
+		WithCORSDomains([]string{"http://localhost:9090"}),
 	)
 	r, err := l.Build()
 	s.Require().NoError(err)

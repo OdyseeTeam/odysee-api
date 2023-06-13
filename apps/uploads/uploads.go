@@ -45,6 +45,16 @@ var (
 	reExtractFileID = regexp.MustCompile(`([^/]{32,})\/?$`)
 )
 
+var TusHeaders = []string{
+	"Http-Method-Override",
+	"Upload-Length",
+	"Upload-Offset",
+	"Tus-Resumable",
+	"Upload-Metadata",
+	"Upload-Defer-Length",
+	"Upload-Concat",
+}
+
 // Handler handle media publishing on odysee-api, it implements TUS
 // specifications to support resumable file upload and extends the handler to
 // support fetching media from remote url.
@@ -83,6 +93,7 @@ func NewLauncher(options ...LauncherOption) *Launcher {
 		logger:      logging.NoopKVLogger{},
 		prefix:      "/v1/uploads",
 		httpAddress: "0.0.0.0:8080",
+		corsDomains: []string{""},
 	}
 
 	for _, opt := range options {
@@ -231,7 +242,7 @@ func (l *Launcher) Build() (chi.Router, error) {
 	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   l.corsDomains,
 		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodHead, http.MethodDelete, http.MethodOptions},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Requested-With"},
+		AllowedHeaders:   append([]string{"Accept", "Authorization", "Content-Type", "X-Requested-With"}, TusHeaders...),
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: false,
 		MaxAge:           300,
