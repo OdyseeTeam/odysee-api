@@ -1,4 +1,4 @@
-package bus
+package queue
 
 import (
 	"context"
@@ -7,39 +7,42 @@ import (
 
 	"github.com/OdyseeTeam/odysee-api/internal/testdeps"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
+
 	"github.com/hibiken/asynq"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const busTestChannel = "test"
 
-func TestBusIntegration(t *testing.T) {
+func TestQueueIntegration(t *testing.T) {
 	redisHelper := testdeps.NewRedisTestHelper(t)
 
-	b, err := New(redisHelper.AsynqOpts, WithConcurrency(2))
-	assert.NoError(t, err)
-	defer b.Shutdown()
+	queue, err := New(
+		WithRequestsConnOpts(redisHelper.AsynqOpts),
+		WithResponsesConnOpts(redisHelper.AsynqOpts),
+		WithConcurrency(2),
+		WithLogger(zapadapter.NewKV(nil)),
+	)
+	require.NoError(t, err)
+	defer queue.Shutdown()
 
 	results := make(chan struct{}, 1)
 
-	b.AddHandler(busTestChannel, func(ctx context.Context, task *asynq.Task) error {
+	queue.AddHandler(busTestChannel, func(ctx context.Context, task *asynq.Task) error {
 		results <- struct{}{}
 		return nil
 	})
 
 	go func() {
-		err := b.StartHandlers()
+		err := queue.StartHandlers()
 		assert.NoError(t, err)
 	}()
-
-	client, err := NewClient(redisHelper.AsynqOpts, zapadapter.NewKV(nil))
-	assert.NoError(t, err)
-	defer client.Close()
 
 	payload := map[string]interface{}{
 		"key": "value",
 	}
-	err = client.Put(busTestChannel, payload, 10, time.Second, time.Hour)
+	err = queue.Put(busTestChannel, payload)
 	assert.NoError(t, err)
 
 	select {

@@ -15,11 +15,6 @@ const LabelSplit = "split"
 const LabelUpstream = "upstream"
 
 var (
-	QueueTasks = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: ns,
-		Name:      "queue_tasks",
-	}, []string{"status"})
-
 	ProcessingTime = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: ns,
 		Name:      "processing_time",
@@ -33,7 +28,7 @@ var (
 
 func RegisterMetrics() {
 	prometheus.MustRegister(
-		QueueTasks, ProcessingTime, ProcessingErrors,
+		ProcessingTime, ProcessingErrors,
 	)
 }
 

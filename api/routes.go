@@ -166,7 +166,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 		panic(err)
 	}
 
-	asynqueryBusOpts, err := config.GetRedisBusAsynqueryOpts()
+	asynqueryBusOpts, err := config.GetAsynqueryRequestsConnOpts()
 	if err != nil {
 		panic(err)
 	}

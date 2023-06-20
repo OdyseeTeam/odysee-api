@@ -3,7 +3,11 @@ Database:
   DBName: uploads
   AutoMigrations: true
 
-RedisBusForklift: redis://:odyredis@host.docker.internal:6379/4
+# ForkliftRequestsConnURL is Redis database where forklift will be listening for complete uploads requests.
+# It corresponds to ForkliftRequestsConnURL in uploads.yml config.
+ForkliftRequestsConnURL: redis://:odyredis@host.docker.internal:6379/4
+# AsynqueryRequestsConnURL is Redis database where asynquery will be listening for finalized uploads requests.
+AsynqueryRequestsConnURL: redis://:odyredis@host.docker.internal:6379/3
 
 IncomingStorage:
   Endpoint: http://localhost:9002

@@ -15,9 +15,9 @@ import (
 
 	"github.com/OdyseeTeam/odysee-api/apps/uploads/database"
 	"github.com/OdyseeTeam/odysee-api/internal/tasks"
-	"github.com/OdyseeTeam/odysee-api/pkg/bus"
 	"github.com/OdyseeTeam/odysee-api/pkg/keybox"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+	"github.com/OdyseeTeam/odysee-api/pkg/queue"
 	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -60,7 +60,7 @@ var TusHeaders = []string{
 // support fetching media from remote url.
 type Handler struct {
 	*tusd.UnroutedHandler
-	bus            *bus.Client
+	queue          *queue.Queue
 	s3bucket       string
 	queries        *database.Queries
 	logger         logging.KVLogger
@@ -72,20 +72,20 @@ type Handler struct {
 type LauncherOption func(*Launcher)
 
 type Launcher struct {
-	corsDomains []string
-	db          database.DBTX
-	fileLocker  tusd.Locker
-	httpAddress string
-	prefix      string
-	publicKey   crypto.PublicKey
-	router      chi.Router
-	busRedisURL string
-	s3client    *s3.S3
-	s3bucket    string
-	handler     *Handler
-	httpServer  *http.Server
-	logger      logging.KVLogger
-	readyCancel context.CancelFunc
+	corsDomains   []string
+	db            database.DBTX
+	fileLocker    tusd.Locker
+	httpAddress   string
+	prefix        string
+	publicKey     crypto.PublicKey
+	router        chi.Router
+	queueRedisURL string
+	s3client      *s3.S3
+	s3bucket      string
+	handler       *Handler
+	httpServer    *http.Server
+	logger        logging.KVLogger
+	readyCancel   context.CancelFunc
 }
 
 func NewLauncher(options ...LauncherOption) *Launcher {
@@ -139,9 +139,9 @@ func WithPublicKey(publicKey crypto.PublicKey) LauncherOption {
 	}
 }
 
-func WithBusRedisURL(busRedisURL string) LauncherOption {
+func WithQueueRedisURL(url string) LauncherOption {
 	return func(l *Launcher) {
-		l.busRedisURL = busRedisURL
+		l.queueRedisURL = url
 	}
 }
 
@@ -195,16 +195,16 @@ func (l *Launcher) Build() (chi.Router, error) {
 	}
 	l.readyCancel = readyCancel
 
-	if l.busRedisURL != "" {
-		redisOpts, err := asynq.ParseRedisURI(l.busRedisURL)
+	if l.queueRedisURL != "" {
+		opts, err := asynq.ParseRedisURI(l.queueRedisURL)
 		if err != nil {
 			return nil, err
 		}
-		bus, err := bus.NewClient(redisOpts, l.logger)
+		queue, err := queue.New(queue.WithResponsesConnOpts(opts), queue.WithLogger(l.logger))
 		if err != nil {
 			return nil, err
 		}
-		handler.bus = bus
+		handler.queue = queue
 		l.logger.Info("bus client created")
 	} else {
 		l.logger.Warn("skipping bus config as no redis url was provided")
@@ -476,8 +476,8 @@ func extractUploadIDFromPath(url string) string {
 
 // completeUpload sends a task to the bus to reflect the upload to the user's bucket
 func (h *Handler) completeUpload(uploadParams database.MarkUploadCompletedParams) error {
-	if h.bus != nil {
-		err := h.bus.Put(
+	if h.queue != nil {
+		err := h.queue.Put(
 			tasks.TaskReflectUpload,
 			tasks.ReflectUploadPayload{
 				UploadID: uploadParams.ID,
@@ -487,7 +487,7 @@ func (h *Handler) completeUpload(uploadParams database.MarkUploadCompletedParams
 					Key:    uploadParams.Key,
 					Bucket: h.s3bucket,
 				},
-			}, 10, 72*time.Hour, 72*time.Hour,
+			}, queue.WithRequestRetry(10), queue.WithRequestTimeout(24*time.Hour),
 		)
 		if err != nil {
 			return err

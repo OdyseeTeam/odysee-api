@@ -239,7 +239,7 @@ func (s *publishV4Suite) SetupSuite() {
 		uploads.WithDB(s.uploadsHelper.DB),
 		uploads.WithPublicKey(kf.PublicKey()),
 		uploads.WithLogger(zapadapter.NewKV(nil)),
-		uploads.WithBusRedisURL(s.redisHelper.URL),
+		uploads.WithQueueRedisURL(s.redisHelper.URL),
 	)
 	s.uploadsRouter, err = s.uploadsLauncher.Build()
 	require.NoError(err)
@@ -268,8 +268,8 @@ func (s *publishV4Suite) SetupSuite() {
 		forklift.WithReflectorConfig(s.forkliftHelper.ReflectorConfig),
 		forklift.WithBlobPath(s.T().TempDir()),
 		forklift.WithRetriever(retriever),
-		forklift.WithIncomingBusURL(s.redisHelper.URL),
-		forklift.WithResultsBusURL(s.redisHelper.URL),
+		forklift.WithRequestsConnURL(s.redisHelper.URL),
+		forklift.WithResponsesConnURL(s.redisHelper.URL),
 		forklift.WithLogger(zapadapter.NewKV(nil)),
 		forklift.WithDB(s.uploadsHelper.DB),
 	)

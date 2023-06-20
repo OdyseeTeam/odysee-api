@@ -14,9 +14,9 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/tasks"
 	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/OdyseeTeam/odysee-api/internal/testdeps"
-	"github.com/OdyseeTeam/odysee-api/pkg/bus"
 	"github.com/OdyseeTeam/odysee-api/pkg/configng"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
+	"github.com/OdyseeTeam/odysee-api/pkg/queue"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -40,28 +40,29 @@ func TestForkliftSuite(t *testing.T) {
 }
 
 func (s *forkliftSuite) TestHandleTask() {
-	redisHelper := testdeps.NewRedisTestHelper(s.T())
-	redisResultsHelper := testdeps.NewRedisTestHelper(s.T(), 1)
+	redisRequestsHelper := testdeps.NewRedisTestHelper(s.T())
+	redisResponsesHelper := testdeps.NewRedisTestHelper(s.T(), 1)
 
 	retriever := NewS3Retriever(s.T().TempDir(), s.s3c)
 	l := NewLauncher(
 		WithReflectorConfig(s.helper.ReflectorConfig),
 		WithBlobPath(s.T().TempDir()),
 		WithRetriever(retriever),
-		WithIncomingBusURL(redisHelper.URL),
-		WithResultsBusURL(redisResultsHelper.URL),
+		WithRequestsConnURL(redisRequestsHelper.URL),
+		WithResponsesConnURL(redisResponsesHelper.URL),
 		WithLogger(zapadapter.NewKV(nil)),
 		WithDB(s.upHelper.DB),
 	)
 
-	incomingBus, err := l.Build()
+	incomingQueue, err := l.Build()
 	s.Require().NoError(err)
 
-	resultsBus, err := bus.New(redisResultsHelper.AsynqOpts, bus.WithLogger(zapadapter.NewKV(nil)))
+	// A queue for the mocking results handler
+	responsesQueue, err := queue.New(queue.WithRequestsConnURL(redisResponsesHelper.URL), queue.WithLogger(zapadapter.NewKV(nil)))
 	s.Require().NoError(err)
 
 	merges := make(chan tasks.AsynqueryMergePayload)
-	resultsBus.AddHandler(tasks.TaskAsynqueryMerge, func(_ context.Context, task *asynq.Task) error {
+	responsesQueue.AddHandler(tasks.TaskAsynqueryMerge, func(_ context.Context, task *asynq.Task) error {
 		fmt.Println("got incoming task")
 		var payload tasks.AsynqueryMergePayload
 		err := json.Unmarshal(task.Payload(), &payload)
@@ -70,11 +71,11 @@ func (s *forkliftSuite) TestHandleTask() {
 		return nil
 	})
 
-	go incomingBus.StartHandlers()
-	go resultsBus.StartHandlers()
+	go incomingQueue.StartHandlers()
+	go responsesQueue.StartHandlers()
 	defer func() {
-		resultsBus.Shutdown()
-		incomingBus.Shutdown()
+		incomingQueue.Shutdown()
+		responsesQueue.Shutdown()
 	}()
 
 	cases := []struct {
@@ -130,7 +131,7 @@ func (s *forkliftSuite) TestHandleTask() {
 
 	for _, c := range cases {
 		s.T().Logf("creating upload for %s", c.fileName)
-		upload, err := s.upHelper.CreateUpload(c.fileName, incomingBus.Client())
+		upload, err := s.upHelper.CreateUpload(c.fileName, incomingQueue)
 		s.Require().NoError(err)
 		s.T().Logf("created upload for %s", c.fileName)
 

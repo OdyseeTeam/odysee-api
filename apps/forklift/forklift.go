@@ -13,9 +13,9 @@ import (
 	"github.com/OdyseeTeam/odysee-api/apps/uploads/database"
 	"github.com/OdyseeTeam/odysee-api/internal/tasks"
 	"github.com/OdyseeTeam/odysee-api/pkg/blobs"
-	"github.com/OdyseeTeam/odysee-api/pkg/bus"
 	"github.com/OdyseeTeam/odysee-api/pkg/fileanalyzer"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+	"github.com/OdyseeTeam/odysee-api/pkg/queue"
 
 	"github.com/tabbed/pqtype"
 
@@ -33,24 +33,24 @@ type Deleter interface {
 }
 
 type Launcher struct {
-	blobPath        string
-	incomingBusURL  string
-	resultsBusURL   string
-	reflectorConfig map[string]string
-	retriever       Retriever
-	logger          logging.KVLogger
-	db              database.DBTX
-	concurrency     int
+	blobPath         string
+	requestsConnURL  string
+	responsesConnURL string
+	reflectorConfig  map[string]string
+	retriever        Retriever
+	logger           logging.KVLogger
+	db               database.DBTX
+	concurrency      int
 }
 
 type Forklift struct {
-	analyzer   *fileanalyzer.Analyzer
-	blobPath   string
-	logger     logging.KVLogger
-	retriever  Retriever
-	store      *blobs.Store
-	queries    *database.Queries
-	resultsBus *bus.Client
+	analyzer  *fileanalyzer.Analyzer
+	blobPath  string
+	logger    logging.KVLogger
+	retriever Retriever
+	store     *blobs.Store
+	queries   *database.Queries
+	queue     *queue.Queue
 }
 
 type LauncherOption func(l *Launcher)
@@ -61,27 +61,27 @@ func WithLogger(logger logging.KVLogger) LauncherOption {
 	}
 }
 
-func WithBlobPath(blobPath string) LauncherOption {
+func WithBlobPath(path string) LauncherOption {
 	return func(l *Launcher) {
-		l.blobPath = blobPath
+		l.blobPath = path
 	}
 }
 
-func WithIncomingBusURL(incomingBusURL string) LauncherOption {
+func WithRequestsConnURL(url string) LauncherOption {
 	return func(l *Launcher) {
-		l.incomingBusURL = incomingBusURL
+		l.requestsConnURL = url
 	}
 }
 
-func WithResultsBusURL(incomingBusURL string) LauncherOption {
+func WithResponsesConnURL(url string) LauncherOption {
 	return func(l *Launcher) {
-		l.resultsBusURL = incomingBusURL
+		l.responsesConnURL = url
 	}
 }
 
-func WithReflectorConfig(reflectorConfig map[string]string) LauncherOption {
+func WithReflectorConfig(config map[string]string) LauncherOption {
 	return func(l *Launcher) {
-		l.reflectorConfig = reflectorConfig
+		l.reflectorConfig = config
 	}
 }
 
@@ -117,16 +117,7 @@ func NewLauncher(options ...LauncherOption) *Launcher {
 	return launcher
 }
 
-func (l *Launcher) Build() (*bus.Bus, error) {
-	incomingRedisOpts, err := asynq.ParseRedisURI(l.incomingBusURL)
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to redis: %w", err)
-	}
-	redisResultsBusOpts, err := asynq.ParseRedisURI(l.resultsBusURL)
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to redis: %w", err)
-	}
-
+func (l *Launcher) Build() (*queue.Queue, error) {
 	if l.db == nil {
 		return nil, errors.New("database is required")
 	}
@@ -154,20 +145,17 @@ func (l *Launcher) Build() (*bus.Bus, error) {
 		queries:   database.New(l.db),
 	}
 
-	b, err := bus.New(incomingRedisOpts, bus.WithLogger(l.logger), bus.WithConcurrency(l.concurrency))
+	q, err := queue.New(
+		queue.WithRequestsConnURL(l.requestsConnURL),
+		queue.WithResponsesConnURL(l.responsesConnURL),
+		queue.WithConcurrency(l.concurrency),
+		queue.WithLogger(l.logger))
 	if err != nil {
-		return nil, fmt.Errorf("unable to start task bus: %w", err)
+		return nil, fmt.Errorf("unable to initialize queue: %w", err)
 	}
-	b.AddHandler(tasks.TaskReflectUpload, f.HandleTask)
-
-	rb, err := bus.NewClient(redisResultsBusOpts, l.logger)
-	if err != nil {
-		return nil, fmt.Errorf("unable to start results bus client: %w", err)
-	}
-	f.resultsBus = rb
-
+	q.AddHandler(tasks.TaskReflectUpload, f.HandleTask)
 	l.logger.Info("forklift initialized")
-	return b, nil
+	return q, nil
 }
 
 func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
@@ -288,11 +276,11 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 		}
 	}
 
-	err = f.resultsBus.Put(tasks.TaskAsynqueryMerge, tasks.AsynqueryMergePayload{
+	err = f.queue.Put(tasks.TaskAsynqueryMerge, tasks.AsynqueryMergePayload{
 		UploadID: payload.UploadID,
 		UserID:   payload.UserID,
 		Meta:     meta,
-	}, 99, 15*time.Minute, 72*time.Hour)
+	}, queue.WithRequestRetry(99), queue.WithRequestTimeout(15*time.Minute))
 	if err != nil {
 		log.Error("merge request failed, bus error", "err", err)
 		return err
