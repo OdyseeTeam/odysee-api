@@ -85,6 +85,14 @@ func (s *analyzerSuite) TestAnalyze() {
 			mimeName:          "document",
 			ext:               ".doc",
 		},
+		{
+			kind:              "bin",
+			url:               "http://speedtest.ftp.otenet.gr/files/test1Mb.db",
+			getMediaInfoError: errors.New("no media info for 'binary' type"),
+			mimeName:          "binary",
+			mimeType:          "application/octet-stream",
+			ext:               ".bin",
+		},
 	}
 
 	for _, c := range cases {

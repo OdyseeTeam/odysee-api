@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"strings"
 
 	"github.com/h2non/filetype"
 	"gopkg.in/vansante/go-ffprobe.v2"
@@ -138,10 +137,7 @@ func (si *StreamInfo) DetectMediaType() error {
 	fileExt = "." + fileExt
 	t, ok := extensions[fileExt]
 	if !ok {
-		si.MediaType = &MediaType{
-			MIME: fmt.Sprintf("application/x-ext-%s", strings.TrimPrefix(fileExt, ".")),
-			Name: "binary",
-		}
+		si.MediaType = &defaultType
 	} else {
 		si.MediaType = &t
 	}
