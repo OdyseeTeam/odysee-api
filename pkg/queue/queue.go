@@ -22,17 +22,20 @@ type Options struct {
 	delayFunc         asynq.RetryDelayFunc
 	logger            logging.KVLogger
 	requestsConnOpts  asynq.RedisConnOpt
+	requestsConnURL   string
 	responsesConnOpts asynq.RedisConnOpt
+	responsesConnURL  string
 }
 
-type RequestOptions struct {
+type MessageOptions struct {
 	retry              int
 	timeout, retention time.Duration
 }
 
 type Queue struct {
 	options         *Options
-	resultsClient   *asynq.Client
+	requestsClient  *asynq.Client
+	responsesClient *asynq.Client
 	asynqInspector  *asynq.Inspector
 	asynqServer     *asynq.Server
 	handlerStopChan chan struct{}
@@ -59,6 +62,7 @@ func WithRequestsConnURL(url string) func(options *Options) {
 			panic(err)
 		}
 		options.requestsConnOpts = opts
+		options.requestsConnURL = url
 	}
 }
 
@@ -69,6 +73,7 @@ func WithResponsesConnURL(url string) func(options *Options) {
 			panic(err)
 		}
 		options.responsesConnOpts = opts
+		options.responsesConnURL = url
 	}
 }
 
@@ -90,20 +95,20 @@ func WithLogger(logger logging.KVLogger) func(options *Options) {
 	}
 }
 
-func WithRequestRetry(retry int) func(options *RequestOptions) {
-	return func(options *RequestOptions) {
+func WithRequestRetry(retry int) func(options *MessageOptions) {
+	return func(options *MessageOptions) {
 		options.retry = retry
 	}
 }
 
-func WithRequestTimeout(timeout time.Duration) func(options *RequestOptions) {
-	return func(options *RequestOptions) {
+func WithRequestTimeout(timeout time.Duration) func(options *MessageOptions) {
+	return func(options *MessageOptions) {
 		options.timeout = timeout
 	}
 }
 
-func WithRequestRetention(retention time.Duration) func(options *RequestOptions) {
-	return func(options *RequestOptions) {
+func WithRequestRetention(retention time.Duration) func(options *MessageOptions) {
+	return func(options *MessageOptions) {
 		options.retention = retention
 	}
 }
@@ -139,7 +144,7 @@ func New(optionFuncs ...func(*Options)) (*Queue, error) {
 		if err != nil {
 			return nil, fmt.Errorf("redis responses connection failed: %w", err)
 		}
-		queue.resultsClient = asynq.NewClient(options.requestsConnOpts)
+		queue.responsesClient = asynq.NewClient(options.responsesConnOpts)
 		conn = true
 	}
 	if options.requestsConnOpts != nil {
@@ -148,6 +153,7 @@ func New(optionFuncs ...func(*Options)) (*Queue, error) {
 			return nil, fmt.Errorf("redis requests connection failed: %w", err)
 		}
 		queue.asynqInspector = asynq.NewInspector(options.requestsConnOpts)
+		queue.requestsClient = asynq.NewClient(options.requestsConnOpts)
 		conn = true
 	}
 	if !conn {
@@ -157,15 +163,24 @@ func New(optionFuncs ...func(*Options)) (*Queue, error) {
 	return queue, nil
 }
 
+// NewWithResponses creates a new Queue instance with mandatory request and response connection URLs.
+func NewWithResponses(requestsConnURL, responsesConnURL string, optionFuncs ...func(*Options)) (*Queue, error) {
+	if requestsConnURL == "" || responsesConnURL == "" {
+		return nil, errors.New("both requests and responses connection URL must be provided")
+	}
+	optionFuncs = append(optionFuncs, WithRequestsConnURL(requestsConnURL), WithResponsesConnURL(responsesConnURL))
+	return New(optionFuncs...)
+}
+
 // AddHandler adds a request handler function for the specified request type.
-// Must be called before StartHandlers.
+// Must be called before ServeUntilShutdown.
 func (q *Queue) AddHandler(requestType string, handler func(context.Context, *asynq.Task) error) {
 	q.logger.Info("adding request handler", "type", requestType)
 	q.handlers[requestType] = handler
 }
 
-// StartHandlers launches request handlers and blocks until it's stopped.
-func (q *Queue) StartHandlers() error {
+// ServeUntilShutdown launches request handlers and blocks until it's stopped.
+func (q *Queue) ServeUntilShutdown() error {
 	if q.options.requestsConnOpts == nil {
 		return errors.New("requests connection options must be provided")
 	}
@@ -215,8 +230,11 @@ func (q *Queue) StartHandlers() error {
 func (q *Queue) Shutdown() {
 	q.logger.Info("stopping queue")
 	close(q.handlerStopChan)
-	if q.resultsClient != nil {
-		q.resultsClient.Close()
+	if q.responsesClient != nil {
+		q.responsesClient.Close()
+	}
+	if q.requestsClient != nil {
+		q.requestsClient.Close()
 	}
 	if q.asynqInspector != nil {
 		q.asynqInspector.Close()
@@ -226,8 +244,23 @@ func (q *Queue) Shutdown() {
 	}
 }
 
-func (q *Queue) Put(requestType string, payload any, optionFuncs ...func(*RequestOptions)) error {
-	options := &RequestOptions{
+func (q *Queue) SendResponse(responseType string, payload any, optionFuncs ...func(*MessageOptions)) error {
+	if q.responsesClient == nil {
+		return errors.New("response client is missing")
+	}
+	return q.sendMessage(q.responsesClient, responseType, payload, optionFuncs...)
+}
+
+func (q *Queue) SendRequest(requestType string, payload any, optionFuncs ...func(*MessageOptions)) error {
+	if q.requestsClient == nil {
+		return errors.New("requests client is missing")
+	}
+	return q.sendMessage(q.requestsClient, requestType, payload, optionFuncs...)
+
+}
+
+func (q *Queue) sendMessage(client *asynq.Client, messageType string, payload any, optionFuncs ...func(*MessageOptions)) error {
+	options := &MessageOptions{
 		retry:     3,
 		timeout:   1 * time.Hour,
 		retention: 72 * time.Hour,
@@ -240,14 +273,14 @@ func (q *Queue) Put(requestType string, payload any, optionFuncs ...func(*Reques
 	if err != nil {
 		return err
 	}
-	t := asynq.NewTask(requestType, pb, asynq.MaxRetry(options.retry))
+	t := asynq.NewTask(messageType, pb, asynq.MaxRetry(options.retry))
 	q.logger.Debug(
-		"adding request", "type", requestType,
+		"sending message", "type", messageType,
 		"payload", string(pb), "retries", options.retry,
 		"timeout", options.timeout, "retention", options.retention)
-	_, err = q.resultsClient.Enqueue(t, asynq.Timeout(options.timeout), asynq.Retention(options.retention))
+	_, err = client.Enqueue(t, asynq.Timeout(options.timeout), asynq.Retention(options.retention))
 	if err != nil {
-		return fmt.Errorf("failed to enqueue %s request: %w", requestType, err)
+		return fmt.Errorf("failed to enqueue %s request: %w", messageType, err)
 	}
 	return nil
 }

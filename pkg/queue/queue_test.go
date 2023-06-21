@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -13,41 +14,86 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const busTestChannel = "test"
+const (
+	queueRequest  = "test:request"
+	queueResponse = "test:response"
+)
 
 func TestQueueIntegration(t *testing.T) {
-	redisHelper := testdeps.NewRedisTestHelper(t)
+	assert := assert.New(t)
+	require := require.New(t)
 
+	redisRequestsHelper := testdeps.NewRedisTestHelper(t, 1)
+	redisResponsesHelper := testdeps.NewRedisTestHelper(t, 2)
 	queue, err := New(
-		WithRequestsConnOpts(redisHelper.AsynqOpts),
-		WithResponsesConnOpts(redisHelper.AsynqOpts),
+		WithRequestsConnOpts(redisRequestsHelper.AsynqOpts),
+		WithResponsesConnOpts(redisResponsesHelper.AsynqOpts),
 		WithConcurrency(2),
 		WithLogger(zapadapter.NewKV(nil)),
 	)
-	require.NoError(t, err)
+	require.NoError(err)
 	defer queue.Shutdown()
 
-	results := make(chan struct{}, 1)
+	queueResponses, err := New(
+		WithRequestsConnOpts(redisResponsesHelper.AsynqOpts),
+		WithConcurrency(2),
+		WithLogger(zapadapter.NewKV(nil)),
+	)
+	require.NoError(err)
+	defer queueResponses.Shutdown()
 
-	queue.AddHandler(busTestChannel, func(ctx context.Context, task *asynq.Task) error {
-		results <- struct{}{}
+	requests := make(chan map[string]any, 1)
+	responses := make(chan map[string]any, 1)
+	reqPayload := map[string]any{
+		"request": "request",
+	}
+	respPayload := map[string]any{
+		"response": "response",
+	}
+
+	queue.AddHandler(queueRequest, func(ctx context.Context, task *asynq.Task) error {
+		assert.Equal(queueRequest, task.Type())
+		var payload map[string]any
+		err := json.Unmarshal(task.Payload(), &payload)
+		assert.NoError(err)
+		requests <- payload
+		queue.SendResponse(queueResponse, payload)
+		return nil
+	})
+
+	queueResponses.AddHandler(queueResponse, func(ctx context.Context, task *asynq.Task) error {
+		assert.Equal(queueResponse, task.Type())
+		var payload map[string]any
+		err := json.Unmarshal(task.Payload(), &payload)
+		assert.NoError(err)
+		assert.Equal(reqPayload, payload)
+		responses <- respPayload
 		return nil
 	})
 
 	go func() {
-		err := queue.StartHandlers()
-		assert.NoError(t, err)
+		err := queue.ServeUntilShutdown()
+		require.NoError(err)
+	}()
+	go func() {
+		err := queueResponses.ServeUntilShutdown()
+		require.NoError(err)
 	}()
 
-	payload := map[string]interface{}{
-		"key": "value",
-	}
-	err = queue.Put(busTestChannel, payload)
-	assert.NoError(t, err)
+	err = queue.SendRequest(queueRequest, reqPayload)
+	require.NoError(err)
 
 	select {
-	case <-results:
+	case rcPayload := <-requests:
+		require.Equal(reqPayload, rcPayload)
 	case <-time.After(10 * time.Second):
-		t.Fatal("timeout waiting for task to be processed")
+		t.Fatal("timeout waiting for request to be processed")
+	}
+
+	select {
+	case rcPayload := <-responses:
+		require.Equal(respPayload, rcPayload)
+	case <-time.After(10 * time.Second):
+		t.Fatal("timeout waiting for response to be sent")
 	}
 }
