@@ -28,11 +28,9 @@ const (
 
 func copyToContainer(t *testing.T, srcPath, dstPath string) error {
 	t.Helper()
-	// cmd := fmt.Sprintf(`docker cp %s %s`, srcPath, dstPath)
 	os.Setenv("PATH", os.Getenv("PATH")+":/usr/local/bin")
 	if out, err := exec.Command("docker", "cp", srcPath, dstPath).CombinedOutput(); err != nil {
 		fmt.Println(os.Getenv("PATH"))
-		// if _, err := exec.Command("docker", "cp", srcPath, dstPath).Output(); err != nil {
 		return fmt.Errorf("cannot copy %s to %s: %w (%s)", srcPath, dstPath, err, string(out))
 	}
 	return nil

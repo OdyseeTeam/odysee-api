@@ -99,6 +99,9 @@ func (th *TestHelper) CreateUpload(filePath string, queue *queue.Queue) (*databa
 		ID:     uploadID,
 		Size:   s,
 	})
+	if err != nil {
+		return nil, err
+	}
 	// Simulate upload complete event
 	handler := Handler{
 		s3bucket: th.S3Config.Bucket,
@@ -106,12 +109,15 @@ func (th *TestHelper) CreateUpload(filePath string, queue *queue.Queue) (*databa
 		queries:  th.Queries,
 		queue:    queue,
 	}
-	handler.completeUpload(database.MarkUploadCompletedParams{
+	err = handler.completeUpload(database.MarkUploadCompletedParams{
 		UserID:   up.UserID,
 		ID:       up.ID,
 		Filename: path.Base(filePath),
 		Key:      uploadKey,
 	})
+	if err != nil {
+		return nil, err
+	}
 	return &up, err
 }
 

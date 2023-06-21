@@ -136,34 +136,34 @@ func (l *Launcher) Build() (*queue.Queue, error) {
 	}
 	l.logger.Info("reflector store initialized")
 
-	f := &Forklift{
+	q, err := queue.NewWithResponses(
+		l.requestsConnURL, l.responsesConnURL,
+		queue.WithConcurrency(l.concurrency),
+		queue.WithLogger(l.logger))
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize queue: %w", err)
+	}
+
+	forklift := &Forklift{
 		analyzer:  analyzer,
 		blobPath:  l.blobPath,
 		logger:    l.logger,
 		retriever: l.retriever,
 		store:     s,
 		queries:   database.New(l.db),
+		queue:     q,
 	}
-
-	q, err := queue.New(
-		queue.WithRequestsConnURL(l.requestsConnURL),
-		queue.WithResponsesConnURL(l.responsesConnURL),
-		queue.WithConcurrency(l.concurrency),
-		queue.WithLogger(l.logger))
-	if err != nil {
-		return nil, fmt.Errorf("unable to initialize queue: %w", err)
-	}
-	q.AddHandler(tasks.TaskReflectUpload, f.HandleTask)
+	q.AddHandler(tasks.ForkliftUploadIncoming, forklift.HandleTask)
 	l.logger.Info("forklift initialized")
 	return q, nil
 }
 
 func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
-	if task.Type() != tasks.TaskReflectUpload {
+	if task.Type() != tasks.ForkliftUploadIncoming {
 		f.logger.Warn("cannot handle task", "type", task.Type())
 		return asynq.SkipRetry
 	}
-	var payload tasks.ReflectUploadPayload
+	var payload tasks.ForkliftUploadIncomingPayload
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		f.logger.Warn("message unmarshal failed", "err", err)
 		return asynq.SkipRetry
@@ -276,11 +276,11 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 		}
 	}
 
-	err = f.queue.Put(tasks.TaskAsynqueryMerge, tasks.AsynqueryMergePayload{
+	err = f.queue.SendResponse(tasks.ForkliftUploadDone, tasks.ForkliftUploadDonePayload{
 		UploadID: payload.UploadID,
 		UserID:   payload.UserID,
 		Meta:     meta,
-	}, queue.WithRequestRetry(99), queue.WithRequestTimeout(15*time.Minute))
+	}, queue.WithRequestRetry(15), queue.WithRequestTimeout(15*time.Minute))
 	if err != nil {
 		log.Error("merge request failed, bus error", "err", err)
 		return err

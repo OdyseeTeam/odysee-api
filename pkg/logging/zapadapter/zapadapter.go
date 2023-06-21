@@ -33,8 +33,8 @@ type kvLogger struct {
 	core      zapcore.Core
 }
 
-// NewKV returns a new Logur kvLogger.
-// If kvLogger is nil, a default global instance is used.
+// New returns a new Logur kvLogger.
+// If zlogger is nil, a default global instance is used.
 func New(zlogger *zap.Logger) *logger {
 	if zlogger == nil {
 		zlogger = zap.L()

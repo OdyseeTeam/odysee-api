@@ -61,18 +61,17 @@ func (s *forkliftSuite) TestHandleTask() {
 	responsesQueue, err := queue.New(queue.WithRequestsConnURL(redisResponsesHelper.URL), queue.WithLogger(zapadapter.NewKV(nil)))
 	s.Require().NoError(err)
 
-	merges := make(chan tasks.AsynqueryMergePayload)
-	responsesQueue.AddHandler(tasks.TaskAsynqueryMerge, func(_ context.Context, task *asynq.Task) error {
-		fmt.Println("got incoming task")
-		var payload tasks.AsynqueryMergePayload
+	merges := make(chan tasks.ForkliftUploadDonePayload)
+	responsesQueue.AddHandler(tasks.ForkliftUploadDone, func(_ context.Context, task *asynq.Task) error {
+		var payload tasks.ForkliftUploadDonePayload
 		err := json.Unmarshal(task.Payload(), &payload)
 		s.Require().NoError(err)
 		merges <- payload
 		return nil
 	})
 
-	go incomingQueue.StartHandlers()
-	go responsesQueue.StartHandlers()
+	go incomingQueue.ServeUntilShutdown()
+	go responsesQueue.ServeUntilShutdown()
 	defer func() {
 		incomingQueue.Shutdown()
 		responsesQueue.Shutdown()
@@ -80,11 +79,11 @@ func (s *forkliftSuite) TestHandleTask() {
 
 	cases := []struct {
 		fileName string
-		expected func(upload *database.Upload, payload tasks.AsynqueryMergePayload)
+		expected func(upload *database.Upload, payload tasks.ForkliftUploadDonePayload)
 	}{
 		{
 			test.StaticAsset(s.T(), "image2.jpg"),
-			func(upload *database.Upload, payload tasks.AsynqueryMergePayload) {
+			func(upload *database.Upload, payload tasks.ForkliftUploadDonePayload) {
 				s.Equal(upload.UserID, payload.UserID)
 				s.Equal(upload.ID, payload.UploadID)
 				s.Equal("image2.jpg", payload.Meta.FileName)
@@ -99,7 +98,7 @@ func (s *forkliftSuite) TestHandleTask() {
 		},
 		{
 			test.StaticAsset(s.T(), "hdreel.mov"),
-			func(upload *database.Upload, payload tasks.AsynqueryMergePayload) {
+			func(upload *database.Upload, payload tasks.ForkliftUploadDonePayload) {
 				s.Equal(upload.UserID, payload.UserID)
 				s.Equal(upload.ID, payload.UploadID)
 				s.Equal("hdreel.mov", payload.Meta.FileName)
@@ -114,7 +113,7 @@ func (s *forkliftSuite) TestHandleTask() {
 		},
 		{
 			test.StaticAsset(s.T(), "doc.pdf"),
-			func(upload *database.Upload, payload tasks.AsynqueryMergePayload) {
+			func(upload *database.Upload, payload tasks.ForkliftUploadDonePayload) {
 				s.Equal(upload.UserID, payload.UserID)
 				s.Equal(upload.ID, payload.UploadID)
 				s.Equal("doc.pdf", payload.Meta.FileName)

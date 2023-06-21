@@ -139,7 +139,7 @@ func WithPublicKey(publicKey crypto.PublicKey) LauncherOption {
 	}
 }
 
-func WithQueueRedisURL(url string) LauncherOption {
+func WithForkliftRequestsConnURL(url string) LauncherOption {
 	return func(l *Launcher) {
 		l.queueRedisURL = url
 	}
@@ -200,7 +200,7 @@ func (l *Launcher) Build() (chi.Router, error) {
 		if err != nil {
 			return nil, err
 		}
-		queue, err := queue.New(queue.WithResponsesConnOpts(opts), queue.WithLogger(l.logger))
+		queue, err := queue.New(queue.WithRequestsConnOpts(opts), queue.WithLogger(l.logger))
 		if err != nil {
 			return nil, err
 		}
@@ -477,9 +477,9 @@ func extractUploadIDFromPath(url string) string {
 // completeUpload sends a task to the bus to reflect the upload to the user's bucket
 func (h *Handler) completeUpload(uploadParams database.MarkUploadCompletedParams) error {
 	if h.queue != nil {
-		err := h.queue.Put(
-			tasks.TaskReflectUpload,
-			tasks.ReflectUploadPayload{
+		err := h.queue.SendRequest(
+			tasks.ForkliftUploadIncoming,
+			tasks.ForkliftUploadIncomingPayload{
 				UploadID: uploadParams.ID,
 				UserID:   uploadParams.UserID,
 				FileName: uploadParams.Filename,

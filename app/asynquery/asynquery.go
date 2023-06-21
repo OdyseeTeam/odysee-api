@@ -67,7 +67,7 @@ func NewCallManager(redisOpts asynq.RedisConnOpt, db boil.Executor, logger loggi
 		logger: logger,
 		db:     db,
 	}
-	q, err := queue.New(queue.WithResponsesConnOpts(redisOpts), queue.WithConcurrency(10))
+	q, err := queue.New(queue.WithRequestsConnOpts(redisOpts), queue.WithConcurrency(10))
 	if err != nil {
 		return nil, err
 	}
@@ -83,8 +83,8 @@ func (m *CallManager) NewCaller(userID int) *Caller {
 // Start launches asynchronous query handlers and blocks until stopped.
 func (m *CallManager) Start() error {
 	onceMetrics.Do(registerMetrics)
-	m.queue.AddHandler(tasks.TaskAsynqueryMerge, m.HandleMerge)
-	return m.queue.StartHandlers()
+	m.queue.AddHandler(tasks.ForkliftUploadDone, m.HandleMerge)
+	return m.queue.ServeUntilShutdown()
 }
 
 func (m *CallManager) Shutdown() {
@@ -111,11 +111,11 @@ func (m *CallManager) Call(userID int, req *jsonrpc.RPCRequest) (*models.Asynque
 
 // HandleMerge handles signals about completed uploads from forklift.
 func (m *CallManager) HandleMerge(ctx context.Context, task *asynq.Task) error {
-	if task.Type() != tasks.TaskAsynqueryMerge {
+	if task.Type() != tasks.ForkliftUploadDone {
 		m.logger.Warn("cannot handle task", "type", task.Type())
 		return asynq.SkipRetry
 	}
-	var payload tasks.AsynqueryMergePayload
+	var payload tasks.ForkliftUploadDonePayload
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		m.logger.Warn("message unmarshal failed", "err", err)
 		return asynq.SkipRetry

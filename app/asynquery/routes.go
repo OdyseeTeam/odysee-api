@@ -3,6 +3,7 @@ package asynquery
 import (
 	"context"
 	"crypto"
+	"errors"
 	"net/http"
 
 	"github.com/OdyseeTeam/odysee-api/pkg/keybox"
@@ -14,7 +15,7 @@ import (
 )
 
 type Launcher struct {
-	busRedisOpts     asynq.RedisConnOpt
+	requestsConnOpts asynq.RedisConnOpt
 	db               boil.Executor
 	logger           logging.KVLogger
 	manager          *CallManager
@@ -36,9 +37,9 @@ func WithDB(db boil.Executor) LauncherOption {
 		l.db = db
 	}
 }
-func WithBusRedisOpts(redisOpts asynq.RedisConnOpt) LauncherOption {
+func WithRequestsConnOpts(redisOpts asynq.RedisConnOpt) LauncherOption {
 	return func(l *Launcher) {
-		l.busRedisOpts = redisOpts
+		l.requestsConnOpts = redisOpts
 	}
 }
 
@@ -73,11 +74,14 @@ func NewLauncher(options ...LauncherOption) *Launcher {
 
 func (l *Launcher) InstallRoutes(r *mux.Router) error {
 	l.logger.Info("installing routes")
+	if l.requestsConnOpts == nil {
+		return errors.New("missing redis requests connection options")
+	}
 	keyfob, err := keybox.NewKeyfob(l.privateKey)
 	if err != nil {
 		return err
 	}
-	manager, err := NewCallManager(l.busRedisOpts, l.db, l.logger)
+	manager, err := NewCallManager(l.requestsConnOpts, l.db, l.logger)
 	if err != nil {
 		return err
 	}

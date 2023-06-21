@@ -97,7 +97,7 @@ func serve(logger logging.KVLogger) {
 		uploads.WithPublicKey(k),
 		uploads.WithLogger(logger),
 		uploads.WithCORSDomains(cfg.V.GetStringSlice("CORSDomains")),
-		uploads.WithQueueRedisURL(cfg.V.GetString("RedisBusForklift")),
+		uploads.WithForkliftRequestsConnURL(cfg.V.GetString("ForkliftRequestsConnURL")),
 	)
 
 	go func() {

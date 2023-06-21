@@ -171,7 +171,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 		panic(err)
 	}
 	launcher := asynquery.NewLauncher(
-		asynquery.WithBusRedisOpts(asynqueryBusOpts),
+		asynquery.WithRequestsConnOpts(asynqueryBusOpts),
 		asynquery.WithLogger(zapadapter.NewKV(nil)),
 		asynquery.WithPrivateKey(keyfob.PrivateKey()),
 		asynquery.WithDB(storage.DB),

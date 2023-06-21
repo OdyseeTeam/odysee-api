@@ -82,7 +82,6 @@ func (s *publishV4Suite) TestPublish() {
 	}).RunHTTP(t)
 	defer resp.Body.Close()
 
-	// s.Equal(UploadServiceURL, resp.Header().Get("Location"))
 	rr := &asynquery.Response{}
 	body, err := ioutil.ReadAll(resp.Body)
 	require.Nil(err)
@@ -239,7 +238,7 @@ func (s *publishV4Suite) SetupSuite() {
 		uploads.WithDB(s.uploadsHelper.DB),
 		uploads.WithPublicKey(kf.PublicKey()),
 		uploads.WithLogger(zapadapter.NewKV(nil)),
-		uploads.WithQueueRedisURL(s.redisHelper.URL),
+		uploads.WithForkliftRequestsConnURL(s.redisHelper.URL),
 	)
 	s.uploadsRouter, err = s.uploadsLauncher.Build()
 	require.NoError(err)
@@ -274,11 +273,11 @@ func (s *publishV4Suite) SetupSuite() {
 		forklift.WithDB(s.uploadsHelper.DB),
 	)
 
-	bus, err := l.Build()
+	queue, err := l.Build()
 	require.NoError(err)
 
-	go bus.StartHandlers()
-	t.Cleanup(bus.Shutdown)
+	go queue.ServeUntilShutdown()
+	t.Cleanup(queue.Shutdown)
 
 	// User machinery setup
 	s.userHelper = &UserTestHelper{}
@@ -287,7 +286,7 @@ func (s *publishV4Suite) SetupSuite() {
 	// Asynquery routes setup
 	s.asynqueryRouter = mux.NewRouter().PathPrefix("/api/v1").Subrouter()
 	s.asynqueryLauncher = asynquery.NewLauncher(
-		asynquery.WithBusRedisOpts(s.redisHelper.AsynqOpts),
+		asynquery.WithRequestsConnOpts(s.redisHelper.AsynqOpts),
 		asynquery.WithLogger(zapadapter.NewKV(nil)),
 		asynquery.WithPrivateKey(kf.PrivateKey()),
 		asynquery.WithDB(s.userHelper.DB),

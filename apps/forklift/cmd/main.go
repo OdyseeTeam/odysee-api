@@ -91,5 +91,5 @@ func serve(logger logging.KVLogger) {
 	if err != nil {
 		panic(err)
 	}
-	b.StartHandlers()
+	b.ServeUntilShutdown()
 }

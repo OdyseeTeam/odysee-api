@@ -157,7 +157,7 @@ func (s *asynqueryHandlerSuite) SetupSuite() {
 
 	redisHelper := testdeps.NewRedisTestHelper(s.T())
 	s.launcher = NewLauncher(
-		WithBusRedisOpts(redisHelper.AsynqOpts),
+		WithRequestsConnOpts(redisHelper.AsynqOpts),
 		WithLogger(zapadapter.NewKV(nil)),
 		WithPrivateKey(kf.PrivateKey()),
 		WithDB(s.userHelper.DB),
