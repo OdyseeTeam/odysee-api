@@ -13,9 +13,9 @@ import (
 	"github.com/OdyseeTeam/odysee-api/apps/uploads/database"
 	"github.com/OdyseeTeam/odysee-api/internal/tasks"
 	"github.com/OdyseeTeam/odysee-api/pkg/blobs"
-	"github.com/OdyseeTeam/odysee-api/pkg/bus"
 	"github.com/OdyseeTeam/odysee-api/pkg/fileanalyzer"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+	"github.com/OdyseeTeam/odysee-api/pkg/queue"
 
 	"github.com/tabbed/pqtype"
 
@@ -24,24 +24,33 @@ import (
 
 var ErrReflector = errors.New("errors found while uploading blobs to reflector")
 
+type Retriever interface {
+	Retrieve(context.Context, string, tasks.FileLocationS3) (*LocalFile, error)
+}
+
+type Deleter interface {
+	Delete(context.Context, tasks.FileLocationS3) error
+}
+
 type Launcher struct {
-	blobPath        string
-	redisURL        string
-	reflectorConfig map[string]string
-	retriever       Retriever
-	logger          logging.KVLogger
-	db              database.DBTX
-	concurrency     int
+	blobPath         string
+	requestsConnURL  string
+	responsesConnURL string
+	reflectorConfig  map[string]string
+	retriever        Retriever
+	logger           logging.KVLogger
+	db               database.DBTX
+	concurrency      int
 }
 
 type Forklift struct {
 	analyzer  *fileanalyzer.Analyzer
 	blobPath  string
-	bus       *bus.Bus
 	logger    logging.KVLogger
 	retriever Retriever
 	store     *blobs.Store
 	queries   *database.Queries
+	queue     *queue.Queue
 }
 
 type LauncherOption func(l *Launcher)
@@ -52,21 +61,27 @@ func WithLogger(logger logging.KVLogger) LauncherOption {
 	}
 }
 
-func WithBlobPath(blobPath string) LauncherOption {
+func WithBlobPath(path string) LauncherOption {
 	return func(l *Launcher) {
-		l.blobPath = blobPath
+		l.blobPath = path
 	}
 }
 
-func WithRedisURL(redisURL string) LauncherOption {
+func WithRequestsConnURL(url string) LauncherOption {
 	return func(l *Launcher) {
-		l.redisURL = redisURL
+		l.requestsConnURL = url
 	}
 }
 
-func WithReflectorConfig(reflectorConfig map[string]string) LauncherOption {
+func WithResponsesConnURL(url string) LauncherOption {
 	return func(l *Launcher) {
-		l.reflectorConfig = reflectorConfig
+		l.responsesConnURL = url
+	}
+}
+
+func WithReflectorConfig(config map[string]string) LauncherOption {
+	return func(l *Launcher) {
+		l.reflectorConfig = config
 	}
 }
 
@@ -87,6 +102,7 @@ func WithDB(db database.DBTX) LauncherOption {
 		l.db = db
 	}
 }
+
 func NewLauncher(options ...LauncherOption) *Launcher {
 	launcher := &Launcher{
 		logger:      logging.NoopKVLogger{},
@@ -101,12 +117,7 @@ func NewLauncher(options ...LauncherOption) *Launcher {
 	return launcher
 }
 
-func (l *Launcher) Build() (*bus.Bus, error) {
-	redisOpts, err := asynq.ParseRedisURI(l.redisURL)
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to redis: %w", err)
-	}
-
+func (l *Launcher) Build() (*queue.Queue, error) {
 	if l.db == nil {
 		return nil, errors.New("database is required")
 	}
@@ -125,32 +136,34 @@ func (l *Launcher) Build() (*bus.Bus, error) {
 	}
 	l.logger.Info("reflector store initialized")
 
-	f := &Forklift{
+	q, err := queue.NewWithResponses(
+		l.requestsConnURL, l.responsesConnURL,
+		queue.WithConcurrency(l.concurrency),
+		queue.WithLogger(l.logger))
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize queue: %w", err)
+	}
+
+	forklift := &Forklift{
 		analyzer:  analyzer,
 		blobPath:  l.blobPath,
 		logger:    l.logger,
 		retriever: l.retriever,
 		store:     s,
 		queries:   database.New(l.db),
+		queue:     q,
 	}
-
-	b, err := bus.New(redisOpts, bus.WithLogger(l.logger), bus.WithConcurrency(l.concurrency))
-	if err != nil {
-		return nil, fmt.Errorf("unable to start task bus: %w", err)
-	}
-	b.AddHandler(tasks.TaskReflectUpload, f.HandleTask)
-	f.bus = b
-
+	q.AddHandler(tasks.ForkliftUploadIncoming, forklift.HandleTask)
 	l.logger.Info("forklift initialized")
-	return b, nil
+	return q, nil
 }
 
 func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
-	if task.Type() != tasks.TaskReflectUpload {
+	if task.Type() != tasks.ForkliftUploadIncoming {
 		f.logger.Warn("cannot handle task", "type", task.Type())
 		return asynq.SkipRetry
 	}
-	var payload tasks.ReflectUploadPayload
+	var payload tasks.ForkliftUploadIncomingPayload
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		f.logger.Warn("message unmarshal failed", "err", err)
 		return asynq.SkipRetry
@@ -163,7 +176,7 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 	file, err := f.retriever.Retrieve(context.TODO(), payload.UploadID, payload.FileLocation)
 	if err != nil {
 		log.Warn("failed to retrieve file", "err", err)
-		return asynq.SkipRetry
+		return err
 	}
 	defer file.Cleanup()
 	observeDuration(LabelRetrieve, start)
@@ -256,11 +269,18 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 	}
 	log.Debug("upload processed")
 
-	err = f.bus.Client().Put(tasks.TaskAsynqueryMerge, tasks.AsynqueryMergePayload{
+	if c, ok := f.retriever.(Deleter); ok {
+		err := c.Delete(context.TODO(), payload.FileLocation)
+		if err != nil {
+			log.Warn("failed to complete retrieved file", "err", err)
+		}
+	}
+
+	err = f.queue.SendResponse(tasks.ForkliftUploadDone, tasks.ForkliftUploadDonePayload{
 		UploadID: payload.UploadID,
 		UserID:   payload.UserID,
 		Meta:     meta,
-	}, 99, 15*time.Minute, 72*time.Hour)
+	}, queue.WithRequestRetry(15), queue.WithRequestTimeout(15*time.Minute))
 	if err != nil {
 		log.Error("merge request failed, bus error", "err", err)
 		return err

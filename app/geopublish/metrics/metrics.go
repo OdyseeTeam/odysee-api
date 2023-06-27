@@ -86,8 +86,11 @@ var (
 	}, []string{"stage"})
 )
 
-func RegisterMetrics() {
-	prometheus.MustRegister(
+func RegisterMetrics(registry prometheus.Registerer) {
+	if registry == nil {
+		registry = prometheus.DefaultRegisterer
+	}
+	registry.MustRegister(
 		UploadsCreated, UploadsProcessed, UploadsCanceled, UploadsFailed,
 		QueriesSent, QueriesCompleted, QueriesFailed, QueriesErrored,
 		QueueTasks, ProcessingTime, ProcessingErrors,

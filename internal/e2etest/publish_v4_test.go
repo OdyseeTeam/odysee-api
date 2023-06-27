@@ -82,16 +82,15 @@ func (s *publishV4Suite) TestPublish() {
 	}).RunHTTP(t)
 	defer resp.Body.Close()
 
-	// s.Equal(UploadServiceURL, resp.Header().Get("Location"))
 	rr := &asynquery.Response{}
 	body, err := ioutil.ReadAll(resp.Body)
 	require.Nil(err)
 	require.NoError(json.Unmarshal(body, rr))
 	assert.Empty(rr.Error)
-	require.Equal(asynquery.StatusSuccess, rr.Status)
-	assert.NotEmpty(rr.Payload.(asynquery.UploadTokenResponse).Token)
+	require.Equal(asynquery.StatusUploadTokenCreated, rr.Status)
+	assert.NotEmpty(rr.Payload.(asynquery.UploadTokenCreatedPayload).Token)
 
-	uploadTokenHeader := fmt.Sprintf("Bearer %s", rr.Payload.(asynquery.UploadTokenResponse).Token)
+	uploadTokenHeader := fmt.Sprintf("Bearer %s", rr.Payload.(asynquery.UploadTokenCreatedPayload).Token)
 
 	uploadFile := s.createRandomFile(fileSize)
 	defer uploadFile.Close()
@@ -171,9 +170,6 @@ func (s *publishV4Suite) TestPublish() {
 		},
 		ReqBody: bytes.NewReader(streamCreateReq),
 	}).RunHTTP(t)
-	loc, err = url.Parse(resp.Header.Get("Location"))
-	require.NoError(err)
-	assert.Regexp(`[\w\d]{32}`, loc.Path)
 
 	var query *models.Asynquery
 	Wait(s.T(), "successful query settling in the database", 45*time.Second, 1000*time.Millisecond, func() error {
@@ -242,7 +238,7 @@ func (s *publishV4Suite) SetupSuite() {
 		uploads.WithDB(s.uploadsHelper.DB),
 		uploads.WithPublicKey(kf.PublicKey()),
 		uploads.WithLogger(zapadapter.NewKV(nil)),
-		uploads.WithBusRedisURL(s.redisHelper.URL),
+		uploads.WithForkliftRequestsConnURL(s.redisHelper.URL),
 	)
 	s.uploadsRouter, err = s.uploadsLauncher.Build()
 	require.NoError(err)
@@ -271,16 +267,17 @@ func (s *publishV4Suite) SetupSuite() {
 		forklift.WithReflectorConfig(s.forkliftHelper.ReflectorConfig),
 		forklift.WithBlobPath(s.T().TempDir()),
 		forklift.WithRetriever(retriever),
-		forklift.WithRedisURL(s.redisHelper.URL),
+		forklift.WithRequestsConnURL(s.redisHelper.URL),
+		forklift.WithResponsesConnURL(s.redisHelper.URL),
 		forklift.WithLogger(zapadapter.NewKV(nil)),
 		forklift.WithDB(s.uploadsHelper.DB),
 	)
 
-	bus, err := l.Build()
+	queue, err := l.Build()
 	require.NoError(err)
 
-	go bus.StartHandlers()
-	t.Cleanup(bus.Shutdown)
+	go queue.ServeUntilShutdown()
+	t.Cleanup(queue.Shutdown)
 
 	// User machinery setup
 	s.userHelper = &UserTestHelper{}
@@ -289,7 +286,7 @@ func (s *publishV4Suite) SetupSuite() {
 	// Asynquery routes setup
 	s.asynqueryRouter = mux.NewRouter().PathPrefix("/api/v1").Subrouter()
 	s.asynqueryLauncher = asynquery.NewLauncher(
-		asynquery.WithBusRedisOpts(s.redisHelper.AsynqOpts),
+		asynquery.WithRequestsConnOpts(s.redisHelper.AsynqOpts),
 		asynquery.WithLogger(zapadapter.NewKV(nil)),
 		asynquery.WithPrivateKey(kf.PrivateKey()),
 		asynquery.WithDB(s.userHelper.DB),

@@ -166,12 +166,12 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 		panic(err)
 	}
 
-	asynqueryBusOpts, err := config.GetRedisBusAsynqueryOpts()
+	asynqueryBusOpts, err := config.GetAsynqueryRequestsConnOpts()
 	if err != nil {
 		panic(err)
 	}
 	launcher := asynquery.NewLauncher(
-		asynquery.WithBusRedisOpts(asynqueryBusOpts),
+		asynquery.WithRequestsConnOpts(asynqueryBusOpts),
 		asynquery.WithLogger(zapadapter.NewKV(nil)),
 		asynquery.WithPrivateKey(keyfob.PrivateKey()),
 		asynquery.WithDB(storage.DB),
@@ -186,8 +186,8 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 	go launcher.Start()
 
 	onceMetrics.Do(func() {
-		gpmetrics.RegisterMetrics()
-		redislocker.RegisterMetrics()
+		gpmetrics.RegisterMetrics(nil)
+		redislocker.RegisterMetrics(nil)
 		if !opts.EnableV3Publish {
 			tus2metrics := prometheuscollector.New(tusHandler.Metrics)
 			prometheus.MustRegister(tus2metrics)

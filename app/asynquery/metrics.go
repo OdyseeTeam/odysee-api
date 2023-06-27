@@ -37,25 +37,10 @@ var (
 		Namespace: ns,
 		Name:      "queries_errored",
 	})
-
-	// QueueLength = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-	// 	Namespace: ns,
-	// 	Name:      "queue_length",
-	// }, []string{"status"})
-
-	// ProcessingTime = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-	// 	Namespace: ns,
-	// 	Name:      "processing_time",
-	// 	Buckets:   []float64{1, 5, 30, 60, 120, 300, 600},
-	// }, []string{"stage"})
-	// ProcessingErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
-	// 	Namespace: ns,
-	// 	Name:      "processing_errors",
-	// }, []string{"stage"})
 )
 
 func registerMetrics() {
 	prometheus.MustRegister(
-		QueriesSent, QueriesCompleted, QueriesFailed, QueriesErrored,
+		InternalErrors, QueriesSent, QueriesCompleted, QueriesFailed, QueriesErrored,
 	)
 }

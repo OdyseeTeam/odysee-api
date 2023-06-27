@@ -28,6 +28,9 @@ var (
 	})
 )
 
-func RegisterMetrics() {
-	prometheus.MustRegister(locked, unlocked, fileLockedErrors, unlockErrors)
+func RegisterMetrics(registry prometheus.Registerer) {
+	if registry == nil {
+		registry = prometheus.DefaultRegisterer
+	}
+	registry.MustRegister(locked, unlocked, fileLockedErrors, unlockErrors)
 }

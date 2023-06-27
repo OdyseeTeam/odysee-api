@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	goredislib "github.com/go-redis/redis/v8"
 	"github.com/go-redsync/redsync/v4"
-	"github.com/go-redsync/redsync/v4/redis/goredis/v8"
+	"github.com/go-redsync/redsync/v4/redis/goredis/v9"
+	goredislib "github.com/redis/go-redis/v9"
 	"github.com/tus/tusd/pkg/handler"
 )
 

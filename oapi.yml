@@ -57,7 +57,10 @@ RPCTimeouts:
 
 RedisLocker: redis://:odyredis@localhost:6379/1
 RedisBus: redis://:odyredis@localhost:6379/2
-RedisBusAsynquery: redis://:odyredis@localhost:6379/3
+
+# AsynqueryRequestsConnURL is Redis database where asynquery will be listening for finalized uploads requests.
+# This corresponds to AsynqueryRequestsConnURL in forklift.yml config.
+AsynqueryRequestsConnURL: redis://:odyredis@localhost:6379/3
 
 ReflectorUpstream:
   DatabaseDSN: 'user:password@tcp(localhost:3306)/blobs'

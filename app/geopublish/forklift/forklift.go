@@ -10,8 +10,8 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/hibiken/asynq"
+	"github.com/redis/go-redis/v9"
 )
 
 const (

@@ -14,8 +14,8 @@ import (
 	"github.com/OdyseeTeam/odysee-api/app/query"
 	"github.com/OdyseeTeam/odysee-api/internal/tasks"
 	"github.com/OdyseeTeam/odysee-api/models"
-	"github.com/OdyseeTeam/odysee-api/pkg/bus"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+	queue "github.com/OdyseeTeam/odysee-api/pkg/queue"
 
 	"github.com/hibiken/asynq"
 	"github.com/volatiletech/null"
@@ -29,7 +29,7 @@ const FilePathParam = "file_path"
 var (
 	sdkNetError    = errors.New("network level sdk error")
 	sdkClientError = errors.New("client level sdk error")
-	reFilePathURL  = regexp.MustCompile(`^https?://([^/]+)/.+/([a-zA-Z0-9\+]{32,})$`)
+	reFilePathURL  = regexp.MustCompile(`^https?://([^/]+)/.+/([a-zA-Z0-9\+_\.\-]{32,})$`)
 
 	onceMetrics sync.Once
 )
@@ -37,7 +37,7 @@ var (
 type CallManager struct {
 	db     boil.Executor
 	logger logging.KVLogger
-	bus    *bus.Bus
+	queue  *queue.Queue
 }
 
 type Caller struct {
@@ -67,11 +67,11 @@ func NewCallManager(redisOpts asynq.RedisConnOpt, db boil.Executor, logger loggi
 		logger: logger,
 		db:     db,
 	}
-	b, err := bus.New(redisOpts, bus.WithConcurrency(10))
+	q, err := queue.New(queue.WithRequestsConnOpts(redisOpts), queue.WithConcurrency(10))
 	if err != nil {
 		return nil, err
 	}
-	m.bus = b
+	m.queue = q
 	logger.Info("asynquery manager created", "concurrency", 10)
 	return &m, nil
 }
@@ -83,12 +83,12 @@ func (m *CallManager) NewCaller(userID int) *Caller {
 // Start launches asynchronous query handlers and blocks until stopped.
 func (m *CallManager) Start() error {
 	onceMetrics.Do(registerMetrics)
-	m.bus.AddHandler(tasks.TaskAsynqueryMerge, m.HandleMerge)
-	return m.bus.StartHandlers()
+	m.queue.AddHandler(tasks.ForkliftUploadDone, m.HandleMerge)
+	return m.queue.ServeUntilShutdown()
 }
 
 func (m *CallManager) Shutdown() {
-	m.bus.Shutdown()
+	m.queue.Shutdown()
 }
 
 // Call accepts JSON-RPC request for later asynchronous processing.
@@ -109,12 +109,13 @@ func (m *CallManager) Call(userID int, req *jsonrpc.RPCRequest) (*models.Asynque
 	return aq, nil
 }
 
+// HandleMerge handles signals about completed uploads from forklift.
 func (m *CallManager) HandleMerge(ctx context.Context, task *asynq.Task) error {
-	if task.Type() != tasks.TaskAsynqueryMerge {
+	if task.Type() != tasks.ForkliftUploadDone {
 		m.logger.Warn("cannot handle task", "type", task.Type())
 		return asynq.SkipRetry
 	}
-	var payload tasks.AsynqueryMergePayload
+	var payload tasks.ForkliftUploadDonePayload
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		m.logger.Warn("message unmarshal failed", "err", err)
 		return asynq.SkipRetry

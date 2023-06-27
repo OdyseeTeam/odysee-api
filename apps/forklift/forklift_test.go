@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/OdyseeTeam/odysee-api/apps/uploads"
 	"github.com/OdyseeTeam/odysee-api/apps/uploads/database"
@@ -15,6 +16,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/testdeps"
 	"github.com/OdyseeTeam/odysee-api/pkg/configng"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
+	"github.com/OdyseeTeam/odysee-api/pkg/queue"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -38,43 +40,50 @@ func TestForkliftSuite(t *testing.T) {
 }
 
 func (s *forkliftSuite) TestHandleTask() {
-	redisHelper := testdeps.NewRedisTestHelper(s.T())
+	redisRequestsHelper := testdeps.NewRedisTestHelper(s.T())
+	redisResponsesHelper := testdeps.NewRedisTestHelper(s.T(), 1)
 
 	retriever := NewS3Retriever(s.T().TempDir(), s.s3c)
 	l := NewLauncher(
 		WithReflectorConfig(s.helper.ReflectorConfig),
 		WithBlobPath(s.T().TempDir()),
 		WithRetriever(retriever),
-		WithRedisURL(redisHelper.URL),
+		WithRequestsConnURL(redisRequestsHelper.URL),
+		WithResponsesConnURL(redisResponsesHelper.URL),
 		WithLogger(zapadapter.NewKV(nil)),
 		WithDB(s.upHelper.DB),
 	)
 
-	bus, err := l.Build()
+	incomingQueue, err := l.Build()
 	s.Require().NoError(err)
 
-	merges := make(chan tasks.AsynqueryMergePayload)
-	bus.AddHandler(tasks.TaskAsynqueryMerge, func(_ context.Context, task *asynq.Task) error {
-		fmt.Println("got incoming task")
-		var payload tasks.AsynqueryMergePayload
+	// A queue for the mocking results handler
+	responsesQueue, err := queue.New(queue.WithRequestsConnURL(redisResponsesHelper.URL), queue.WithLogger(zapadapter.NewKV(nil)))
+	s.Require().NoError(err)
+
+	merges := make(chan tasks.ForkliftUploadDonePayload)
+	responsesQueue.AddHandler(tasks.ForkliftUploadDone, func(_ context.Context, task *asynq.Task) error {
+		var payload tasks.ForkliftUploadDonePayload
 		err := json.Unmarshal(task.Payload(), &payload)
 		s.Require().NoError(err)
 		merges <- payload
 		return nil
 	})
 
-	go bus.StartHandlers()
+	go incomingQueue.ServeUntilShutdown()
+	go responsesQueue.ServeUntilShutdown()
 	defer func() {
-		bus.Shutdown()
+		incomingQueue.Shutdown()
+		responsesQueue.Shutdown()
 	}()
 
 	cases := []struct {
 		fileName string
-		expected func(upload *database.Upload, payload tasks.AsynqueryMergePayload)
+		expected func(upload *database.Upload, payload tasks.ForkliftUploadDonePayload)
 	}{
 		{
 			test.StaticAsset(s.T(), "image2.jpg"),
-			func(upload *database.Upload, payload tasks.AsynqueryMergePayload) {
+			func(upload *database.Upload, payload tasks.ForkliftUploadDonePayload) {
 				s.Equal(upload.UserID, payload.UserID)
 				s.Equal(upload.ID, payload.UploadID)
 				s.Equal("image2.jpg", payload.Meta.FileName)
@@ -89,7 +98,7 @@ func (s *forkliftSuite) TestHandleTask() {
 		},
 		{
 			test.StaticAsset(s.T(), "hdreel.mov"),
-			func(upload *database.Upload, payload tasks.AsynqueryMergePayload) {
+			func(upload *database.Upload, payload tasks.ForkliftUploadDonePayload) {
 				s.Equal(upload.UserID, payload.UserID)
 				s.Equal(upload.ID, payload.UploadID)
 				s.Equal("hdreel.mov", payload.Meta.FileName)
@@ -104,7 +113,7 @@ func (s *forkliftSuite) TestHandleTask() {
 		},
 		{
 			test.StaticAsset(s.T(), "doc.pdf"),
-			func(upload *database.Upload, payload tasks.AsynqueryMergePayload) {
+			func(upload *database.Upload, payload tasks.ForkliftUploadDonePayload) {
 				s.Equal(upload.UserID, payload.UserID)
 				s.Equal(upload.ID, payload.UploadID)
 				s.Equal("doc.pdf", payload.Meta.FileName)
@@ -121,13 +130,16 @@ func (s *forkliftSuite) TestHandleTask() {
 
 	for _, c := range cases {
 		s.T().Logf("creating upload for %s", c.fileName)
-		upload, err := s.upHelper.CreateUpload(c.fileName, bus.Client())
+		upload, err := s.upHelper.CreateUpload(c.fileName, incomingQueue)
 		s.Require().NoError(err)
 		s.T().Logf("created upload for %s", c.fileName)
 
-		payload := <-merges
-
-		c.expected(upload, payload)
+		select {
+		case payload := <-merges:
+			c.expected(upload, payload)
+		case <-time.After(30 * time.Second):
+			s.Fail("timeout waiting for task to be processed")
+		}
 	}
 }
 

@@ -9,8 +9,8 @@ import (
 
 	cfg "github.com/OdyseeTeam/odysee-api/config"
 	"github.com/OdyseeTeam/odysee-api/models"
-	"github.com/go-redis/redis/v8"
 	"github.com/hibiken/asynq"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/spf13/cast"
 )
@@ -76,9 +76,9 @@ func GetRedisBusOpts() (asynq.RedisConnOpt, error) {
 	return asynq.ParseRedisURI(Config.Viper.GetString("RedisBus"))
 }
 
-// GetRedisBusAsynqueryOpts returns Redis connection options for asynquery bus.
-func GetRedisBusAsynqueryOpts() (asynq.RedisConnOpt, error) {
-	return asynq.ParseRedisURI(Config.Viper.GetString("RedisBusAsynquery"))
+// GetAsynqueryRequestsConnOpts returns Redis connection options for incoming asynquery queue.
+func GetAsynqueryRequestsConnOpts() (asynq.RedisConnOpt, error) {
+	return asynq.ParseRedisURI(Config.Viper.GetString("AsynqueryRequestsConnURL"))
 }
 
 // GetDatabase returns postgresql database server connection config.

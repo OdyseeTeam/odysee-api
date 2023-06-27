@@ -10,13 +10,17 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/apps/uploads/database"
 	"github.com/OdyseeTeam/odysee-api/internal/tasks"
-	"github.com/OdyseeTeam/odysee-api/pkg/bus"
 	"github.com/OdyseeTeam/odysee-api/pkg/keybox"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
+	"github.com/OdyseeTeam/odysee-api/pkg/queue"
+	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -27,6 +31,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	tusd "github.com/tus/tusd/pkg/handler"
+	"github.com/tus/tusd/pkg/prometheuscollector"
 	"github.com/tus/tusd/pkg/s3store"
 )
 
@@ -35,15 +40,27 @@ const (
 )
 
 var (
+	onceMetrics sync.Once
+
 	reExtractFileID = regexp.MustCompile(`([^/]{32,})\/?$`)
 )
+
+var TusHeaders = []string{
+	"Http-Method-Override",
+	"Upload-Length",
+	"Upload-Offset",
+	"Tus-Resumable",
+	"Upload-Metadata",
+	"Upload-Defer-Length",
+	"Upload-Concat",
+}
 
 // Handler handle media publishing on odysee-api, it implements TUS
 // specifications to support resumable file upload and extends the handler to
 // support fetching media from remote url.
 type Handler struct {
 	*tusd.UnroutedHandler
-	bus            *bus.Client
+	queue          *queue.Queue
 	s3bucket       string
 	queries        *database.Queries
 	logger         logging.KVLogger
@@ -55,20 +72,20 @@ type Handler struct {
 type LauncherOption func(*Launcher)
 
 type Launcher struct {
-	corsDomains []string
-	db          database.DBTX
-	fileLocker  tusd.Locker
-	httpAddress string
-	prefix      string
-	publicKey   crypto.PublicKey
-	router      chi.Router
-	busRedisURL string
-	s3client    *s3.S3
-	s3bucket    string
-	handler     *Handler
-	httpServer  *http.Server
-	logger      logging.KVLogger
-	readyCancel context.CancelFunc
+	corsDomains   []string
+	db            database.DBTX
+	fileLocker    tusd.Locker
+	httpAddress   string
+	prefix        string
+	publicKey     crypto.PublicKey
+	router        chi.Router
+	queueRedisURL string
+	s3client      *s3.S3
+	s3bucket      string
+	handler       *Handler
+	httpServer    *http.Server
+	logger        logging.KVLogger
+	readyCancel   context.CancelFunc
 }
 
 func NewLauncher(options ...LauncherOption) *Launcher {
@@ -76,6 +93,7 @@ func NewLauncher(options ...LauncherOption) *Launcher {
 		logger:      logging.NoopKVLogger{},
 		prefix:      "/v1/uploads",
 		httpAddress: "0.0.0.0:8080",
+		corsDomains: []string{""},
 	}
 
 	for _, opt := range options {
@@ -121,9 +139,9 @@ func WithPublicKey(publicKey crypto.PublicKey) LauncherOption {
 	}
 }
 
-func WithBusRedisURL(busRedisURL string) LauncherOption {
+func WithForkliftRequestsConnURL(url string) LauncherOption {
 	return func(l *Launcher) {
-		l.busRedisURL = busRedisURL
+		l.queueRedisURL = url
 	}
 }
 
@@ -177,16 +195,16 @@ func (l *Launcher) Build() (chi.Router, error) {
 	}
 	l.readyCancel = readyCancel
 
-	if l.busRedisURL != "" {
-		redisOpts, err := asynq.ParseRedisURI(l.busRedisURL)
+	if l.queueRedisURL != "" {
+		opts, err := asynq.ParseRedisURI(l.queueRedisURL)
 		if err != nil {
 			return nil, err
 		}
-		bus, err := bus.NewClient(redisOpts, l.logger)
+		queue, err := queue.New(queue.WithRequestsConnOpts(opts), queue.WithLogger(l.logger))
 		if err != nil {
 			return nil, err
 		}
-		handler.bus = bus
+		handler.queue = queue
 		l.logger.Info("bus client created")
 	} else {
 		l.logger.Warn("skipping bus config as no redis url was provided")
@@ -215,7 +233,7 @@ func (l *Launcher) Build() (chi.Router, error) {
 
 	tusdHandler, err := tusd.NewUnroutedHandler(tusConfig)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to create tusd handler: %v", err)
+		return nil, fmt.Errorf("unable to create tusd handler: %v", err)
 	}
 	handler.UnroutedHandler = tusdHandler
 
@@ -224,12 +242,34 @@ func (l *Launcher) Build() (chi.Router, error) {
 	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   l.corsDomains,
 		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodHead, http.MethodDelete, http.MethodOptions},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Requested-With"},
+		AllowedHeaders:   append([]string{"Accept", "Authorization", "Content-Type", "X-Requested-With"}, TusHeaders...),
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: false,
 		MaxAge:           300,
 	}))
 
+	registry := prometheus.NewRegistry()
+	onceMetrics.Do(func() {
+		registerMetrics(registry)
+		redislocker.RegisterMetrics(registry)
+		tusMetrics := prometheuscollector.New(handler.Metrics)
+		registry.MustRegister(tusMetrics)
+	})
+	promHandler := promhttp.InstrumentMetricHandler(
+		registry, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
+	)
+
+	// Public endpoints
+	router.Route(l.prefix, func(r chi.Router) {
+		r.Use(handler.authByToken)
+		r.Use(handler.Middleware)
+		r.Post("/", handler.PostFile)
+		r.Head("/*", handler.HeadFile)
+		r.Patch("/*", handler.PatchFile)
+		r.Delete("/*", handler.DelFile)
+	})
+
+	// Internal endpoints
 	router.Get("/livez", func(w http.ResponseWriter, r *http.Request) {
 		if readyCtx.Err() != nil {
 			http.Error(w, "upload service is shutting down", http.StatusServiceUnavailable)
@@ -240,14 +280,8 @@ func (l *Launcher) Build() (chi.Router, error) {
 	router.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("OK"))
 	})
-	router.Route(l.prefix, func(r chi.Router) {
-		r.Use(handler.authByToken)
-		r.Use(handler.Middleware)
-		r.Post("/", handler.PostFile)
-		r.Head("/*", handler.HeadFile)
-		r.Patch("/*", handler.PatchFile)
-		r.Delete("/*", handler.DelFile)
-	})
+
+	router.Get("/internal/metrics", promHandler.ServeHTTP)
 
 	httpServer := &http.Server{
 		Addr:    l.httpAddress,
@@ -314,6 +348,7 @@ func (h *Handler) listenToHooks() {
 		}
 		_, err := h.queries.CreateUpload(context.Background(), p)
 		if err != nil {
+			sqlErrors.Inc()
 			h.logger.Warn("creating upload failed", "user_id", uid, "upload_id", p.ID, "err", err)
 			return
 		}
@@ -328,6 +363,7 @@ func (h *Handler) listenToHooks() {
 		}
 		err := h.queries.RecordUploadProgress(context.Background(), p)
 		if err != nil {
+			sqlErrors.Inc()
 			h.logger.Warn("recording upload progress failed", "user_id", p.UserID, "upload_id", p.ID, "err", err)
 			return
 		}
@@ -341,6 +377,7 @@ func (h *Handler) listenToHooks() {
 		}
 		err := h.queries.MarkUploadTerminated(context.Background(), p)
 		if err != nil {
+			sqlErrors.Inc()
 			h.logger.Warn("recording upload termination failed", "user_id", uid, "upload_id", p.ID, "err", err)
 			return
 		}
@@ -348,10 +385,23 @@ func (h *Handler) listenToHooks() {
 	})
 
 	go listen(h.CompleteUploads, func(uid int32, event tusd.HookEvent) {
-		err := completeUpload(
-			h.queries, h.bus, uid, event.Upload.ID, event.Upload.MetaData["filename"], h.s3bucket, event.Upload.Storage["Key"])
+		p := database.MarkUploadCompletedParams{
+			UserID:   uid,
+			ID:       event.Upload.ID,
+			Filename: event.Upload.MetaData["filename"],
+			Key:      event.Upload.Storage["Key"],
+		}
+		err := h.queries.MarkUploadCompleted(context.Background(), p)
+		if err != nil {
+			sqlErrors.Inc()
+			h.logger.Warn("recording upload completion failed", "user_id", uid, "upload_id", p.ID, "err", err)
+			return
+		}
+
+		err = h.completeUpload(p)
 		if err != nil {
 			h.logger.Warn("completing upload failed", "user_id", uid, "upload_id", event.Upload.ID, "err", err)
+			redisErrors.Inc()
 			return
 		}
 		h.logger.Info("upload completed", "user_id", uid, "upload_id", event.Upload.ID, "size", event.Upload.Size)
@@ -363,10 +413,15 @@ func (h *Handler) listenToHooks() {
 // authByToken sends a 401 Unauthorized response for unverified tokens and 404 if no matching upload found for user.
 func (h *Handler) authByToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			next.ServeHTTP(w, r)
+			return
+		}
 		userID, err := h.extractUserIDFromRequest(r)
 
 		if err != nil {
 			h.logger.Info("failed to extract token from request", "err", err)
+			userAuthErrors.Inc()
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
@@ -386,8 +441,12 @@ func (h *Handler) authByToken(next http.Handler) http.Handler {
 	})
 }
 
+// extractUserIDFromRequest retrieves token from request header and extracts user id from it
 func (h *Handler) extractUserIDFromRequest(r *http.Request) (int32, error) {
 	rt := jwtauth.TokenFromHeader(r)
+	if rt == "" {
+		return 0, errors.New("missing authentication token in request")
+	}
 	token, err := h.tokenValidator.ParseToken(rt)
 	if err != nil {
 		return 0, err
@@ -415,37 +474,25 @@ func extractUploadIDFromPath(url string) string {
 	return result[1]
 }
 
-func completeUpload(queries *database.Queries, b *bus.Client, uid int32, uploadID, fileName, bucket, key string) error {
-	p := database.MarkUploadCompletedParams{
-		UserID:   uid,
-		ID:       uploadID,
-		Filename: fileName,
-		Key:      key,
-	}
-	err := queries.MarkUploadCompleted(context.Background(), p)
-	if err != nil {
-		return err
-	}
-
-	if b != nil {
-		if err != nil {
-			return err
-		}
-		err = b.Put(
-			tasks.TaskReflectUpload,
-			tasks.ReflectUploadPayload{
-				UploadID: p.ID,
-				UserID:   uid,
-				FileName: p.Filename,
+// completeUpload sends a task to the bus to reflect the upload to the user's bucket
+func (h *Handler) completeUpload(uploadParams database.MarkUploadCompletedParams) error {
+	if h.queue != nil {
+		err := h.queue.SendRequest(
+			tasks.ForkliftUploadIncoming,
+			tasks.ForkliftUploadIncomingPayload{
+				UploadID: uploadParams.ID,
+				UserID:   uploadParams.UserID,
+				FileName: uploadParams.Filename,
 				FileLocation: tasks.FileLocationS3{
-					Key:    p.Key,
-					Bucket: bucket,
+					Key:    uploadParams.Key,
+					Bucket: h.s3bucket,
 				},
-			}, 10, 6*time.Hour, 72*time.Hour,
+			}, queue.WithRequestRetry(10), queue.WithRequestTimeout(24*time.Hour),
 		)
 		if err != nil {
 			return err
 		}
+		h.logger.Info("forklift notified", "upload_id", uploadParams.ID, "user_id", uploadParams.UserID)
 	}
 	return nil
 }

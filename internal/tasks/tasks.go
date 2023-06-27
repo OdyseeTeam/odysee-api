@@ -6,9 +6,9 @@ import (
 
 // A list of task types.
 const (
-	TaskReflectUpload    = "forklift:process-upload"
-	TaskProcessAsynquery = "asynquery:query"
-	TaskAsynqueryMerge   = "asynquery:merge"
+	ForkliftUploadIncoming = "forklift:upload:incoming"
+	TaskProcessAsynquery   = "asynquery:query"
+	ForkliftUploadDone     = "forklift:upload:done"
 )
 
 type AsyncQueryTask struct {
@@ -16,13 +16,13 @@ type AsyncQueryTask struct {
 	UserID int `json:"user_id"`
 }
 
-type AsynqueryMergePayload struct {
+type ForkliftUploadDonePayload struct {
 	UploadID string `json:"upload_id"`
 	UserID   int32  `json:"user_id"`
 	Meta     UploadMeta
 }
 
-type ReflectUploadPayload struct {
+type ForkliftUploadIncomingPayload struct {
 	UploadID     string         `json:"upload_id"`
 	FileName     string         `json:"file_name"`
 	UserID       int32          `json:"user_id"`
@@ -46,14 +46,14 @@ type UploadMeta struct {
 	Height    int `json:",omitempty"`
 }
 
-func (p AsynqueryMergePayload) GetTraceData() map[string]string {
+func (p ForkliftUploadDonePayload) GetTraceData() map[string]string {
 	return map[string]string{
 		"user_id":  strconv.Itoa(int(p.UserID)),
 		"query_id": p.UploadID,
 	}
 }
 
-func (p ReflectUploadPayload) GetTraceData() map[string]string {
+func (p ForkliftUploadIncomingPayload) GetTraceData() map[string]string {
 	return map[string]string{
 		"user_id":   strconv.Itoa(int(p.UserID)),
 		"upload_id": p.UploadID,

@@ -17,7 +17,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
 
 	"github.com/alecthomas/kong"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 var cli struct {
@@ -97,7 +97,7 @@ func serve(logger logging.KVLogger) {
 		uploads.WithPublicKey(k),
 		uploads.WithLogger(logger),
 		uploads.WithCORSDomains(cfg.V.GetStringSlice("CORSDomains")),
-		uploads.WithBusRedisURL(cfg.V.GetString("RedisBusForklift")),
+		uploads.WithForkliftRequestsConnURL(cfg.V.GetString("ForkliftRequestsConnURL")),
 	)
 
 	go func() {

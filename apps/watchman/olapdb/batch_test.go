@@ -21,13 +21,13 @@ func TestBatchWriterSuite(t *testing.T) {
 }
 
 func (s *batchWriterSuite) TestBatch() {
-	days := 14
+	days := 14 * 24 * time.Hour
 	number := 1000
 	reports := []*reporter.PlaybackReport{}
-	bw := NewBatchWriter(500*time.Millisecond, 16)
+	bw := NewBatchWriter(100*time.Millisecond, 16)
 	go bw.Start()
 
-	for t := range timeSeries(number, time.Now().Add(time.Duration(-days)*24*time.Hour)) {
+	for t := range timeSeries(number, time.Now().Add(-days)) {
 		r := PlaybackReportFactory.MustCreate().(*reporter.PlaybackReport)
 		ts := t.Format(time.RFC1123Z)
 		err := bw.Write(r, randomdata.StringSample(randomdata.IpV4Address(), randomdata.IpV6Address()), ts)
@@ -35,7 +35,7 @@ func (s *batchWriterSuite) TestBatch() {
 		reports = append(reports, r)
 	}
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(3 * time.Second)
 	bw.Stop()
 
 	var (

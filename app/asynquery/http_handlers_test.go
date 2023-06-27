@@ -8,7 +8,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 	"time"
 
@@ -63,16 +62,16 @@ func (s *asynqueryHandlerSuite) TestCreateUpload() {
 		Code: http.StatusOK,
 	}).Run(s.router, s.T())
 
-	s.Equal(s.launcher.uploadServiceURL, resp.Header().Get("Location"))
 	rr := &Response{}
 	s.Require().NoError(json.Unmarshal(resp.Body.Bytes(), rr))
 	s.Empty(rr.Error)
-	s.Require().Equal(StatusSuccess, rr.Status)
-	s.NotEmpty(rr.Payload.(UploadTokenResponse).Token)
-	s.Equal(s.launcher.uploadServiceURL, rr.Payload.(UploadTokenResponse).Location)
+	s.Require().Equal(StatusUploadTokenCreated, rr.Status)
+	s.NotEmpty(rr.Payload.(UploadTokenCreatedPayload).Token)
+	s.Equal(s.launcher.uploadServiceURL, rr.Payload.(UploadTokenCreatedPayload).Location)
 }
 
 func (s *asynqueryHandlerSuite) TestCreate() {
+	require := s.Require()
 	ts := httptest.NewServer(s.router)
 	uploadID := randomdata.Alphanumeric(64)
 
@@ -93,7 +92,7 @@ func (s *asynqueryHandlerSuite) TestCreate() {
 		"allow_duplicate_name": true,
 		FilePathParam:          "https://uploads-v4.api.na-backend.odysee.com/v1/uploads/" + uploadID,
 	}))
-	s.Require().NoError(err)
+	require.NoError(err)
 
 	resp := (&test.HTTPTest{
 		Method: http.MethodPost,
@@ -104,9 +103,6 @@ func (s *asynqueryHandlerSuite) TestCreate() {
 		ReqBody: bytes.NewReader(streamCreateReq),
 		Code:    http.StatusCreated,
 	}).Run(s.router, s.T())
-	loc, err := url.Parse(resp.Header().Get("Location"))
-	s.Require().NoError(err)
-	s.Regexp(`[\w\d]{32}`, loc.Path)
 
 	var query *models.Asynquery
 	e2etest.Wait(s.T(), "query settling in the database", 5*time.Second, 1000*time.Millisecond, func() error {
@@ -122,6 +118,16 @@ func (s *asynqueryHandlerSuite) TestCreate() {
 		}
 		return nil
 	})
+
+	rbody := resp.Body.Bytes()
+	rr := &Response{}
+	require.NoError(json.Unmarshal(rbody, rr))
+	s.Empty(rr.Error)
+	require.Equal(StatusQueryCreated, rr.Status)
+	qcr, ok := rr.Payload.(QueryCreatedPayload)
+	require.True(ok)
+	s.Equal(query.ID, qcr.QueryID)
+
 	s.Equal(models.AsynqueryStatusReceived, query.Status)
 	s.Equal(uploadID, query.UploadID)
 
@@ -151,7 +157,7 @@ func (s *asynqueryHandlerSuite) SetupSuite() {
 
 	redisHelper := testdeps.NewRedisTestHelper(s.T())
 	s.launcher = NewLauncher(
-		WithBusRedisOpts(redisHelper.AsynqOpts),
+		WithRequestsConnOpts(redisHelper.AsynqOpts),
 		WithLogger(zapadapter.NewKV(nil)),
 		WithPrivateKey(kf.PrivateKey()),
 		WithDB(s.userHelper.DB),

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/OdyseeTeam/odysee-api/apps/forklift"
 	"github.com/OdyseeTeam/odysee-api/pkg/configng"
@@ -64,13 +65,25 @@ func serve(logger logging.KVLogger) {
 		logger.Fatal("db connection failed", "err", err)
 	}
 
+	blobPath := cfg.V.GetString("BlobPath")
+	uploadPath := cfg.V.GetString("UploadPath")
+	err = os.MkdirAll(blobPath, os.ModePerm)
+	if err != nil {
+		logger.Fatal("failed to create working directory", "err", err, "path", blobPath)
+	}
+	err = os.MkdirAll(uploadPath, os.ModePerm)
+	if err != nil {
+		logger.Fatal("failed to create working directory", "err", err, "path", uploadPath)
+	}
+
 	l := forklift.NewLauncher(
 		forklift.WithLogger(logger),
 		forklift.WithReflectorConfig(cfg.V.GetStringMapString("ReflectorStorage")),
 		forklift.WithConcurrency(cfg.V.GetInt("Concurrency")),
-		forklift.WithBlobPath(cfg.V.GetString("BlobPath")),
-		forklift.WithRetriever(forklift.NewS3Retriever(cfg.V.GetString("UploadPath"), client)),
-		forklift.WithRedisURL(cfg.V.GetString("RedisBusForklift")),
+		forklift.WithBlobPath(blobPath),
+		forklift.WithRetriever(forklift.NewS3Retriever(uploadPath, client)),
+		forklift.WithRequestsConnURL(cfg.V.GetString("ForkliftRequestsConnURL")),   // Redis connection for listening to complete upload requests
+		forklift.WithResponsesConnURL(cfg.V.GetString("AsynqueryRequestsConnURL")), // Redis connection for publishing processed upload results
 		forklift.WithDB(db),
 	)
 
@@ -78,5 +91,5 @@ func serve(logger logging.KVLogger) {
 	if err != nil {
 		panic(err)
 	}
-	b.StartHandlers()
+	b.ServeUntilShutdown()
 }
