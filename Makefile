@@ -1,9 +1,9 @@
 date := $(shell date "+%Y-%m-%d-%H-%M")
-api_version := $(shell git describe --tags --match 'api-v*'|sed 's/api-v\([0-9.]*\)/\1/')
-watchman_version := $(shell git describe --tags --match 'watchman-v*'|sed 's/api-v\([0-9.]*\)/\1/')
 git_hash := $(shell git rev-parse --short HEAD)
-forklift_version = $(shell git describe --tags --match 'forklift-v*'|sed 's/forklift-v\([0-9.]*\).*/\1/')
-uploads_version = $(shell git describe --tags --match 'uploads-v*'|sed 's/uploads-v\([0-9.]*\).*/\1/')
+oapi_version ?= $(shell git describe --tags --match 'api-v*'|sed 's/api-v\([0-9.]*\)/\1/')
+watchman_version := $(shell git describe --tags --match 'watchman-v*'|sed 's/api-v\([0-9.]*\)/\1/')
+forklift_version ?= $(shell git describe --tags --match 'forklift-v*'|sed 's/forklift-v\([0-9.]*\).*/\1/')
+uploads_version ?= $(shell git describe --tags --match 'uploads-v*'|sed 's/uploads-v\([0-9.]*\).*/\1/')
 
 .PHONY: test
 test:
@@ -55,7 +55,7 @@ models: get_sqlboiler
 oapi:
 	CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build \
 		-o dist/linux_amd64/oapi \
-		-ldflags "-s -w -X github.com/OdyseeTeam/odysee-api/version.version=$(api_version) -X github.com/OdyseeTeam/odysee-api/version.commit=$(git_hash) -X github.com/OdyseeTeam/odysee-api/apps/version.buildDate=$(date)" \
+		-ldflags "-s -w -X github.com/OdyseeTeam/odysee-api/version.version=$(oapi_version) -X github.com/OdyseeTeam/odysee-api/version.commit=$(git_hash) -X github.com/OdyseeTeam/odysee-api/apps/version.buildDate=$(date)" \
 		.
 
 watchman:
@@ -80,22 +80,25 @@ uploads:
 		-X github.com/OdyseeTeam/odysee-api/apps/version.buildDate=$(date)" \
 		./apps/uploads/cmd/
 
-cur_branch := $(shell git rev-parse --abbrev-ref HEAD)
-.PHONY: image
-image:
-	docker buildx build -t odyseeteam/odysee-api:$(api_version) -t odyseeteam/odysee-api:latest -t odyseeteam/odysee-api:$(cur_branch) --platform linux/amd64 .
-
-watchman_image:
-	docker buildx build -t odyseeteam/watchman:$(watchman_version) --platform linux/amd64 ./apps/watchman
-
 watchman_design:
 	goa gen github.com/OdyseeTeam/odysee-api/apps/watchman/design -o apps/watchman
 
 watchman_example:
 	goa example github.com/OdyseeTeam/odysee-api/apps/watchman/design -o apps/watchman
 
+cur_branch := $(shell git rev-parse --abbrev-ref HEAD)
+.PHONY: oapi_image
+oapi_image:
+	docker buildx build -t odyseeteam/odysee-api:$(oapi_version) -t odyseeteam/odysee-api:latest -t odyseeteam/odysee-api:$(cur_branch) --platform linux/amd64 .
+
+.PHONY: watchman_image
+watchman_image:
+	docker buildx build -t odyseeteam/watchman:$(watchman_version) --platform linux/amd64 ./apps/watchman
+
+.PHONY: uploads_image
 uploads_image:
 	docker buildx build -t odyseeteam/uploads:$(uploads_version) --platform linux/amd64 -f ./build/uploads/Dockerfile .
 
+.PHONY: forklift_image
 forklift_image:
 	docker buildx build -t odyseeteam/forklift:$(forklift_version) --platform linux/amd64 -f ./build/forklift/Dockerfile .
