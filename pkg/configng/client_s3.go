@@ -18,7 +18,7 @@ func NewS3Client(s3cfg S3Config) (*s3.S3, error) {
 		cfg = cfg.WithEndpoint(s3cfg.Endpoint)
 	}
 
-	if s3cfg.Minio {
+	if s3cfg.Flavor == "minio" || s3cfg.Flavor == "ovh" {
 		cfg = cfg.WithS3ForcePathStyle(true)
 	}
 

@@ -54,10 +54,12 @@ func serve(logger logging.KVLogger) {
 		panic(fmt.Errorf("cannot parse s3 config: %w", err))
 	}
 
+	s3cfg.VerifyBucket = true
 	client, err := configng.NewS3ClientV2(s3cfg)
 	if err != nil {
 		panic(fmt.Errorf("cannot create s3 client: %w", err))
 	}
+	logger.Debug("incoming s3 client configured", "region", s3cfg.Region, "endpoint", s3cfg.Endpoint, "bucket", s3cfg.Bucket)
 
 	pgcfg := cfg.ReadPostgresConfig("Database")
 	db, err := migrator.ConnectDB(pgcfg)

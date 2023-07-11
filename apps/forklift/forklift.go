@@ -130,13 +130,13 @@ func (l *Launcher) Build() (*queue.Queue, error) {
 		return nil, err
 	}
 
-	s, err := blobs.NewStore(l.reflectorConfig)
+	store, err := blobs.NewStore(l.reflectorConfig)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize reflector store: %w", err)
 	}
 	l.logger.Info("reflector store initialized")
 
-	q, err := queue.NewWithResponses(
+	taskQueue, err := queue.NewWithResponses(
 		l.requestsConnURL, l.responsesConnURL,
 		queue.WithConcurrency(l.concurrency),
 		queue.WithLogger(l.logger))
@@ -149,13 +149,13 @@ func (l *Launcher) Build() (*queue.Queue, error) {
 		blobPath:  l.blobPath,
 		logger:    l.logger,
 		retriever: l.retriever,
-		store:     s,
+		store:     store,
 		queries:   database.New(l.db),
-		queue:     q,
+		queue:     taskQueue,
 	}
-	q.AddHandler(tasks.ForkliftUploadIncoming, forklift.HandleTask)
+	taskQueue.AddHandler(tasks.ForkliftUploadIncoming, forklift.HandleTask)
 	l.logger.Info("forklift initialized")
-	return q, nil
+	return taskQueue, nil
 }
 
 func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {

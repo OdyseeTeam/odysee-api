@@ -159,7 +159,8 @@ func (s *forkliftSuite) SetupSuite() {
 	s.upHelper, err = uploads.NewTestHelper(s.T())
 	s.Require().NoError(err)
 
-	s.s3c, err = configng.NewS3ClientV2(s.upHelper.S3Config)
+	flCfg := s.upHelper.S3Config
+	s.s3c, err = configng.NewS3ClientV2(flCfg)
 	s.Require().NoError(err)
 }
 

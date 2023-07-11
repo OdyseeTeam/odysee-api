@@ -34,7 +34,7 @@ func NewTestHelper(t *testing.T) (*TestHelper, error) {
 		Region:   "us-east-1",
 		Key:      "minio",
 		Secret:   "minio123",
-		Minio:    true,
+		Flavor:   "minio",
 	}
 	th.S3Config = s3cfg
 

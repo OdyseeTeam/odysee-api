@@ -7,11 +7,12 @@ import (
 )
 
 type S3Config struct {
-	Endpoint    string
-	Region      string
-	Bucket      string
-	Key, Secret string
-	Minio       bool
+	Endpoint     string
+	Region       string
+	Bucket       string
+	Key, Secret  string
+	Flavor       string
+	VerifyBucket bool
 }
 
 type PostgresConfig struct {
