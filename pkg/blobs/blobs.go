@@ -90,9 +90,17 @@ func (s *Source) Split() (*pb.Stream, error) {
 
 	enc := stream.NewEncoder(file)
 
-	encodedStream, err := enc.Stream()
+	s.finalPath = s.blobPath
+	err = os.MkdirAll(s.finalPath, os.ModePerm)
 	if err != nil {
-		return nil, fmt.Errorf("cannot create stream: %w", err)
+		return nil, fmt.Errorf("cannot create directory for blobs: %w", err)
+	}
+
+	s.blobsManifest, err = enc.Encode(func(h string, b []byte) error {
+		return ioutil.WriteFile(path.Join(s.finalPath, h), b, os.ModePerm)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("cannot encode stream: %w", err)
 	}
 	s.stream = &pb.Stream{
 		Source: &pb.Source{
@@ -101,22 +109,6 @@ func (s *Source) Split() (*pb.Stream, error) {
 			Size:   uint64(enc.SourceLen()),
 			Hash:   enc.SourceHash(),
 		},
-	}
-
-	s.finalPath = path.Join(s.blobPath, enc.SDBlob().HashHex())
-	err = os.MkdirAll(s.finalPath, os.ModePerm)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create directory for blobs: %w", err)
-	}
-
-	s.blobsManifest = make([]string, len(encodedStream))
-
-	for i, b := range encodedStream {
-		err := ioutil.WriteFile(path.Join(s.blobPath, enc.SDBlob().HashHex(), b.HashHex()), b, os.ModePerm)
-		if err != nil {
-			return nil, fmt.Errorf("cannot write blob: %w", err)
-		}
-		s.blobsManifest[i] = b.HashHex()
 	}
 
 	return s.stream, nil
