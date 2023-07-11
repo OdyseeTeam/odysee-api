@@ -165,9 +165,17 @@ func (m *CallManager) HandleMerge(ctx context.Context, task *asynq.Task) error {
 		patch["duration"] = meta.Duration
 	}
 
-	pp := request.Params.(map[string]interface{})
+	pp, ok := request.Params.(map[string]interface{})
+	if !ok {
+		log.Info("cannot extract params from request")
+		return asynq.SkipRetry
+	}
 	for k, v := range patch {
 		pp[k] = v
+	}
+	if request.Method == query.MethodStreamUpdate {
+		delete(pp, "name")
+		pp["replace"] = true
 	}
 	delete(pp, "file_path")
 
