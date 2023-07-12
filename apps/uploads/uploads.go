@@ -177,6 +177,7 @@ func NewLauncher(options ...LauncherOption) *Launcher {
 func (l *Launcher) Completer() (Completer, error) {
 	if l.queueRedisURL == "" {
 		l.logger.Warn("skipping bus config as no redis url was provided")
+		return nil, nil
 	}
 	opts, err := asynq.ParseRedisURI(l.queueRedisURL)
 	if err != nil {
