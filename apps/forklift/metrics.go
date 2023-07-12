@@ -11,7 +11,7 @@ const LabelFatal = "fatal"
 const LabelCommon = "common"
 const LabelRetrieve = "retrieve"
 const LabelAnalyze = "analyze"
-const LabelSplit = "split"
+const LabelStreamCreate = "stream_create"
 const LabelUpstream = "upstream"
 
 var (

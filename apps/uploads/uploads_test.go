@@ -426,7 +426,7 @@ func (s *uploadSuite) SetupSuite() {
 		WithLogger(zapadapter.NewKV(nil)),
 		WithCORSDomains([]string{"http://localhost:9090"}),
 	)
-	r, err := l.Build()
+	r, err := l.BuildHandler()
 	s.Require().NoError(err)
 
 	s.router = r

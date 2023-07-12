@@ -85,9 +85,9 @@ func WithReflectorConfig(config map[string]string) LauncherOption {
 	}
 }
 
-func WithRetriever(retreiver Retriever) LauncherOption {
+func WithRetriever(retriever Retriever) LauncherOption {
 	return func(l *Launcher) {
-		l.retriever = retreiver
+		l.retriever = retriever
 	}
 }
 
@@ -180,7 +180,7 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 	}
 	defer file.Cleanup()
 	observeDuration(LabelRetrieve, start)
-	log.Debug("file retreived", "location", payload.FileLocation, "size", file.Size, "seconds", time.Since(start).Seconds())
+	log.Debug("file retrieved", "location", payload.FileLocation, "size", file.Size, "seconds", time.Since(start).Seconds())
 
 	blobPath := path.Join(f.blobPath, payload.UploadID)
 	if err != nil {
@@ -206,20 +206,22 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 
 	src := blobs.NewSource(file.Name, blobPath)
 	start = time.Now()
+	log.Debug("creating stream")
 	stream, err := src.Split()
-	observeDuration(LabelSplit, start)
+	observeDuration(LabelStreamCreate, start)
 	if err != nil {
-		observeError(LabelSplit)
-		log.Warn("failed to split stream", "err", err, "file", file.Name, "blobs_path", f.blobPath)
+		observeError(LabelStreamCreate)
+		log.Warn("failed to create stream", "err", err, "file", file.Name, "blobs_path", f.blobPath)
 		return err
 	}
 	streamSource := stream.GetSource()
 	sdHash := hex.EncodeToString(streamSource.GetSdHash())
 
 	log = log.With("sd_hash", sdHash)
-	log.Debug("file split", "seconds", time.Since(start).Seconds())
+	log.Debug("stream created", "seconds", time.Since(start).Seconds())
 
 	start = time.Now()
+	log.Debug("starting upload")
 	summary, err := uploader.Upload(src)
 	observeDuration(LabelUpstream, start)
 	if err != nil {
@@ -232,7 +234,7 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 		log.Warn(ErrReflector.Error(), "err_count", summary.Err, "blobs_path", f.blobPath)
 		return ErrReflector
 	}
-	log.Debug("blobs uploaded", "seconds", time.Since(start).Seconds())
+	log.Debug("stream blobs uploaded", "seconds", time.Since(start).Seconds())
 
 	meta := tasks.UploadMeta{
 		Hash:      hex.EncodeToString(streamSource.GetHash()),

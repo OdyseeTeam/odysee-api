@@ -240,7 +240,7 @@ func (s *publishV4Suite) SetupSuite() {
 		uploads.WithLogger(zapadapter.NewKV(nil)),
 		uploads.WithForkliftRequestsConnURL(s.redisHelper.URL),
 	)
-	s.uploadsRouter, err = s.uploadsLauncher.Build()
+	s.uploadsRouter, err = s.uploadsLauncher.BuildHandler()
 	require.NoError(err)
 	s.uploadServer = httptest.NewServer(s.uploadsRouter)
 	t.Cleanup(s.uploadServer.Close)
