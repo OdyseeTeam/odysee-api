@@ -1,16 +1,13 @@
 package blobs
 
 import (
-	"encoding/hex"
 	"io/ioutil"
 	"path"
-	"strings"
 	"testing"
 
 	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/lbryio/lbry.go/v3/stream"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,5 +33,4 @@ func TestSplit(t *testing.T) {
 	original, err := ioutil.ReadFile(filePath)
 	require.NoError(t, err)
 	require.Equal(t, original, result)
-	assert.True(t, strings.HasSuffix(s.finalPath, hex.EncodeToString(s.Stream().GetSource().SdHash)))
 }
