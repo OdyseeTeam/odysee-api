@@ -163,6 +163,12 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 		f.logger.Warn("cannot handle task", "type", task.Type())
 		return asynq.SkipRetry
 	}
+	start := time.Now()
+	waitStart := time.Now()
+	defer func() {
+		waitTimeMinutes.Observe(time.Since(waitStart).Minutes())
+	}()
+
 	var payload tasks.ForkliftUploadIncomingPayload
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		f.logger.Warn("message unmarshal failed", "err", err)
@@ -170,9 +176,8 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 	}
 
 	log := logging.TracedLogger(f.logger, payload)
-
 	log.Debug("task received")
-	start := time.Now()
+
 	file, err := f.retriever.Retrieve(context.TODO(), payload.UploadID, payload.FileLocation)
 	if err != nil {
 		log.Warn("failed to retrieve file", "err", err)
@@ -204,7 +209,7 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 	}
 	log.Debug("file analyzed", "result", info, "err", err)
 
-	src := blobs.NewSource(file.Name, blobPath)
+	src := blobs.NewSource(file.Name, blobPath, payload.FileName)
 	start = time.Now()
 	log.Debug("creating stream")
 	stream, err := src.Split()
@@ -224,6 +229,8 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 	log.Debug("starting upload")
 	summary, err := uploader.Upload(src)
 	observeDuration(LabelUpstream, start)
+	egressDurationSeconds.Add(float64(time.Since(start)))
+	egressVolumeMB.Add(float64(streamSource.GetSize() / 1024 / 1024))
 	if err != nil {
 		// With errors returned by the current implementation of uploader it doesn't make sense to retry.
 		observeError(LabelUpstream)
@@ -271,12 +278,14 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 	}
 	log.Debug("upload processed")
 
-	if c, ok := f.retriever.(Deleter); ok {
-		err := c.Delete(context.TODO(), payload.FileLocation)
-		if err != nil {
-			log.Warn("failed to complete retrieved file", "err", err)
+	defer func() {
+		if c, ok := f.retriever.(Deleter); ok {
+			err := c.Delete(context.TODO(), payload.FileLocation)
+			if err != nil {
+				log.Warn("failed to complete retrieved file", "err", err)
+			}
 		}
-	}
+	}()
 
 	err = f.queue.SendResponse(tasks.ForkliftUploadDone, tasks.ForkliftUploadDonePayload{
 		UploadID: payload.UploadID,
