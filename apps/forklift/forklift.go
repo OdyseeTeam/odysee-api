@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"path"
 	"time"
@@ -17,9 +19,9 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/queue"
 
-	"github.com/tabbed/pqtype"
-
+	"github.com/go-chi/chi/v5"
 	"github.com/hibiken/asynq"
+	"github.com/tabbed/pqtype"
 )
 
 var ErrReflector = errors.New("errors found while uploading blobs to reflector")
@@ -41,6 +43,7 @@ type Launcher struct {
 	logger           logging.KVLogger
 	db               database.DBTX
 	concurrency      int
+	metricsAddress   string
 }
 
 type Forklift struct {
@@ -103,6 +106,16 @@ func WithDB(db database.DBTX) LauncherOption {
 	}
 }
 
+func ExposeMetrics(address ...string) LauncherOption {
+	return func(l *Launcher) {
+		if len(address) == 0 {
+			l.metricsAddress = ":8080"
+		} else {
+			l.metricsAddress = address[0]
+		}
+	}
+}
+
 func NewLauncher(options ...LauncherOption) *Launcher {
 	launcher := &Launcher{
 		logger:      logging.NoopKVLogger{},
@@ -143,6 +156,26 @@ func (l *Launcher) Build() (*queue.Queue, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize queue: %w", err)
 	}
+
+	if l.metricsAddress != "" {
+		listener, err := net.Listen("tcp", ":8080") // adjust arguments as needed.
+		if err != nil {
+			return nil, fmt.Errorf("failed to bind http metrics server to %s: %w", l.metricsAddress, err)
+		}
+		router := chi.NewRouter()
+		router.Handle("/internal/metrics", BuildMetricsHandler())
+		httpServer := &http.Server{
+			Addr:    l.metricsAddress,
+			Handler: router,
+		}
+
+		go func() {
+			if err := httpServer.Serve(listener); err != nil && err != http.ErrServerClosed {
+				l.logger.Error("http server returned error", "err", err)
+			}
+		}()
+	}
+	l.logger.Info("metrics server launched", "addr", l.metricsAddress)
 
 	forklift := &Forklift{
 		analyzer:  analyzer,

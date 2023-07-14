@@ -1,9 +1,12 @@
 package forklift
 
 import (
+	"net/http"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const ns = "forklift"
@@ -13,6 +16,8 @@ const LabelRetrieve = "retrieve"
 const LabelAnalyze = "analyze"
 const LabelStreamCreate = "stream_create"
 const LabelUpstream = "upstream"
+
+var onceMetrics sync.Once
 
 var (
 	waitTimeMinutes = prometheus.NewHistogram(prometheus.HistogramOpts{
@@ -39,9 +44,22 @@ var (
 	})
 )
 
-func RegisterMetrics() {
-	prometheus.MustRegister(
+func registerMetrics(registry prometheus.Registerer) {
+	if registry == nil {
+		registry = prometheus.DefaultRegisterer
+	}
+	registry.MustRegister(
 		waitTimeMinutes, processingDurationSeconds, processingErrors, egressVolumeMB, egressDurationSeconds,
+	)
+}
+
+func BuildMetricsHandler() http.Handler {
+	registry := prometheus.NewRegistry()
+	onceMetrics.Do(func() {
+		registerMetrics(registry)
+	})
+	return promhttp.InstrumentMetricHandler(
+		registry, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
 	)
 }
 

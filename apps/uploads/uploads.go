@@ -294,14 +294,14 @@ func (l *Launcher) BuildHandler() (chi.Router, error) {
 	})
 
 	// Internal endpoints
-	router.Get("/livez", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/livez", func(w http.ResponseWriter, _ *http.Request) {
 		if readyCtx.Err() != nil {
 			http.Error(w, "upload service is shutting down", http.StatusServiceUnavailable)
 			return
 		}
 		w.Write([]byte("OK"))
 	})
-	router.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Write([]byte("OK"))
 	})
 
