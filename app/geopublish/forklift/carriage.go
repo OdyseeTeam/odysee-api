@@ -143,7 +143,7 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	}
 	log.Debug("stream analyzed", "info", info, "err", err)
 
-	src := blobs.NewSource(p.Path, c.blobsPath)
+	src := blobs.NewSource(p.Path, c.blobsPath, "lbry_file")
 
 	t = time.Now()
 	stream, err := src.Split()

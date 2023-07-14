@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"path/filepath"
 
 	"github.com/lbryio/lbry.go/v3/stream"
 	"github.com/lbryio/reflector.go/db"
@@ -26,11 +25,12 @@ const (
 )
 
 type Source struct {
-	filePath      string
-	blobPath      string
-	finalPath     string
-	stream        *pb.Stream
-	blobsManifest []string
+	filePath        string
+	blobPath        string
+	finalPath       string
+	encodedFileName string
+	stream          *pb.Stream
+	blobsManifest   []string
 }
 
 type Store struct {
@@ -44,10 +44,11 @@ type Uploader struct {
 }
 
 // NewSource initializes a blob splitter, takes source file and blobs destination path as arguments.
-func NewSource(filePath, blobPath string) *Source {
+func NewSource(filePath, blobPath, encodedFileName string) *Source {
 	s := Source{
-		filePath: filePath,
-		blobPath: blobPath,
+		filePath:        filePath,
+		blobPath:        blobPath,
+		encodedFileName: encodedFileName,
 	}
 
 	return &s
@@ -89,6 +90,7 @@ func (s *Source) Split() (*pb.Stream, error) {
 	defer file.Close()
 
 	enc := stream.NewEncoder(file)
+	enc.SetFilename(s.encodedFileName)
 
 	s.finalPath = s.blobPath
 	err = os.MkdirAll(s.finalPath, os.ModePerm)
@@ -105,7 +107,7 @@ func (s *Source) Split() (*pb.Stream, error) {
 	s.stream = &pb.Stream{
 		Source: &pb.Source{
 			SdHash: enc.SDBlob().Hash(),
-			Name:   filepath.Base(file.Name()),
+			Name:   s.encodedFileName,
 			Size:   uint64(enc.SourceLen()),
 			Hash:   enc.SourceHash(),
 		},
