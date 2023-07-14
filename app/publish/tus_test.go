@@ -34,7 +34,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tus/tusd/pkg/filestore"
 	"github.com/tus/tusd/pkg/handler"
-	tusd "github.com/tus/tusd/pkg/handler"
 )
 
 const tusVersion = "1.0.0"
@@ -54,14 +53,14 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func newTusTestCfg(uploadPath string) tusd.Config {
-	composer := tusd.NewStoreComposer()
+func newTusTestCfg(uploadPath string) handler.Config {
+	composer := handler.NewStoreComposer()
 	store := filestore.New(uploadPath)
 	store.UseIn(composer)
 	locker, _ := redislocker.New(redisOpts)
 	locker.UseIn(composer)
 
-	return tusd.Config{
+	return handler.Config{
 		BasePath:      "/api/v2/publish/",
 		StoreComposer: composer,
 	}

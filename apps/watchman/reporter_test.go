@@ -12,7 +12,6 @@ import (
 
 	"github.com/OdyseeTeam/odysee-api/apps/watchman/config"
 	"github.com/OdyseeTeam/odysee-api/apps/watchman/gen/http/reporter/client"
-	reporterclt "github.com/OdyseeTeam/odysee-api/apps/watchman/gen/http/reporter/client"
 	reportersvr "github.com/OdyseeTeam/odysee-api/apps/watchman/gen/http/reporter/server"
 	"github.com/OdyseeTeam/odysee-api/apps/watchman/gen/reporter"
 	"github.com/OdyseeTeam/odysee-api/apps/watchman/log"
@@ -90,7 +89,7 @@ func (s *reporterSuite) TestAdd() {
 
 	for _, c := range cases {
 		s.Run(c.name, func() {
-			r, err := http.NewRequest(http.MethodPost, s.ts.URL+reporterclt.AddReporterPath(), bytes.NewBuffer(c.body))
+			r, err := http.NewRequest(http.MethodPost, s.ts.URL+client.AddReporterPath(), bytes.NewBuffer(c.body))
 			s.Require().NoError(err)
 			cl := &http.Client{}
 			r.Header.Add("origin", c.origin)
