@@ -2,7 +2,7 @@ package api
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -133,7 +133,7 @@ func TestMiddlewareOrder(t *testing.T) {
 
 	mw(finalHandler).ServeHTTP(rr, r)
 
-	body, err := ioutil.ReadAll(rr.Result().Body)
+	body, err := io.ReadAll(rr.Result().Body)
 	require.NoError(t, err)
 	assert.Equal(t, "12345", string(body))
 }

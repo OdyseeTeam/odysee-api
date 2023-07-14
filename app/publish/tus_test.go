@@ -3,7 +3,7 @@ package publish
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -335,7 +335,7 @@ func TestNotify(t *testing.T) {
 
 		newTestMux(h).ServeHTTP(w, r)
 
-		respBody, err := ioutil.ReadAll(w.Result().Body)
+		respBody, err := io.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
 
 		wantErrMsg := handler.ErrNotFound.Error()
@@ -356,7 +356,7 @@ func TestNotify(t *testing.T) {
 
 		newTestMux(h).ServeHTTP(w, r)
 
-		respBody, err := ioutil.ReadAll(w.Result().Body)
+		respBody, err := io.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
 
 		wantErrMsg := "upload is still in process"
@@ -389,7 +389,7 @@ func TestNotify(t *testing.T) {
 		newTestMux(h).ServeHTTP(w, r)
 
 		response := w.Result()
-		respBody, err := ioutil.ReadAll(response.Body)
+		respBody, err := io.ReadAll(response.Body)
 		assert.Nil(t, err)
 
 		test.AssertEqualJSON(t, expectedPublishResponse, respBody)
@@ -421,7 +421,7 @@ func TestNotify(t *testing.T) {
 		newTestMux(h).ServeHTTP(w, r)
 
 		response := w.Result()
-		respBody, err := ioutil.ReadAll(response.Body)
+		respBody, err := io.ReadAll(response.Body)
 		assert.Nil(t, err)
 
 		test.AssertEqualJSON(t, expectedPublishResponse, respBody)
@@ -457,7 +457,7 @@ func TestNotify(t *testing.T) {
 
 		newTestMux(h).ServeHTTP(w, r)
 
-		respBody, err := ioutil.ReadAll(w.Result().Body)
+		respBody, err := io.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
 
 		wantErrMsg := "file metadata is required"
@@ -525,7 +525,7 @@ func TestTus(t *testing.T) {
 		assert.Equal(t, http.StatusPreconditionFailed, resp.StatusCode)
 
 		wantBody := "unsupported version\n"
-		gotBody, err := ioutil.ReadAll(resp.Body)
+		gotBody, err := io.ReadAll(resp.Body)
 		assert.Nil(t, err)
 		assert.Equal(t, wantBody, string(gotBody))
 	})
@@ -687,7 +687,7 @@ func TestTus(t *testing.T) {
 		newTestMux(h).ServeHTTP(w, r)
 
 		resp := w.Result()
-		data, err := ioutil.ReadAll(resp.Body)
+		data, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode, string(data))
 	})
@@ -707,7 +707,7 @@ func TestTus(t *testing.T) {
 
 		resp := w.Result()
 
-		data, err := ioutil.ReadAll(resp.Body)
+		data, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode, string(data))
 	})
@@ -740,7 +740,7 @@ func TestNotifyLegacy(t *testing.T) {
 
 		newTestMux(h).ServeHTTP(w, r)
 
-		respBody, err := ioutil.ReadAll(w.Result().Body)
+		respBody, err := io.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
 
 		wantErrMsg := handler.ErrNotFound.Error()
@@ -771,7 +771,7 @@ func TestNotifyLegacy(t *testing.T) {
 
 		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
 
-		respBody, err := ioutil.ReadAll(w.Result().Body)
+		respBody, err := io.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
 
 		wantErrMsg := "upload is still in process"
@@ -804,7 +804,7 @@ func TestNotifyLegacy(t *testing.T) {
 		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
 
 		response := w.Result()
-		respBody, err := ioutil.ReadAll(response.Body)
+		respBody, err := io.ReadAll(response.Body)
 		assert.Nil(t, err)
 
 		test.AssertEqualJSON(t, expectedPublishResponse, respBody)
@@ -835,7 +835,7 @@ func TestNotifyLegacy(t *testing.T) {
 		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
 
 		response := w.Result()
-		respBody, err := ioutil.ReadAll(response.Body)
+		respBody, err := io.ReadAll(response.Body)
 		assert.Nil(t, err)
 
 		test.AssertEqualJSON(t, expectedPublishResponse, respBody)
@@ -862,7 +862,7 @@ func TestNotifyLegacy(t *testing.T) {
 
 		newTestMux(h, auth.LegacyMiddleware(mockAuthProvider)).ServeHTTP(w, r)
 
-		respBody, err := ioutil.ReadAll(w.Result().Body)
+		respBody, err := io.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
 
 		wantErrMsg := "file metadata is required"
@@ -929,7 +929,7 @@ func TestTusLegacyToken(t *testing.T) {
 		assert.Equal(t, http.StatusPreconditionFailed, resp.StatusCode)
 
 		wantBody := "unsupported version\n"
-		gotBody, err := ioutil.ReadAll(resp.Body)
+		gotBody, err := io.ReadAll(resp.Body)
 		assert.Nil(t, err)
 		assert.Equal(t, wantBody, string(gotBody))
 	})

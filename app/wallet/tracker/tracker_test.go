@@ -1,7 +1,7 @@
 package tracker
 
 import (
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -176,7 +176,7 @@ func TestLegacyMiddleware(t *testing.T) {
 			http.HandlerFunc(handler),
 		),
 	).ServeHTTP(rr, r)
-	body, err := ioutil.ReadAll(rr.Result().Body)
+	body, err := io.ReadAll(rr.Result().Body)
 	require.NoError(t, err)
 	assert.Equal(t, string(body), "hello")
 
@@ -204,7 +204,7 @@ func TestMiddleware(t *testing.T) {
 			http.HandlerFunc(handler),
 		),
 	).ServeHTTP(rr, r)
-	body, err := ioutil.ReadAll(rr.Result().Body)
+	body, err := io.ReadAll(rr.Result().Body)
 	require.NoError(t, err)
 	assert.Equal(t, string(body), "hello")
 

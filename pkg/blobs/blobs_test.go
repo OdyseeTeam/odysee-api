@@ -1,7 +1,7 @@
 package blobs
 
 import (
-	"io/ioutil"
+	"os"
 	"path"
 	"testing"
 
@@ -22,7 +22,7 @@ func TestSplit(t *testing.T) {
 	require.NoError(t, err)
 	stream := make(stream.Stream, len(s.blobsManifest))
 	for i, b := range s.blobsManifest {
-		data, err := ioutil.ReadFile(path.Join(s.finalPath, b))
+		data, err := os.ReadFile(path.Join(s.finalPath, b))
 		require.NoError(t, err)
 		stream[i] = data
 	}
@@ -30,7 +30,7 @@ func TestSplit(t *testing.T) {
 	result, err := stream.Decode()
 
 	require.NoError(t, err)
-	original, err := ioutil.ReadFile(filePath)
+	original, err := os.ReadFile(filePath)
 	require.NoError(t, err)
 	require.Equal(t, original, result)
 }

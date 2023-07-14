@@ -2,7 +2,7 @@ package cache
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -28,7 +28,7 @@ func TestCache(t *testing.T) {
 	}
 
 	absPath, _ := filepath.Abs("./testdata/resolve_response.json")
-	rres, err := ioutil.ReadFile(absPath)
+	rres, err := os.ReadFile(absPath)
 	if err != nil {
 		t.Fatal(err)
 	}

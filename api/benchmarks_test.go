@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -88,7 +88,7 @@ func BenchmarkWalletCommands(b *testing.B) {
 
 	wallet.DisableLogger()
 	sdkrouter.DisableLogger()
-	log.SetOutput(ioutil.Discard)
+	log.SetOutput(io.Discard)
 
 	rand.Seed(time.Now().UnixNano())
 

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -35,7 +34,7 @@ var rootCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		key, err := ioutil.ReadFile(config.GetPaidTokenPrivKey())
+		key, err := os.ReadFile(config.GetPaidTokenPrivKey())
 		if err != nil {
 			log.Fatal(err)
 		}

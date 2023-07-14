@@ -3,7 +3,6 @@ package publish
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -45,7 +44,7 @@ func TestLbrynetPublisher(t *testing.T) {
 	dbCleanup()
 
 	data := []byte("test file")
-	f, err := ioutil.TempFile(os.TempDir(), "*")
+	f, err := os.CreateTemp(os.TempDir(), "*")
 	require.NoError(t, err)
 	_, err = f.Write(data)
 	require.NoError(t, err)

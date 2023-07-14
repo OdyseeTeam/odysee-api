@@ -3,7 +3,7 @@ package errors
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"runtime"
 	"strings"
 )
@@ -60,7 +60,7 @@ func (frame *stackFrame) String() string {
 
 // SourceLine gets the line of code (from File and Line) of the original source if possible.
 func (frame *stackFrame) SourceLine() (string, error) {
-	data, err := ioutil.ReadFile(frame.File)
+	data, err := os.ReadFile(frame.File)
 
 	if err != nil {
 		return "", Err(err)

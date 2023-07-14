@@ -2,7 +2,7 @@ package test
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 
@@ -39,7 +39,7 @@ func TestMockHTTPServer(t *testing.T) {
 	req2 := <-reqChan
 	assert.Equal(t, req2.R.Method, http.MethodPost)
 	assert.Equal(t, req2.Body, `hello`)
-	body, err := ioutil.ReadAll(res2.Body)
+	body, err := io.ReadAll(res2.Body)
 	require.NoError(t, err)
 	assert.Equal(t, string(body), "ok")
 }

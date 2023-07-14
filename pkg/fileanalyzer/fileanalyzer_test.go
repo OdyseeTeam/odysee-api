@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"testing"
@@ -123,7 +122,7 @@ func (s *analyzerSuite) getTestAsset(url string) string {
 	s.Require().NoError(err)
 	defer r.Body.Close()
 	s.Require().Equal(http.StatusOK, r.StatusCode)
-	f, err := ioutil.TempFile(s.T().TempDir(), "")
+	f, err := os.CreateTemp(s.T().TempDir(), "")
 	s.Require().NoError(err)
 	defer f.Close()
 	_, err = io.Copy(f, r.Body)

@@ -3,7 +3,6 @@ package monitor
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -117,7 +116,7 @@ func TestErrorLoggingMiddlewareTableTest(t *testing.T) {
 				mw.ServeHTTP(rr, r)
 			})
 			res := rr.Result()
-			body, err := ioutil.ReadAll(res.Body)
+			body, err := io.ReadAll(res.Body)
 			require.NoError(t, err)
 
 			assert.Equal(t, row.expectedStatus, res.StatusCode)

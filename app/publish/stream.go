@@ -1,7 +1,6 @@
 package publish
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -48,7 +47,7 @@ func Streamize(p string) (stream.Stream, *pb.Stream, error) {
 	}
 
 	for _, b := range s {
-		ioutil.WriteFile(path.Join(enc.SDBlob().HashHex(), b.HashHex()), b, os.ModePerm)
+		os.WriteFile(path.Join(enc.SDBlob().HashHex(), b.HashHex()), b, os.ModePerm)
 	}
 
 	return s, streamProto, nil

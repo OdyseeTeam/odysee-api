@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -83,7 +83,7 @@ func (s *publishV4Suite) TestPublish() {
 	defer resp.Body.Close()
 
 	rr := &asynquery.Response{}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.Nil(err)
 	require.NoError(json.Unmarshal(body, rr))
 	assert.Empty(rr.Error)

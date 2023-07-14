@@ -10,7 +10,7 @@ package client
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -58,13 +58,13 @@ func EncodeAddRequest(encoder func(*http.Request) goahttp.Encoder) func(*http.Re
 func DecodeAddResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (interface{}, error) {
 	return func(resp *http.Response) (interface{}, error) {
 		if restoreBody {
-			b, err := ioutil.ReadAll(resp.Body)
+			b, err := io.ReadAll(resp.Body)
 			if err != nil {
 				return nil, err
 			}
-			resp.Body = ioutil.NopCloser(bytes.NewBuffer(b))
+			resp.Body = io.NopCloser(bytes.NewBuffer(b))
 			defer func() {
-				resp.Body = ioutil.NopCloser(bytes.NewBuffer(b))
+				resp.Body = io.NopCloser(bytes.NewBuffer(b))
 			}()
 		} else {
 			defer resp.Body.Close()
@@ -87,7 +87,7 @@ func DecodeAddResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody
 			}
 			return nil, NewAddMultiFieldError(&body)
 		default:
-			body, _ := ioutil.ReadAll(resp.Body)
+			body, _ := io.ReadAll(resp.Body)
 			return nil, goahttp.ErrInvalidResponse("reporter", "add", resp.StatusCode, string(body))
 		}
 	}
@@ -114,13 +114,13 @@ func (c *Client) BuildHealthzRequest(ctx context.Context, v interface{}) (*http.
 func DecodeHealthzResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (interface{}, error) {
 	return func(resp *http.Response) (interface{}, error) {
 		if restoreBody {
-			b, err := ioutil.ReadAll(resp.Body)
+			b, err := io.ReadAll(resp.Body)
 			if err != nil {
 				return nil, err
 			}
-			resp.Body = ioutil.NopCloser(bytes.NewBuffer(b))
+			resp.Body = io.NopCloser(bytes.NewBuffer(b))
 			defer func() {
-				resp.Body = ioutil.NopCloser(bytes.NewBuffer(b))
+				resp.Body = io.NopCloser(bytes.NewBuffer(b))
 			}()
 		} else {
 			defer resp.Body.Close()
@@ -137,7 +137,7 @@ func DecodeHealthzResponse(decoder func(*http.Response) goahttp.Decoder, restore
 			}
 			return body, nil
 		default:
-			body, _ := ioutil.ReadAll(resp.Body)
+			body, _ := io.ReadAll(resp.Body)
 			return nil, goahttp.ErrInvalidResponse("reporter", "healthz", resp.StatusCode, string(body))
 		}
 	}

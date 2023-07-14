@@ -3,7 +3,7 @@ package watchman
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -98,7 +98,7 @@ func (s *reporterSuite) TestAdd() {
 
 			resp, err := cl.Do(r)
 			s.Require().NoError(err)
-			b, err := ioutil.ReadAll(resp.Body)
+			b, err := io.ReadAll(resp.Body)
 			s.NoError(err)
 			s.Equal(c.respCode, resp.StatusCode, string(b))
 			s.Regexp(regexp.MustCompile(c.respBodyRegex), string(b))

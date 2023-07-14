@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -189,7 +189,7 @@ func (s *publishV3Suite) TestPublish() {
 		},
 		Code: http.StatusOK,
 	}).Run(s.router, s.T())
-	srb, err := ioutil.ReadAll(statusResp.Result().Body)
+	srb, err := io.ReadAll(statusResp.Result().Body)
 	s.Require().NoError(err)
 
 	streamCreateResp := jsonrpc.RPCResponse{}

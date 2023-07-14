@@ -3,7 +3,6 @@ package test
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -86,7 +85,7 @@ func (test *HTTPTest) RunHTTP(t *testing.T) *http.Response {
 		if response.StatusCode == http.StatusNotFound {
 			details = fmt.Sprintf(", url: %s", test.URL)
 		} else {
-			body, _ := ioutil.ReadAll(response.Body)
+			body, _ := io.ReadAll(response.Body)
 			details = fmt.Sprintf(", body: %s", body)
 		}
 		t.Errorf(
@@ -106,7 +105,7 @@ func (test *HTTPTest) RunHTTP(t *testing.T) *http.Response {
 
 	if test.ResBody != "" || test.ResContains != "" {
 		defer response.Body.Close()
-		body, err := ioutil.ReadAll(response.Body)
+		body, err := io.ReadAll(response.Body)
 		require.NoError(err)
 		if test.ResBody != "" && string(body) != test.ResBody {
 			t.Errorf("Expected '%s' as body (got '%s'", test.ResBody, string(body))

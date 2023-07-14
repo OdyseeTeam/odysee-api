@@ -3,7 +3,7 @@ package status
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -58,7 +58,7 @@ func TestStatusV2_Unauthenticated(t *testing.T) {
 
 	handler.ServeHTTP(rr, r)
 	response := rr.Result()
-	respBody, err := ioutil.ReadAll(response.Body)
+	respBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
@@ -88,7 +88,7 @@ func TestStatusV2_UnauthenticatedOffline(t *testing.T) {
 
 	handler.ServeHTTP(rr, r)
 	response := rr.Result()
-	respBody, err := ioutil.ReadAll(response.Body)
+	respBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
@@ -136,7 +136,7 @@ func TestStatusV2_Authenticated(t *testing.T) {
 
 	handler.ServeHTTP(rr, r)
 	response := rr.Result()
-	respBody, err := ioutil.ReadAll(response.Body)
+	respBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 
@@ -186,7 +186,7 @@ func (s *statusSuite) TestWhoAmI() {
 			RemoteAddr: "172.16.5.5",
 			Code:       http.StatusOK,
 		}).Run(r, s.T())
-		b, err := ioutil.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		s.Require().NoError(err)
 		wr := whoAmIResponse{}
 		err = json.Unmarshal(b, &wr)
@@ -209,7 +209,7 @@ func (s *statusSuite) TestWhoAmI() {
 			RemoteAddr: "172.16.5.5",
 			Code:       http.StatusOK,
 		}).Run(r, s.T())
-		b, err := ioutil.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		s.Require().NoError(err)
 		wr := whoAmIResponse{}
 		err = json.Unmarshal(b, &wr)

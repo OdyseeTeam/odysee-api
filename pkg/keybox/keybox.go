@@ -10,7 +10,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -97,7 +97,7 @@ func PublicKeyFromURL(keyURL string) (crypto.PublicKey, error) {
 	}
 	defer r.Body.Close()
 
-	pemData, err := ioutil.ReadAll(r.Body)
+	pemData, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read public key: %w", err)
 	}

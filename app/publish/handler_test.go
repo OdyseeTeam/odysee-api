@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -69,7 +68,7 @@ func TestHandler_StreamUpdate(t *testing.T) {
 	rr := httptest.NewRecorder()
 	auth.LegacyMiddleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
 	response := rr.Result()
-	respBody, err := ioutil.ReadAll(response.Body)
+	respBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
@@ -123,7 +122,7 @@ func TestUploadHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 	auth.LegacyMiddleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
 	response := rr.Result()
-	respBody, err := ioutil.ReadAll(response.Body)
+	respBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
@@ -149,7 +148,7 @@ func TestHandler_NoAuthMiddleware(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	handler.Handle(rr, r)
-	respBody, err := ioutil.ReadAll(rr.Result().Body)
+	respBody, err := io.ReadAll(rr.Result().Body)
 	require.NoError(t, err)
 	assert.Equal(t, "auth middleware is required", test.StrToRes(t, string(respBody)).Error.Message)
 }
@@ -166,7 +165,7 @@ func TestHandler_NoSDKAddress(t *testing.T) {
 
 	auth.LegacyMiddleware(provider)(http.HandlerFunc(handler.Handle)).ServeHTTP(rr, r)
 	response := rr.Result()
-	respBody, err := ioutil.ReadAll(response.Body)
+	respBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)

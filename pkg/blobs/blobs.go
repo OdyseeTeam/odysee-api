@@ -3,7 +3,6 @@ package blobs
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -97,7 +96,7 @@ func (s *Source) Split() (*pb.Stream, error) {
 	}
 
 	s.blobsManifest, err = enc.Encode(func(h string, b []byte) error {
-		return ioutil.WriteFile(path.Join(s.finalPath, h), b, os.ModePerm)
+		return os.WriteFile(path.Join(s.finalPath, h), b, os.ModePerm)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("cannot encode stream: %w", err)
