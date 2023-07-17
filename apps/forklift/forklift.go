@@ -43,6 +43,7 @@ type Launcher struct {
 	logger           logging.KVLogger
 	db               database.DBTX
 	concurrency      int
+	reflectorWorkers int
 	metricsAddress   string
 }
 
@@ -100,6 +101,13 @@ func WithConcurrency(concurrency int) LauncherOption {
 	}
 }
 
+// WithReflectorWorkers sets the number of workers uploading each stream to the reflector.
+func WithReflectorWorkers(workers int) LauncherOption {
+	return func(l *Launcher) {
+		l.reflectorWorkers = workers
+	}
+}
+
 func WithDB(db database.DBTX) LauncherOption {
 	return func(l *Launcher) {
 		l.db = db
@@ -118,9 +126,10 @@ func ExposeMetrics(address ...string) LauncherOption {
 
 func NewLauncher(options ...LauncherOption) *Launcher {
 	launcher := &Launcher{
-		logger:      logging.NoopKVLogger{},
-		blobPath:    os.TempDir(),
-		concurrency: 10,
+		logger:           logging.NoopKVLogger{},
+		blobPath:         os.TempDir(),
+		concurrency:      10,
+		reflectorWorkers: 1,
 	}
 
 	for _, option := range options {
@@ -147,6 +156,7 @@ func (l *Launcher) Build() (*queue.Queue, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize reflector store: %w", err)
 	}
+	store.SetWorkers(l.reflectorWorkers)
 	l.logger.Info("reflector store initialized")
 
 	taskQueue, err := queue.NewWithResponses(

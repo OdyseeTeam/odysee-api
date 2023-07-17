@@ -34,9 +34,10 @@ type Source struct {
 }
 
 type Store struct {
-	cfg map[string]string
-	db  *db.SQL
-	dbs *store.DBBackedStore
+	cfg     map[string]string
+	db      *db.SQL
+	dbs     *store.DBBackedStore
+	workers int
 }
 
 type Uploader struct {
@@ -71,14 +72,20 @@ func NewStore(reflectorConfig map[string]string) (*Store, error) {
 		dbs: store.NewDBBackedStore(store.NewS3Store(
 			reflectorConfig["key"], reflectorConfig["secret"], reflectorConfig["region"], reflectorConfig["bucket"],
 		), db, false),
+		workers: 1,
 	}, nil
+}
+
+// SetWorkers sets the number of workers uploading each stream to the reflector.
+func (s *Store) SetWorkers(workers int) {
+	s.workers = workers
 }
 
 // Uploader returns blob file uploader instance for the pre-configured store.
 // Can only be used for one stream upload and discarded afterwards.
 func (s *Store) Uploader() *Uploader {
 	return &Uploader{
-		uploader: reflector.NewUploader(s.db, s.dbs, 1, true, false),
+		uploader: reflector.NewUploader(s.db, s.dbs, s.workers, true, false),
 	}
 }
 

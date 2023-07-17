@@ -27,3 +27,5 @@ ReflectorStorage:
 Concurrency: 10
 BlobPath: /tmp/blobs
 UploadPath: /tmp/uploads
+
+ReflectorWorkers: 5
