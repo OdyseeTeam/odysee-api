@@ -275,10 +275,9 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 	egressDurationSeconds.Add(float64(time.Since(start)))
 	egressVolumeMB.Add(float64(streamSource.GetSize() / 1024 / 1024))
 	if err != nil {
-		// With errors returned by the current implementation of uploader it doesn't make sense to retry.
 		observeError(LabelUpstream)
 		log.Warn("blobs upload failed, not retrying", "err", err, "blobs_path", f.blobPath)
-		return asynq.SkipRetry
+		return err
 	} else if summary.Err > 0 {
 		observeError(LabelUpstream)
 		log.Warn(ErrReflector.Error(), "err_count", summary.Err, "blobs_path", f.blobPath)
