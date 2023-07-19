@@ -133,7 +133,13 @@ func (u *Uploader) Upload(source *Source) (*reflector.Summary, error) {
 	if source.finalPath == "" || source.Stream() == nil {
 		return nil, errors.New("source is not split to blobs")
 	}
-	err := u.uploader.Upload(source.finalPath)
+	fi, err := os.Stat(source.finalPath)
+	if err != nil {
+		return nil, fmt.Errorf("cannot stat source blobs: %w", err)
+	} else if !fi.IsDir() {
+		return nil, fmt.Errorf("blob source %s is not a directory", source.finalPath)
+	}
+	err = u.uploader.Upload(source.finalPath)
 	summary := u.uploader.GetSummary()
 	if err != nil {
 		return nil, fmt.Errorf("cannot upload blobs: %w", err)
