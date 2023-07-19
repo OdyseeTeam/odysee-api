@@ -227,7 +227,7 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 		return r, fmt.Errorf("sdk returned an error: %s", res.Error.Message)
 	}
 	metrics.QueriesCompleted.Inc()
-	log.Info("stream processed", "method", p.Request.Method, "response", r.Response.Result)
+	log.Info("stream processed", "method", p.Request.Method)
 	return r, nil
 }
 
