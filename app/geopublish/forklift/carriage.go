@@ -144,7 +144,8 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	log.Debug("stream analyzed", "info", info, "err", err)
 
 	blobPath := path.Join(c.blobsPath, p.UploadID)
-	src := blobs.NewSource(p.Path, blobPath, "lbry_file")
+	fileName := path.Base(p.Path)
+	src := blobs.NewSource(p.Path, blobPath, fileName)
 
 	t = time.Now()
 	stream, err := src.Split()
@@ -183,8 +184,7 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 
 	caller := query.NewCaller(u.R.LbrynetServer.Address, p.UserID)
 
-	fileName := streamSource.Name
-	if path.Ext(streamSource.Name) == "" {
+	if path.Ext(fileName) == "" {
 		fileName += info.MediaType.Extension
 	}
 
