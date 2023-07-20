@@ -16,7 +16,7 @@ Storage:
   Bucket: uploads
   Key: minio
   Secret: minio123
-  Minio: true
+  Flavor: minio
 
 CORSDomains:
   - http://*

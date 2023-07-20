@@ -96,7 +96,7 @@ First, make sure you have Go 1.17 installed.
 Then build the binary, create a docker image locally and run off it:
 
 ```
-make image && docker-compose up app
+make oapi_image && docker-compose up app
 ```
 
 ## Versioning

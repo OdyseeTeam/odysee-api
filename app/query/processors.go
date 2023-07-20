@@ -246,7 +246,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 	src := stream.GetSource()
 	if src == nil {
 		m := "stream doesn't have source data"
-		log.Error(m)
+		log.Info(m)
 		return nil, errors.Err(m)
 	}
 	sdHash := hex.EncodeToString(src.SdHash)[:6]

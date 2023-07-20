@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"path/filepath"
 
 	"github.com/lbryio/lbry.go/v3/stream"
 	"github.com/lbryio/reflector.go/db"
@@ -26,17 +25,19 @@ const (
 )
 
 type Source struct {
-	filePath      string
-	blobPath      string
-	finalPath     string
-	stream        *pb.Stream
-	blobsManifest []string
+	filePath        string
+	blobPath        string
+	finalPath       string
+	encodedFileName string
+	stream          *pb.Stream
+	blobsManifest   []string
 }
 
 type Store struct {
-	cfg map[string]string
-	db  *db.SQL
-	dbs *store.DBBackedStore
+	cfg     map[string]string
+	db      *db.SQL
+	dbs     *store.DBBackedStore
+	workers int
 }
 
 type Uploader struct {
@@ -44,10 +45,11 @@ type Uploader struct {
 }
 
 // NewSource initializes a blob splitter, takes source file and blobs destination path as arguments.
-func NewSource(filePath, blobPath string) *Source {
+func NewSource(filePath, blobPath, encodedFileName string) *Source {
 	s := Source{
-		filePath: filePath,
-		blobPath: blobPath,
+		filePath:        filePath,
+		blobPath:        blobPath,
+		encodedFileName: encodedFileName,
 	}
 
 	return &s
@@ -70,14 +72,20 @@ func NewStore(reflectorConfig map[string]string) (*Store, error) {
 		dbs: store.NewDBBackedStore(store.NewS3Store(
 			reflectorConfig["key"], reflectorConfig["secret"], reflectorConfig["region"], reflectorConfig["bucket"],
 		), db, false),
+		workers: 1,
 	}, nil
+}
+
+// SetWorkers sets the number of workers uploading each stream to the reflector.
+func (s *Store) SetWorkers(workers int) {
+	s.workers = workers
 }
 
 // Uploader returns blob file uploader instance for the pre-configured store.
 // Can only be used for one stream upload and discarded afterwards.
 func (s *Store) Uploader() *Uploader {
 	return &Uploader{
-		uploader: reflector.NewUploader(s.db, s.dbs, 1, true, false),
+		uploader: reflector.NewUploader(s.db, s.dbs, s.workers, true, false),
 	}
 }
 
@@ -89,6 +97,7 @@ func (s *Source) Split() (*pb.Stream, error) {
 	defer file.Close()
 
 	enc := stream.NewEncoder(file)
+	enc.SetFilename(s.encodedFileName)
 
 	s.finalPath = s.blobPath
 	err = os.MkdirAll(s.finalPath, os.ModePerm)
@@ -105,7 +114,7 @@ func (s *Source) Split() (*pb.Stream, error) {
 	s.stream = &pb.Stream{
 		Source: &pb.Source{
 			SdHash: enc.SDBlob().Hash(),
-			Name:   filepath.Base(file.Name()),
+			Name:   s.encodedFileName,
 			Size:   uint64(enc.SourceLen()),
 			Hash:   enc.SourceHash(),
 		},
@@ -124,7 +133,13 @@ func (u *Uploader) Upload(source *Source) (*reflector.Summary, error) {
 	if source.finalPath == "" || source.Stream() == nil {
 		return nil, errors.New("source is not split to blobs")
 	}
-	err := u.uploader.Upload(source.finalPath)
+	fi, err := os.Stat(source.finalPath)
+	if err != nil {
+		return nil, fmt.Errorf("cannot stat source blobs: %w", err)
+	} else if !fi.IsDir() {
+		return nil, fmt.Errorf("blob source %s is not a directory", source.finalPath)
+	}
+	err = u.uploader.Upload(source.finalPath)
 	summary := u.uploader.GetSummary()
 	if err != nil {
 		return nil, fmt.Errorf("cannot upload blobs: %w", err)

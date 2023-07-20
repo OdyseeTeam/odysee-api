@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/OdyseeTeam/odysee-api/apps/uploads/database"
+	"github.com/OdyseeTeam/odysee-api/internal/tasks"
 	"github.com/OdyseeTeam/odysee-api/pkg/configng"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
@@ -34,7 +35,7 @@ func NewTestHelper(t *testing.T) (*TestHelper, error) {
 		Region:   "us-east-1",
 		Key:      "minio",
 		Secret:   "minio123",
-		Minio:    true,
+		Flavor:   "minio",
 	}
 	th.S3Config = s3cfg
 
@@ -102,19 +103,22 @@ func (th *TestHelper) CreateUpload(filePath string, queue *queue.Queue) (*databa
 	if err != nil {
 		return nil, err
 	}
-	// Simulate upload complete event
-	handler := Handler{
-		s3bucket: th.S3Config.Bucket,
-		logger:   zapadapter.NewKV(nil),
-		queries:  th.Queries,
-		queue:    queue,
+	// Emulate upload completion
+	completer := &forkliftCompleter{
+		queries: th.Queries,
+		queue:   queue,
+		logger:  zapadapter.NewKV(nil),
 	}
-	err = handler.completeUpload(database.MarkUploadCompletedParams{
-		UserID:   up.UserID,
-		ID:       up.ID,
-		Filename: path.Base(filePath),
-		Key:      uploadKey,
-	})
+	err = completer.Complete(
+		database.MarkUploadCompletedParams{
+			UserID:   up.UserID,
+			ID:       up.ID,
+			Filename: path.Base(filePath),
+			Key:      uploadKey,
+		}, tasks.FileLocationS3{
+			Key:    uploadKey,
+			Bucket: th.S3Config.Bucket,
+		})
 	if err != nil {
 		return nil, err
 	}

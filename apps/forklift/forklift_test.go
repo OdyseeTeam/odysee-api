@@ -137,7 +137,8 @@ func (s *forkliftSuite) TestHandleTask() {
 		select {
 		case payload := <-merges:
 			c.expected(upload, payload)
-		case <-time.After(30 * time.Second):
+		case <-time.After(60 * time.Second):
+			s.T().Logf("timeout after 60s for %s", c.fileName)
 			s.Fail("timeout waiting for task to be processed")
 		}
 	}
@@ -159,7 +160,8 @@ func (s *forkliftSuite) SetupSuite() {
 	s.upHelper, err = uploads.NewTestHelper(s.T())
 	s.Require().NoError(err)
 
-	s.s3c, err = configng.NewS3ClientV2(s.upHelper.S3Config)
+	flCfg := s.upHelper.S3Config
+	s.s3c, err = configng.NewS3ClientV2(flCfg)
 	s.Require().NoError(err)
 }
 

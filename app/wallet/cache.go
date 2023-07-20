@@ -49,12 +49,12 @@ func SetTokenCache(c *tokenCache) {
 	currentCache = c
 }
 
-func (c *tokenCache) get(token string, retreiver func() (interface{}, error)) (*models.User, error) {
+func (c *tokenCache) get(token string, retriever func() (interface{}, error)) (*models.User, error) {
 	var err error
 	cachedUser, ok := c.cache.Get(token)
 	if !ok {
 		metrics.AuthTokenCacheMisses.Inc()
-		cachedUser, err, _ = c.sf.Do(token, retreiver)
+		cachedUser, err, _ = c.sf.Do(token, retriever)
 		if err != nil {
 			return nil, err
 		}

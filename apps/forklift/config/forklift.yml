@@ -15,7 +15,7 @@ IncomingStorage:
   Bucket: uploads
   Key: minio
   Secret: minio123
-  Minio: true
+  Flavor: minio
 
 ReflectorStorage:
   DatabaseDSN: 'user:password@tcp(host.com)/blobs'
@@ -27,3 +27,5 @@ ReflectorStorage:
 Concurrency: 10
 BlobPath: /tmp/blobs
 UploadPath: /tmp/uploads
+
+ReflectorWorkers: 5

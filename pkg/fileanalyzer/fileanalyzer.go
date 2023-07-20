@@ -66,6 +66,44 @@ func (a *Analyzer) Analyze(ctx context.Context, realFilePath, fileName string) (
 	return s, err
 }
 
+// DetectMediaType attempts to detect the media type based on file header
+// or file extension as a fallback.
+func (si *StreamInfo) DetectMediaType() error {
+	var fileExt, detExt string
+	fileExt = path.Ext(si.FileName)
+
+	kind, _ := filetype.Match(si.header)
+	if kind == filetype.Unknown {
+		detExt = fileExt
+	} else {
+		detExt = kind.Extension
+	}
+
+	var foundSyn bool
+	if detExt != fileExt {
+		for _, x := range synonyms[detExt] {
+			if fileExt == x {
+				foundSyn = true
+			}
+		}
+		if !foundSyn {
+			fileExt = detExt
+		}
+	}
+
+	fileExt = "." + fileExt
+	t, ok := extensions[fileExt]
+	if !ok {
+		si.MediaType = &defaultType
+	} else {
+		if t.Extension == "" {
+			t.Extension = fileExt
+		}
+		si.MediaType = &t
+	}
+	return nil
+}
+
 // DetectMediaInfo attempts to read video stream metadata and saves a set of attributes
 // for use in SDK stream_create calls.
 func (si *StreamInfo) DetectMediaInfo(ctx context.Context) error {
@@ -108,38 +146,5 @@ func (si *StreamInfo) DetectMediaInfo(ctx context.Context) error {
 	info.Height = stream.Height
 	si.MediaInfo = info
 
-	return nil
-}
-
-func (si *StreamInfo) DetectMediaType() error {
-	var fileExt, detExt string
-	fileExt = path.Ext(si.FileName)
-
-	kind, _ := filetype.Match(si.header)
-	if kind == filetype.Unknown {
-		detExt = fileExt
-	} else {
-		detExt = kind.Extension
-	}
-
-	var foundSyn bool
-	if detExt != fileExt {
-		for _, x := range synonyms[detExt] {
-			if fileExt == x {
-				foundSyn = true
-			}
-		}
-		if !foundSyn {
-			fileExt = detExt
-		}
-	}
-
-	fileExt = "." + fileExt
-	t, ok := extensions[fileExt]
-	if !ok {
-		si.MediaType = &defaultType
-	} else {
-		si.MediaType = &t
-	}
 	return nil
 }

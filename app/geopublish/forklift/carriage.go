@@ -139,22 +139,24 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 	metrics.AnalysisDuration.Add(float64(time.Since(t)))
 	if info == nil {
 		metrics.ProcessingErrors.WithLabelValues(metrics.LabelProcessingAnalyze).Inc()
-		return r, err
+		return r, fmt.Errorf("error analyzing file: %w", err)
 	}
 	log.Debug("stream analyzed", "info", info, "err", err)
 
-	src := blobs.NewSource(p.Path, c.blobsPath)
+	blobPath := path.Join(c.blobsPath, p.UploadID)
+	fileName := path.Base(p.Path)
+	src := blobs.NewSource(p.Path, blobPath, fileName)
 
 	t = time.Now()
 	stream, err := src.Split()
 	metrics.ProcessingTime.WithLabelValues(metrics.LabelProcessingBlobSplit).Observe(float64(time.Since(t)))
 	if err != nil {
 		metrics.ProcessingErrors.WithLabelValues(metrics.LabelProcessingBlobSplit).Inc()
-		return r, err
+		return r, fmt.Errorf("error splitting file: %w", err)
 	}
 	streamSource := stream.GetSource()
 	r.SDHash = hex.EncodeToString(streamSource.GetSdHash())
-	defer os.RemoveAll(path.Join(c.blobsPath, r.SDHash))
+	defer os.RemoveAll(blobPath)
 
 	t = time.Now()
 	summary, err := uploader.Upload(src)
@@ -182,8 +184,7 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 
 	caller := query.NewCaller(u.R.LbrynetServer.Address, p.UserID)
 
-	fileName := streamSource.Name
-	if path.Ext(streamSource.Name) == "" {
+	if path.Ext(fileName) == "" {
 		fileName += info.MediaType.Extension
 	}
 
@@ -226,7 +227,7 @@ func (c *Carriage) Process(p UploadProcessPayload) (*UploadProcessResult, error)
 		return r, fmt.Errorf("sdk returned an error: %s", res.Error.Message)
 	}
 	metrics.QueriesCompleted.Inc()
-	log.Info("stream processed", "method", p.Request.Method, "response", r.Response.Result)
+	log.Info("stream processed", "method", p.Request.Method)
 	return r, nil
 }
 

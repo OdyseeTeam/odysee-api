@@ -14,7 +14,7 @@ var staticPath = "https://ik.imagekit.io/odystatic/"
 
 func StaticAsset(t *testing.T, fileName string) string {
 	t.Helper()
-	t.Logf("getting static assed %s", staticPath+fileName)
+	t.Logf("getting static asset %s", staticPath+fileName)
 	r, err := http.Get(staticPath + fileName)
 	require.NoError(t, err)
 	f, err := os.Create(path.Join(t.TempDir(), fileName))

@@ -16,7 +16,7 @@ type TestHelper struct {
 	ReflectorConfig map[string]string
 }
 
-func NewTestHelper(t *testing.T) (*TestHelper, error) {
+func NewTestHelper(_ *testing.T) (*TestHelper, error) {
 	th := &TestHelper{}
 	os.Setenv("PATH", os.Getenv("PATH")+":/opt/homebrew/bin")
 	parsedCfg := map[string]string{}

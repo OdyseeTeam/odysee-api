@@ -344,11 +344,32 @@ func isMatchingHook(m string, hook hookEntry) bool {
 }
 
 func isErrWalletNotLoaded(r *jsonrpc.RPCResponse) bool {
-	return r.Error != nil && errors.Is(lbrynet.NewWalletError(ljsonrpc.WrapError(r.Error)), lbrynet.ErrWalletNotLoaded)
+	err := convertToError(r)
+	if err == nil {
+		return false
+	}
+	return errors.Is(err, lbrynet.ErrWalletNotLoaded)
 }
 
 func isErrWalletAlreadyLoaded(r *jsonrpc.RPCResponse) bool {
-	return r.Error != nil && errors.Is(lbrynet.NewWalletError(ljsonrpc.WrapError(r.Error)), lbrynet.ErrWalletAlreadyLoaded)
+	err := convertToError(r)
+	if err == nil {
+		return false
+	}
+	return errors.Is(err, lbrynet.ErrWalletAlreadyLoaded)
+}
+
+func convertToError(r *jsonrpc.RPCResponse) error {
+	if r.Error == nil {
+		return nil
+	}
+	if d, ok := r.Error.Data.(map[string]interface{}); ok {
+		_, ok := d["name"].(string)
+		if !ok {
+			return nil
+		}
+	}
+	return lbrynet.NewWalletError(ljsonrpc.WrapError(r.Error))
 }
 
 // cutSublistsToSize makes a copy of a map, cutting the size of the lists inside it

@@ -9,6 +9,7 @@ import (
 
 	"github.com/OdyseeTeam/odysee-api/apps/uploads"
 	"github.com/OdyseeTeam/odysee-api/apps/uploads/database"
+	"github.com/OdyseeTeam/odysee-api/internal/tasks"
 	"github.com/OdyseeTeam/odysee-api/pkg/configng"
 	"github.com/OdyseeTeam/odysee-api/pkg/keybox"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
@@ -22,8 +23,12 @@ import (
 
 var cli struct {
 	migrator.CLI
-	Serve struct{} `cmd:"" help:"Start upload service"`
-	Debug bool     `help:"Enable verbose logging"`
+	Serve         struct{} `cmd:"" help:"Start upload service"`
+	RetryComplete struct {
+		UploadID string `help:"Upload ID"`
+		UserID   int32  `help:"User ID"`
+	} `cmd:"" help:"Retry upload hand-off for further processing"`
+	Debug bool `help:"Enable verbose logging"`
 }
 
 type loggingConfig struct {
@@ -48,6 +53,8 @@ func main() {
 		serve(logger)
 	case "migrate-up":
 		logger.Fatal("migrate command is not supported")
+	case "retry-complete":
+		retryComplete(logger)
 	default:
 		logger.Fatal("unknown command", "name", ctx.Command())
 	}
@@ -112,10 +119,68 @@ func serve(logger logging.KVLogger) {
 		runCancel()
 	}()
 
-	_, err = launcher.Build()
+	_, err = launcher.BuildHandler()
 	if err != nil {
 		logger.Fatal(err.Error())
 	}
 	launcher.Launch()
 	<-runCtx.Done()
+}
+
+func retryComplete(logger logging.KVLogger) {
+	cfg, err := configng.Read("./config", "uploads", "yaml")
+	if err != nil {
+		logger.Fatal("config reading failed", "err", err)
+	}
+
+	s3cfg, err := cfg.ReadS3Config("Storage")
+	if err != nil {
+		logger.Fatal("s3 config failed", "err", err)
+	}
+
+	pgcfg := cfg.ReadPostgresConfig("Database")
+	db, err := migrator.ConnectDB(pgcfg, database.MigrationsFS)
+	if err != nil {
+		logger.Fatal("db connection failed", "err", err)
+	}
+
+	launcher := uploads.NewLauncher(
+		uploads.WithDB(db),
+		uploads.WithLogger(logger),
+		uploads.WithForkliftRequestsConnURL(cfg.V.GetString("ForkliftRequestsConnURL")),
+	)
+	completer, err := launcher.Completer()
+	if err != nil {
+		logger.Fatal(err.Error())
+	}
+
+	queries := database.New(db)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	upload, err := queries.GetUpload(ctx, database.GetUploadParams{
+		ID:     cli.RetryComplete.UploadID,
+		UserID: cli.RetryComplete.UserID,
+	})
+	if err != nil {
+		logger.Fatal("failed to retrieve upload", "upload_id", cli.RetryComplete.UploadID, "user_id", cli.RetryComplete.UserID, "err", err)
+	}
+	if upload.Status != database.UploadStatusCompleted {
+		logger.Fatal("upload is not in completed state", "status", upload.Status)
+	}
+
+	err = completer.Complete(
+		database.MarkUploadCompletedParams{
+			UserID:   upload.UserID,
+			ID:       upload.ID,
+			Filename: upload.Filename,
+			Key:      upload.Key,
+		}, tasks.FileLocationS3{
+			Key:    upload.Key,
+			Bucket: s3cfg.Bucket,
+		})
+	if err != nil {
+		logger.Fatal("failed to complete upload", "err", err)
+		return
+	}
+	logger.Info("upload sent off for processing")
 }

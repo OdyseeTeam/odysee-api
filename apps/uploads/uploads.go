@@ -55,17 +55,21 @@ var TusHeaders = []string{
 	"Upload-Concat",
 }
 
+type Completer interface {
+	Complete(database.MarkUploadCompletedParams, tasks.FileLocationS3) error
+}
+
 // Handler handle media publishing on odysee-api, it implements TUS
 // specifications to support resumable file upload and extends the handler to
 // support fetching media from remote url.
 type Handler struct {
 	*tusd.UnroutedHandler
-	queue          *queue.Queue
 	s3bucket       string
 	queries        *database.Queries
 	logger         logging.KVLogger
 	jwtAuth        *jwtauth.JWTAuth
 	tokenValidator *keybox.Validator
+	completer      Completer
 	stopChan       chan struct{}
 }
 
@@ -85,22 +89,14 @@ type Launcher struct {
 	handler       *Handler
 	httpServer    *http.Server
 	logger        logging.KVLogger
+	completer     Completer
 	readyCancel   context.CancelFunc
 }
 
-func NewLauncher(options ...LauncherOption) *Launcher {
-	launcher := &Launcher{
-		logger:      logging.NoopKVLogger{},
-		prefix:      "/v1/uploads",
-		httpAddress: "0.0.0.0:8080",
-		corsDomains: []string{""},
-	}
-
-	for _, opt := range options {
-		opt(launcher)
-	}
-
-	return launcher
+type forkliftCompleter struct {
+	queries *database.Queries
+	queue   *queue.Queue
+	logger  logging.KVLogger
 }
 
 func WithLogger(logger logging.KVLogger) LauncherOption {
@@ -163,7 +159,45 @@ func WithCORSDomains(domains []string) LauncherOption {
 	}
 }
 
-func (l *Launcher) Build() (chi.Router, error) {
+func NewLauncher(options ...LauncherOption) *Launcher {
+	launcher := &Launcher{
+		logger:      logging.NoopKVLogger{},
+		prefix:      "/v1/uploads",
+		httpAddress: "0.0.0.0:8080",
+		corsDomains: []string{""},
+	}
+
+	for _, opt := range options {
+		opt(launcher)
+	}
+
+	return launcher
+}
+
+func (l *Launcher) Completer() (Completer, error) {
+	if l.queueRedisURL == "" {
+		l.logger.Warn("skipping bus config as no redis url was provided")
+		return nil, nil
+	}
+	opts, err := asynq.ParseRedisURI(l.queueRedisURL)
+	if err != nil {
+		return nil, err
+	}
+	queue, err := queue.New(queue.WithRequestsConnOpts(opts), queue.WithLogger(l.logger))
+	if err != nil {
+		return nil, err
+	}
+	completer := &forkliftCompleter{
+		queries: database.New(l.db),
+		queue:   queue,
+		logger:  l.logger,
+	}
+	l.logger.Info("bus client created")
+
+	return completer, nil
+}
+
+func (l *Launcher) BuildHandler() (chi.Router, error) {
 	validator, err := keybox.NewValidator(l.publicKey)
 	if err != nil {
 		return nil, err
@@ -182,33 +216,23 @@ func (l *Launcher) Build() (chi.Router, error) {
 		}
 	}
 
-	readyCtx, readyCancel := context.WithCancel(context.Background())
-
 	l.logger.Info("building uploads handler")
+	completer, err := l.Completer()
+	if err != nil {
+		return nil, err
+	}
+
+	readyCtx, readyCancel := context.WithCancel(context.Background())
 	store := s3store.New(l.s3bucket, l.s3client)
 	handler := &Handler{
 		s3bucket:       l.s3bucket,
 		logger:         l.logger,
 		queries:        database.New(l.db),
 		tokenValidator: validator,
+		completer:      completer,
 		stopChan:       make(chan struct{}),
 	}
 	l.readyCancel = readyCancel
-
-	if l.queueRedisURL != "" {
-		opts, err := asynq.ParseRedisURI(l.queueRedisURL)
-		if err != nil {
-			return nil, err
-		}
-		queue, err := queue.New(queue.WithRequestsConnOpts(opts), queue.WithLogger(l.logger))
-		if err != nil {
-			return nil, err
-		}
-		handler.queue = queue
-		l.logger.Info("bus client created")
-	} else {
-		l.logger.Warn("skipping bus config as no redis url was provided")
-	}
 
 	composer := tusd.NewStoreComposer()
 	composer.UseLocker(l.fileLocker)
@@ -270,14 +294,14 @@ func (l *Launcher) Build() (chi.Router, error) {
 	})
 
 	// Internal endpoints
-	router.Get("/livez", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/livez", func(w http.ResponseWriter, _ *http.Request) {
 		if readyCtx.Err() != nil {
 			http.Error(w, "upload service is shutting down", http.StatusServiceUnavailable)
 			return
 		}
 		w.Write([]byte("OK"))
 	})
-	router.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Write([]byte("OK"))
 	})
 
@@ -398,7 +422,13 @@ func (h *Handler) listenToHooks() {
 			return
 		}
 
-		err = h.completeUpload(p)
+		if h.completer == nil {
+			return
+		}
+		err = h.completer.Complete(p, tasks.FileLocationS3{
+			Key:    p.Key,
+			Bucket: h.s3bucket,
+		})
 		if err != nil {
 			h.logger.Warn("completing upload failed", "user_id", uid, "upload_id", event.Upload.ID, "err", err)
 			redisErrors.Inc()
@@ -474,25 +504,20 @@ func extractUploadIDFromPath(url string) string {
 	return result[1]
 }
 
-// completeUpload sends a task to the bus to reflect the upload to the user's bucket
-func (h *Handler) completeUpload(uploadParams database.MarkUploadCompletedParams) error {
-	if h.queue != nil {
-		err := h.queue.SendRequest(
-			tasks.ForkliftUploadIncoming,
-			tasks.ForkliftUploadIncomingPayload{
-				UploadID: uploadParams.ID,
-				UserID:   uploadParams.UserID,
-				FileName: uploadParams.Filename,
-				FileLocation: tasks.FileLocationS3{
-					Key:    uploadParams.Key,
-					Bucket: h.s3bucket,
-				},
-			}, queue.WithRequestRetry(10), queue.WithRequestTimeout(24*time.Hour),
-		)
-		if err != nil {
-			return err
-		}
-		h.logger.Info("forklift notified", "upload_id", uploadParams.ID, "user_id", uploadParams.UserID)
+// Complete sends off a finalized upload to forklift queue for further processing.
+func (c forkliftCompleter) Complete(params database.MarkUploadCompletedParams, location tasks.FileLocationS3) error {
+	err := c.queue.SendRequest(
+		tasks.ForkliftUploadIncoming,
+		tasks.ForkliftUploadIncomingPayload{
+			UploadID:     params.ID,
+			UserID:       params.UserID,
+			FileName:     params.Filename,
+			FileLocation: location,
+		}, queue.WithRequestRetry(10), queue.WithRequestTimeout(24*time.Hour),
+	)
+	if err != nil {
+		return err
 	}
+	c.logger.Info("forklift notified", "upload_id", params.ID, "user_id", params.UserID)
 	return nil
 }
