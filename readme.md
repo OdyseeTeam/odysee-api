@@ -88,7 +88,7 @@ Make sure you have `lbrynet`, `postgres` and `postgres-collector` containers run
 
 ## Modifying and building a Docker image
 
-First, make sure you have Go 1.17 installed.
+Make sure you have Go 1.20 installed.
 
 - Ubuntu: https://launchpad.net/~longsleep/+archive/ubuntu/golang-backports or https://github.com/golang/go/wiki/Ubuntu
 - OSX: `brew install go`
@@ -101,11 +101,11 @@ make oapi_image && docker-compose up app
 
 ## Versioning
 
-This project is using [CalVer](https://calver.org) YY.MM.MINOR[.MICRO], with MICRO set by CI/CD system, since February 2021 (SemVer prior to that).
+This project is using [CalVer](https://calver.org) YY.MM.MINOR since February 2021 (SemVer prior to that)
 
 ## Contributing
 
-Contributions to this project are welcome, encouraged, and compensated. For more details, see [lbry.io/faq/contributing](https://lbry.io/faq/contributing).
+Contributions to this project are welcome.
 
 Please ensure that your code builds and automated tests run successfully before pushing your branch. You must `go fmt` your code before you commit it, or the build will fail.
 
@@ -123,5 +123,5 @@ Our PGP key is [here](https://lbry.com/faq/pgp-key) if you need it.
 
 ## Contact
 
-The primary contact for this project is [@anbsky](https://github.com/anbsky) (andrey.beletsky@lbry.com).
+The primary contact for this project is [@anbsky](https://github.com/anbsky) (andrey.beletsky@odysee.com).
 
