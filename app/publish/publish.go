@@ -99,7 +99,7 @@ retry:
 	ctx, cancel := context.WithTimeout(r.Context(), fetchTimeout)
 	defer cancel()
 
-	f, err := h.fetchFile(r, user.ID)
+	publishFile, err := h.fetchFile(r, user.ID)
 	if err != nil {
 		switch err.(type) {
 		case *RequestError:
@@ -109,7 +109,7 @@ retry:
 
 		case *FetchError:
 			if errors.Is(err, ErrEmptyRemoteURL) {
-				f, err = h.saveFile(r, user.ID)
+				publishFile, err = h.saveFile(r, user.ID)
 				if err != nil {
 					log.Error(err)
 					monitor.ErrorToSentry(err)
@@ -155,8 +155,8 @@ retry:
 		op := metrics.StartOperation(opName, "remove_file")
 		defer op.End()
 
-		if err := os.RemoveAll(filepath.Dir(f.Name())); err != nil {
-			monitor.ErrorToSentry(err, map[string]string{"file_path": f.Name()})
+		if err := os.RemoveAll(filepath.Dir(publishFile.Name())); err != nil {
+			monitor.ErrorToSentry(err, map[string]string{"file_path": publishFile.Name()})
 		}
 	}()
 
@@ -173,7 +173,7 @@ retry:
 		return
 	}
 
-	c := getCaller(sdkrouter.GetSDKAddress(user), f.Name(), user.ID, qCache)
+	c := getCaller(sdkrouter.GetSDKAddress(user), publishFile.Name(), user.ID, qCache)
 
 	params, ok := rpcReq.Params.(map[string]interface{})
 	if !ok {
@@ -202,6 +202,12 @@ retry:
 		w.Write(rpcerrors.ToJSON(err))
 		observeFailure(metrics.GetDuration(r), metrics.FailureKindRPC)
 		return
+	}
+
+	if rpcRes.Error == nil {
+		if fileInfo, err := os.Stat(publishFile.Name()); err == nil {
+			metrics.PublishVolumeMB.Add(float64(fileInfo.Size()) / 1024 / 1024)
+		}
 	}
 
 	serialized, err := responses.JSONRPCSerialize(rpcRes)
