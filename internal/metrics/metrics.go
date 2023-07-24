@@ -17,6 +17,7 @@ const (
 	nsUI         = "ui"
 	nsLbrytv     = "lbrytv"
 	nsOperations = "op"
+	nsPublish    = "publish"
 
 	LabelSource   = "source"
 	LabelInstance = "instance"
@@ -289,6 +290,12 @@ var (
 		},
 		[]string{"method", "endpoint", "group", "kind"},
 	)
+	PublishVolumeMB = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: nsPublish,
+			Name:      "volume_mb",
+			Help:      "Amount of data published",
+		})
 
 	operations = promauto.NewSummaryVec(
 		prometheus.SummaryOpts{
