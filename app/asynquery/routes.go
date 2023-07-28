@@ -92,7 +92,7 @@ func (l *Launcher) InstallRoutes(r *mux.Router) error {
 	r.HandleFunc("/auth/pubkey", keyfob.PublicKeyHandler).Methods("GET")
 	r.HandleFunc("/uploads/", handler.CreateUpload).Methods("POST")
 	r.HandleFunc("/{id}", handler.Get).Methods("GET")
-	r.HandleFunc("/", handler.Create).Methods("POST")
+	r.HandleFunc("/", handler.CreateQuery).Methods("POST")
 	l.logger.Info("routes installed")
 	return nil
 }

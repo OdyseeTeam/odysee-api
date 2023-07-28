@@ -104,21 +104,15 @@ func (th *TestHelper) CreateUpload(filePath string, queue *queue.Queue) (*databa
 		return nil, err
 	}
 	// Emulate upload completion
-	completer := &forkliftCompleter{
+	notifier := &forkliftNotifier{
 		queries: th.Queries,
 		queue:   queue,
 		logger:  zapadapter.NewKV(nil),
 	}
-	err = completer.Complete(
-		database.MarkUploadCompletedParams{
-			UserID:   up.UserID,
-			ID:       up.ID,
-			Filename: path.Base(filePath),
-			Key:      uploadKey,
-		}, tasks.FileLocationS3{
-			Key:    uploadKey,
-			Bucket: th.S3Config.Bucket,
-		})
+	err = notifier.UploadReceived(up.UserID, up.ID, path.Base(filePath), tasks.FileLocationS3{
+		Key:    uploadKey,
+		Bucket: th.S3Config.Bucket,
+	})
 	if err != nil {
 		return nil, err
 	}

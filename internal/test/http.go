@@ -1,6 +1,8 @@
 package test
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,9 +20,10 @@ type HTTPTest struct {
 	Method string
 	URL    string
 
-	ReqBody    io.Reader
-	ReqHeader  map[string]string
-	RemoteAddr string
+	ReqBody     io.Reader
+	ReqBodyJSON any
+	ReqHeader   map[string]string
+	RemoteAddr  string
 
 	Code        int
 	ResBody     string
@@ -30,19 +33,9 @@ type HTTPTest struct {
 
 func (test *HTTPTest) Run(handler http.Handler, t *testing.T) *httptest.ResponseRecorder {
 	t.Helper()
-	req, err := http.NewRequest(test.Method, test.URL, test.ReqBody)
-	require.NoError(t, err)
-	// req.RequestURI = test.URL
-	req.RemoteAddr = test.RemoteAddr
-
-	// Add headers
-	for key, value := range test.ReqHeader {
-		req.Header.Set(key, value)
-	}
-
-	req.Host = "odysee.com"
+	request := test.buildRequest(t)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, req)
+	handler.ServeHTTP(w, request)
 
 	if w.Code != test.Code {
 		t.Errorf("Expected %v %s as status code (got %v %s)", test.Code, http.StatusText(test.Code), w.Code, http.StatusText(w.Code))
@@ -63,20 +56,13 @@ func (test *HTTPTest) Run(handler http.Handler, t *testing.T) *httptest.Response
 	if test.ResContains != "" && !strings.Contains(w.Body.String(), test.ResContains) {
 		t.Errorf("Expected '%s' to be present in response (got '%s'", test.ResContains, w.Body.String())
 	}
-
 	return w
 }
 
 func (test *HTTPTest) RunHTTP(t *testing.T) *http.Response {
 	t.Helper()
 	require := require.New(t)
-	request, err := http.NewRequest(test.Method, test.URL, test.ReqBody)
-	require.NoError(err)
-
-	for key, value := range test.ReqHeader {
-		request.Header.Set(key, value)
-	}
-
+	request := test.buildRequest(t)
 	client := &http.Client{}
 	response, err := client.Do(request)
 	require.NoError(err)
@@ -115,6 +101,32 @@ func (test *HTTPTest) RunHTTP(t *testing.T) *http.Response {
 			t.Errorf("Expected '%s' to be present in response (got '%s'", test.ResContains, string(body))
 		}
 	}
-
 	return response
+}
+
+func (test *HTTPTest) buildRequest(t *testing.T) *http.Request {
+	t.Helper()
+
+	var body io.Reader
+	if test.ReqBody != nil {
+		body = test.ReqBody
+	} else if test.ReqBodyJSON != nil {
+		b, err := json.Marshal(test.ReqBodyJSON)
+		require.NoError(t, err)
+		body = bytes.NewReader(b)
+	}
+
+	req, err := http.NewRequest(test.Method, test.URL, body)
+	require.NoError(t, err)
+	req.RemoteAddr = test.RemoteAddr
+
+	if test.ReqBodyJSON != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	for key, value := range test.ReqHeader {
+		req.Header.Set(key, value)
+	}
+
+	req.Host = "odysee.com"
+	return req
 }

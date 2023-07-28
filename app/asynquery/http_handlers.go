@@ -92,7 +92,7 @@ func (h QueryHandler) CreateUpload(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func (h QueryHandler) Create(w http.ResponseWriter, r *http.Request) {
+func (h QueryHandler) CreateQuery(w http.ResponseWriter, r *http.Request) {
 	responses.AddJSONContentType(w)
 	u, err := auth.FromRequest(r)
 	if err != nil {

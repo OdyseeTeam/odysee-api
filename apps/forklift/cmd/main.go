@@ -84,7 +84,8 @@ func serve(logger logging.KVLogger) {
 		forklift.WithConcurrency(cfg.V.GetInt("Concurrency")),
 		forklift.WithReflectorWorkers(cfg.V.GetInt("ReflectorWorkers")),
 		forklift.WithBlobPath(blobPath),
-		forklift.WithRetriever(forklift.NewS3Retriever(uploadPath, client)),
+		forklift.WithS3Client(client),
+		forklift.WithDownloadsPath(uploadPath),
 		forklift.WithRequestsConnURL(cfg.V.GetString("ForkliftRequestsConnURL")),   // Redis connection for listening to complete upload requests
 		forklift.WithResponsesConnURL(cfg.V.GetString("AsynqueryRequestsConnURL")), // Redis connection for publishing processed upload results
 		forklift.WithLogger(logger),

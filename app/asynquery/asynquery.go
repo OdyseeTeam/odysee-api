@@ -214,7 +214,7 @@ func (m *CallManager) HandleMerge(ctx context.Context, task *asynq.Task) error {
 		}
 	}
 	QueriesCompleted.Inc()
-	log.Info("async query completed")
+	log.Info("async query completed", "query_id", aq.ID)
 	err = m.finalizeQueryRecord(ctx, aq.ID, res, "")
 	if err != nil {
 		log.Warn("failed to finalize query record", "err", err)
