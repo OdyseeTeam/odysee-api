@@ -225,7 +225,7 @@ func (s *publishV4Suite) TestPublishRemote() {
 	// Getting the upload token
 	resp = (&test.HTTPTest{
 		Method: http.MethodPost,
-		URL:    s.asynqueryServer.URL + "/api/v1/asynqueries/uploads/",
+		URL:    s.asynqueryServer.URL + "/api/v1/asynqueries/urls/",
 		Code:   http.StatusOK,
 		ReqHeader: map[string]string{
 			wallet.AuthorizationHeader: s.userHelper.TokenHeader,

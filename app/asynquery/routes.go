@@ -64,7 +64,7 @@ func WithUploadServiceURL(url string) LauncherOption {
 func NewLauncher(options ...LauncherOption) *Launcher {
 	launcher := &Launcher{
 		logger:           logging.NoopKVLogger{},
-		uploadServiceURL: "https://uploads-v4.na-backend.odysee.com/v1/uploads/",
+		uploadServiceURL: "https://uploads-v4.na-backend.odysee.com/v1/",
 	}
 	for _, option := range options {
 		option(launcher)
@@ -90,7 +90,7 @@ func (l *Launcher) InstallRoutes(r *mux.Router) error {
 	r = r.PathPrefix("/asynqueries").Subrouter()
 	r.PathPrefix("/").HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}).Methods(http.MethodOptions)
 	r.HandleFunc("/auth/pubkey", keyfob.PublicKeyHandler).Methods("GET")
-	r.HandleFunc("/uploads/", handler.CreateUpload).Methods("POST")
+	r.HandleFunc("/{type:(?:urls)|(?:uploads)}/", handler.CreateUpload).Methods("POST")
 	r.HandleFunc("/{id}", handler.Get).Methods("GET")
 	r.HandleFunc("/", handler.CreateQuery).Methods("POST")
 	l.logger.Info("routes installed")

@@ -40,7 +40,7 @@ PaidTokenPrivKey: token_privkey.rsa
 # You can re-generate the key by running:
 # openssl ecparam -genkey -name prime256v1 -noout -out private_key.pem && base64 -i private_key.pem
 UploadTokenPrivateKey: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUZZYWxQZkhySzNSQ1F2YmhRQ1h6cDZiWG9uODZWOGI5L3B0bjB3QTZxNkxvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFZjhyN3RlQWJwUlVldXZhVWRsNDQzVS9VZkpYZURDd051QkRrbmp5ZnRZaXZ2Tnl6cGt6ZgpYdDl3RE9rc1VZSmEzNVhvSndabjNHMmw2L2EvdVUvWmh3PT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
-UploadServiceURL: http://localhost:8980/v1/uploads/
+UploadServiceURL: http://localhost:8980/v1/
 
 LbrynetXServer: http://sdk.lbry.tech:5279/api
 LbrynetXPercentage: 0

@@ -4,7 +4,7 @@ title: Publish v4 Flow
 sequenceDiagram
     actor Client
     participant OAPI as Odysee API
-    participant Upload as Upload Service
+    participant Uploads as Uploads Service
 
     Client->>OAPI: POST /api/v1/asynqueries/uploads/
     activate OAPI
@@ -12,16 +12,16 @@ sequenceDiagram
     OAPI-->>Client: 201 Created (<<token>>, <<location>>)
     deactivate OAPI
 
-    Client->>Upload: POST /:location, <<token>>
-    activate Upload
-    Upload->>Upload: validate upload token
-    Upload-->>Client: 201 Created (Location: <<upload-url>>)
+    Client->>Uploads: POST /:location, <<token>>
+    activate Uploads
+    Uploads->>Uploads: validate upload token
+    Uploads-->>Client: 201 Created (Location: <<upload-url>>)
 
-    loop TUS Upload
-        Client->>Upload: PATCH /:upload-id, <<token>>
-        Upload-->>Client: 204 No Content
+    loop TUS Uploads
+        Client->>Uploads: PATCH /:upload-id, <<token>>
+        Uploads-->>Client: 204 No Content
     end
-    deactivate Upload
+    deactivate Uploads
 
     Client->>OAPI: POST /api/v1/asynqueries/
     activate OAPI

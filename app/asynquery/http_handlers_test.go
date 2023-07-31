@@ -53,21 +53,46 @@ func (s *asynqueryHandlerSuite) TestCreateUpload() {
 	ts := httptest.NewServer(s.router)
 	defer ts.Close()
 
-	resp := (&test.HTTPTest{
-		Method: http.MethodPost,
-		URL:    ts.URL + "/api/v1/asynqueries/uploads/",
-		ReqHeader: map[string]string{
-			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
+	cases := []struct {
+		suffix   string
+		httpTest *test.HTTPTest
+	}{
+		{
+			suffix: "uploads",
+			httpTest: &test.HTTPTest{
+				Method: http.MethodPost,
+				URL:    ts.URL + "/api/v1/asynqueries/uploads/",
+				ReqHeader: map[string]string{
+					wallet.AuthorizationHeader: s.userHelper.TokenHeader,
+				},
+				Code: http.StatusOK,
+			},
 		},
-		Code: http.StatusOK,
-	}).Run(s.router, s.T())
+		{
+			suffix: "urls",
+			httpTest: &test.HTTPTest{
+				Method: http.MethodPost,
+				URL:    ts.URL + "/api/v1/asynqueries/urls/",
+				ReqHeader: map[string]string{
+					wallet.AuthorizationHeader: s.userHelper.TokenHeader,
+				},
+				Code: http.StatusOK,
+			},
+		},
+	}
 
-	rr := &Response{}
-	s.Require().NoError(json.Unmarshal(resp.Body.Bytes(), rr))
-	s.Empty(rr.Error)
-	s.Require().Equal(StatusUploadTokenCreated, rr.Status)
-	s.NotEmpty(rr.Payload.(UploadTokenCreatedPayload).Token)
-	s.Equal(s.launcher.uploadServiceURL, rr.Payload.(UploadTokenCreatedPayload).Location)
+	for _, c := range cases {
+		s.Run(c.suffix, func() {
+			resp := c.httpTest.Run(s.router, s.T())
+
+			rr := &Response{}
+			s.Require().NoError(json.Unmarshal(resp.Body.Bytes(), rr))
+			s.Empty(rr.Error)
+			s.Require().Equal(StatusUploadTokenCreated, rr.Status)
+			s.NotEmpty(rr.Payload.(UploadTokenCreatedPayload).Token)
+			s.Equal(s.launcher.uploadServiceURL+c.suffix+"/", rr.Payload.(UploadTokenCreatedPayload).Location)
+		})
+	}
 }
 
 func (s *asynqueryHandlerSuite) TestCreate() {
@@ -161,7 +186,7 @@ func (s *asynqueryHandlerSuite) SetupSuite() {
 		WithLogger(zapadapter.NewKV(nil)),
 		WithPrivateKey(kf.PrivateKey()),
 		WithDB(s.userHelper.DB),
-		WithUploadServiceURL("https://uploads.odysee.com/v1/uploads/"),
+		WithUploadServiceURL("https://uploads.odysee.com/v1/"),
 	)
 	s.router.Use(auth.Middleware(s.userHelper.Auther))
 
