@@ -17,8 +17,6 @@ services:
     container_name: redis
     ports:
       - '6379:6379'
-    volumes:
-      - redis-data:/data
     command: >
       --requirepass odyredis --appendonly yes
     labels:
@@ -53,5 +51,4 @@ services:
 volumes:
   pgdata: {}
   storage: {}
-  redis-data: {}
   minio-data: {}

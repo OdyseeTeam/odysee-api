@@ -100,7 +100,7 @@ func (s *asynqueryHandlerSuite) TestCreate() {
 	ts := httptest.NewServer(s.router)
 	uploadID := randomdata.Alphanumeric(64)
 
-	streamCreateReq, err := json.Marshal(jsonrpc.NewRequest(query.MethodStreamCreate, map[string]interface{}{
+	req := jsonrpc.NewRequest(query.MethodStreamCreate, map[string]any{
 		"name":                 "publish2test-dummymd",
 		"title":                "Publish v2 test for dummy.md",
 		"description":          "",
@@ -116,7 +116,9 @@ func (s *asynqueryHandlerSuite) TestCreate() {
 		"channel_id":           "febc557fcfbe5c1813eb621f7d38a80bc4355085",
 		"allow_duplicate_name": true,
 		FilePathParam:          "https://uploads-v4.api.na-backend.odysee.com/v1/uploads/" + uploadID,
-	}))
+	})
+	req.ID = randomdata.Number(1, 999999999)
+	streamCreateReq, err := json.Marshal(req)
 	require.NoError(err)
 
 	resp := (&test.HTTPTest{
@@ -144,13 +146,17 @@ func (s *asynqueryHandlerSuite) TestCreate() {
 		return nil
 	})
 
+	queryReq := &jsonrpc.RPCRequest{}
+	require.NoError(query.Body.Unmarshal(queryReq))
+	require.Equal(req.ID, queryReq.ID)
+	require.EqualValues(req.Params.(map[string]any)["name"], queryReq.Params.(map[string]any)["name"])
+
 	rbody := resp.Body.Bytes()
 	rr := &Response{}
 	require.NoError(json.Unmarshal(rbody, rr))
 	s.Empty(rr.Error)
 	require.Equal(StatusQueryCreated, rr.Status)
-	qcr, ok := rr.Payload.(QueryCreatedPayload)
-	require.True(ok)
+	qcr := rr.Payload.(QueryCreatedPayload)
 	s.Equal(query.ID, qcr.QueryID)
 
 	s.Equal(models.AsynqueryStatusReceived, query.Status)
@@ -218,13 +224,13 @@ type StreamCreateResponse struct {
 		Height        int    `json:"height"`
 		Meta          struct {
 		} `json:"meta,omitempty"`
-		Name           string      `json:"name,omitempty"`
-		NormalizedName string      `json:"normalized_name,omitempty"`
-		Nout           int         `json:"nout"`
-		PermanentURL   string      `json:"permanent_url,omitempty"`
-		Timestamp      interface{} `json:"timestamp"`
-		Txid           string      `json:"txid"`
-		Type           string      `json:"type"`
+		Name           string `json:"name,omitempty"`
+		NormalizedName string `json:"normalized_name,omitempty"`
+		Nout           int    `json:"nout"`
+		PermanentURL   string `json:"permanent_url,omitempty"`
+		Timestamp      any    `json:"timestamp"`
+		Txid           string `json:"txid"`
+		Type           string `json:"type"`
 		Value          struct {
 			Source struct {
 				Hash      string `json:"hash"`

@@ -154,7 +154,7 @@ func (h QueryHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	aq, err := h.callManager.getQueryRecord(context.TODO(), queryParams{
-		id: queryID, userID: int32(user.ID),
+		queryID: queryID, userID: user.ID,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
