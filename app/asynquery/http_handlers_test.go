@@ -149,8 +149,7 @@ func (s *asynqueryHandlerSuite) TestCreate() {
 	require.NoError(json.Unmarshal(rbody, rr))
 	s.Empty(rr.Error)
 	require.Equal(StatusQueryCreated, rr.Status)
-	qcr, ok := rr.Payload.(QueryCreatedPayload)
-	require.True(ok)
+	qcr := rr.Payload.(QueryCreatedPayload)
 	s.Equal(query.ID, qcr.QueryID)
 
 	s.Equal(models.AsynqueryStatusReceived, query.Status)

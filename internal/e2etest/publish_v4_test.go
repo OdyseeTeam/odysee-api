@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -31,6 +31,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/keybox"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
+	"github.com/Pallinder/go-randomdata"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-chi/chi/v5"
@@ -84,7 +85,7 @@ func (s *publishV4Suite) TestPublish() {
 	defer resp.Body.Close()
 
 	asynqueryResponse := &asynquery.Response{}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.Nil(err)
 	require.NoError(json.Unmarshal(body, asynqueryResponse))
 	assert.Empty(asynqueryResponse.Error)
@@ -234,7 +235,7 @@ func (s *publishV4Suite) TestPublishRemote() {
 	defer resp.Body.Close()
 
 	asynqueryResponse := &asynquery.Response{}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.Nil(err)
 	require.NoError(json.Unmarshal(body, asynqueryResponse))
 	assert.Empty(asynqueryResponse.Error)
@@ -271,7 +272,7 @@ func (s *publishV4Suite) TestPublishRemote() {
 
 	require.Equal(http.StatusCreated, resp.StatusCode)
 	uploadResponse := &uploads.Response{}
-	body, err = ioutil.ReadAll(resp.Body)
+	body, err = io.ReadAll(resp.Body)
 	require.Nil(err)
 	require.NoError(json.Unmarshal(body, uploadResponse))
 	assert.Empty(uploadResponse.Error)
@@ -280,9 +281,9 @@ func (s *publishV4Suite) TestPublishRemote() {
 	assert.NotEmpty(uploadID)
 
 	// Sending off a JSON-RPC request for stream creation
-	streamCreateReq, err := json.Marshal(jsonrpc.NewRequest(query.MethodStreamCreate, map[string]interface{}{
-		"name":                  "publish4test",
-		"title":                 "Publish v4 test",
+	streamCreateReq, err := json.Marshal(jsonrpc.NewRequest(query.MethodStreamCreate, map[string]any{
+		"name":                  "publish4test-remote",
+		"title":                 "Publish v4 test for remote urls",
 		"description":           "",
 		"locations":             []string{},
 		"bid":                   "0.01000000",
@@ -345,9 +346,180 @@ func (s *publishV4Suite) TestPublishRemote() {
 
 	err = ljsonrpc.Decode(rpcResponse.Result, &createResponse)
 	require.NoError(err)
-	assert.Equal("publish4test", createResponse.Outputs[0].Name)
+	assert.Equal("publish4test-remote", createResponse.Outputs[0].Name)
 }
 
+func (s *publishV4Suite) TestStreamUpdate() {
+	var resp *http.Response
+	require := s.Require()
+	assert := s.Assert()
+	t := s.T()
+
+	if testing.Short() {
+		t.Skip("skipping testing in short mode")
+	}
+
+	// Sending off a JSON-RPC request for stream update
+	streamUpdateReq, err := json.Marshal(jsonrpc.NewRequest(query.MethodStreamUpdate, map[string]any{
+		"name":          "publish4test-update",
+		"title":         "Publish v4 test for later update: " + randomdata.SillyName(),
+		"description":   "",
+		"locations":     []string{},
+		"bid":           "0.01000000",
+		"languages":     []string{"en"},
+		"tags":          []string{"c:disable-comments"},
+		"thumbnail_url": "https://thumbs.odycdn.com/92399dc6df41af6f7c61def97335dfa5.webp",
+		"release_time":  1661882701,
+		"blocking":      true,
+		"preview":       false,
+		"license":       "None",
+		"claim_id":      "04a8d23c0d84f32d2e1ac4dc568233f3a60e5900",
+		"channel_id":    "febc557fcfbe5c1813eb621f7d38a80bc4355085",
+	}))
+	require.NoError(err)
+
+	resp = (&test.HTTPTest{
+		Method: http.MethodPost,
+		URL:    s.asynqueryServer.URL + "/api/v1/asynqueries/",
+		Code:   http.StatusCreated,
+		ReqHeader: map[string]string{
+			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
+		},
+		ReqBody: bytes.NewReader(streamUpdateReq),
+	}).RunHTTP(t)
+
+	decoder := json.NewDecoder(resp.Body)
+	rr := &asynquery.Response{}
+	require.NoError(decoder.Decode(rr))
+	s.Empty(rr.Error)
+	require.Equal(asynquery.StatusQueryCreated, rr.Status)
+	qcp := rr.Payload.(asynquery.QueryCreatedPayload)
+	s.NotEmpty(qcp.QueryID)
+
+	var query *models.Asynquery
+	Wait(s.T(), "successful query settling in the database", 60*time.Second, 1000*time.Millisecond, func() error {
+		mods := []qm.QueryMod{
+			models.AsynqueryWhere.ID.EQ(qcp.QueryID),
+			models.AsynqueryWhere.UserID.EQ(s.userHelper.UserID()),
+			models.AsynqueryWhere.Status.EQ(models.AsynqueryStatusSucceeded),
+		}
+		query, err = models.Asynqueries(mods...).One(s.userHelper.DB)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrWaitContinue
+		} else if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	// Checking the status of the query
+	resp = (&test.HTTPTest{
+		Method: http.MethodGet,
+		URL:    s.asynqueryServer.URL + "/api/v1/asynqueries/" + query.ID,
+		ReqHeader: map[string]string{
+			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
+		},
+		Code: http.StatusOK,
+	}).RunHTTP(t)
+
+	createResponse := StreamCreateResponse{}
+	var rpcResponse *jsonrpc.RPCResponse
+	decoder = json.NewDecoder(resp.Body)
+	decoder.DisallowUnknownFields()
+	decoder.UseNumber()
+	err = decoder.Decode(&rpcResponse)
+	require.NoError(err)
+
+	err = ljsonrpc.Decode(rpcResponse.Result, &createResponse)
+	require.NoError(err)
+	assert.Equal("publish4test-update", createResponse.Outputs[0].Name)
+}
+
+func (s *publishV4Suite) TestQueryError() {
+	var resp *http.Response
+	require := s.Require()
+	assert := s.Assert()
+	t := s.T()
+
+	if testing.Short() {
+		t.Skip("skipping testing in short mode")
+	}
+
+	// Sending off a JSON-RPC request for stream update
+	streamUpdateReq, err := json.Marshal(jsonrpc.NewRequest(query.MethodStreamUpdate, map[string]any{
+		"name":          "publish4test-update",
+		"title":         "Publish v4 test for later update: " + randomdata.SillyName(),
+		"description":   "",
+		"locations":     []string{},
+		"bid":           "0.01000000",
+		"languages":     []string{"en"},
+		"tags":          []string{"c:disable-comments"},
+		"thumbnail_url": "https://thumbs.odycdn.com/92399dc6df41af6f7c61def97335dfa5.webp",
+		"release_time":  1661882701,
+		"blocking":      true,
+		"preview":       false,
+		"license":       "None",
+		"claim_id":      randomdata.RandStringRunes(40),
+		"channel_id":    "febc557fcfbe5c1813eb621f7d38a80bc4355085",
+	}))
+	require.NoError(err)
+
+	resp = (&test.HTTPTest{
+		Method: http.MethodPost,
+		URL:    s.asynqueryServer.URL + "/api/v1/asynqueries/",
+		Code:   http.StatusCreated,
+		ReqHeader: map[string]string{
+			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
+		},
+		ReqBody: bytes.NewReader(streamUpdateReq),
+	}).RunHTTP(t)
+
+	decoder := json.NewDecoder(resp.Body)
+	rr := &asynquery.Response{}
+	require.NoError(decoder.Decode(rr))
+	s.Empty(rr.Error)
+	require.Equal(asynquery.StatusQueryCreated, rr.Status)
+	qcp := rr.Payload.(asynquery.QueryCreatedPayload)
+	s.NotEmpty(qcp.QueryID)
+
+	var query *models.Asynquery
+	Wait(s.T(), "failed query settling in the database", 60*time.Second, 1000*time.Millisecond, func() error {
+		mods := []qm.QueryMod{
+			models.AsynqueryWhere.ID.EQ(qcp.QueryID),
+			models.AsynqueryWhere.UserID.EQ(s.userHelper.UserID()),
+			models.AsynqueryWhere.Status.EQ(models.AsynqueryStatusFailed),
+		}
+		query, err = models.Asynqueries(mods...).One(s.userHelper.DB)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrWaitContinue
+		} else if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	// Checking the status of the query
+	resp = (&test.HTTPTest{
+		Method: http.MethodGet,
+		URL:    s.asynqueryServer.URL + "/api/v1/asynqueries/" + query.ID,
+		ReqHeader: map[string]string{
+			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
+		},
+		Code: http.StatusOK,
+	}).RunHTTP(t)
+
+	createResponse := StreamCreateResponse{}
+	var rpcResponse *jsonrpc.RPCResponse
+	decoder = json.NewDecoder(resp.Body)
+	decoder.DisallowUnknownFields()
+	decoder.UseNumber()
+	err = decoder.Decode(&rpcResponse)
+	require.NoError(err)
+
+	err = ljsonrpc.Decode(rpcResponse.Result, &createResponse)
+	require.NoError(err)
+	assert.Equal("publish4test-update", createResponse.Outputs[0].Name)
+}
 func (s *publishV4Suite) SetupSuite() {
 	var err error
 	require := s.Require()

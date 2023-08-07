@@ -4,17 +4,16 @@ import (
 	"strconv"
 )
 
-// A list of task types.
 const (
+	AsynqueryIncomingQuery = "asynquery:incoming"
 	ForkliftUploadIncoming = "forklift:upload:incoming"
 	ForkliftURLIncoming    = "forklift:url:incoming"
-	TaskProcessAsynquery   = "asynquery:query"
 	ForkliftUploadDone     = "forklift:upload:done"
 )
 
-type AsyncQueryTask struct {
-	ID     string
-	UserID int `json:"user_id"`
+type AsynqueryIncomingQueryPayload struct {
+	QueryID string `json:"query_id"`
+	UserID  int    `json:"user_id"`
 }
 
 type ForkliftUploadDonePayload struct {
@@ -56,6 +55,13 @@ type UploadMeta struct {
 	Duration  int `json:",omitempty"`
 	Width     int `json:",omitempty"`
 	Height    int `json:",omitempty"`
+}
+
+func (p AsynqueryIncomingQueryPayload) GetTraceData() map[string]string {
+	return map[string]string{
+		"user_id":  strconv.Itoa(int(p.UserID)),
+		"query_id": p.QueryID,
+	}
 }
 
 func (p ForkliftUploadDonePayload) GetTraceData() map[string]string {
