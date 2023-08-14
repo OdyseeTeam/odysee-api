@@ -2,7 +2,7 @@
 INSERT INTO uploads (
     id, user_id, size, status, filename, key, sd_hash
 ) VALUES (
-  $1, $2, $3, 'created', '', '', ''
+    $1, $2, $3, 'created', '', '', ''
 )
 RETURNING *;
 
@@ -37,3 +37,11 @@ UPDATE uploads SET
     sd_hash = $2,
     meta = $3
 WHERE id = $1;
+
+-- name: CreateURL :one
+INSERT INTO urls (
+    id, user_id, url, filename, size, sd_hash, status
+) VALUES (
+    $1, $2, $3, $4, 0, '', 'created'
+)
+RETURNING *;

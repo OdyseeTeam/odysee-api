@@ -8,12 +8,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,6 +31,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/keybox"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
+	"github.com/Pallinder/go-randomdata"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-chi/chi/v5"
@@ -82,15 +84,15 @@ func (s *publishV4Suite) TestPublish() {
 	}).RunHTTP(t)
 	defer resp.Body.Close()
 
-	rr := &asynquery.Response{}
-	body, err := ioutil.ReadAll(resp.Body)
+	asynqueryResponse := &asynquery.Response{}
+	body, err := io.ReadAll(resp.Body)
 	require.Nil(err)
-	require.NoError(json.Unmarshal(body, rr))
-	assert.Empty(rr.Error)
-	require.Equal(asynquery.StatusUploadTokenCreated, rr.Status)
-	assert.NotEmpty(rr.Payload.(asynquery.UploadTokenCreatedPayload).Token)
+	require.NoError(json.Unmarshal(body, asynqueryResponse))
+	assert.Empty(asynqueryResponse.Error)
+	require.Equal(asynquery.StatusUploadTokenCreated, asynqueryResponse.Status)
+	assert.NotEmpty(asynqueryResponse.Payload.(asynquery.UploadTokenCreatedPayload).Token)
 
-	uploadTokenHeader := fmt.Sprintf("Bearer %s", rr.Payload.(asynquery.UploadTokenCreatedPayload).Token)
+	uploadTokenHeader := fmt.Sprintf("Bearer %s", asynqueryResponse.Payload.(asynquery.UploadTokenCreatedPayload).Token)
 
 	uploadFile := s.createRandomFile(fileSize)
 	defer uploadFile.Close()
@@ -111,7 +113,6 @@ func (s *publishV4Suite) TestPublish() {
 	}).RunHTTP(t)
 
 	loc, err := url.Parse(resp.Header.Get("Location"))
-
 	require.NoError(err)
 	uploadID = filepath.Base(loc.Path)
 	tusUploadURL := uploadsURL + uploadID // loc.RequestURI()
@@ -157,7 +158,7 @@ func (s *publishV4Suite) TestPublish() {
 		"license":               "None",
 		"channel_id":            "febc557fcfbe5c1813eb621f7d38a80bc4355085",
 		"allow_duplicate_name":  true,
-		asynquery.FilePathParam: "https://uploads-v4.api.na-backend.odysee.com/v1/uploads/" + uploadID,
+		asynquery.FilePathParam: "https://uploads-v4.odysee.com/v1/uploads/" + uploadID,
 	}))
 	require.NoError(err)
 
@@ -207,8 +208,314 @@ func (s *publishV4Suite) TestPublish() {
 
 	err = ljsonrpc.Decode(rpcResponse.Result, &createResponse)
 	require.NoError(err)
-	// require.NoError(json.Unmarshal(body, &createResponse))
 	assert.Equal("publish4test", createResponse.Outputs[0].Name)
+}
+
+func (s *publishV4Suite) TestPublishRemote() {
+	var resp *http.Response
+	require := s.Require()
+	assert := s.Assert()
+	t := s.T()
+
+	if testing.Short() {
+		t.Skip("skipping testing in short mode")
+	}
+
+	var uploadID string
+
+	// Getting the upload token
+	resp = (&test.HTTPTest{
+		Method: http.MethodPost,
+		URL:    s.asynqueryServer.URL + "/api/v1/asynqueries/urls/",
+		Code:   http.StatusOK,
+		ReqHeader: map[string]string{
+			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
+		},
+	}).RunHTTP(t)
+	defer resp.Body.Close()
+
+	asynqueryResponse := &asynquery.Response{}
+	body, err := io.ReadAll(resp.Body)
+	require.Nil(err)
+	require.NoError(json.Unmarshal(body, asynqueryResponse))
+	assert.Empty(asynqueryResponse.Error)
+	require.Equal(asynquery.StatusUploadTokenCreated, asynqueryResponse.Status)
+	assert.NotEmpty(asynqueryResponse.Payload.(asynquery.UploadTokenCreatedPayload).Token)
+
+	uploadTokenHeader := fmt.Sprintf("Bearer %s", asynqueryResponse.Payload.(asynquery.UploadTokenCreatedPayload).Token)
+	urlUploadsURL := s.uploadServer.URL + "/v1/urls/"
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasSuffix(r.URL.Path, "1Mb.dat") {
+			return
+		}
+		contentLength := 125000
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", contentLength))
+
+		body := make([]byte, contentLength)
+		w.Write(body)
+	}))
+	defer ts.Close()
+
+	// Starting the upload.
+	resp = (&test.HTTPTest{
+		Method: http.MethodPost,
+		URL:    urlUploadsURL,
+		Code:   http.StatusCreated,
+		ReqHeader: map[string]string{
+			uploads.AuthorizationHeader: uploadTokenHeader,
+		},
+		ReqBodyJSON: map[string]interface{}{
+			"url": fmt.Sprintf("%v/1Mb.dat", ts.URL),
+		},
+	}).RunHTTP(t)
+
+	require.Equal(http.StatusCreated, resp.StatusCode)
+	uploadResponse := &uploads.Response{}
+	body, err = io.ReadAll(resp.Body)
+	require.Nil(err)
+	require.NoError(json.Unmarshal(body, uploadResponse))
+	assert.Empty(uploadResponse.Error)
+	require.Equal(uploads.StatusURLCreated, uploadResponse.Status)
+	uploadID = uploadResponse.Payload.(uploads.URLCreatedPayload).UploadID
+	assert.NotEmpty(uploadID)
+
+	// Sending off a JSON-RPC request for stream creation
+	streamCreateReq, err := json.Marshal(jsonrpc.NewRequest(query.MethodStreamCreate, map[string]any{
+		"name":                  "publish4test-remote",
+		"title":                 "Publish v4 test for remote urls",
+		"description":           "",
+		"locations":             []string{},
+		"bid":                   "0.01000000",
+		"languages":             []string{"en"},
+		"tags":                  []string{"c:disable-comments"},
+		"thumbnail_url":         "https://thumbs.odycdn.com/92399dc6df41af6f7c61def97335dfa5.webp",
+		"release_time":          1661882701,
+		"blocking":              true,
+		"preview":               false,
+		"license":               "None",
+		"channel_id":            "febc557fcfbe5c1813eb621f7d38a80bc4355085",
+		"allow_duplicate_name":  true,
+		asynquery.FilePathParam: "https://uploads-v4.odysee.com/v1/urls/" + uploadID,
+	}))
+	require.NoError(err)
+
+	resp = (&test.HTTPTest{
+		Method: http.MethodPost,
+		URL:    s.asynqueryServer.URL + "/api/v1/asynqueries/",
+		Code:   http.StatusCreated,
+		ReqHeader: map[string]string{
+			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
+		},
+		ReqBody: bytes.NewReader(streamCreateReq),
+	}).RunHTTP(t)
+
+	var query *models.Asynquery
+	Wait(s.T(), "successful query settling in the database", 45*time.Second, 1000*time.Millisecond, func() error {
+		mods := []qm.QueryMod{
+			models.AsynqueryWhere.UploadID.EQ(uploadID),
+			models.AsynqueryWhere.UserID.EQ(s.userHelper.UserID()),
+			models.AsynqueryWhere.Status.EQ(models.AsynqueryStatusSucceeded),
+		}
+		query, err = models.Asynqueries(mods...).One(s.userHelper.DB)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrWaitContinue
+		} else if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	// Checking the status of the query
+	resp = (&test.HTTPTest{
+		Method: http.MethodGet,
+		URL:    s.asynqueryServer.URL + "/api/v1/asynqueries/" + query.ID,
+		ReqHeader: map[string]string{
+			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
+		},
+		Code: http.StatusOK,
+	}).RunHTTP(t)
+
+	createResponse := StreamCreateResponse{}
+	var rpcResponse *jsonrpc.RPCResponse
+	decoder := json.NewDecoder(resp.Body)
+	decoder.DisallowUnknownFields()
+	decoder.UseNumber()
+	err = decoder.Decode(&rpcResponse)
+	require.NoError(err)
+
+	err = ljsonrpc.Decode(rpcResponse.Result, &createResponse)
+	require.NoError(err)
+	assert.Equal("publish4test-remote", createResponse.Outputs[0].Name)
+}
+
+func (s *publishV4Suite) TestStreamUpdate() {
+	var resp *http.Response
+	require := s.Require()
+	assert := s.Assert()
+	t := s.T()
+
+	if testing.Short() {
+		t.Skip("skipping testing in short mode")
+	}
+
+	// Sending off a JSON-RPC request for stream update
+	streamUpdateReq, err := json.Marshal(jsonrpc.NewRequest(query.MethodStreamUpdate, map[string]any{
+		"name":          "publish4test-update",
+		"title":         "Publish v4 test for later update: " + randomdata.SillyName(),
+		"description":   "",
+		"locations":     []string{},
+		"bid":           "0.01000000",
+		"languages":     []string{"en"},
+		"tags":          []string{"c:disable-comments"},
+		"thumbnail_url": "https://thumbs.odycdn.com/92399dc6df41af6f7c61def97335dfa5.webp",
+		"release_time":  1661882701,
+		"blocking":      true,
+		"preview":       false,
+		"license":       "None",
+		"claim_id":      "04a8d23c0d84f32d2e1ac4dc568233f3a60e5900",
+		"channel_id":    "febc557fcfbe5c1813eb621f7d38a80bc4355085",
+	}))
+	require.NoError(err)
+
+	resp = (&test.HTTPTest{
+		Method: http.MethodPost,
+		URL:    s.asynqueryServer.URL + "/api/v1/asynqueries/",
+		Code:   http.StatusCreated,
+		ReqHeader: map[string]string{
+			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
+		},
+		ReqBody: bytes.NewReader(streamUpdateReq),
+	}).RunHTTP(t)
+
+	decoder := json.NewDecoder(resp.Body)
+	rr := &asynquery.Response{}
+	require.NoError(decoder.Decode(rr))
+	s.Empty(rr.Error)
+	require.Equal(asynquery.StatusQueryCreated, rr.Status)
+	qcp := rr.Payload.(asynquery.QueryCreatedPayload)
+	s.NotEmpty(qcp.QueryID)
+
+	var query *models.Asynquery
+	Wait(s.T(), "successful query settling in the database", 60*time.Second, 1000*time.Millisecond, func() error {
+		mods := []qm.QueryMod{
+			models.AsynqueryWhere.ID.EQ(qcp.QueryID),
+			models.AsynqueryWhere.UserID.EQ(s.userHelper.UserID()),
+			models.AsynqueryWhere.Status.EQ(models.AsynqueryStatusSucceeded),
+		}
+		query, err = models.Asynqueries(mods...).One(s.userHelper.DB)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrWaitContinue
+		} else if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	// Checking the status of the query
+	resp = (&test.HTTPTest{
+		Method: http.MethodGet,
+		URL:    s.asynqueryServer.URL + "/api/v1/asynqueries/" + query.ID,
+		ReqHeader: map[string]string{
+			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
+		},
+		Code: http.StatusOK,
+	}).RunHTTP(t)
+
+	createResponse := StreamCreateResponse{}
+	var rpcResponse *jsonrpc.RPCResponse
+	decoder = json.NewDecoder(resp.Body)
+	decoder.DisallowUnknownFields()
+	decoder.UseNumber()
+	err = decoder.Decode(&rpcResponse)
+	require.NoError(err)
+
+	require.NoError(ljsonrpc.Decode(rpcResponse.Result, &createResponse))
+	assert.Equal("publish4test-update", createResponse.Outputs[0].Name)
+}
+
+func (s *publishV4Suite) TestQueryError() {
+	var resp *http.Response
+	require := s.Require()
+	assert := s.Assert()
+	t := s.T()
+
+	if testing.Short() {
+		t.Skip("skipping testing in short mode")
+	}
+
+	// Sending off a JSON-RPC request for stream update
+	streamUpdateReq, err := json.Marshal(jsonrpc.NewRequest(query.MethodStreamUpdate, map[string]any{
+		"name":          "publish4test-update",
+		"title":         "Publish v4 test for later update: " + randomdata.SillyName(),
+		"description":   "",
+		"locations":     []string{},
+		"bid":           "0.01000000",
+		"languages":     []string{"en"},
+		"tags":          []string{"c:disable-comments"},
+		"thumbnail_url": "https://thumbs.odycdn.com/92399dc6df41af6f7c61def97335dfa5.webp",
+		"release_time":  1661882701,
+		"blocking":      true,
+		"preview":       false,
+		"license":       "None",
+		"claim_id":      randomdata.RandStringRunes(40),
+		"channel_id":    "febc557fcfbe5c1813eb621f7d38a80bc4355085",
+	}))
+	require.NoError(err)
+
+	resp = (&test.HTTPTest{
+		Method: http.MethodPost,
+		URL:    s.asynqueryServer.URL + "/api/v1/asynqueries/",
+		Code:   http.StatusCreated,
+		ReqHeader: map[string]string{
+			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
+		},
+		ReqBody: bytes.NewReader(streamUpdateReq),
+	}).RunHTTP(t)
+
+	decoder := json.NewDecoder(resp.Body)
+	rr := &asynquery.Response{}
+	require.NoError(decoder.Decode(rr))
+	s.Empty(rr.Error)
+	require.Equal(asynquery.StatusQueryCreated, rr.Status)
+	qcp := rr.Payload.(asynquery.QueryCreatedPayload)
+	s.NotEmpty(qcp.QueryID)
+
+	var query *models.Asynquery
+	Wait(s.T(), "failed query settling in the database", 10*time.Second, 500*time.Millisecond, func() error {
+		mods := []qm.QueryMod{
+			models.AsynqueryWhere.ID.EQ(qcp.QueryID),
+			models.AsynqueryWhere.UserID.EQ(s.userHelper.UserID()),
+			models.AsynqueryWhere.Status.EQ(models.AsynqueryStatusFailed),
+		}
+		query, err = models.Asynqueries(mods...).One(s.userHelper.DB)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrWaitContinue
+		} else if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	// Checking the status of the query
+	resp = (&test.HTTPTest{
+		Method: http.MethodGet,
+		URL:    s.asynqueryServer.URL + "/api/v1/asynqueries/" + query.ID,
+		ReqHeader: map[string]string{
+			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
+		},
+		Code: http.StatusOK,
+	}).RunHTTP(t)
+
+	createResponse := StreamCreateResponse{}
+	var rpcResponse *jsonrpc.RPCResponse
+	decoder = json.NewDecoder(resp.Body)
+	decoder.DisallowUnknownFields()
+	decoder.UseNumber()
+	require.NoError(decoder.Decode(&rpcResponse))
+
+	require.NoError(ljsonrpc.Decode(rpcResponse.Result, &createResponse))
+	assert.Equal("publish4test-update", createResponse.Outputs[0].Name)
 }
 
 func (s *publishV4Suite) SetupSuite() {
@@ -262,11 +569,10 @@ func (s *publishV4Suite) SetupSuite() {
 		}
 	}
 
-	retriever := forklift.NewS3Retriever(t.TempDir(), s.s3c)
 	l := forklift.NewLauncher(
 		forklift.WithReflectorConfig(s.forkliftHelper.ReflectorConfig),
 		forklift.WithBlobPath(s.T().TempDir()),
-		forklift.WithRetriever(retriever),
+		forklift.WithS3Client(s.s3c),
 		forklift.WithRequestsConnURL(s.redisHelper.URL),
 		forklift.WithResponsesConnURL(s.redisHelper.URL),
 		forklift.WithLogger(zapadapter.NewKV(nil)),

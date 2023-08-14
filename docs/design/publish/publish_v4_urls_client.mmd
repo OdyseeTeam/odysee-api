@@ -6,22 +6,16 @@ sequenceDiagram
     participant OAPI as Odysee API
     participant Uploads as Uploads Service
 
-    Client->>OAPI: POST /api/v1/asynqueries/uploads/
+    Client->>OAPI: POST /api/v1/asynqueries/urls/,
     activate OAPI
     OAPI->>OAPI: token auth
     OAPI-->>Client: 201 Created (<<token>>, <<location>>)
     deactivate OAPI
 
-    Client->>Uploads: POST /:location, <<token>>
+    Client->>Uploads: POST /:location, <<token>>, {url: <<url>>}
     activate Uploads
     Uploads->>Uploads: validate upload token
     Uploads-->>Client: 201 Created (Location: <<upload-url>>)
-
-    loop TUS Uploads
-        Client->>Uploads: PATCH /:upload-id, <<token>>
-        Uploads-->>Client: 204 No Content
-    end
-    deactivate Uploads
 
     Client->>OAPI: POST /api/v1/asynqueries/
     activate OAPI

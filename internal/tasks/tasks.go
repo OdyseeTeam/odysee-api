@@ -4,16 +4,16 @@ import (
 	"strconv"
 )
 
-// A list of task types.
 const (
+	AsynqueryIncomingQuery = "asynquery:incoming"
 	ForkliftUploadIncoming = "forklift:upload:incoming"
-	TaskProcessAsynquery   = "asynquery:query"
+	ForkliftURLIncoming    = "forklift:url:incoming"
 	ForkliftUploadDone     = "forklift:upload:done"
 )
 
-type AsyncQueryTask struct {
-	ID     string
-	UserID int `json:"user_id"`
+type AsynqueryIncomingQueryPayload struct {
+	QueryID string `json:"query_id"`
+	UserID  int    `json:"user_id"`
 }
 
 type ForkliftUploadDonePayload struct {
@@ -23,15 +23,26 @@ type ForkliftUploadDonePayload struct {
 }
 
 type ForkliftUploadIncomingPayload struct {
+	UserID       int32          `json:"user_id"`
 	UploadID     string         `json:"upload_id"`
 	FileName     string         `json:"file_name"`
-	UserID       int32          `json:"user_id"`
 	FileLocation FileLocationS3 `json:"file_location"`
+}
+
+type ForkliftURLIncomingPayload struct {
+	UserID       int32            `json:"user_id"`
+	UploadID     string           `json:"upload_id"`
+	FileName     string           `json:"file_name"`
+	FileLocation FileLocationHTTP `json:"file_location"`
 }
 
 type FileLocationS3 struct {
 	Bucket string
 	Key    string
+}
+
+type FileLocationHTTP struct {
+	URL string
 }
 
 type UploadMeta struct {
@@ -46,10 +57,17 @@ type UploadMeta struct {
 	Height    int `json:",omitempty"`
 }
 
-func (p ForkliftUploadDonePayload) GetTraceData() map[string]string {
+func (p AsynqueryIncomingQueryPayload) GetTraceData() map[string]string {
 	return map[string]string{
 		"user_id":  strconv.Itoa(int(p.UserID)),
-		"query_id": p.UploadID,
+		"query_id": p.QueryID,
+	}
+}
+
+func (p ForkliftUploadDonePayload) GetTraceData() map[string]string {
+	return map[string]string{
+		"user_id":   strconv.Itoa(int(p.UserID)),
+		"upload_id": p.UploadID,
 	}
 }
 
@@ -57,5 +75,12 @@ func (p ForkliftUploadIncomingPayload) GetTraceData() map[string]string {
 	return map[string]string{
 		"user_id":   strconv.Itoa(int(p.UserID)),
 		"upload_id": p.UploadID,
+	}
+}
+
+func (p ForkliftURLIncomingPayload) GetTraceData() map[string]string {
+	return map[string]string{
+		"user_id": strconv.Itoa(int(p.UserID)),
+		"url":     p.FileLocation.URL,
 	}
 }

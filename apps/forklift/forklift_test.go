@@ -43,11 +43,11 @@ func (s *forkliftSuite) TestHandleTask() {
 	redisRequestsHelper := testdeps.NewRedisTestHelper(s.T())
 	redisResponsesHelper := testdeps.NewRedisTestHelper(s.T(), 1)
 
-	retriever := NewS3Retriever(s.T().TempDir(), s.s3c)
 	l := NewLauncher(
 		WithReflectorConfig(s.helper.ReflectorConfig),
 		WithBlobPath(s.T().TempDir()),
-		WithRetriever(retriever),
+		WithDownloadsPath(s.T().TempDir()),
+		WithS3Client(s.s3c),
 		WithRequestsConnURL(redisRequestsHelper.URL),
 		WithResponsesConnURL(redisResponsesHelper.URL),
 		WithLogger(zapadapter.NewKV(nil)),

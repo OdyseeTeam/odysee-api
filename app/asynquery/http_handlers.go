@@ -60,6 +60,12 @@ type Response struct {
 }
 
 func (h QueryHandler) CreateUpload(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	uploadType, ok := vars["type"]
+	if !ok {
+		uploadType = "uploads"
+	}
+	targetURL := h.uploadServiceURL + uploadType + "/"
 	responses.AddJSONContentType(w)
 	u, err := auth.FromRequest(r)
 	if err != nil {
@@ -82,7 +88,7 @@ func (h QueryHandler) CreateUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := json.Marshal(Response{
 		Status:  StatusUploadTokenCreated,
-		Payload: UploadTokenCreatedPayload{Token: token, Location: h.uploadServiceURL},
+		Payload: UploadTokenCreatedPayload{Token: token, Location: targetURL},
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -92,7 +98,7 @@ func (h QueryHandler) CreateUpload(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func (h QueryHandler) Create(w http.ResponseWriter, r *http.Request) {
+func (h QueryHandler) CreateQuery(w http.ResponseWriter, r *http.Request) {
 	responses.AddJSONContentType(w)
 	u, err := auth.FromRequest(r)
 	if err != nil {
@@ -148,7 +154,7 @@ func (h QueryHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	aq, err := h.callManager.getQueryRecord(context.TODO(), queryParams{
-		id: queryID, userID: int32(user.ID),
+		queryID: queryID, userID: user.ID,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

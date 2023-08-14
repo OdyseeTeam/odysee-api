@@ -28,6 +28,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/jwtauth/v5"
+	"github.com/go-chi/render"
 	"github.com/hibiken/asynq"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	tusd "github.com/tus/tusd/pkg/handler"
@@ -37,6 +38,7 @@ import (
 
 const (
 	AuthorizationHeader = "Authorization"
+	userContextKey      = "user"
 )
 
 var (
@@ -55,10 +57,6 @@ var TusHeaders = []string{
 	"Upload-Concat",
 }
 
-type Completer interface {
-	Complete(database.MarkUploadCompletedParams, tasks.FileLocationS3) error
-}
-
 // Handler handle media publishing on odysee-api, it implements TUS
 // specifications to support resumable file upload and extends the handler to
 // support fetching media from remote url.
@@ -69,7 +67,7 @@ type Handler struct {
 	logger         logging.KVLogger
 	jwtAuth        *jwtauth.JWTAuth
 	tokenValidator *keybox.Validator
-	completer      Completer
+	notifier       *forkliftNotifier
 	stopChan       chan struct{}
 }
 
@@ -89,11 +87,11 @@ type Launcher struct {
 	handler       *Handler
 	httpServer    *http.Server
 	logger        logging.KVLogger
-	completer     Completer
+	notifier      *forkliftNotifier
 	readyCancel   context.CancelFunc
 }
 
-type forkliftCompleter struct {
+type forkliftNotifier struct {
 	queries *database.Queries
 	queue   *queue.Queue
 	logger  logging.KVLogger
@@ -162,7 +160,7 @@ func WithCORSDomains(domains []string) LauncherOption {
 func NewLauncher(options ...LauncherOption) *Launcher {
 	launcher := &Launcher{
 		logger:      logging.NoopKVLogger{},
-		prefix:      "/v1/uploads",
+		prefix:      "/v1",
 		httpAddress: "0.0.0.0:8080",
 		corsDomains: []string{""},
 	}
@@ -174,7 +172,7 @@ func NewLauncher(options ...LauncherOption) *Launcher {
 	return launcher
 }
 
-func (l *Launcher) Completer() (Completer, error) {
+func (l *Launcher) Notifier() (*forkliftNotifier, error) {
 	if l.queueRedisURL == "" {
 		l.logger.Warn("skipping bus config as no redis url was provided")
 		return nil, nil
@@ -187,14 +185,14 @@ func (l *Launcher) Completer() (Completer, error) {
 	if err != nil {
 		return nil, err
 	}
-	completer := &forkliftCompleter{
+	notifier := &forkliftNotifier{
 		queries: database.New(l.db),
 		queue:   queue,
 		logger:  l.logger,
 	}
 	l.logger.Info("bus client created")
 
-	return completer, nil
+	return notifier, nil
 }
 
 func (l *Launcher) BuildHandler() (chi.Router, error) {
@@ -217,7 +215,7 @@ func (l *Launcher) BuildHandler() (chi.Router, error) {
 	}
 
 	l.logger.Info("building uploads handler")
-	completer, err := l.Completer()
+	notifier, err := l.Notifier()
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +227,7 @@ func (l *Launcher) BuildHandler() (chi.Router, error) {
 		logger:         l.logger,
 		queries:        database.New(l.db),
 		tokenValidator: validator,
-		completer:      completer,
+		notifier:       notifier,
 		stopChan:       make(chan struct{}),
 	}
 	l.readyCancel = readyCancel
@@ -240,7 +238,7 @@ func (l *Launcher) BuildHandler() (chi.Router, error) {
 
 	tusConfig := tusd.Config{
 		StoreComposer:           composer,
-		BasePath:                l.prefix,
+		BasePath:                l.prefix + "/uploads",
 		RespectForwardedHeaders: true,
 		NotifyCreatedUploads:    true,
 		NotifyTerminatedUploads: true,
@@ -286,11 +284,17 @@ func (l *Launcher) BuildHandler() (chi.Router, error) {
 	// Public endpoints
 	router.Route(l.prefix, func(r chi.Router) {
 		r.Use(handler.authByToken)
-		r.Use(handler.Middleware)
-		r.Post("/", handler.PostFile)
-		r.Head("/*", handler.HeadFile)
-		r.Patch("/*", handler.PatchFile)
-		r.Delete("/*", handler.DelFile)
+		r.Route("/uploads", func(r chi.Router) {
+			r.Use(handler.Middleware)
+			r.Use(handler.verifyUploadFileAccess)
+			r.Post("/", handler.PostFile)
+			r.Head("/*", handler.HeadFile)
+			r.Patch("/*", handler.PatchFile)
+			r.Delete("/*", handler.DelFile)
+		})
+		r.Route("/urls", func(r chi.Router) {
+			r.Post("/", handler.PostURL)
+		})
 	})
 
 	// Internal endpoints
@@ -342,6 +346,32 @@ func (l *Launcher) CompleteShutdown() {
 func (l *Launcher) StartShutdown() {
 	l.logger.Info("shutting down liveness handler")
 	l.readyCancel()
+}
+
+func (h *Handler) PostURL(w http.ResponseWriter, r *http.Request) {
+	userID := h.getUserIDFromRequest(r)
+	data := &URLPayload{}
+	if err := render.Bind(r, data); err != nil {
+		render.Render(w, r, ErrInvalidRequest(err))
+		return
+	}
+	_, err := h.queries.CreateURL(r.Context(), database.CreateURLParams{
+		UserID:   userID,
+		ID:       data.UploadID,
+		URL:      data.URL,
+		Filename: data.Filename,
+	})
+
+	if err != nil {
+		render.Render(w, r, ErrInternalError(err))
+		return
+	}
+	err = h.notifier.URLReceived(userID, data.UploadID, data.Filename, tasks.FileLocationHTTP{URL: data.URL})
+	if err != nil {
+		render.Render(w, r, ErrInvalidRequest(err))
+		return
+	}
+	render.Render(w, r, ResponseURLCreated(data.UploadID))
 }
 
 func (h *Handler) listenToHooks() {
@@ -422,25 +452,28 @@ func (h *Handler) listenToHooks() {
 			return
 		}
 
-		if h.completer == nil {
+		if h.notifier == nil {
 			return
 		}
-		err = h.completer.Complete(p, tasks.FileLocationS3{
-			Key:    p.Key,
-			Bucket: h.s3bucket,
-		})
+		err = h.notifier.UploadReceived(
+			uid,
+			event.Upload.ID,
+			event.Upload.MetaData["filename"],
+			tasks.FileLocationS3{
+				Key:    p.Key,
+				Bucket: h.s3bucket,
+			})
 		if err != nil {
 			h.logger.Warn("completing upload failed", "user_id", uid, "upload_id", event.Upload.ID, "err", err)
 			redisErrors.Inc()
 			return
 		}
-		h.logger.Info("upload completed", "user_id", uid, "upload_id", event.Upload.ID, "size", event.Upload.Size)
+		h.logger.Info("upload received", "user_id", uid, "upload_id", event.Upload.ID, "size", event.Upload.Size)
 	})
 	h.stopChan = make(chan struct{})
 }
 
-// authByToken is the primary authentication middleware to enforce access to upload URLs for a given user.
-// authByToken sends a 401 Unauthorized response for unverified tokens and 404 if no matching upload found for user.
+// authByToken is the primary authentication middleware that accepts tokens generated by asynquery create upload call.
 func (h *Handler) authByToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodOptions {
@@ -448,30 +481,45 @@ func (h *Handler) authByToken(next http.Handler) http.Handler {
 			return
 		}
 		userID, err := h.extractUserIDFromRequest(r)
-
 		if err != nil {
 			h.logger.Info("failed to extract token from request", "err", err)
 			userAuthErrors.Inc()
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
+		next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), userContextKey, userID)))
+	})
+}
 
-		upid := extractUploadIDFromPath(r.URL.Path)
-		if upid != "" {
+// verifyUploadFileAccess is a middleware to verify that accessed upload is owned by the user.
+func (h *Handler) verifyUploadFileAccess(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		uploadID := extractUploadIDFromPath(r.URL.Path)
+		userID := h.getUserIDFromRequest(r)
+		if userID == 0 {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+		if uploadID != "" {
 			_, err := h.queries.GetUpload(context.TODO(), database.GetUploadParams{
-				UserID: userID, ID: upid,
+				UserID: userID, ID: uploadID,
 			})
 			if err != nil {
-				h.logger.Info("upload not found", "upload_id", upid, "user_id", userID, "err", err)
+				h.logger.Info("upload not found", "upload_id", uploadID, "user_id", userID, "err", err)
 				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 				return
 			}
 		}
-		next.ServeHTTP(w, r)
+
+		next.ServeHTTP(w, r.Clone(context.WithValue(r.Context(), userContextKey, userID)))
 	})
 }
 
-// extractUserIDFromRequest retrieves token from request header and extracts user id from it
+func (h *Handler) getUserIDFromRequest(r *http.Request) int32 {
+	return r.Context().Value(userContextKey).(int32)
+}
+
+// extractUserIDFromRequest retrieves token from request header and extracts user ID from it
 func (h *Handler) extractUserIDFromRequest(r *http.Request) (int32, error) {
 	rt := jwtauth.TokenFromHeader(r)
 	if rt == "" {
@@ -504,20 +552,38 @@ func extractUploadIDFromPath(url string) string {
 	return result[1]
 }
 
-// Complete sends off a finalized upload to forklift queue for further processing.
-func (c forkliftCompleter) Complete(params database.MarkUploadCompletedParams, location tasks.FileLocationS3) error {
+// UploadReceived sends off a finalized upload to forklift queue for further processing.
+func (c forkliftNotifier) UploadReceived(userID int32, uploadID, filename string, location tasks.FileLocationS3) error {
 	err := c.queue.SendRequest(
 		tasks.ForkliftUploadIncoming,
 		tasks.ForkliftUploadIncomingPayload{
-			UploadID:     params.ID,
-			UserID:       params.UserID,
-			FileName:     params.Filename,
+			UploadID:     uploadID,
+			UserID:       userID,
+			FileName:     filename,
 			FileLocation: location,
 		}, queue.WithRequestRetry(10), queue.WithRequestTimeout(24*time.Hour),
 	)
 	if err != nil {
 		return err
 	}
-	c.logger.Info("forklift notified", "upload_id", params.ID, "user_id", params.UserID)
+	c.logger.Info("forklift notified", "type", "upload", "upload_id", uploadID, "user_id", userID)
+	return nil
+}
+
+// URLReceived sends off a finalized upload to forklift queue for further processing.
+func (c forkliftNotifier) URLReceived(userID int32, uploadID, filename string, location tasks.FileLocationHTTP) error {
+	err := c.queue.SendRequest(
+		tasks.ForkliftURLIncoming,
+		tasks.ForkliftURLIncomingPayload{
+			UserID:       userID,
+			UploadID:     uploadID,
+			FileName:     filename,
+			FileLocation: location,
+		}, queue.WithRequestRetry(10), queue.WithRequestTimeout(24*time.Hour),
+	)
+	if err != nil {
+		return err
+	}
+	c.logger.Info("forklift notified", "type", "url", "url", location.URL, "user_id", userID)
 	return nil
 }

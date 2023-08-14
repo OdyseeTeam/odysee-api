@@ -19,16 +19,13 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/queue"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-chi/chi/v5"
 	"github.com/hibiken/asynq"
-	"github.com/tabbed/pqtype"
+	"github.com/sqlc-dev/pqtype"
 )
 
 var ErrReflector = errors.New("errors found while uploading blobs to reflector")
-
-type Retriever interface {
-	Retrieve(context.Context, string, tasks.FileLocationS3) (*LocalFile, error)
-}
 
 type Deleter interface {
 	Delete(context.Context, tasks.FileLocationS3) error
@@ -36,25 +33,30 @@ type Deleter interface {
 
 type Launcher struct {
 	blobPath         string
+	downloadsPath    string
 	requestsConnURL  string
 	responsesConnURL string
 	reflectorConfig  map[string]string
-	retriever        Retriever
+	retriever        *S3Retriever
+	httpRetriever    *HTTPRetriever
 	logger           logging.KVLogger
 	db               database.DBTX
 	concurrency      int
 	reflectorWorkers int
 	metricsAddress   string
+	s3client         *s3.Client
 }
 
 type Forklift struct {
-	analyzer  *fileanalyzer.Analyzer
-	blobPath  string
-	logger    logging.KVLogger
-	retriever Retriever
-	store     *blobs.Store
-	queries   *database.Queries
-	queue     *queue.Queue
+	analyzer      *fileanalyzer.Analyzer
+	blobPath      string
+	uploadPath    string
+	logger        logging.KVLogger
+	retriever     *S3Retriever
+	httpRetriever *HTTPRetriever
+	store         *blobs.Store
+	queries       *database.Queries
+	queue         *queue.Queue
 }
 
 type LauncherOption func(l *Launcher)
@@ -62,6 +64,12 @@ type LauncherOption func(l *Launcher)
 func WithLogger(logger logging.KVLogger) LauncherOption {
 	return func(l *Launcher) {
 		l.logger = logger
+	}
+}
+
+func WithDownloadsPath(path string) LauncherOption {
+	return func(l *Launcher) {
+		l.downloadsPath = path
 	}
 }
 
@@ -89,9 +97,21 @@ func WithReflectorConfig(config map[string]string) LauncherOption {
 	}
 }
 
-func WithRetriever(retriever Retriever) LauncherOption {
+func WithS3Client(client *s3.Client) LauncherOption {
+	return func(l *Launcher) {
+		l.s3client = client
+	}
+}
+
+func WithRetriever(retriever *S3Retriever) LauncherOption {
 	return func(l *Launcher) {
 		l.retriever = retriever
+	}
+}
+
+func WithHTTPRetriever(retriever *HTTPRetriever) LauncherOption {
+	return func(l *Launcher) {
+		l.httpRetriever = retriever
 	}
 }
 
@@ -127,7 +147,6 @@ func ExposeMetrics(address ...string) LauncherOption {
 func NewLauncher(options ...LauncherOption) *Launcher {
 	launcher := &Launcher{
 		logger:           logging.NoopKVLogger{},
-		blobPath:         os.TempDir(),
 		concurrency:      10,
 		reflectorWorkers: 1,
 	}
@@ -136,6 +155,25 @@ func NewLauncher(options ...LauncherOption) *Launcher {
 		option(launcher)
 	}
 
+	var err error
+	if launcher.blobPath == "" {
+		launcher.blobPath, err = os.MkdirTemp("", "forklift-blobs")
+		if err != nil {
+			panic(err)
+		}
+	}
+	if launcher.downloadsPath == "" {
+		launcher.downloadsPath, err = os.MkdirTemp("", "forklift-downloads")
+		if err != nil {
+			panic(err)
+		}
+	}
+	if launcher.httpRetriever == nil {
+		launcher.httpRetriever = NewHTTPRetriever(launcher.downloadsPath)
+	}
+	if launcher.retriever == nil {
+		launcher.retriever = NewS3Retriever(launcher.downloadsPath, launcher.s3client)
+	}
 	return launcher
 }
 
@@ -145,6 +183,9 @@ func (l *Launcher) Build() (*queue.Queue, error) {
 	}
 	if l.retriever == nil {
 		return nil, errors.New("retriever is required")
+	}
+	if l.httpRetriever == nil {
+		l.httpRetriever = NewHTTPRetriever(l.downloadsPath)
 	}
 
 	analyzer, err := fileanalyzer.NewAnalyzer()
@@ -188,20 +229,22 @@ func (l *Launcher) Build() (*queue.Queue, error) {
 	l.logger.Info("metrics server launched", "addr", l.metricsAddress)
 
 	forklift := &Forklift{
-		analyzer:  analyzer,
-		blobPath:  l.blobPath,
-		logger:    l.logger,
-		retriever: l.retriever,
-		store:     store,
-		queries:   database.New(l.db),
-		queue:     taskQueue,
+		analyzer:      analyzer,
+		blobPath:      l.blobPath,
+		logger:        l.logger,
+		retriever:     l.retriever,
+		httpRetriever: l.httpRetriever,
+		store:         store,
+		queries:       database.New(l.db),
+		queue:         taskQueue,
 	}
-	taskQueue.AddHandler(tasks.ForkliftUploadIncoming, forklift.HandleTask)
+	taskQueue.AddHandler(tasks.ForkliftUploadIncoming, forklift.HandleUpload)
+	taskQueue.AddHandler(tasks.ForkliftURLIncoming, forklift.HandleURL)
 	l.logger.Info("forklift initialized")
 	return taskQueue, nil
 }
 
-func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
+func (f *Forklift) HandleUpload(ctx context.Context, task *asynq.Task) error {
 	if task.Type() != tasks.ForkliftUploadIncoming {
 		f.logger.Warn("cannot handle task", "type", task.Type())
 		return asynq.SkipRetry
@@ -221,16 +264,16 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 	log := logging.TracedLogger(f.logger, payload)
 	log.Debug("task received")
 
-	file, err := f.retriever.Retrieve(context.TODO(), payload.UploadID, payload.FileLocation)
+	localFile, err := f.retriever.Retrieve(context.TODO(), payload.UploadID, payload.FileLocation)
 	if err != nil {
 		log.Warn("failed to retrieve file", "err", err)
 		return err
 	}
-	defer file.Cleanup()
+	defer localFile.Cleanup()
 	observeDuration(LabelRetrieve, start)
-	log.Debug("file retrieved", "location", payload.FileLocation, "size", file.Size, "seconds", time.Since(start).Seconds())
+	log.Debug("file retrieved", "location", payload.FileLocation, "size", localFile.Size, "seconds", time.Since(start).Seconds())
 
-	blobPath := path.Join(f.blobPath, payload.UploadID)
+	blobPath := path.Join(f.blobPath, localFile.Name)
 	if err != nil {
 		log.Warn("failed to close upload file", "err", err)
 	}
@@ -243,23 +286,23 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 	uploader := f.store.Uploader()
 
 	start = time.Now()
-	info, err := f.analyzer.Analyze(context.Background(), file.Name, payload.FileName)
+	info, err := f.analyzer.Analyze(context.Background(), localFile.Name, payload.FileName)
 	observeDuration(LabelAnalyze, start)
 	if info == nil {
 		observeError(LabelAnalyze)
-		log.Warn("file analysis failed", "err", err, "file", file.Name)
+		log.Warn("file analysis failed", "err", err, "file", localFile.Name)
 		return err
 	}
 	log.Debug("file analyzed", "result", info, "err", err)
 
-	src := blobs.NewSource(file.Name, blobPath, payload.FileName)
+	src := blobs.NewSource(localFile.Name, blobPath, payload.FileName)
 	start = time.Now()
 	log.Debug("creating stream")
 	stream, err := src.Split()
 	observeDuration(LabelStreamCreate, start)
 	if err != nil {
 		observeError(LabelStreamCreate)
-		log.Warn("failed to create stream", "err", err, "file", file.Name, "blobs_path", f.blobPath)
+		log.Warn("failed to create stream", "err", err, "file", localFile.Name, "blobs_path", f.blobPath)
 		return err
 	}
 	streamSource := stream.GetSource()
@@ -321,13 +364,144 @@ func (f *Forklift) HandleTask(ctx context.Context, task *asynq.Task) error {
 	log.Debug("upload processed")
 
 	defer func() {
-		if c, ok := f.retriever.(Deleter); ok {
-			err := c.Delete(context.TODO(), payload.FileLocation)
-			if err != nil {
-				log.Warn("failed to complete retrieved file", "err", err)
-			}
+		err := f.retriever.Delete(context.TODO(), payload.FileLocation)
+		if err != nil {
+			log.Warn("failed to complete retrieved file", "err", err)
 		}
 	}()
+
+	err = f.queue.SendResponse(tasks.ForkliftUploadDone, tasks.ForkliftUploadDonePayload{
+		UploadID: payload.UploadID,
+		UserID:   payload.UserID,
+		Meta:     meta,
+	}, queue.WithRequestRetry(15), queue.WithRequestTimeout(15*time.Minute))
+	if err != nil {
+		log.Error("merge request failed, bus error", "err", err)
+		return err
+	}
+	log.Debug("forklift done")
+
+	return nil
+}
+
+func (f *Forklift) HandleURL(ctx context.Context, task *asynq.Task) error {
+	if task.Type() != tasks.ForkliftURLIncoming {
+		f.logger.Warn("cannot handle task", "type", task.Type())
+		return asynq.SkipRetry
+	}
+	start := time.Now()
+	waitStart := time.Now()
+	defer func() {
+		waitTimeMinutes.Observe(time.Since(waitStart).Minutes())
+	}()
+
+	var payload tasks.ForkliftURLIncomingPayload
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+		f.logger.Warn("message unmarshal failed", "err", err)
+		return asynq.SkipRetry
+	}
+
+	log := logging.TracedLogger(f.logger, payload)
+	log.Debug("task received")
+
+	localFile, err := f.httpRetriever.Retrieve(context.TODO(), payload.UploadID, payload.FileLocation)
+	if err != nil {
+		log.Info("failed to retrieve file", "err", err)
+		return err
+	}
+	defer localFile.Cleanup()
+	observeDuration(LabelRetrieve, start)
+	log.Debug("file retrieved", "location", payload.FileLocation, "size", localFile.Size, "seconds", time.Since(start).Seconds())
+
+	blobPath := path.Join(f.blobPath, localFile.Name)
+	if err != nil {
+		log.Warn("failed to close upload file", "err", err)
+	}
+	defer func() {
+		if err := os.RemoveAll(blobPath); err != nil {
+			log.Warn("failed to remove blobs", "err", err)
+		}
+	}()
+
+	uploader := f.store.Uploader()
+
+	start = time.Now()
+	info, err := f.analyzer.Analyze(context.Background(), localFile.Name, payload.FileName)
+	observeDuration(LabelAnalyze, start)
+	if info == nil {
+		observeError(LabelAnalyze)
+		log.Warn("file analysis failed", "err", err, "file", localFile.Name)
+		return err
+	}
+	log.Debug("file analyzed", "result", info, "err", err)
+
+	src := blobs.NewSource(localFile.Name, blobPath, payload.FileName)
+	start = time.Now()
+	log.Debug("creating stream")
+	stream, err := src.Split()
+	observeDuration(LabelStreamCreate, start)
+	if err != nil {
+		observeError(LabelStreamCreate)
+		log.Warn("failed to create stream", "err", err, "file", localFile.Name, "blobs_path", f.blobPath)
+		return err
+	}
+	streamSource := stream.GetSource()
+	sdHash := hex.EncodeToString(streamSource.GetSdHash())
+
+	log = log.With("sd_hash", sdHash)
+	log.Debug("stream created", "seconds", time.Since(start).Seconds())
+
+	start = time.Now()
+	log.Debug("starting upload")
+	summary, err := uploader.Upload(src)
+	observeDuration(LabelUpstream, start)
+	egressDurationSeconds.Add(float64(time.Since(start)))
+	egressVolumeMB.Add(float64(streamSource.GetSize() / 1024 / 1024))
+	if err != nil {
+		observeError(LabelUpstream)
+		log.Warn("blobs upload failed, not retrying", "err", err, "blobs_path", f.blobPath)
+		return err
+	} else if summary.Err > 0 {
+		observeError(LabelUpstream)
+		log.Warn(ErrReflector.Error(), "err_count", summary.Err, "blobs_path", f.blobPath)
+		return ErrReflector
+	}
+	log.Debug("stream blobs uploaded", "seconds", time.Since(start).Seconds())
+
+	meta := tasks.UploadMeta{
+		Hash:      hex.EncodeToString(streamSource.GetHash()),
+		MIME:      info.MediaType.MIME,
+		FileName:  payload.FileName,
+		Extension: info.MediaType.Extension,
+		Size:      streamSource.Size,
+		SDHash:    sdHash,
+	}
+
+	if path.Ext(meta.FileName) == "" {
+		meta.FileName += info.MediaType.Extension
+	}
+
+	if info.MediaInfo != nil {
+		meta.Width = info.MediaInfo.Width
+		meta.Height = info.MediaInfo.Height
+		meta.Duration = info.MediaInfo.Duration
+	}
+
+	jbMeta, err := json.Marshal(meta)
+	if err != nil {
+		log.Error("failed to marshal media info", "err", err)
+	}
+
+	err = f.queries.MarkUploadProcessed(context.TODO(), database.MarkUploadProcessedParams{
+		ID:     payload.UploadID,
+		SDHash: sdHash,
+		Meta:   pqtype.NullRawMessage{RawMessage: jbMeta, Valid: true},
+	})
+	if err != nil {
+		log.Error("failed to mark upload as processed", "err", err)
+		return err
+	}
+	log.Debug("upload processed")
 
 	err = f.queue.SendResponse(tasks.ForkliftUploadDone, tasks.ForkliftUploadDonePayload{
 		UploadID: payload.UploadID,

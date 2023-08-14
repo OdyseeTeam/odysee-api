@@ -86,7 +86,7 @@ func (s *uploadSuite) TestUpload() {
 	}).RunHTTP(s.T())
 	loc, err := url.Parse(response.Header.Get("Location"))
 	s.Require().NoError(err)
-	s.Require().Regexp(baseURL+"[a-z0-9]{32}", loc.RequestURI())
+	s.Require().Regexp(baseURL+`[a-z0-9]{32}\+[A-Za-z0-9]{98}`, loc.RequestURI())
 
 	uploadID := filepath.Base(loc.Path)
 	var upload database.Upload
@@ -168,7 +168,7 @@ func (s *uploadSuite) TestUploadLarger() {
 	loc, err := url.Parse(response.Header.Get("Location"))
 
 	s.Require().NoError(err)
-	s.Require().Regexp(baseURL+"[a-z0-9]{32}", loc.RequestURI())
+	s.Require().Regexp(baseURL+`[a-z0-9]{32}\+[A-Za-z0-9]{98}`, loc.RequestURI())
 	uploadID = filepath.Base(loc.Path)
 	tusUploadURL = testServer.URL + loc.RequestURI()
 

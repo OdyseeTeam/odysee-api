@@ -149,7 +149,7 @@ func retryComplete(logger logging.KVLogger) {
 		uploads.WithLogger(logger),
 		uploads.WithForkliftRequestsConnURL(cfg.V.GetString("ForkliftRequestsConnURL")),
 	)
-	completer, err := launcher.Completer()
+	notifier, err := launcher.Notifier()
 	if err != nil {
 		logger.Fatal(err.Error())
 	}
@@ -168,13 +168,11 @@ func retryComplete(logger logging.KVLogger) {
 		logger.Fatal("upload is not in completed state", "status", upload.Status)
 	}
 
-	err = completer.Complete(
-		database.MarkUploadCompletedParams{
-			UserID:   upload.UserID,
-			ID:       upload.ID,
-			Filename: upload.Filename,
-			Key:      upload.Key,
-		}, tasks.FileLocationS3{
+	err = notifier.UploadReceived(
+		upload.UserID,
+		upload.ID,
+		upload.Filename,
+		tasks.FileLocationS3{
 			Key:    upload.Key,
 			Bucket: s3cfg.Bucket,
 		})

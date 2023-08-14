@@ -70,7 +70,9 @@ func TestCaller_CallRelaxedMethods(t *testing.T) {
 			srv.NextResponse <- test.EmptyResponse()
 
 			caller := NewCaller(srv.URL, 0)
-			resp, err := caller.Call(bgctx(), jsonrpc.NewRequest(m))
+			req := jsonrpc.NewRequest(m)
+			req.ID = randomdata.Number(1, 999999999)
+			resp, err := caller.Call(bgctx(), req)
 			assert.Nil(t, resp)
 			assert.Error(t, err)                                       // empty response should be an error
 			assert.False(t, errors.Is(err, rpcerrors.ErrAuthRequired)) // but it should not be an auth error
@@ -80,6 +82,7 @@ func TestCaller_CallRelaxedMethods(t *testing.T) {
 				Method:  m,
 				Params:  nil,
 				JSONRPC: "2.0",
+				ID:      req.ID,
 			})
 			assert.EqualValues(t, expectedRequest, receivedRequest.Body)
 		})
