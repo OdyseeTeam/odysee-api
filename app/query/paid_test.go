@@ -22,6 +22,7 @@ import (
 	"github.com/OdyseeTeam/player-server/pkg/paid"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/ybbus/jsonrpc"
 )
@@ -234,4 +235,17 @@ func (s *paidContentSuite) getClaim(url string) *ljsonrpc.Claim {
 	claim, err := resolve(context.Background(), c, q, url)
 	s.Require().NoError(err)
 	return claim
+}
+
+func TestSignStreamURL77(t *testing.T) {
+	cdnResourceURL := "player.odycdn.com"
+	filePath := "/api/v4/streams/tc/all-the-times-we-nearly-blew-up-the" +
+		"/ac809d68d201e2f58dcd241b5aaeefe817634dda" +
+		"/2f562bd1dd318db726014d255c3c7f4e5cae3e746f77647e00ad7e9b272d193bcad634b515bf0a2bc471719cfdde0c00" +
+		"/master.m3u8"
+	secureToken := "aiphaechiSietee3heiKaezosaitip0i"
+	expiryTimestamp := 1694701323
+	signedURLPath, err := signStreamURL77(cdnResourceURL, filePath, secureToken, expiryTimestamp)
+	require.NoError(t, err)
+	require.Equal(t, "zhttps://player.odycdn.com/9ofb7eG6gc7BuDhgveQeXw==,1694701323"+filePath, signedURLPath)
 }
