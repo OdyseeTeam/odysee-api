@@ -147,19 +147,8 @@ func TestCaller_CallAmbivalentMethodsWithWallet(t *testing.T) {
 				},
 				JSONRPC: "2.0",
 			})
-			expectedRequestLbrynetX := test.ReqToStr(t, &jsonrpc.RPCRequest{
-				Method: m,
-				Params: map[string]any{
-					"wallet_id":      sdkrouter.WalletID(dummyUserID),
-					"new_sdk_server": config.GetLbrynetXServer(),
-				},
-				JSONRPC: "2.0",
-			})
 
-			if expectedRequest != receivedRequest.Body {
-				// TODO: Remove when new_sdk_server is not used anymore
-				assert.EqualValues(t, expectedRequestLbrynetX, receivedRequest.Body)
-			}
+			assert.EqualValues(t, expectedRequest, receivedRequest.Body)
 		})
 	}
 
