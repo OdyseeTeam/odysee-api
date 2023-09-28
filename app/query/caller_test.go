@@ -33,6 +33,10 @@ type riggedTimeSource struct {
 	FrozenTime time.Time
 }
 
+func (r riggedTimeSource) Now() time.Time {
+	return r.FrozenTime
+}
+
 func (r riggedTimeSource) NowUnix() int64 {
 	return r.FrozenTime.Unix()
 }

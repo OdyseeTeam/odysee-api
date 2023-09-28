@@ -5,6 +5,23 @@ LbrynetServers:
 
 Debug: 1
 
+BaseContentURL: https://player.odycdn.com/api
+FreeContentURL: https://player.odycdn.com/api/v4/streams/free/
+PaidContentURL: https://player.odycdn.com/api/v3/streams/paid/
+
+StreamsV5:
+  Host: https://player.odycdn.com
+  PaidHost: https://secure.odycdn.com
+  StartPath: /v5/streams/start
+  HLSPath: /v5/streams/hls
+  PaidPass: paid-pass
+
+StreamsV6:
+  Host: player.odycdn.com
+  PaidHost: secure.odycdn.com
+  StartPath: /v6/streams/start
+  Token: cdn-paid-token
+
 InternalAPIHost: https://api.lbry.com
 ProjectURL: https://lbry.tv
 
@@ -29,12 +46,6 @@ PaidTokenPrivKey: token_privkey.rsa
 UploadTokenPrivateKey: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUZZYWxQZkhySzNSQ1F2YmhRQ1h6cDZiWG9uODZWOGI5L3B0bjB3QTZxNkxvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFZjhyN3RlQWJwUlVldXZhVWRsNDQzVS9VZkpYZURDd051QkRrbmp5ZnRZaXZ2Tnl6cGt6ZgpYdDl3RE9rc1VZSmEzNVhvSndabjNHMmw2L2EvdVUvWmh3PT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
 UploadServiceURL: http://uploads-v4/v1/
 
-LbrynetXServer: http://sdk.lbry.tech:5279/api
-LbrynetXPercentage: 0
-
-FreeContentURL: https://player.odycdn.com/api/v4/streams/free/
-PaidContentURL: https://player.odycdn.com/api/v3/streams/paid/
-
 CORSDomains:
   - http://localhost:1337
   - http://localhost:9090
@@ -45,13 +56,20 @@ RPCTimeouts:
   transaction_list: 4m
   publish: 4m
 
-RedisLocker: redis://:odyredis@redis:6379/1
-RedisBus: redis://:odyredis@redis:6379/2
-RedisBusAsynquery: redis://:odyredis@redis:6379/3
+RedisLocker: redis://:odyredis@localhost:6379/1
+RedisBus: redis://:odyredis@localhost:6379/2
+
+# AsynqueryRequestsConnURL is Redis database where asynquery will be listening for finalized uploads requests.
+# This corresponds to AsynqueryRequestsConnURL in forklift.yml config.
+AsynqueryRequestsConnURL: redis://:odyredis@localhost:6379/3
 
 ReflectorUpstream:
-  DatabaseDSN: 'user:password@tcp(host.com)/blobs'
+  DatabaseDSN: 'user:password@tcp(localhost:3306)/blobs'
   Region: us-east-1
   Bucket: blobs'
   Key: key
   Secret: secret
+
+Logging:
+  Level: debug
+  Format: console

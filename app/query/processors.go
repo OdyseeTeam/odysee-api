@@ -60,6 +60,7 @@ var rePurchaseFree = regexp.MustCompile(`(?i)does not have a purchase price`)
 var timeSource TimeSource = realTimeSource{}
 
 type TimeSource interface {
+	Now() time.Time
 	NowUnix() int64
 	NowAfter(time.Time) bool
 }
@@ -92,6 +93,7 @@ func (c *ClaimSearchParams) NotTagsContains(tags ...string) bool {
 	return sliceContains(c.NotTags, tags...)
 }
 
+func (ts realTimeSource) Now() time.Time            { return time.Now() }
 func (ts realTimeSource) NowUnix() int64            { return time.Now().Unix() }
 func (ts realTimeSource) NowAfter(t time.Time) bool { return time.Now().After(t) }
 
@@ -129,7 +131,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		return nil, err
 	}
 	stream := claim.Value.GetStream()
-	pcfg := config.GetStreamsV5()
+	pcfg := config.GetStreamsV6()
 
 	hasAccess, err := checkStreamAccess(logging.AddToContext(ctx, logger), claim)
 	if !hasAccess {
@@ -142,19 +144,15 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 			return nil, errors.Err(m)
 		}
 		sdHash := hex.EncodeToString(src.SdHash)
-		startUrl := fmt.Sprintf("%s/%s/%s", pcfg["startpath"], claim.ClaimID, sdHash[:6])
-		hlsUrl := fmt.Sprintf("%s/%s/%s/master.m3u8", pcfg["hlspath"], claim.ClaimID, sdHash)
-		cu, err := auth.GetCurrentUserData(ctx)
+		signedUrl, err := signStreamURL77(
+			pcfg["paidhost"],
+			fmt.Sprintf("%s/%s/%s", pcfg["startpath"], claim.ClaimID, sdHash[:6]),
+			pcfg["token"], timeSource.Now().Add(24*time.Hour).Unix())
 		if err != nil {
 			return nil, err
 		}
-		ip := cu.IP()
-		hlsHash := signStreamURL(hlsUrl, fmt.Sprintf("ip=%s&pass=%s", ip, pcfg["paidpass"]))
 
-		startQuery := fmt.Sprintf("hash-hls=%s&ip=%s&pass=%s", hlsHash, ip, pcfg["paidpass"])
-		responseResult[ParamStreamingUrl] = fmt.Sprintf(
-			"%s%s?hash-hls=%s&ip=%s&hash=%s",
-			pcfg["paidhost"], startUrl, hlsHash, ip, signStreamURL(startUrl, startQuery))
+		responseResult[ParamStreamingUrl] = signedUrl
 		response.Result = responseResult
 		return response, nil
 	} else if errors.Is(err, errNeedSignedLivestreamUrl) {
@@ -166,15 +164,15 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		if err != nil {
 			return nil, errors.Err("invalid base_streaming_url supplied")
 		}
-		cu, err := auth.GetCurrentUserData(ctx)
+		signedUrl, err := signStreamURL77(
+			u.Host,
+			u.Path,
+			pcfg["token"], timeSource.Now().Add(24*time.Hour).Unix())
 		if err != nil {
 			return nil, err
 		}
-		ip := cu.IP()
-		query := fmt.Sprintf("ip=%s&pass=%s", ip, pcfg["paidpass"])
-		responseResult[ParamStreamingUrl] = fmt.Sprintf(
-			"%s?ip=%s&hash=%s",
-			baseUrl, ip, signStreamURL(u.Path, query))
+
+		responseResult[ParamStreamingUrl] = signedUrl
 		response.Result = responseResult
 		return response, nil
 	}

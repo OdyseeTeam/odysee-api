@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/auth"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
@@ -151,7 +152,18 @@ func (s *paidContentSuite) TestNoAccess() {
 }
 
 func (s *paidContentSuite) TestAccess() {
-	sp := "https://secure.odycdn.com/v5/streams/start"
+	pcfg := config.GetStreamsV6()
+	host := pcfg["paidhost"]
+	token := pcfg["token"]
+
+	timeSource = riggedTimeSource{time.Now()}
+	defer func() { timeSource = realTimeSource{} }()
+
+	simpleSign := func(host, path string) string {
+		u, err := signStreamURL77(host, path, token, timeSource.Now().Add(24*time.Hour).Unix())
+		s.Require().NoError(err)
+		return u
+	}
 
 	cases := []struct {
 		url, needUrl string
@@ -159,25 +171,25 @@ func (s *paidContentSuite) TestAccess() {
 	}{
 		{
 			url:     urlRentalActive,
-			needUrl: sp + "/22acd6a6ab1c83d8c265d652c3842420810006be/96a3e2?hash-hls=33c2dc5a5aaf863e469488009b9164a6&ip=8.8.8.8&hash=90c0a6f1859842493354b462cc857c0c",
+			needUrl: simpleSign(host, "/v6/streams/start/22acd6a6ab1c83d8c265d652c3842420810006be/96a3e2"),
 		},
 		{
 
 			url:     urlPurchase,
-			needUrl: sp + "/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4?hash-hls=4e42be75b03ce2237e8ff8284c794392&ip=8.8.8.8&hash=910a69e8e189288c29a5695314b48e89",
+			needUrl: simpleSign(host, "/v6/streams/start/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4"),
 		},
 		{
 			url:     urlMembersOnly,
-			needUrl: sp + "/7de672e799d17fc562ae7b381db1722a81856410/ad42aa?hash-hls=5e25826a1957b73084e85e5878fef08b&ip=8.8.8.8&hash=bcc9a904ae8621e910427f2eb3637be7",
+			needUrl: simpleSign(host, "/v6/streams/start/7de672e799d17fc562ae7b381db1722a81856410/ad42aa"),
 		},
 		{
 			url:     urlV2PurchaseRental,
-			needUrl: sp + "/970deae1469f2b4c7cc7286793b82676053ab3cd/2c2b26?hash-hls=eeb152996b8bc41279a7e76d8655a316&ip=8.8.8.8&hash=1acdcd58c789fac2d9813a5eca97e919",
+			needUrl: simpleSign(host, "/v6/streams/start/970deae1469f2b4c7cc7286793b82676053ab3cd/2c2b26"),
 		},
 		{
 			url:     urlLivestream,
-			baseURL: "https://cloud.odysee.live/secure/content/f9660d617e226959102e84436533638858d0b572/master.m3u8",
-			needUrl: "https://cloud.odysee.live/secure/content/f9660d617e226959102e84436533638858d0b572/master.m3u8?ip=8.8.8.8&hash=414505d9387c3809b11229bc3e238c62",
+			baseURL: "https://cloud.odysee.live/content/f9660d617e226959102e84436533638858d0b572/master.m3u8",
+			needUrl: simpleSign("cloud.odysee.live", "/content/f9660d617e226959102e84436533638858d0b572/master.m3u8"),
 		},
 	}
 	for _, tc := range cases {
@@ -244,8 +256,8 @@ func TestSignStreamURL77(t *testing.T) {
 		"/2f562bd1dd318db726014d255c3c7f4e5cae3e746f77647e00ad7e9b272d193bcad634b515bf0a2bc471719cfdde0c00" +
 		"/master.m3u8"
 	secureToken := "aiphaechiSietee3heiKaezosaitip0i"
-	expiryTimestamp := 1694701323
+	expiryTimestamp := int64(1695977338)
 	signedURLPath, err := signStreamURL77(cdnResourceURL, filePath, secureToken, expiryTimestamp)
 	require.NoError(t, err)
-	require.Equal(t, "zhttps://player.odycdn.com/9ofb7eG6gc7BuDhgveQeXw==,1694701323"+filePath, signedURLPath)
+	require.Equal(t, "https://player.odycdn.com/Syc1EWOyivHWw9L4aquM1g==,1695977338"+filePath, signedURLPath)
 }
