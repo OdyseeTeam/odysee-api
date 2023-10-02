@@ -171,20 +171,20 @@ func (s *paidContentSuite) TestAccess() {
 	}{
 		{
 			url:     urlRentalActive,
-			needUrl: simpleSign(host, "/v6/streams/start/22acd6a6ab1c83d8c265d652c3842420810006be/96a3e2"),
+			needUrl: simpleSign(host, "/v6/streams/22acd6a6ab1c83d8c265d652c3842420810006be/96a3e2/start"),
 		},
 		{
 
 			url:     urlPurchase,
-			needUrl: simpleSign(host, "/v6/streams/start/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4"),
+			needUrl: simpleSign(host, "/v6/streams/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4/start"),
 		},
 		{
 			url:     urlMembersOnly,
-			needUrl: simpleSign(host, "/v6/streams/start/7de672e799d17fc562ae7b381db1722a81856410/ad42aa"),
+			needUrl: simpleSign(host, "/v6/streams/7de672e799d17fc562ae7b381db1722a81856410/ad42aa/start"),
 		},
 		{
 			url:     urlV2PurchaseRental,
-			needUrl: simpleSign(host, "/v6/streams/start/970deae1469f2b4c7cc7286793b82676053ab3cd/2c2b26"),
+			needUrl: simpleSign(host, "/v6/streams/970deae1469f2b4c7cc7286793b82676053ab3cd/2c2b26/start"),
 		},
 		{
 			url:     urlLivestream,

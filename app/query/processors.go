@@ -131,7 +131,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		return nil, err
 	}
 	stream := claim.Value.GetStream()
-	pcfg := config.GetStreamsV6()
+	stConfig := config.GetStreamsV6()
 
 	hasAccess, err := checkStreamAccess(logging.AddToContext(ctx, logger), claim)
 	if !hasAccess {
@@ -145,9 +145,8 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		}
 		sdHash := hex.EncodeToString(src.SdHash)
 		signedUrl, err := signStreamURL77(
-			pcfg["paidhost"],
-			fmt.Sprintf("%s/%s/%s", pcfg["startpath"], claim.ClaimID, sdHash[:6]),
-			pcfg["token"], timeSource.Now().Add(24*time.Hour).Unix())
+			stConfig["paidhost"], fmt.Sprintf(stConfig["startpath"], claim.ClaimID, sdHash[:6]),
+			stConfig["token"], timeSource.Now().Add(24*time.Hour).Unix())
 		if err != nil {
 			return nil, err
 		}
@@ -164,10 +163,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		if err != nil {
 			return nil, errors.Err("invalid base_streaming_url supplied")
 		}
-		signedUrl, err := signStreamURL77(
-			u.Host,
-			u.Path,
-			pcfg["token"], timeSource.Now().Add(24*time.Hour).Unix())
+		signedUrl, err := signStreamURL77(u.Host, u.Path, stConfig["token"], timeSource.Now().Add(24*time.Hour).Unix())
 		if err != nil {
 			return nil, err
 		}
@@ -266,14 +262,11 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 			cdnUrl, claim.Name, claim.ClaimID, sdHash, token)
 		responseResult[ParamPurchaseReceipt] = claim.PurchaseReceipt
 	} else {
-		cdnUrl := config.Config.Viper.GetString("FreeContentURL")
-		hasValidChannel := claim.SigningChannel != nil && claim.SigningChannel.ClaimID != ""
-		if hasValidChannel && controversialChannels[claim.SigningChannel.ClaimID] {
-			cdnUrl = strings.Replace(cdnUrl, "player.", "source.", -1)
-		}
-		contentURL = fmt.Sprintf(
-			"%v%s/%s/%s",
-			cdnUrl, claim.Name, claim.ClaimID, sdHash)
+		// hasValidChannel := claim.SigningChannel != nil && claim.SigningChannel.ClaimID != ""
+		// if hasValidChannel && controversialChannels[claim.SigningChannel.ClaimID] {
+		// 	cdnUrl = strings.Replace(cdnUrl, "player.", "source.", -1)
+		// }
+		contentURL = "https://" + stConfig["host"] + fmt.Sprintf(stConfig["startpath"], claim.ClaimID, sdHash[:6])
 	}
 
 	responseResult[ParamStreamingUrl] = contentURL

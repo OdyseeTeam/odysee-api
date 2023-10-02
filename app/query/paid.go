@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func signStreamURL77(cdnResourceURL, filePath, secureToken string, expiryTimestamp int64) (string, error) {
+func signStreamURL77(host, filePath, secureToken string, expiryTimestamp int64) (string, error) {
 	strippedPath := path.Dir(filePath)
 
 	hash := strippedPath + secureToken
@@ -20,7 +20,7 @@ func signStreamURL77(cdnResourceURL, filePath, secureToken string, expiryTimesta
 	encodedFinalHash := base64.StdEncoding.EncodeToString(finalHash[:])
 	encodedFinalHash = strings.NewReplacer("+", "-", "/", "_").Replace(encodedFinalHash)
 
-	signedURL := fmt.Sprintf("https://%s/%s", cdnResourceURL, encodedFinalHash)
+	signedURL := "https://" + fmt.Sprintf("%s/%s", host, encodedFinalHash)
 	if expiryTimestamp > 0 {
 		signedURL += fmt.Sprintf(",%d", expiryTimestamp)
 	}
