@@ -49,6 +49,8 @@ const (
 	iapiTypeMembershipLiveStream = "Exclusive livestreams"
 
 	releaseTimeRoundDownSec = 300
+
+	paramHash77 = "hash77" // Nested hash parameter for signed hls url to use with CDN77
 )
 
 var errNeedSignedUrl = errors.Err("need signed url")
@@ -144,14 +146,15 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 			return nil, errors.Err(m)
 		}
 		sdHash := hex.EncodeToString(src.SdHash)
-		signedUrl, err := signStreamURL77(
-			stConfig["paidhost"], fmt.Sprintf(stConfig["startpath"], claim.ClaimID, sdHash[:6]),
+		hash, err := signStreamURL77(
+			stConfig["paidhost"], fmt.Sprintf(stConfig["startpath"], claim.ClaimID, sdHash),
 			stConfig["token"], timeSource.Now().Add(24*time.Hour).Unix())
 		if err != nil {
 			return nil, err
 		}
+		signedUrl := fmt.Sprintf("https://%s/%s%s", stConfig["paidhost"], hash, fmt.Sprintf(stConfig["startpath"], claim.ClaimID, sdHash))
 
-		responseResult[ParamStreamingUrl] = signedUrl
+		responseResult[ParamStreamingUrl] = signedUrl + fmt.Sprintf("?%s=%s", paramHash77, hash)
 		response.Result = responseResult
 		return response, nil
 	} else if errors.Is(err, errNeedSignedLivestreamUrl) {
@@ -163,12 +166,12 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		if err != nil {
 			return nil, errors.Err("invalid base_streaming_url supplied")
 		}
-		signedUrl, err := signStreamURL77(u.Host, u.Path, stConfig["token"], timeSource.Now().Add(24*time.Hour).Unix())
+		hash, err := signStreamURL77(u.Host, u.Path, stConfig["token"], timeSource.Now().Add(24*time.Hour).Unix())
 		if err != nil {
 			return nil, err
 		}
 
-		responseResult[ParamStreamingUrl] = signedUrl
+		responseResult[ParamStreamingUrl] = fmt.Sprintf("https://%s/%s%s", u.Host, hash, u.Path)
 		response.Result = responseResult
 		return response, nil
 	}
@@ -253,20 +256,12 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		}
 		logger.Debug("stream token created", "stream", claim.Name+"/"+claim.ClaimID, "txid", purchaseTxId, "size", size)
 		cdnUrl := config.Config.Viper.GetString("PaidContentURL")
-		hasValidChannel := claim.SigningChannel != nil && claim.SigningChannel.ClaimID != ""
-		if hasValidChannel && controversialChannels[claim.SigningChannel.ClaimID] {
-			cdnUrl = strings.Replace(cdnUrl, "player.", "source.", -1)
-		}
 		contentURL = fmt.Sprintf(
 			"%v%s/%s/%s/%s",
 			cdnUrl, claim.Name, claim.ClaimID, sdHash, token)
 		responseResult[ParamPurchaseReceipt] = claim.PurchaseReceipt
 	} else {
-		// hasValidChannel := claim.SigningChannel != nil && claim.SigningChannel.ClaimID != ""
-		// if hasValidChannel && controversialChannels[claim.SigningChannel.ClaimID] {
-		// 	cdnUrl = strings.Replace(cdnUrl, "player.", "source.", -1)
-		// }
-		contentURL = "https://" + stConfig["host"] + fmt.Sprintf(stConfig["startpath"], claim.ClaimID, sdHash[:6])
+		contentURL = "https://" + stConfig["host"] + fmt.Sprintf(stConfig["startpath"], claim.ClaimID, sdHash)
 	}
 
 	responseResult[ParamStreamingUrl] = contentURL

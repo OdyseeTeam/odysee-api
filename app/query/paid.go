@@ -20,11 +20,15 @@ func signStreamURL77(host, filePath, secureToken string, expiryTimestamp int64) 
 	encodedFinalHash := base64.StdEncoding.EncodeToString(finalHash[:])
 	encodedFinalHash = strings.NewReplacer("+", "-", "/", "_").Replace(encodedFinalHash)
 
-	signedURL := "https://" + fmt.Sprintf("%s/%s", host, encodedFinalHash)
-	if expiryTimestamp > 0 {
-		signedURL += fmt.Sprintf(",%d", expiryTimestamp)
-	}
-	signedURL += filePath
+	// signedURL := "https://" + fmt.Sprintf("%s/%s", host, encodedFinalHash)
+	// if expiryTimestamp > 0 {
+	// 	signedURL += fmt.Sprintf(",%d", expiryTimestamp)
+	// }
+	// signedURL += filePath
 
-	return signedURL, nil
+	if expiryTimestamp > 0 {
+		return fmt.Sprintf("%s,%d", encodedFinalHash, expiryTimestamp), nil
+	}
+
+	return encodedFinalHash, nil
 }

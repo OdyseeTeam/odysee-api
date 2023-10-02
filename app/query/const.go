@@ -129,5 +129,3 @@ var walletSpecificMethods = []string{
 	"wallet_unlock",
 	"wallet_status",
 }
-
-var controversialChannels = map[string]bool{}

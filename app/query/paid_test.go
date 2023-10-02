@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"net/url"
 	"path/filepath"
@@ -159,10 +160,13 @@ func (s *paidContentSuite) TestAccess() {
 	timeSource = riggedTimeSource{time.Now()}
 	defer func() { timeSource = realTimeSource{} }()
 
-	simpleSign := func(host, path string) string {
-		u, err := signStreamURL77(host, path, token, timeSource.Now().Add(24*time.Hour).Unix())
+	signShortcut := func(host, path string) string {
+		hash, err := signStreamURL77(host, path, token, timeSource.Now().Add(24*time.Hour).Unix())
 		s.Require().NoError(err)
-		return u
+		if strings.Contains(host, "live") {
+			return fmt.Sprintf("https://%s/%s%s", host, hash, path)
+		}
+		return fmt.Sprintf("https://%s/%s%s?%s=%s", host, hash, path, paramHash77, hash)
 	}
 
 	cases := []struct {
@@ -171,25 +175,25 @@ func (s *paidContentSuite) TestAccess() {
 	}{
 		{
 			url:     urlRentalActive,
-			needUrl: simpleSign(host, "/v6/streams/22acd6a6ab1c83d8c265d652c3842420810006be/96a3e2/start"),
+			needUrl: signShortcut(host, "/v6/streams/22acd6a6ab1c83d8c265d652c3842420810006be/96a3e2e53a448dfd8e63eb4d7e035c698f35db593393097bdb38d9b2dc706cc3a0cfd97ea386087893c8d6843342aa87/start"),
 		},
 		{
 
 			url:     urlPurchase,
-			needUrl: simpleSign(host, "/v6/streams/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4/start"),
+			needUrl: signShortcut(host, "/v6/streams/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4747d48a5706e3285e0a4043bb5ce9849f9a6d184062d56662370f8a84e18e84b66bc3eb3177cf38a42aaa25b06/start"),
 		},
 		{
 			url:     urlMembersOnly,
-			needUrl: simpleSign(host, "/v6/streams/7de672e799d17fc562ae7b381db1722a81856410/ad42aa/start"),
+			needUrl: signShortcut(host, "/v6/streams/7de672e799d17fc562ae7b381db1722a81856410/ad42aa37738a6a2412bb58bb81c48afc06199f3f2d756fed42a5bc4ac0c58c3d5a52180eb59055521fb7aad7a4eac966/start"),
 		},
 		{
 			url:     urlV2PurchaseRental,
-			needUrl: simpleSign(host, "/v6/streams/970deae1469f2b4c7cc7286793b82676053ab3cd/2c2b26/start"),
+			needUrl: signShortcut(host, "/v6/streams/970deae1469f2b4c7cc7286793b82676053ab3cd/2c2b26b612c2c50f355ace21a12c4e1cb1fbf3f5c5dded2fb74eb788a42ea1903cb05b2b8ee8465d9d9c00e65b044aa1/start"),
 		},
 		{
 			url:     urlLivestream,
 			baseURL: "https://cloud.odysee.live/content/f9660d617e226959102e84436533638858d0b572/master.m3u8",
-			needUrl: simpleSign("cloud.odysee.live", "/content/f9660d617e226959102e84436533638858d0b572/master.m3u8"),
+			needUrl: signShortcut("cloud.odysee.live", "/content/f9660d617e226959102e84436533638858d0b572/master.m3u8"),
 		},
 	}
 	for _, tc := range cases {
@@ -257,7 +261,7 @@ func TestSignStreamURL77(t *testing.T) {
 		"/master.m3u8"
 	secureToken := "aiphaechiSietee3heiKaezosaitip0i"
 	expiryTimestamp := int64(1695977338)
-	signedURLPath, err := signStreamURL77(cdnResourceURL, filePath, secureToken, expiryTimestamp)
+	hash, err := signStreamURL77(cdnResourceURL, filePath, secureToken, expiryTimestamp)
 	require.NoError(t, err)
-	require.Equal(t, "https://player.odycdn.com/Syc1EWOyivHWw9L4aquM1g==,1695977338"+filePath, signedURLPath)
+	require.Equal(t, "Syc1EWOyivHWw9L4aquM1g==,1695977338", hash)
 }
