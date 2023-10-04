@@ -175,20 +175,20 @@ func (s *paidContentSuite) TestAccess() {
 	}{
 		{
 			url:     urlRentalActive,
-			needUrl: signShortcut(host, "/v6/streams/22acd6a6ab1c83d8c265d652c3842420810006be/96a3e2e53a448dfd8e63eb4d7e035c698f35db593393097bdb38d9b2dc706cc3a0cfd97ea386087893c8d6843342aa87/start"),
+			needUrl: signShortcut(host, "/v6/streams/22acd6a6ab1c83d8c265d652c3842420810006be/96a3e2e53a448dfd8e63eb4d7e035c698f35db593393097bdb38d9b2dc706cc3a0cfd97ea386087893c8d6843342aa87"),
 		},
 		{
 
 			url:     urlPurchase,
-			needUrl: signShortcut(host, "/v6/streams/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4747d48a5706e3285e0a4043bb5ce9849f9a6d184062d56662370f8a84e18e84b66bc3eb3177cf38a42aaa25b06/start"),
+			needUrl: signShortcut(host, "/v6/streams/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/2ef2a4747d48a5706e3285e0a4043bb5ce9849f9a6d184062d56662370f8a84e18e84b66bc3eb3177cf38a42aaa25b06"),
 		},
 		{
 			url:     urlMembersOnly,
-			needUrl: signShortcut(host, "/v6/streams/7de672e799d17fc562ae7b381db1722a81856410/ad42aa37738a6a2412bb58bb81c48afc06199f3f2d756fed42a5bc4ac0c58c3d5a52180eb59055521fb7aad7a4eac966/start"),
+			needUrl: signShortcut(host, "/v6/streams/7de672e799d17fc562ae7b381db1722a81856410/ad42aa37738a6a2412bb58bb81c48afc06199f3f2d756fed42a5bc4ac0c58c3d5a52180eb59055521fb7aad7a4eac966"),
 		},
 		{
 			url:     urlV2PurchaseRental,
-			needUrl: signShortcut(host, "/v6/streams/970deae1469f2b4c7cc7286793b82676053ab3cd/2c2b26b612c2c50f355ace21a12c4e1cb1fbf3f5c5dded2fb74eb788a42ea1903cb05b2b8ee8465d9d9c00e65b044aa1/start"),
+			needUrl: signShortcut(host, "/v6/streams/970deae1469f2b4c7cc7286793b82676053ab3cd/2c2b26b612c2c50f355ace21a12c4e1cb1fbf3f5c5dded2fb74eb788a42ea1903cb05b2b8ee8465d9d9c00e65b044aa1"),
 		},
 		{
 			url:     urlLivestream,

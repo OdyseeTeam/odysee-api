@@ -19,7 +19,7 @@ StreamsV5:
 StreamsV6:
   Host: player.odycdn.com
   PaidHost: secure.odycdn.com
-  StartPath: /v6/streams/%s/%s/start
+  StartPath: /v6/streams/%s/%s
   Token: cdn-paid-token
 
 InternalAPIHost: https://api.odysee.com
