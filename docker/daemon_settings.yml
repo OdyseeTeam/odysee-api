@@ -1,0 +1,22 @@
+api: 0.0.0.0:5279
+streaming_server: 0.0.0.0:5280
+
+components_to_skip:
+- hash_announcer
+- blob_server
+- dht
+track_bandwidth: false
+
+data_dir: /storage/lbrynet
+download_dir: /storage/download
+wallet_dir: /storage/lbryum
+
+# lbryum_servers: []
+
+save_blobs: false
+save_files: false
+share_usage_data: false
+use_upnp: false
+save_resolved_claims: false
+
+reflect_streams: false

@@ -16,23 +16,27 @@ StreamsV5:
   HLSPath: /v5/streams/hls
   PaidPass: paid-pass
 
+StreamsV6:
+  Host: player.odycdn.com
+  PaidHost: secure.odycdn.com
+  StartPath: /v6/streams/%s/%s.mp4
+  Token: cdn-paid-token
+
 InternalAPIHost: https://api.odysee.com
 ProjectURL: https://odysee.com
-
-OAuth:
-  ClientID: odysee-apis
-  ProviderURL: https://sso.odysee.com/auth/realms/Users
-  TokenPath: /protocol/openid-connect/token
 
 DatabaseDSN: postgres://postgres:odyseeteam@localhost
 Database:
   DBName: oapi
   Options: sslmode=disable
 
+OAuth:
+  ClientID: odysee-apis
+  ProviderURL: https://sso.odysee.com/auth/realms/Users
+  TokenPath: /protocol/openid-connect/token
+
 PublishSourceDir: ./rundata/storage/publish
 GeoPublishSourceDir: ./rundata/storage/geopublish
-
-GeoPublishConcurrency: 3
 
 PaidTokenPrivKey: token_privkey.rsa
 
@@ -41,9 +45,6 @@ PaidTokenPrivKey: token_privkey.rsa
 # openssl ecparam -genkey -name prime256v1 -noout -out private_key.pem && base64 -i private_key.pem
 UploadTokenPrivateKey: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUZZYWxQZkhySzNSQ1F2YmhRQ1h6cDZiWG9uODZWOGI5L3B0bjB3QTZxNkxvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFZjhyN3RlQWJwUlVldXZhVWRsNDQzVS9VZkpYZURDd051QkRrbmp5ZnRZaXZ2Tnl6cGt6ZgpYdDl3RE9rc1VZSmEzNVhvSndabjNHMmw2L2EvdVUvWmh3PT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
 UploadServiceURL: http://localhost:8980/v1/
-
-LbrynetXServer: http://sdk.lbry.tech:5279/api
-LbrynetXPercentage: 0
 
 CORSDomains:
   - http://localhost:1337

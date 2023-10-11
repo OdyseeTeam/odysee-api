@@ -134,6 +134,11 @@ func GetStreamsV5() map[string]string {
 	return Config.Viper.GetStringMapString("StreamsV5")
 }
 
+// GetStreamsV6 returns config map for v6 streams endpoint.
+func GetStreamsV6() map[string]string {
+	return Config.Viper.GetStringMapString("StreamsV6")
+}
+
 // GetReflectorUpstream returns config map for publish reflector server.
 func GetReflectorUpstream() map[string]string {
 	return Config.Viper.GetStringMapString("ReflectorUpstream")
@@ -165,14 +170,6 @@ func GetLbrynetServers() map[string]string {
 		}
 		return nil
 	}
-}
-
-func GetLbrynetXServer() string {
-	return Config.Viper.GetString("LbrynetXServer")
-}
-
-func GetLbrynetXPercentage() int {
-	return Config.Viper.GetInt("LbrynetXPercentage")
 }
 
 func GetTokenCacheTimeout() time.Duration {

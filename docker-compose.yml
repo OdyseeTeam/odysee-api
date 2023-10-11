@@ -3,13 +3,13 @@ version: "3.9"
 services:
   lbrynet:
     image: odyseeteam/lbrynet-tv:0.110.0
+    platform: linux/amd64
     container_name: lbrynet
     ports:
       - "15279:5279"
     volumes:
-      - storage:/storage
-    environment:
-      SDK_CONFIG: /daemon/daemon_settings.yml
+      - lbrynet:/storage
+      - ./docker/daemon_settings.yml:/daemon/daemon_settings.yml
     labels:
       com.centurylinklabs.watchtower.enable: true
   redis:
@@ -50,5 +50,5 @@ services:
 
 volumes:
   pgdata: {}
-  storage: {}
+  lbrynet: {}
   minio-data: {}
