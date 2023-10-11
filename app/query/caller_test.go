@@ -693,9 +693,6 @@ func TestCaller_Status(t *testing.T) {
 }
 
 func TestCaller_GetFreeUnauthenticated(t *testing.T) {
-	config.Override("FreeContentURL", "https://player.odycdn.com/api/v4/streams/free/")
-	defer config.RestoreOverridden()
-
 	srvAddress := test.RandServerAddress(t)
 	uri := "what#19b9c243bea0c45175e6a6027911abbad53e983e"
 
@@ -707,13 +704,10 @@ func TestCaller_GetFreeUnauthenticated(t *testing.T) {
 	getResponse := &ljsonrpc.GetResponse{}
 	err = resp.GetObject(&getResponse)
 	require.NoError(t, err)
-	assert.Equal(t, "https://player.odycdn.com/api/v4/streams/free/what/19b9c243bea0c45175e6a6027911abbad53e983e/d51692", getResponse.StreamingURL)
+	assert.Equal(t, "https://player.odycdn.com/v6/streams/19b9c243bea0c45175e6a6027911abbad53e983e/d51692.mp4", getResponse.StreamingURL)
 }
 
 func TestCaller_GetFreeAuthenticated(t *testing.T) {
-	config.Override("FreeContentURL", "https://player.odycdn.com/api/v4/streams/free/")
-	defer config.RestoreOverridden()
-
 	uri := "what"
 
 	dummyUserID := 123321
@@ -730,7 +724,7 @@ func TestCaller_GetFreeAuthenticated(t *testing.T) {
 	getResponse := &ljsonrpc.GetResponse{}
 	err = resp.GetObject(&getResponse)
 	require.NoError(t, err)
-	assert.Equal(t, "https://player.odycdn.com/api/v4/streams/free/what/19b9c243bea0c45175e6a6027911abbad53e983e/d51692", getResponse.StreamingURL)
+	assert.Equal(t, "https://player.odycdn.com/v6/streams/19b9c243bea0c45175e6a6027911abbad53e983e/d51692.mp4", getResponse.StreamingURL)
 }
 
 func TestCaller_GetCouldntFindClaim(t *testing.T) {
@@ -749,9 +743,6 @@ func TestCaller_GetCouldntFindClaim(t *testing.T) {
 }
 
 func TestCaller_GetInvalidURLAuthenticated(t *testing.T) {
-	config.Override("FreeContentURL", "https://player.odycdn.com/api")
-	defer config.RestoreOverridden()
-
 	uri := "what#@1||||"
 
 	dummyUserID := 123321
