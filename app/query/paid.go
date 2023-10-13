@@ -2,34 +2,33 @@ package query
 
 import (
 	"crypto/md5"
-	"encoding/hex"
+	"encoding/base64"
 	"fmt"
+	"path"
+	"strings"
 )
 
-type qkv [2]string
+func signStreamURL77(host, filePath, secureToken string, expiryTimestamp int64) (string, error) {
+	strippedPath := path.Dir(filePath)
 
-type urlQuery struct {
-	basePath string
-}
-
-func (q urlQuery) render(kvs ...qkv) string {
-	qs := ""
-	for _, kv := range kvs {
-		qs += fmt.Sprintf("%s=%s", kv[0], kv[1])
+	hash := strippedPath + secureToken
+	if expiryTimestamp > 0 {
+		hash = fmt.Sprintf("%d%s", expiryTimestamp, hash)
 	}
-	return qs
-}
 
-func (q urlQuery) hash(kvs ...qkv) string {
-	h := md5.New()
-	h.Write([]byte(fmt.Sprintf("%s?%s", q.basePath, q.render(kvs...))))
-	return hex.EncodeToString(h.Sum(nil))
-}
+	finalHash := md5.Sum([]byte(hash))
+	encodedFinalHash := base64.StdEncoding.EncodeToString(finalHash[:])
+	encodedFinalHash = strings.NewReplacer("+", "-", "/", "_").Replace(encodedFinalHash)
 
-func signStreamURL(path, query string) string {
-	h := md5.New()
-	h.Write([]byte(fmt.Sprintf("%s?%s", path, query)))
-	s := hex.EncodeToString(h.Sum(nil))
-	logger.Log().Debugf("signing url: %s?%s, signed: %s", path, query, s)
-	return s
+	// signedURL := "https://" + fmt.Sprintf("%s/%s", host, encodedFinalHash)
+	// if expiryTimestamp > 0 {
+	// 	signedURL += fmt.Sprintf(",%d", expiryTimestamp)
+	// }
+	// signedURL += filePath
+
+	if expiryTimestamp > 0 {
+		return fmt.Sprintf("%s,%d", encodedFinalHash, expiryTimestamp), nil
+	}
+
+	return encodedFinalHash, nil
 }

@@ -49,6 +49,8 @@ const (
 	iapiTypeMembershipLiveStream = "Exclusive livestreams"
 
 	releaseTimeRoundDownSec = 300
+
+	paramHash77 = "hash77" // Nested hash parameter for signed hls url to use with CDN77
 )
 
 var errNeedSignedUrl = errors.Err("need signed url")
@@ -60,6 +62,7 @@ var rePurchaseFree = regexp.MustCompile(`(?i)does not have a purchase price`)
 var timeSource TimeSource = realTimeSource{}
 
 type TimeSource interface {
+	Now() time.Time
 	NowUnix() int64
 	NowAfter(time.Time) bool
 }
@@ -92,6 +95,7 @@ func (c *ClaimSearchParams) NotTagsContains(tags ...string) bool {
 	return sliceContains(c.NotTags, tags...)
 }
 
+func (ts realTimeSource) Now() time.Time            { return time.Now() }
 func (ts realTimeSource) NowUnix() int64            { return time.Now().Unix() }
 func (ts realTimeSource) NowAfter(t time.Time) bool { return time.Now().After(t) }
 
@@ -129,7 +133,7 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		return nil, err
 	}
 	stream := claim.Value.GetStream()
-	pcfg := config.GetStreamsV5()
+	stConfig := config.GetStreamsV6()
 
 	hasAccess, err := checkStreamAccess(logging.AddToContext(ctx, logger), claim)
 	if !hasAccess {
@@ -142,19 +146,15 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 			return nil, errors.Err(m)
 		}
 		sdHash := hex.EncodeToString(src.SdHash)
-		startUrl := fmt.Sprintf("%s/%s/%s", pcfg["startpath"], claim.ClaimID, sdHash[:6])
-		hlsUrl := fmt.Sprintf("%s/%s/%s/master.m3u8", pcfg["hlspath"], claim.ClaimID, sdHash)
-		cu, err := auth.GetCurrentUserData(ctx)
+		hash, err := signStreamURL77(
+			stConfig["paidhost"], fmt.Sprintf(stConfig["startpath"], claim.ClaimID, sdHash),
+			stConfig["token"], timeSource.Now().Add(24*time.Hour).Unix())
 		if err != nil {
 			return nil, err
 		}
-		ip := cu.IP()
-		hlsHash := signStreamURL(hlsUrl, fmt.Sprintf("ip=%s&pass=%s", ip, pcfg["paidpass"]))
+		signedUrl := fmt.Sprintf("https://%s/%s%s", stConfig["paidhost"], hash, fmt.Sprintf(stConfig["startpath"], claim.ClaimID, sdHash))
 
-		startQuery := fmt.Sprintf("hash-hls=%s&ip=%s&pass=%s", hlsHash, ip, pcfg["paidpass"])
-		responseResult[ParamStreamingUrl] = fmt.Sprintf(
-			"%s%s?hash-hls=%s&ip=%s&hash=%s",
-			pcfg["paidhost"], startUrl, hlsHash, ip, signStreamURL(startUrl, startQuery))
+		responseResult[ParamStreamingUrl] = signedUrl + fmt.Sprintf("?%s=%s", paramHash77, hash)
 		response.Result = responseResult
 		return response, nil
 	} else if errors.Is(err, errNeedSignedLivestreamUrl) {
@@ -166,15 +166,12 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		if err != nil {
 			return nil, errors.Err("invalid base_streaming_url supplied")
 		}
-		cu, err := auth.GetCurrentUserData(ctx)
+		hash, err := signStreamURL77(u.Host, u.Path, stConfig["token"], timeSource.Now().Add(24*time.Hour).Unix())
 		if err != nil {
 			return nil, err
 		}
-		ip := cu.IP()
-		query := fmt.Sprintf("ip=%s&pass=%s", ip, pcfg["paidpass"])
-		responseResult[ParamStreamingUrl] = fmt.Sprintf(
-			"%s?ip=%s&hash=%s",
-			baseUrl, ip, signStreamURL(u.Path, query))
+
+		responseResult[ParamStreamingUrl] = fmt.Sprintf("https://%s/%s%s", u.Host, hash, u.Path)
 		response.Result = responseResult
 		return response, nil
 	}
@@ -259,23 +256,12 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		}
 		logger.Debug("stream token created", "stream", claim.Name+"/"+claim.ClaimID, "txid", purchaseTxId, "size", size)
 		cdnUrl := config.Config.Viper.GetString("PaidContentURL")
-		hasValidChannel := claim.SigningChannel != nil && claim.SigningChannel.ClaimID != ""
-		if hasValidChannel && controversialChannels[claim.SigningChannel.ClaimID] {
-			cdnUrl = strings.Replace(cdnUrl, "player.", "source.", -1)
-		}
 		contentURL = fmt.Sprintf(
 			"%v%s/%s/%s/%s",
 			cdnUrl, claim.Name, claim.ClaimID, sdHash, token)
 		responseResult[ParamPurchaseReceipt] = claim.PurchaseReceipt
 	} else {
-		cdnUrl := config.Config.Viper.GetString("FreeContentURL")
-		hasValidChannel := claim.SigningChannel != nil && claim.SigningChannel.ClaimID != ""
-		if hasValidChannel && controversialChannels[claim.SigningChannel.ClaimID] {
-			cdnUrl = strings.Replace(cdnUrl, "player.", "source.", -1)
-		}
-		contentURL = fmt.Sprintf(
-			"%v%s/%s/%s",
-			cdnUrl, claim.Name, claim.ClaimID, sdHash)
+		contentURL = "https://" + stConfig["host"] + fmt.Sprintf(stConfig["startpath"], claim.ClaimID, sdHash)
 	}
 
 	responseResult[ParamStreamingUrl] = contentURL
