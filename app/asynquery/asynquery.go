@@ -130,12 +130,15 @@ func (m *CallManager) Call(userID int, req *jsonrpc.RPCRequest) (*models.Asynque
 		return nil, err
 	}
 
-	if aq, err := m.getQueryRecord(context.TODO(), queryParams{userID: userID, uploadID: fileLoc.UploadID}); err != nil && !errors.Is(err, sql.ErrNoRows) {
+	aq, err := m.getQueryRecord(context.TODO(), queryParams{userID: userID, uploadID: fileLoc.UploadID})
+	// If query record exists and is not failed, return it
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
-	} else if aq.Status != models.AsynqueryStatusFailed {
+	}
+	if err == nil && aq.Status != models.AsynqueryStatusFailed {
 		return aq, nil
 	}
-	aq, err := m.createQueryRecord(queryParams{userID: userID, uploadID: fileLoc.UploadID}, req)
+	aq, err = m.createQueryRecord(queryParams{userID: userID, uploadID: fileLoc.UploadID}, req)
 	if err != nil {
 		m.logger.Warn("error adding query record", "err", err, "user_id", userID)
 		return nil, fmt.Errorf("error adding query record: %w", err)
@@ -306,7 +309,7 @@ func (m *CallManager) createQueryRecord(params queryParams, request *jsonrpc.RPC
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling request: %w", err)
 	}
-	q.ID = fmt.Sprintf("%x", md5.Sum(rb))
+	q.ID = fmt.Sprintf("%x%v", md5.Sum(rb), time.Now().UnixMilli())
 	q.Body = null.JSONFrom(rb)
 	return &q, q.Insert(m.db, boil.Infer())
 }

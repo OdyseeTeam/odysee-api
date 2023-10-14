@@ -98,8 +98,8 @@ func (s *asynqueryHandlerSuite) TestCreateUpload() {
 func (s *asynqueryHandlerSuite) TestCreate() {
 	require := s.Require()
 	ts := httptest.NewServer(s.router)
-	uploadID := randomdata.Alphanumeric(64)
 
+	uploadID := randomdata.Alphanumeric(64)
 	req := jsonrpc.NewRequest(query.MethodStreamCreate, map[string]any{
 		"name":                 "publish2test-dummymd",
 		"title":                "Publish v2 test for dummy.md",
@@ -121,7 +121,7 @@ func (s *asynqueryHandlerSuite) TestCreate() {
 	streamCreateReq, err := json.Marshal(req)
 	require.NoError(err)
 
-	resp := (&test.HTTPTest{
+	createRequest := &test.HTTPTest{
 		Method: http.MethodPost,
 		URL:    ts.URL + "/api/v1/asynqueries/",
 		ReqHeader: map[string]string{
@@ -129,7 +129,8 @@ func (s *asynqueryHandlerSuite) TestCreate() {
 		},
 		ReqBody: bytes.NewReader(streamCreateReq),
 		Code:    http.StatusCreated,
-	}).Run(s.router, s.T())
+	}
+	resp := createRequest.Run(s.router, s.T())
 
 	var query *models.Asynquery
 	e2etest.Wait(s.T(), "query settling in the database", 5*time.Second, 1000*time.Millisecond, func() error {
