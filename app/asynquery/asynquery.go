@@ -3,6 +3,7 @@ package asynquery
 import (
 	"context"
 	"crypto/md5"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -95,14 +96,15 @@ func (m *CallManager) Shutdown() {
 // Call accepts JSON-RPC request for later asynchronous processing.
 func (m *CallManager) Call(userID int, req *jsonrpc.RPCRequest) (*models.Asynquery, error) {
 	var (
-		fp   string
-		fpp  any
-		floc *FileLocation
-		ok   bool
+		filePath      string
+		filePathParam any
+		fileLoc       *FileLocation
+		ok            bool
 	)
 	p := req.Params.(map[string]any)
+
 	// Metadata-only update
-	if fpp, ok = p[FilePathParam]; !ok {
+	if filePathParam, ok = p[FilePathParam]; !ok {
 		aq, err := m.createQueryRecord(queryParams{userID: userID}, req)
 		if err != nil {
 			m.logger.Warn("error adding query record", "err", err, "user_id", userID)
@@ -120,20 +122,28 @@ func (m *CallManager) Call(userID int, req *jsonrpc.RPCRequest) (*models.Asynque
 		m.logger.Info("query added and queued", "id", aq.ID, "user_id", userID)
 		return aq, nil
 	}
-	if fp, ok = fpp.(string); !ok {
+	if filePath, ok = filePathParam.(string); !ok {
 		return nil, errors.New("invalid file path")
 	}
-	floc, err := parseFilePath(fp)
+	fileLoc, err := parseFilePath(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	aq, err := m.createQueryRecord(queryParams{userID: userID, uploadID: floc.UploadID}, req)
+	aq, err := m.getQueryRecord(context.TODO(), queryParams{userID: userID, uploadID: fileLoc.UploadID})
+	// If query record exists and is not failed, return it
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	if err == nil && aq.Status != models.AsynqueryStatusFailed {
+		return aq, nil
+	}
+	aq, err = m.createQueryRecord(queryParams{userID: userID, uploadID: fileLoc.UploadID}, req)
 	if err != nil {
 		m.logger.Warn("error adding query record", "err", err, "user_id", userID)
 		return nil, fmt.Errorf("error adding query record: %w", err)
 	}
-	m.logger.Info("query added", "id", aq.ID, "user_id", userID, "upload_id", floc.UploadID)
+	m.logger.Info("query added", "id", aq.ID, "user_id", userID, "upload_id", fileLoc.UploadID)
 
 	return aq, nil
 }
@@ -299,7 +309,7 @@ func (m *CallManager) createQueryRecord(params queryParams, request *jsonrpc.RPC
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling request: %w", err)
 	}
-	q.ID = fmt.Sprintf("%x", md5.Sum(rb))
+	q.ID = fmt.Sprintf("%x%v", md5.Sum(rb), time.Now().UnixMilli())
 	q.Body = null.JSONFrom(rb)
 	return &q, q.Insert(m.db, boil.Infer())
 }
