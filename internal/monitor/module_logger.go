@@ -7,7 +7,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// TODO: we could drop the custom struct completely. it doesnt add anything anymore
 // ModuleLogger contains module-specific logger details.
 type ModuleLogger struct {
 	Entry *logrus.Entry
@@ -33,7 +32,8 @@ func NewModuleLogger(moduleName string) ModuleLogger {
 // WithFields returns a new log entry containing additional info provided by fields,
 // which can be called upon with a corresponding logLevel.
 // Example:
-//  logger.WithFields(F{"query": "..."}).Info("query error")
+//
+//	logger.WithFields(F{"query": "..."}).Info("query error")
 func (m ModuleLogger) WithFields(fields logrus.Fields) *logrus.Entry {
 	if v, ok := fields[TokenF]; ok && v != "" && isProduction() {
 		fields[TokenF] = valueMask
@@ -44,7 +44,8 @@ func (m ModuleLogger) WithFields(fields logrus.Fields) *logrus.Entry {
 // Log returns a new log entry for the module
 // which can be called upon with a corresponding logLevel.
 // Example:
-//  Log().Info("query error")
+//
+//	Log().Info("query error")
 func (m ModuleLogger) Log() *logrus.Entry {
 	return m.Entry.WithFields(nil)
 }
