@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
 )
+
+const testAssetsURL = "https://odytestassets.s3.us-east-2.amazonaws.com/"
 
 type analyzerSuite struct {
 	suite.Suite
@@ -26,14 +27,14 @@ func (s *analyzerSuite) SetupSuite() {
 
 func (s *analyzerSuite) TestAnalyze() {
 	cases := []struct {
-		kind, url               string
+		kind, file              string
 		meta                    *MediaInfo
 		getMediaInfoError       error
 		mimeName, mimeType, ext string
 	}{
 		{
-			kind: "audio",
-			url:  "https://getsamplefiles.com/download/mp3/96k",
+			kind: "MP3 audio",
+			file: "96k",
 			meta: &MediaInfo{
 				Duration: 45,
 				Width:    0,
@@ -44,8 +45,8 @@ func (s *analyzerSuite) TestAnalyze() {
 			ext:      ".mp3",
 		},
 		{
-			kind: "mov video",
-			url:  "https://ik.imagekit.io/odystatic/hdreel.mov",
+			kind: "MOV video",
+			file: "hdreel.mov",
 			meta: &MediaInfo{
 				Duration: 29,
 				Width:    1920,
@@ -56,8 +57,8 @@ func (s *analyzerSuite) TestAnalyze() {
 			ext:      ".avi",
 		},
 		{
-			kind: "video",
-			url:  "https://filesamples.com/samples/video/avi/sample_960x400_ocean_with_audio.avi",
+			kind: "AVI video",
+			file: "sample_960x400_ocean_with_audio.avi",
 			meta: &MediaInfo{
 				Duration: 46,
 				Width:    960,
@@ -69,7 +70,7 @@ func (s *analyzerSuite) TestAnalyze() {
 		},
 		{
 			kind: "JPEG",
-			url:  "https://photographylife.com/wp-content/uploads/2018/11/Moeraki-Boulders-New-Zealand.jpg",
+			file: "Moeraki-Boulders-New-Zealand.jpg",
 			meta: &MediaInfo{
 				Width:  2048,
 				Height: 1365,
@@ -79,15 +80,15 @@ func (s *analyzerSuite) TestAnalyze() {
 			ext:      ".jpg",
 		},
 		{
-			kind:              "doc",
-			url:               "https://filesamples.com/samples/document/doc/sample2.doc",
+			kind:              "DOC",
+			file:              "sample2.doc",
 			getMediaInfoError: errors.New("no media info for 'document' type"),
 			mimeName:          "document",
 			ext:               ".doc",
 		},
 		{
-			kind:              "bin",
-			url:               "http://speedtest.ftp.otenet.gr/files/test1Mb.db",
+			kind:              "binary file",
+			file:              "test1Mb.db",
 			getMediaInfoError: errors.New("no media info for 'binary' type"),
 			mimeName:          "binary",
 			mimeType:          "application/octet-stream",
@@ -97,7 +98,7 @@ func (s *analyzerSuite) TestAnalyze() {
 
 	for _, c := range cases {
 		s.Run(c.kind, func() {
-			filePath := s.getTestAsset(c.url)
+			filePath := s.getTestAsset(c.file)
 			f, err := os.Open(filePath)
 			s.Require().NoError(err)
 			defer f.Close()
@@ -118,12 +119,12 @@ func (s *analyzerSuite) TestAnalyze() {
 	}
 }
 
-func (s *analyzerSuite) getTestAsset(url string) string {
-	r, err := http.Get(url)
+func (s *analyzerSuite) getTestAsset(file string) string {
+	r, err := http.Get(testAssetsURL + file)
 	s.Require().NoError(err)
 	defer r.Body.Close()
 	s.Require().Equal(http.StatusOK, r.StatusCode)
-	f, err := ioutil.TempFile(s.T().TempDir(), "")
+	f, err := os.CreateTemp(s.T().TempDir(), "")
 	s.Require().NoError(err)
 	defer f.Close()
 	_, err = io.Copy(f, r.Body)
