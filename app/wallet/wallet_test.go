@@ -263,10 +263,6 @@ func TestAssignSDKServerToUser_ConcurrentUpdates(t *testing.T) {
 	assert.Equal(t, s1.ID, u.LbrynetServerID.Int)
 }
 
-func TestCreate_CorrectWalletID(t *testing.T) {
-	// TODO: test that calling Create() sends the correct wallet id to the server
-}
-
 func TestInitializeWallet(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	userID := rand.Int()

@@ -11,7 +11,7 @@ data_dir: /storage/lbrynet
 download_dir: /storage/download
 wallet_dir: /storage/lbryum
 
-# lbryum_servers: []
+lbryum_servers: ["a-hub1.odysee.com:50001"]
 
 save_blobs: false
 save_files: false

@@ -1,6 +1,6 @@
 module _tools
 
-go 1.16
+go 1.20
 
 require (
 	github.com/mattn/goveralls v0.0.9
