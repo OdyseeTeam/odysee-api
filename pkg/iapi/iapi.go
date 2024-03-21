@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -149,7 +149,7 @@ func (c *Client) Call(ctx context.Context, path string, params map[string]string
 		}
 		lp[k] = v
 	}
-	log := logging.GetFromContext(ctx).With("params", lp)
+	log := logging.GetFromContext(ctx).With("path", path, "params", lp)
 
 	r, err := http.NewRequest(
 		http.MethodPost,
@@ -169,15 +169,15 @@ func (c *Client) Call(ctx context.Context, path string, params map[string]string
 
 	resp, err := c.options.httpClient.Do(r)
 	if err != nil {
-		log.Debug("iapi request failed", "err", err)
+		log.Info("iapi request failed", "err", err)
 		return err
 	}
 	if resp.StatusCode >= 500 {
-		log.Debug("iapi server failure", "error_code", resp.StatusCode)
+		log.Info("iapi server failure", "error_code", resp.StatusCode)
 		return fmt.Errorf("server returned non-OK status: %v", resp.StatusCode)
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
@@ -190,12 +190,12 @@ func (c *Client) Call(ctx context.Context, path string, params map[string]string
 	var bresp BaseResponse
 	err = json.Unmarshal(body, &bresp)
 	if err != nil {
-		log.Debug("iapi unmarshal failure", "err", err, "response_body", body)
+		log.Info("iapi unmarshal failure", "err", err, "response_body", body)
 		return err
 	}
 
 	if !bresp.Success {
-		log.Debug("iapi error", "err", *bresp.Error)
+		log.Info("iapi error", "err", *bresp.Error)
 		return fmt.Errorf("%w: %s", APIError, *bresp.Error)
 	}
 
