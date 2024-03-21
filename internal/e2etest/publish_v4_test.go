@@ -515,6 +515,7 @@ func (s *publishV4Suite) TestQueryError() {
 	require.NoError(decoder.Decode(&rpcResponse))
 
 	require.NoError(ljsonrpc.Decode(rpcResponse.Result, &createResponse))
+	require.Len(createResponse.Outputs, 1)
 	assert.Equal("publish4test-update", createResponse.Outputs[0].Name)
 }
 

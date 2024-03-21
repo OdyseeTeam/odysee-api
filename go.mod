@@ -1,6 +1,6 @@
 module github.com/OdyseeTeam/odysee-api
 
-go 1.20
+go 1.22
 
 require (
 	github.com/ClickHouse/clickhouse-go v1.4.5
@@ -193,6 +193,7 @@ require (
 	github.com/zach-klippenstein/goregen v0.0.0-20160303162051-795b5e3961ea // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
+	golang.org/dl v0.0.0-20240305174203-2885f567d808 // indirect
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/mod v0.9.0 // indirect
