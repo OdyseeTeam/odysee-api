@@ -86,17 +86,22 @@ LBRY_WEB_API=http://localhost:8080 yarn dev:web
 
 Make sure you have `lbrynet`, `postgres` and `postgres-collector` containers running and run `make prepare_test test`.
 
-## Modifying and building a Docker image
+## Building Docker images
 
-Make sure you have Go 1.20 installed.
-
-- Ubuntu: https://launchpad.net/~longsleep/+archive/ubuntu/golang-backports or https://github.com/golang/go/wiki/Ubuntu
-- OSX: `brew install go`
+Make sure you have Go 1.22 installed.
 
 Then build the binary, create a docker image locally and run off it:
 
 ```
-make oapi_image && docker-compose up app
+make oapi && make oapi_image
+```
+
+Check readme files to see available builds for other services like `forklift` and `uploads`.
+
+**Note:** If your default `go` version is different from 1.22, you can supply alternative Go binary path to `make` commands:
+
+```
+go=1.22.1 make oapi
 ```
 
 ## Versioning
