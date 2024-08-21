@@ -139,6 +139,10 @@ func GetStreamsV6() map[string]string {
 	return Config.Viper.GetStringMapString("StreamsV6")
 }
 
+func GetArfleetCDN() string {
+	return Config.Viper.GetString("ArfleetCDN")
+}
+
 // GetReflectorUpstream returns config map for publish reflector server.
 func GetReflectorUpstream() map[string]string {
 	return Config.Viper.GetStringMapString("ReflectorUpstream")

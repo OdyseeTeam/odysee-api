@@ -51,6 +51,7 @@ require (
 	github.com/spf13/viper v1.9.0
 	github.com/sqlc-dev/pqtype v0.2.0
 	github.com/stretchr/testify v1.9.0
+	github.com/tidwall/gjson v1.17.3
 	github.com/tus/tusd v1.11.0
 	github.com/volatiletech/null v8.0.0+incompatible
 	github.com/volatiletech/sqlboiler v3.4.0+incompatible
@@ -63,6 +64,11 @@ require (
 	gopkg.in/vansante/go-ffprobe.v2 v2.1.0
 	gopkg.in/yaml.v2 v2.4.0
 	logur.dev/logur v0.17.0
+)
+
+require (
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 )
 
 require (
@@ -184,6 +190,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
+	github.com/tidwall/sjson v1.2.5
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/volatiletech/inflect v0.0.1 // indirect
