@@ -89,7 +89,7 @@ func (c *AssetResolver) ResolveClaims(claim_ids []string) (map[string]string, er
 		return nil, err
 	}
 
-	jsonResponse, err := c.makeRequest(http.MethodGet, c.batchClaimResolverUrl, jsonData)
+	jsonResponse, err := c.makeRequest(http.MethodPost, c.batchClaimResolverUrl, jsonData)
 	if err != nil {
 		return nil, err
 	}

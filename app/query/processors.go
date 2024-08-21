@@ -268,8 +268,9 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 	arUrl, err := arweave.GetClaimUrl(config.GetArfleetCDN(), claim.ClaimID)
 	if err != nil || arUrl == "" {
 		responseResult[ParamStreamingUrl] = contentURL
+	} else {
+		responseResult[ParamStreamingUrl] = arUrl
 	}
-	responseResult[ParamStreamingUrl] = arUrl
 
 	response.Result = responseResult
 	return response, nil
