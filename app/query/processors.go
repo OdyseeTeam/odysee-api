@@ -482,6 +482,29 @@ func postClaimSearchArfleetThumbs(_ *Caller, ctx context.Context) (*jsonrpc.RPCR
 	return resp, nil
 }
 
+func postResolveArfleetThumbs(_ *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
+	logger := zapadapter.NewKV(nil).With("module", "query.preprocessors")
+	baseUrl := config.GetArfleetCDN()
+
+	resp := GetResponse(ctx)
+	claims, ok := resp.Result.(map[string]any)
+	if !ok {
+		logger.Warn("error processing resolve response", "result", resp.Result)
+	}
+	var claimUrl string
+	var claim any
+	for k, v := range claims {
+		claimUrl, claim = k, v
+	}
+	pClaim, err := arweave.ReplaceAssetUrl(baseUrl, claim, "value.thumbnail.url")
+	if err != nil {
+		logger.Warn("error replacing asset url", "err", err)
+		return resp, nil
+	}
+	resp.Result = map[string]any{claimUrl: pClaim}
+	return resp, nil
+}
+
 func sliceContains[V comparable](cont []V, items ...V) bool {
 	for _, t := range cont {
 		for _, i := range items {

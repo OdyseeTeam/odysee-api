@@ -10,7 +10,7 @@ import (
 
 func ReplaceAssetUrls(baseUrl string, structure any, collPath, itemPath string) (any, error) {
 	var origUrls []string
-	urlPaths := map[string]string{}
+	urlPaths := map[string][]string{}
 
 	jsonData, err := json.Marshal(structure)
 	if err != nil {
@@ -22,7 +22,11 @@ func ReplaceAssetUrls(baseUrl string, structure any, collPath, itemPath string) 
 		urlPath := fmt.Sprintf("%s.%s.%s", collPath, key.String(), itemPath)
 		url := gjson.GetBytes(jsonData, urlPath).String()
 		origUrls = append(origUrls, url)
-		urlPaths[url] = urlPath
+		if slice, exists := urlPaths[url]; exists {
+			urlPaths[url] = append(slice, urlPath)
+		} else {
+			urlPaths[url] = []string{urlPath}
+		}
 		return true
 	})
 
@@ -33,8 +37,33 @@ func ReplaceAssetUrls(baseUrl string, structure any, collPath, itemPath string) 
 	}
 
 	for oldURL, newURL := range subsUrls {
-		if path, exists := urlPaths[oldURL]; exists {
+		for _, path := range urlPaths[oldURL] {
 			jsonData, _ = sjson.SetBytes(jsonData, path, newURL)
+		}
+	}
+
+	var d any
+	return d, json.Unmarshal(jsonData, &d)
+}
+
+func ReplaceAssetUrl(baseUrl string, structure any, path string) (any, error) {
+	jsonData, err := json.Marshal(structure)
+	if err != nil {
+		return nil, err
+	}
+
+	origUrl := gjson.GetBytes(jsonData, path).String()
+
+	resolver := NewAssetResolver(baseUrl)
+	subsUrls, err := resolver.ResolveUrls([]string{origUrl})
+
+	if err != nil {
+		return nil, err
+	}
+	if newUrl, ok := subsUrls[origUrl]; ok {
+		jsonData, err = sjson.SetBytes(jsonData, path, newUrl)
+		if err != nil {
+			return nil, err
 		}
 	}
 
