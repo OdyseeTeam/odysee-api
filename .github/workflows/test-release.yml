@@ -96,8 +96,8 @@ jobs:
 
       - name: Release details
         run: |
-            echo "::group::${{ steps.release.outputs.APP_NAME }}"
-            echo "version ${{ steps.release.outputs.APP_VERSION }}"
+            echo "::group::app ${{ env.APP_NAME }}"
+            echo "version ${{ env.APP_VERSION }}"
             echo "env ${{ github.ref }}"
             echo "::endgroup::"
 
