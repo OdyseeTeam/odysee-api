@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OdyseeTeam/odysee-api/app/arweave"
 	"github.com/OdyseeTeam/odysee-api/app/auth"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
@@ -17,12 +18,11 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/iapi"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
-	"github.com/mitchellh/mapstructure"
-
 	"github.com/OdyseeTeam/player-server/pkg/paid"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -264,7 +264,13 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		contentURL = "https://" + stConfig["host"] + fmt.Sprintf(stConfig["startpath"], claim.ClaimID, sdHash)
 	}
 
-	responseResult[ParamStreamingUrl] = contentURL
+	// Inject Arfleet URL
+	arUrl, err := arweave.GetClaimUrl(config.GetArfleetCDN(), claim.ClaimID)
+	if err != nil || arUrl == "" {
+		responseResult[ParamStreamingUrl] = contentURL
+	} else {
+		responseResult[ParamStreamingUrl] = arUrl
+	}
 
 	response.Result = responseResult
 	return response, nil
@@ -462,6 +468,42 @@ func preflightHookClaimSearch(_ *Caller, ctx context.Context) (*jsonrpc.RPCRespo
 		}
 	}
 	return nil, nil
+}
+
+func postClaimSearchArfleetThumbs(_ *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
+	logger := zapadapter.NewKV(nil).With("module", "query.preprocessors")
+	baseUrl := config.GetArfleetCDN()
+	resp := GetResponse(ctx)
+	pRes, err := arweave.ReplaceAssetUrls(baseUrl, resp.Result, "items", "value.thumbnail.url")
+	if err != nil {
+		logger.Warn("error replacing asset urls", "err", err)
+		return resp, nil
+	}
+	resp.Result = pRes
+	return resp, nil
+}
+
+func postResolveArfleetThumbs(_ *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
+	logger := zapadapter.NewKV(nil).With("module", "query.preprocessors")
+	baseUrl := config.GetArfleetCDN()
+
+	resp := GetResponse(ctx)
+	claims, ok := resp.Result.(map[string]any)
+	if !ok {
+		logger.Warn("error processing resolve response", "result", resp.Result)
+	}
+	var claimUrl string
+	var claim any
+	for k, v := range claims {
+		claimUrl, claim = k, v
+	}
+	pClaim, err := arweave.ReplaceAssetUrl(baseUrl, claim, "value.thumbnail.url")
+	if err != nil {
+		logger.Warn("error replacing asset url", "err", err)
+		return resp, nil
+	}
+	resp.Result = map[string]any{claimUrl: pClaim}
+	return resp, nil
 }
 
 func sliceContains[V comparable](cont []V, items ...V) bool {

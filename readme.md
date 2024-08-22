@@ -18,7 +18,7 @@ go install github.com/volatiletech/sqlboiler/drivers/sqlboiler-psql
 
 **1. Launch the core environment containers**
 
-`docker-compose up -d`
+`docker compose up -d`
 
 *Note: if you're running a LBRY desktop app or a lbrynet instance, you will have to either shut it down or change its ports*
 
@@ -49,13 +49,13 @@ SDK_API_URL=http://localhost:8080 yarn dev:web
 
 ## Running with Docker
 
-Make sure you have recent enough Docker and `docker-compose` installed.
+Make sure you have recent enough Docker and `docker compose` installed.
 
 **1. Initialize and launch the containers**
 
 This will pull and launch SDK and postgres images, which Odysee API requires to operate.
 
-`docker-compose -f docker-compose.yml -f docker-compose.app.yml up -d`
+`docker compose -f docker-compose.yml -f docker compose.app.yml up -d`
 
 *Note: if you're running a LBRY desktop app or lbrynet instance, you will have to either shut it down or change ports*
 

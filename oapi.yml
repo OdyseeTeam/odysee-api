@@ -25,6 +25,8 @@ StreamsV6:
 InternalAPIHost: https://api.odysee.com
 ProjectURL: https://odysee.com
 
+ArfleetCDN: https://thumbnails-arfleet.odycdn.com
+
 DatabaseDSN: postgres://postgres:odyseeteam@localhost
 Database:
   DBName: oapi
@@ -69,6 +71,7 @@ ReflectorUpstream:
   Bucket: blobs'
   Key: key
   Secret: secret
+
 
 Logging:
   Level: debug

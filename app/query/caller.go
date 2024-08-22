@@ -158,6 +158,9 @@ func (c *Caller) addDefaultHooks() {
 	c.AddPreflightHook(MethodStatus, getStatusResponse, builtinHookName)
 	c.AddPreflightHook(MethodGet, preflightHookGet, builtinHookName)
 	c.AddPreflightHook(MethodClaimSearch, preflightHookClaimSearch, builtinHookName)
+
+	c.AddPostflightHook(MethodClaimSearch, postClaimSearchArfleetThumbs, builtinHookName)
+	c.AddPostflightHook(MethodResolve, postResolveArfleetThumbs, builtinHookName)
 }
 
 func (c *Caller) CloneWithoutHook(endpoint, method, name string) *Caller {
