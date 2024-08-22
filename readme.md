@@ -34,12 +34,7 @@ go install github.com/volatiletech/sqlboiler/drivers/sqlboiler-psql
 
 `go run .`
 
-**5. Clone [lbry-desktop](https://github.com/lbryio/lbry-desktop/) repo, if you don't have it**
-
-```
-cd ..
-git clone git@github.com:lbryio/lbry-desktop.git
-```
+**5. Clone [odysee-frontend](https://github.com/OdyseeTeam/odysee-frontend) repo, if you don't have it**
 
 **6. Launch UI in lbry-desktop repo folder**
 
