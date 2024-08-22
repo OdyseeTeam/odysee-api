@@ -38,10 +38,10 @@ jobs:
             echo "::endgroup::"
 
       - name: Set up containers
-        run: docker-compose up -d
+        run: docker compose up -d
 
       - name: Set up containers
-        run: docker-compose -f apps/watchman/docker-compose.yml up -d clickhouse geoipupdate
+        run: docker compose -f apps/watchman/docker-compose.yml up -d clickhouse geoipupdate
 
       - name: Check running containers
         run: docker ps -a
