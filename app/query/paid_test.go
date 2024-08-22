@@ -220,6 +220,7 @@ func (s *paidContentSuite) TestAccess() {
 }
 
 func (s *paidContentSuite) TestAccessLBC() {
+	s.T().Skip("skipping this in automated mode as it requires extra setup")
 	params := map[string]interface{}{"uri": urlLbcPurchase}
 	request := jsonrpc.NewRequest(MethodGet, params)
 
