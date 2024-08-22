@@ -89,15 +89,15 @@ jobs:
       - run: git branch
 
       - name: Retrieve release details
-        id: release_details
+        id: release
         run: |
           echo "APP_NAME=$(git describe --tags|sed -e 's/\-v.*//')" >> $GITHUB_ENV
           echo "APP_VERSION=$(git describe --tags --match 'api-v*'|sed 's/api-v\([0-9.]*\)/\1/')" >> $GITHUB_ENV
 
       - name: Release details
         run: |
-            echo "::group::app ${{ env.APP_NAME }}"
-            echo "version ${{ env.APP_VERSION }}"
+            echo "::group::${{ steps.release.outputs.APP_NAME }}"
+            echo "version ${{ steps.release.outputs.APP_VERSION }}"
             echo "env ${{ github.ref }}"
             echo "::endgroup::"
 
