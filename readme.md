@@ -96,8 +96,6 @@ Then build the binary, create a docker image locally and run off it:
 make oapi && make oapi_image
 ```
 
-Check readme files to see available builds for other services like `forklift` and `uploads`.
-
 **Note:** If your default `go` version is different from 1.22, you can supply alternative Go binary path to `make` commands:
 
 ```
