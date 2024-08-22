@@ -1,7 +1,7 @@
 LbrynetServers:
-  default: https://api.na-backend.odysee.com/api/v1/proxy
-  lbrynet1: https://api.na-backend.odysee.com/api/v1/proxy
-  lbrynet2: https://api.na-backend.odysee.com/api/v1/proxy
+  default: http://localhost:15279/
+  lbrynet1: http://localhost:15279/
+  lbrynet2: http://localhost:15279/
 
 Debug: 1
 
