@@ -1,0 +1,2228 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "blocked": {
+      "channels": [],
+      "total": 0
+    },
+    "items": [
+      {
+        "address": "bN7RZQAUbQPJb3gtDYAGe96j9ifqydR56S",
+        "amount": "0.001",
+        "canonical_url": "lbry://@MySillyReactions#d/pushpa-2-the-rule-teaser-reaction-allu#1",
+        "claim_id": "129c26070b29685248b3dd59eafbf990eee63beb",
+        "claim_op": "update",
+        "confirmations": 82424,
+        "height": 1540045,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1540045,
+          "creation_height": 1539867,
+          "creation_timestamp": 1712570598,
+          "effective_amount": "0.02072845",
+          "expiration_height": 3642445,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.01972845",
+          "take_over_height": 1539867
+        },
+        "name": "pushpa-2-the-rule-teaser-reaction-allu",
+        "normalized_name": "pushpa-2-the-rule-teaser-reaction-allu",
+        "nout": 0,
+        "permanent_url": "lbry://pushpa-2-the-rule-teaser-reaction-allu#129c26070b29685248b3dd59eafbf990eee63beb",
+        "short_url": "lbry://pushpa-2-the-rule-teaser-reaction-allu#1",
+        "signing_channel": {
+          "address": "bN7RZQAUbQPJb3gtDYAGe96j9ifqydR56S",
+          "amount": "0.005",
+          "canonical_url": "lbry://@MySillyReactions#d",
+          "claim_id": "d1ae6a9097b44691d318a5bfc6dc1240311c75e2",
+          "claim_op": "update",
+          "confirmations": 82408,
+          "has_signing_key": false,
+          "height": 1540061,
+          "meta": {
+            "activation_height": 1540061,
+            "claims_in_channel": 162,
+            "creation_height": 1539258,
+            "creation_timestamp": 1712496693,
+            "effective_amount": "0.005",
+            "expiration_height": 3642461,
+            "is_controlling": true,
+            "reposted": 0,
+            "support_amount": "0.0",
+            "take_over_height": 1539258
+          },
+          "name": "@MySillyReactions",
+          "normalized_name": "@mysillyreactions",
+          "nout": 0,
+          "permanent_url": "lbry://@MySillyReactions#d1ae6a9097b44691d318a5bfc6dc1240311c75e2",
+          "short_url": "lbry://@MySillyReactions#d",
+          "timestamp": 1712594133,
+          "txid": "d3b28cf6710788bb73c2165c19328c7762fb5e273241089f0db7974dc28861c6",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbnails.lbry.com/banner-UCl7NKDdDxrxdWPEb_ezVYJg"
+            },
+            "description": "As the channel name suggest I offer my silly reactions with a twist of fun.\n\nSilly Reactions on:\nMovie Trailers\nFilm Songs, Reviews\nRumors Talks,\nFunny Videos\n\n\u0026 More important heart-to-heart live talks with our dear members. \n\nFollow-on Instagram: @my_sillyreactions\n\nFor any feedback mysillyreactions@gmail.com\n",
+            "languages": [
+              "en"
+            ],
+            "public_key": "03d29c87bb2ae3f83be70003c9ed7fd23598c9c2ea56fc7423fcd23251de1bf29d",
+            "public_key_id": "bJiBUzH3JiTiXy7jMEgvPRB9HduxHmFHZB",
+            "tags": [
+              "movie trailers",
+              "trailer reactions",
+              "funny reactions",
+              "silly reactions",
+              "telugu movie reactions"
+            ],
+            "thumbnail": {
+              "url": "https://thumbnails.lbry.com/UCl7NKDdDxrxdWPEb_ezVYJg"
+            },
+            "title": "My Silly Reactions"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1712591938,
+        "txid": "529ccc82594ab8be3fdf8a980a6bff87bda27a5d43f5057e85eb037a3274ade2",
+        "type": "claim",
+        "value": {
+          "description": "Pushpa 2 The Rule Teaser on Mythri Movie Makers. \n\nPushpa 2 - The Rule - Written and Directed by Sukumar. Produced by Naveen Yerneni and Y. Ravi Shankar of Mythri Movie Makers in association with Sukumar Writings,  the film stars Allu Arjun, Fahadh Faasil, Rashmika Mandanna, Dhanunjay, Rao Ramesh, Sunil, Anasuya Bharadwaj \u0026 Ajay Ghosh. The film's music is composed by Devi Sri Prasad.\n\nWishing our Pushpa Raj aka Icon stAAr Allu Arjun a very Happy Birthday 🥳 #HappyBirthdayAlluArjun \n\nClick here to Subscribe: https://www.youtube.com/channel/UCl7NKDdDxrxdWPEb_ezVYJg?sub_confirmation=1\n\nSOCIAL MEDIA:\nInstagram: https://www.instagram.com/my_sillyreactions\n\nSUBSCRIBE to Our Channel and Lets make it to 10K Subscribers soon !!\n\n❯❯  𝐌𝐲 𝐂𝐡𝐚𝐧𝐧𝐞𝐥 #Fancycinema express our content with the help of [Movies Posters/Clips/Teaser/Trailer] Because Visual is the best way to understand properly. If i am creating any problem to owner of the video footage please contact me i will remove that  video please don't give us copyright Strike. Thank You\n\n❯❯  𝗖𝗢𝗣𝗬𝗥𝗜𝗚𝗛𝗧 𝗗𝗜𝗦𝗖𝗟𝗔𝗜𝗠𝗘𝗥 Under Section 107 of the Copyright Act 1976,a allowance is made for \"fair use\" for purposes such as criticism, comment, news reporting, teaching, scholarship and research, Fair use is a use permitted by copyright statute that might otherwise be infringing. non-profit educational or personal use tips the balance in favor of fair use.\n\n::: THANK FOR WATCHING AND SUPPORTING US :::\n\nEmail at mysillyreactions@gmail.com\n\n============================================\n\n\n#Pushpa2TheRule #AlluArjun #PushpaMassJathara #Sukumar #RashmikaMandanna #FahadhFaasil #DSP #MythriMovieMakers #Pushpa2 #PushpaTheRule #Pushpa #Pushpa2Teaser #Pushpa2Trailer #Pushpa2TheRuleGlimpse\n...\nhttps://www.youtube.com/watch?v=NcFUGc3tSoE",
+          "languages": [
+            "en"
+          ],
+          "license": "Copyrighted (contact publisher)",
+          "release_time": "1712569565",
+          "source": {
+            "hash": "e6b35a7be1cb404bdfea4f4f4612e2153bcb32a2af756ccc821865b353021d36755ae755689a444eae0059b2db3ece59",
+            "media_type": "video/mp4",
+            "name": "pushpa-2-the-rule-teaser.mp4",
+            "sd_hash": "c558773c846905f5cda34d32712e2037ec115acdff922d88fc176e37fad9f55f241888e36faab856b79509644b79ec3f",
+            "size": "48786566"
+          },
+          "stream_type": "video",
+          "tags": [
+            "2024 latest telugu movie teasers",
+            "2024 latest telugu teasers",
+            "allu arjun",
+            "allu arjun new movie teaser",
+            "allu arjun pushpa",
+            "allu arjun pushpa movie",
+            "devi sri prasad",
+            "dsp",
+            "fahadh faasil",
+            "mythri movie makers",
+            "pushpa",
+            "pushpa 2",
+            "pushpa 2 teaser",
+            "pushpa 2 telugu movie",
+            "pushpa 2 the rule",
+            "pushpa 2 the rule teaser",
+            "pushpa telugu teaser",
+            "pushpa the rule",
+            "pushpa the rule teaser",
+            "pushpa the rule trailer",
+            "pushpa the rule updates",
+            "pushpa2",
+            "rashmika mandanna",
+            "sukumar"
+          ],
+          "thumbnail": {
+            "url": "https://thumbnails.lbry.com/NcFUGc3tSoE"
+          },
+          "title": "Pushpa 2 The Rule Teaser Reaction | Allu Arjun | Sukumar | Rashmika Mandanna | Fahadh Faasil",
+          "video": {
+            "duration": 201,
+            "height": 1050,
+            "width": 1920
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bKz6cYxhoitVYR4AnctLEoKWrPYmeSMNsm",
+        "amount": "0.001",
+        "canonical_url": "lbry://@Thetimapping#5/russia-ukraine-war-major-russian-bombing#3",
+        "claim_id": "30431f1a4f6ffe938bf25b5cace7825bec883f2d",
+        "claim_op": "update",
+        "confirmations": 332961,
+        "height": 1289508,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1289508,
+          "creation_height": 1279976,
+          "creation_timestamp": 1671712375,
+          "effective_amount": "0.11788185",
+          "expiration_height": 3391908,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.11688185",
+          "take_over_height": 1279976
+        },
+        "name": "russia-ukraine-war-major-russian-bombing",
+        "normalized_name": "russia-ukraine-war-major-russian-bombing",
+        "nout": 0,
+        "permanent_url": "lbry://russia-ukraine-war-major-russian-bombing#30431f1a4f6ffe938bf25b5cace7825bec883f2d",
+        "short_url": "lbry://russia-ukraine-war-major-russian-bombing#3",
+        "signing_channel": {
+          "address": "bKz6cYxhoitVYR4AnctLEoKWrPYmeSMNsm",
+          "amount": "0.005",
+          "canonical_url": "lbry://@Thetimapping#5",
+          "claim_id": "582379965e114b28da761331c4a20850adfcec02",
+          "claim_op": "update",
+          "confirmations": 332961,
+          "has_signing_key": false,
+          "height": 1289508,
+          "meta": {
+            "activation_height": 1289508,
+            "claims_in_channel": 459,
+            "creation_height": 1279971,
+            "creation_timestamp": 1671711488,
+            "effective_amount": "25000.693551",
+            "expiration_height": 3391908,
+            "is_controlling": true,
+            "reposted": 0,
+            "support_amount": "25000.688551",
+            "take_over_height": 1279971
+          },
+          "name": "@Thetimapping",
+          "normalized_name": "@thetimapping",
+          "nout": 0,
+          "permanent_url": "lbry://@Thetimapping#582379965e114b28da761331c4a20850adfcec02",
+          "short_url": "lbry://@Thetimapping#5",
+          "timestamp": 1673130138,
+          "txid": "63521b3601ad82e562939543f7f51ccf13b384b15a27178303a516c7758f21ea",
+          "type": "claim",
+          "value": {
+            "description": "I make videos pertaining to historical and modern conflicts, showing changes to the frontlines on a myriad of maps. Currently focusing on the war in Ukraine.",
+            "languages": [
+              "en"
+            ],
+            "public_key": "02bbb5dedb789d283e0951abc99f8a45f078a65cd7e10757c5eed6355888e78b7b",
+            "public_key_id": "bWDL4Q8ANkpDVuNt6zqXvXHW7MVgGNHCRh",
+            "thumbnail": {
+              "url": "https://thumbnails.lbry.com/UCrhAT2AVB6b0StTTvn9MgWA"
+            },
+            "title": "THETI Mapping"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1673130138,
+        "txid": "e544da432ced457e760c13772959fd6239c3a50d528d27487abd5bab4e8c2a67",
+        "type": "claim",
+        "value": {
+          "description": "Join the Discord https://discord.gg/nuDFq3v9aq\n\nLink to my map, all the videos I talk about are linked there: https://www.google.com/maps/d/u/6/edit?hl=en\u0026mid=1iE-0CwiZnHYtLgndqU3l2G7VInoZE9o\u0026ll=48.65358814465176%2C37.823046528189\u0026z=9\n...\nhttps://www.youtube.com/watch?v=FlXYRg9rszs",
+          "languages": [
+            "en"
+          ],
+          "license": "Copyrighted (contact publisher)",
+          "release_time": "1665360000",
+          "source": {
+            "hash": "5e32ec874e0b707c7365727e381b3e3dd9ad40a26d56c02314b3172a79d46893110ca1b63254b5250354b0776a2d9778",
+            "media_type": "video/mp4",
+            "name": "russia-ukraine-war-major.mp4",
+            "sd_hash": "afed0a90e963320e73830fd154bf0a64a586117d0566193982dc725be1ef7c03b070002a7b9221ebe2fdff1eb1000ea2",
+            "size": "134281263"
+          },
+          "stream_type": "video",
+          "thumbnail": {
+            "url": "https://thumbnails.lbry.com/NcFUGc3tSoE"
+          },
+          "title": "Russia-Ukraine War: Major Russian Bombing Campaign - Analysis",
+          "video": {
+            "duration": 1407,
+            "height": 634,
+            "width": 1280
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bQ7GyZM8N8Gr4LPaoW7uP77AUZtDUdux9A",
+        "amount": "0.002",
+        "canonical_url": "lbry://@AudiolibrosLaVozSilenciosa#f/pim,-plas,-plos-leyendas,-fábulas-y#5",
+        "claim_id": "5b9eeec18ddd469a526b811f2bd8d49f9ea4a75c",
+        "claim_op": "create",
+        "confirmations": 82050,
+        "height": 1540419,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1540419,
+          "creation_height": 1540419,
+          "creation_timestamp": 1712640904,
+          "effective_amount": "0.08123059",
+          "expiration_height": 3642819,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.07923059",
+          "take_over_height": 1540419
+        },
+        "name": "pim,-plas,-plos-leyendas,-fábulas-y",
+        "normalized_name": "pim,-plas,-plos-leyendas,-fábulas-y",
+        "nout": 0,
+        "permanent_url": "lbry://pim,-plas,-plos-leyendas,-fábulas-y#5b9eeec18ddd469a526b811f2bd8d49f9ea4a75c",
+        "short_url": "lbry://pim,-plas,-plos-leyendas,-fábulas-y#5",
+        "signing_channel": {
+          "address": "bQ7GyZM8N8Gr4LPaoW7uP77AUZtDUdux9A",
+          "amount": "0.005",
+          "canonical_url": "lbry://@AudiolibrosLaVozSilenciosa#f",
+          "claim_id": "f4bbccb6aa226ae44aae92532d222cd81d2a8800",
+          "claim_op": "update",
+          "confirmations": 497649,
+          "has_signing_key": false,
+          "height": 1124820,
+          "meta": {
+            "activation_height": 1124820,
+            "claims_in_channel": 3130,
+            "creation_height": 1124669,
+            "creation_timestamp": 1646932276,
+            "effective_amount": "0.005",
+            "expiration_height": 3227220,
+            "is_controlling": true,
+            "reposted": 0,
+            "support_amount": "0.0",
+            "take_over_height": 1124669
+          },
+          "name": "@AudiolibrosLaVozSilenciosa",
+          "normalized_name": "@audiolibroslavozsilenciosa",
+          "nout": 0,
+          "permanent_url": "lbry://@AudiolibrosLaVozSilenciosa#f4bbccb6aa226ae44aae92532d222cd81d2a8800",
+          "short_url": "lbry://@AudiolibrosLaVozSilenciosa#f",
+          "timestamp": 1646956313,
+          "txid": "25a236a23040e8fd859f51c84b095964a2e8db102514e84a7486916e3f300ceb",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbnails.lbry.com/banner-UCBXTkh_wzBPUDL9-1jldJzA"
+            },
+            "description": "AUDIOLIBROS COMPLETOS CON VOZ HUMANA. Canal creado exclusivamente para aquellas personas que no pueden o no les gusta leer. Libros completos o por capítulos.\n------------------------------\nMi nombre es José Fco. Díaz-Salado Suárez-Somonte (mis padres en lugar de dinero me dejaron apellidos). Nací el 24 de noviembre de 1949.  Y con más de 16.000 podcast en ivoox, comencé a subir a youtube mis producciones. En mi canal lavozsilenciosatv tengo toda mi producción, pero los audiolibros siempre me han gustado. Y el poder llevar libros en forma hablada, para quienes no pueden leerlos, fue una inquietud grande. Espero que la acogida por vuestra parte cumpla mis expectativas.",
+            "public_key": "03233c1f4efb1c3131ecf7724a8da39d2140339f80048e532b84842c8fab3f8213",
+            "public_key_id": "bWRk1NzW28BkMR8azJZanBGMGNeDgjJ4JS",
+            "thumbnail": {
+              "url": "https://thumbnails.lbry.com/UCBXTkh_wzBPUDL9-1jldJzA"
+            },
+            "title": "Audiolibros LaVozSilenciosa"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1712640904,
+        "txid": "208a8c1cddf3f09f41c099f3362528b9d8193351a2e0fc6c6028aa9868d7d6a0",
+        "type": "claim",
+        "value": {
+          "description": "PIM, PLAS, PLOS -   LEYENDAS, FÁBULAS Y CUENTOS\n---------------------------------\nTODOS LOS AUDIOLIBROS CREADOS POR MÍ LOS PUEDES ENCONTRAR EN PATREON: https://www.patreon.com/user?u=80669096\n-----------------------------\nTodos los audiolibros de la saga de Sherlock Holmes ya publicados y los futuros los puedes escuchar en: https://www.youtube.com/playlist?list=PL4achUh7FtRzmqcPgKNeTx6-F5kk2cqLm\n------------------------------------------\nPim, plan, plos.\n25 cuentos para contar en 5 minutos, de Amaia Cía y Nuria Aparicio.\n\nPepita Toquedemagia estaba muy nerviosa aquella mañana. Las hadas también se ponen nerviosas cuando tienen que hacer un examen, no solamente los ogros, los lobos o las abuelas.\n\nPepita Toquedemagia había preparado mil veces hechizos y golpes de varita. Se sabía de memoria todos los conjuros y había repasado la forma de romper cualquier encantamiento. Pero esa mañana, Pepita Toquedemagia debía presentar un hechizo nuevo delante de toda la clase.\n\n—Una buena hada tiene que ser capaz de inventar sus propios conjuros —había dicho la señorita Abracadabra.\n\nPepita Toquedemagia había pasado días enteros pensando y ensayando.\n\n—Convertir un príncipe en rana está muy visto —decía Pepita—. Que las princesas se queden dormidas durante años aburre. Tengo que inventar algo nuevo.\n\nSus compañeras de clase eran capaces de hacer complicadísimos encantamientos. Una de ellas, un hada bajita con pecas, había conseguido que desaparecieran tres chaquetas de chándal de los percheros con un simple pase de su varita.\n\n—Vaya cosa —pensó Pepita Toquedemagia—. Lo difícil es conseguir que no desaparezca ninguna en toda la semana.\n\nOtra alumna de trenzas y nariz respingona podía adivinar lo que pensaba cada uno de sus compañeros. Solamente tenía que cerrar los ojos y quedarse muy quieta.\n\n—El lobo piensa en una sabrosa abuelita; el príncipe convertido en sapo, en unas cuantas moscas, y el osito que está sentado en la última fila, en un plato de gachas.\n\nLo adivinaba todo. Aunque no era tan difícil, porque era la hora del almuerzo y todos tenían hambre.\n[...]\n-----------------------------------------\nESCUCHA MI PROGRAMA DE RADIO DIARIAMENTE: http://bit.ly/35oOPah\n\nMás AUDIOLIBROS: https://youtube.com/playlist?list=PLs-AmXe5jKmSJ-ntuoubU046SyKp2ys2D\n\n#PimPlasPlos #RadioEnDirecto #VozHumana #Audiolibros #LaVozSilenciosa #JoseFranciscoDiazSalado #BosqueDeFantasiasCom\n...\nhttps://www.youtube.com/watch?v=x6XoL2c31k0",
+          "languages": [
+            "es"
+          ],
+          "license": "Copyrighted (contact publisher)",
+          "release_time": "1712639235",
+          "source": {
+            "hash": "e29e31fd31064bacd111718885aa9c372b4bc8397fc0f435b04d4083911fa95574af9892a0a035af7d2bf6ae30393cd9",
+            "media_type": "video/mp4",
+            "name": "pim-plas-plos-leyendas-f-bulas.mp4",
+            "sd_hash": "ef79530c8a9487beb4675cc53f40b98366a4297437240c0077140b4a917693a70a1e6b449ffa4d1a1ed61cc8afff47a6",
+            "size": "34536235"
+          },
+          "stream_type": "video",
+          "tags": [
+            "25 cuentos para contar en 5 minutos",
+            "amaia cía y nuria aparicio",
+            "cuentos con enseñanzas",
+            "cuentos con valores",
+            "cuentos populares",
+            "cuentos y leyendas",
+            "inventar conjuros",
+            "la radio de siempre",
+            "la voz silenciosa",
+            "lectura",
+            "narices de madera",
+            "pim plas plos",
+            "pim plas plos de amaria cía y nuria aparicio",
+            "radio en directo",
+            "voz humana"
+          ],
+          "thumbnail": {
+            "url": "https://thumbnails.lbry.com/x6XoL2c31k0"
+          },
+          "title": "PIM, PLAS, PLOS - LEYENDAS, FÁBULAS Y CUENTOS",
+          "video": {
+            "duration": 240,
+            "height": 720,
+            "width": 1280
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bJpxj6EAxUjwU3J593aBND33jwk1r5sL8e",
+        "amount": "0.002",
+        "canonical_url": "lbry://@gotteshausde#6/die-zukünftigen-familienmitglieder-2#0",
+        "claim_id": "0ff9153a0b5610e4793b5deee35ed3737e1eef1f",
+        "claim_op": "create",
+        "confirmations": 81378,
+        "height": 1541091,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1541091,
+          "creation_height": 1541091,
+          "creation_timestamp": 1712729399,
+          "effective_amount": "0.0218417",
+          "expiration_height": 3643491,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.0198417",
+          "take_over_height": 1541091
+        },
+        "name": "die-zukünftigen-familienmitglieder-2",
+        "normalized_name": "die-zukünftigen-familienmitglieder-2",
+        "nout": 0,
+        "permanent_url": "lbry://die-zukünftigen-familienmitglieder-2#0ff9153a0b5610e4793b5deee35ed3737e1eef1f",
+        "short_url": "lbry://die-zukünftigen-familienmitglieder-2#0",
+        "signing_channel": {
+          "address": "bJpxj6EAxUjwU3J593aBND33jwk1r5sL8e",
+          "amount": "0.005",
+          "canonical_url": "lbry://@gotteshausde#6",
+          "claim_id": "6b0064ee0fe221fdb8a6ee02071858300e97c691",
+          "claim_op": "update",
+          "confirmations": 517478,
+          "has_signing_key": false,
+          "height": 1104991,
+          "meta": {
+            "activation_height": 1104991,
+            "claims_in_channel": 1570,
+            "creation_height": 1104003,
+            "creation_timestamp": 1643626764,
+            "effective_amount": "0.005",
+            "expiration_height": 3207391,
+            "is_controlling": true,
+            "reposted": 0,
+            "support_amount": "0.0",
+            "take_over_height": 1104003
+          },
+          "name": "@gotteshausde",
+          "normalized_name": "@gotteshausde",
+          "nout": 0,
+          "permanent_url": "lbry://@gotteshausde#6b0064ee0fe221fdb8a6ee02071858300e97c691",
+          "short_url": "lbry://@gotteshausde#6",
+          "timestamp": 1643787144,
+          "txid": "0d6c2b3e1e277e38d118b6395b76150572d9d7e23a6813879d699878705dd779",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbnails.lbry.com/banner-UCDleYRlbQwk7FR_XbQPaxEw"
+            },
+            "description": "Gottes Haus – Der Ermutigungsdienst ist ein gemeinnütziges, überkonfessionelles, christliches Werk mit einem Herz für Menschen, die mehr von Gott empfangen wollen.\n\nUnsere Beiträge zur Ermutigung sind auferbauend, positiv, glaubensstärkend und immer auf Jesus hinweisend. Unser Hauptthema ist: Gott hat mehr für dich!\n\nViele Menschen – auch Christen – fühlen sich in ihren problematischen Lebensumständen wie auf verlorenem Posten und sind von den Schwierigkeiten, die ihnen entgegenstehen, zermürbt und ausgebremst. Bei nicht wenigen geht es um das blanke geistliche Überleben.\n\nWir wissen, dass Gott viel mehr für jeden Einzelnen von uns bereithält. Er will uns erlösen, befreien, heilen, beschenken, segnen und uns real begegnen. Wir dürfen und können aus unserer persönlichen Wüste herauskommen – hinein in die alle Lebensbereiche umfassende Fülle Gottes.\n\nDer Fokus unserer Arbeit liegt darauf, Menschen zu ermutigen, ihren Blick wieder auf Jesus zu richten, sein Eingre\n\nSigrid und Martin Baron",
+            "public_key": "0273be6b7f86f675b5f7d4d48b06cd549032e5383e3c9aae37c3a3168c54ab0fcc",
+            "public_key_id": "bRaBuoJivgNFrq8oJDAn1Z2EUuVswiYcTL",
+            "thumbnail": {
+              "url": "https://thumbnails.lbry.com/UCDleYRlbQwk7FR_XbQPaxEw"
+            },
+            "title": "gotteshausde"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1712729399,
+        "txid": "f6843005fed1c158f1000632457b6ef329d075bd6362588a92177641f618ab97",
+        "type": "claim",
+        "value": {
+          "description": "Es gibt viele Regionen auf der Welt, in denen Christen verfolgt werden. Dies kann sehr unterschiedlich aussehen und auch bei uns gibt es Benachteiligung, Zurücksetzung, Mobbing u.a., nur weil man an Jesus Christus glaubt.\n \nUnter den Gläubigen im fernen Osten, die unter brutaler Verfolgung leiden, gibt es eine interessante Bezeichnung für die Leute, die sie jagen, verfolgen und verhaften. Sie sehen gerade in diesen Menschen, die ihren Familien und Gemeinden so viel Leid antun, zukünftige Christen, also Familienmitglieder.\n\n\nGeliebte, lasst euch durch das Feuer der Verfolgung unter euch, das euch zur Prüfung geschieht, nicht befremden, als begegne euch etwas Fremdes; sondern freut euch, insoweit ihr der Leiden des Christus teilhaftig seid, damit ihr euch auch in der Offenbarung seiner Herrlichkeit jubelnd freut!  \n1.Petrus 4,12-13\n\n\nJesus sprach: Wahrlich, ich sage euch: Da ist niemand, der Haus oder Brüder oder Schwestern oder Mutter oder Vater oder Kinder oder Äcker verlassen hat um meinetwillen und um des Evangeliums willen, der nicht hundertfach empfängt, jetzt in dieser Zeit Häuser und Brüder und Schwestern und Mütter und Kinder und Äcker unter Verfolgungen und in dem kommenden Zeitalter ewiges Leben.  \nMarkus 10,29-30\n\n\nWer wird uns scheiden von der Liebe Christi? Bedrängnis oder Angst oder Verfolgung oder Hungersnot oder Blöße oder Gefahr oder Schwert? … Aber in diesem allen sind wir mehr als Überwinder durch den, der uns geliebt hat.  \nRömer 8,35-37\n\n\nDeshalb habe ich Wohlgefallen an Schwachheiten, an Misshandlungen, an Nöten, an Verfolgungen, an Ängsten um Christi willen; denn wenn ich schwach bin, dann bin ich stark.\n...\nhttps://www.youtube.com/watch?v=ri24FRNAKPc",
+          "languages": [
+            "de"
+          ],
+          "license": "Copyrighted (contact publisher)",
+          "release_time": "1712728829",
+          "source": {
+            "hash": "918811587c2d16b94e86792848e4facfa20ab09ecdb9a77255b75a6c62401a426a539cdb4c81f41b9bb76b56214b4a53",
+            "media_type": "video/mp4",
+            "name": "die-zuk-nftigen-familienmitgli.mp4",
+            "sd_hash": "6317206362126394922353318657d839fcd9ff997a4c085dd50afc22f7bb13d0efcc8149d8b7706393737d7861a5be12",
+            "size": "80862739"
+          },
+          "stream_type": "video",
+          "tags": [
+            "beliefs",
+            "baron",
+            "bibel",
+            "endzeit",
+            "erlösung",
+            "ermutigung",
+            "erweckung",
+            "ewigkeit",
+            "gebet",
+            "geistliches",
+            "gottes",
+            "haus",
+            "heilung \u0026 wunder",
+            "israel",
+            "jesus",
+            "kirche",
+            "lobpreis",
+            "martin",
+            "mission \u0026 dienst",
+            "prophetie",
+            "religion",
+            "sigrid",
+            "wachstum"
+          ],
+          "thumbnail": {
+            "url": "https://thumbnails.lbry.com/ri24FRNAKPc"
+          },
+          "title": "Die zukünftigen Familienmitglieder",
+          "video": {
+            "duration": 245,
+            "height": 1080,
+            "width": 1920
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bZcWMb5Bxrt28egthyLX3NPjBpzBHNoMyE",
+        "amount": "0.001",
+        "canonical_url": "lbry://@BnaglaDrama#9/megh-bristyr-alapon-মেঘ#c",
+        "claim_id": "c66a6141ec041acc59af1c2c59542dad36851f2c",
+        "claim_op": "update",
+        "confirmations": 81616,
+        "height": 1540853,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1540853,
+          "creation_height": 1390813,
+          "creation_timestamp": 1689260325,
+          "effective_amount": "0.0208417",
+          "expiration_height": 3643253,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.0198417",
+          "take_over_height": 1390813
+        },
+        "name": "megh-bristyr-alapon-মেঘ",
+        "normalized_name": "megh-bristyr-alapon-মেঘ",
+        "nout": 0,
+        "permanent_url": "lbry://megh-bristyr-alapon-মেঘ#c66a6141ec041acc59af1c2c59542dad36851f2c",
+        "short_url": "lbry://megh-bristyr-alapon-মেঘ#c",
+        "signing_channel": {
+          "address": "bZcWMb5Bxrt28egthyLX3NPjBpzBHNoMyE",
+          "amount": "0.005",
+          "canonical_url": "lbry://@BnaglaDrama#9",
+          "claim_id": "94808784d0a08be5fcd1b11713ffc2e2b8ee6b7a",
+          "claim_op": "update",
+          "confirmations": 81615,
+          "has_signing_key": false,
+          "height": 1540854,
+          "meta": {
+            "activation_height": 1540854,
+            "claims_in_channel": 1333,
+            "creation_height": 1317788,
+            "creation_timestamp": 1677571761,
+            "effective_amount": "0.048805",
+            "expiration_height": 3643254,
+            "is_controlling": true,
+            "reposted": 0,
+            "support_amount": "0.043805",
+            "take_over_height": 1317788
+          },
+          "name": "@BnaglaDrama",
+          "normalized_name": "@bnagladrama",
+          "nout": 0,
+          "permanent_url": "lbry://@BnaglaDrama#94808784d0a08be5fcd1b11713ffc2e2b8ee6b7a",
+          "short_url": "lbry://@BnaglaDrama#9",
+          "timestamp": 1712696696,
+          "txid": "689ce4fa83d13901b0633dd12c48e3d4811f38654a65d5d0184903e9d1b9c5c3",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbnails.lbry.com/banner-UCDgqC1K-Ib71SwJQMn9kklw"
+            },
+            "description": "Premium Bangla Entertainment Channel",
+            "languages": [
+              "en"
+            ],
+            "public_key": "031598895dab9bdd9634b4d11bc6e20d3d2e4552bea08f0adf3df5fd11399f894c",
+            "public_key_id": "bJFGicM8h6sRmksVGMqUy9pNGy45yjGUAu",
+            "thumbnail": {
+              "url": "https://thumbnails.lbry.com/UCDgqC1K-Ib71SwJQMn9kklw"
+            },
+            "title": "Dhruba Clips"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1712696383,
+        "txid": "e57cfb0f1815e63221a1db713b9704671c51bf54f9085520699968a9e3d4df6c",
+        "type": "claim",
+        "value": {
+          "description": "Drama: Megh Brishtyr Alapon\nCast: Apurba \u0026 Sharlin Farzana.\nDirection: Mehedi Hasan Johny\n\n#meghbrishtyralapon\n#apurba\n#sharlinfarzana\n#banglanatok\n#bengalidrama\n...\nhttps://www.youtube.com/watch?v=UuAdFkBAKi0",
+          "license": "Copyrighted (contact publisher)",
+          "release_time": "1689259125",
+          "source": {
+            "hash": "8716147c254e1df130ac8d6f7c00a3b3dcb1d4e3186c57e587d34193f7adb293df95d4d874ac97bacd869686d188aec8",
+            "media_type": "video/mp4",
+            "name": "megh-bristyr-alapon-apurba.mp4",
+            "sd_hash": "e75623a2531a0440e5f046b817e3a04c9b54bd776d8418b2613fbbb39a45863785f7f989ceee1a7b29524e40560982ba",
+            "size": "913016269"
+          },
+          "stream_type": "video",
+          "tags": [
+            "2017 natok",
+            "apurba \u0026 sharlin natok",
+            "apurba natok",
+            "bangla natok 2017",
+            "eid drama 2017",
+            "megh brishtyr alapon",
+            "megh brishtyr alapon natok",
+            "sharlin",
+            "sharlin farzana",
+            "ziaul faruque apurba"
+          ],
+          "thumbnail": {
+            "url": "https://thumbnails.lbry.com/UuAdFkBAKi0"
+          },
+          "title": "Megh Bristyr Alapon | মেঘ বৃষ্টির আলাপন | Apurba | Sharlin Farzana",
+          "video": {
+            "duration": 2460,
+            "height": 1080,
+            "width": 1920
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bXUiFZJ84eAoLxwPpwXXzC1SgTvZqHntD2",
+        "amount": "0.001",
+        "canonical_url": "lbry://@Bollywoodgaliyara#b/tamannah-bhatia-at-airport-arrival#f",
+        "claim_id": "f10ef09402829849e7be550887dc7e8a1648bb44",
+        "claim_op": "update",
+        "confirmations": 81295,
+        "height": 1541174,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1541174,
+          "creation_height": 1538567,
+          "creation_timestamp": 1712401971,
+          "effective_amount": "0.0208417",
+          "expiration_height": 3643574,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.0198417",
+          "take_over_height": 1538567
+        },
+        "name": "tamannah-bhatia-at-airport-arrival",
+        "normalized_name": "tamannah-bhatia-at-airport-arrival",
+        "nout": 0,
+        "permanent_url": "lbry://tamannah-bhatia-at-airport-arrival#f10ef09402829849e7be550887dc7e8a1648bb44",
+        "short_url": "lbry://tamannah-bhatia-at-airport-arrival#f",
+        "signing_channel": {
+          "address": "bXUiFZJ84eAoLxwPpwXXzC1SgTvZqHntD2",
+          "amount": "0.005",
+          "canonical_url": "lbry://@Bollywoodgaliyara#b",
+          "claim_id": "b549d9dd64b6e6e484727dddb86b9ef9c5577066",
+          "claim_op": "update",
+          "confirmations": 81293,
+          "has_signing_key": false,
+          "height": 1541176,
+          "meta": {
+            "activation_height": 1541176,
+            "claims_in_channel": 1297,
+            "creation_height": 1538386,
+            "creation_timestamp": 1712376320,
+            "effective_amount": "0.005",
+            "expiration_height": 3643576,
+            "is_controlling": true,
+            "reposted": 0,
+            "support_amount": "0.0",
+            "take_over_height": 1538386
+          },
+          "name": "@Bollywoodgaliyara",
+          "normalized_name": "@bollywoodgaliyara",
+          "nout": 0,
+          "permanent_url": "lbry://@Bollywoodgaliyara#b549d9dd64b6e6e484727dddb86b9ef9c5577066",
+          "short_url": "lbry://@Bollywoodgaliyara#b",
+          "timestamp": 1712741793,
+          "txid": "d0af0dd1a111cc9260362ac2690b54525289002d5b84d667fe0df9e5b6039866",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbnails.lbry.com/banner-UCiznvx1x_s4VdVmVPSTl4ew"
+            },
+            "description": "Welcome to our YouTube channel, where you'll find the latest Bollywood news, gossip, and updates. From celebrity interviews to movie reviews, we've got you covered on all things Bollywood. Stay informed about upcoming movies, release dates, box office updates, and everything else in the Bollywood film industry. Get a behind the scenes look at movie promotions, premieres, and trailers. We also feature Bollywood music and movie teasers\n\nOur channel is your one-stop destination for all the latest Bollywood news, gossip, and updates on your favorite actors and actresses. We bring you the latest Bollywood film industry news and updates on the Bollywood box office. Follow us for exclusive content and stay up to date on everything Bollywood\n\n#BollywoodNews #LatestBollywood #BollywoodGossip #CelebrityNews #BollywoodMovies #BollywoodUpdates #BollywoodCelebrity #BollywoodFilmNews #BollywoodNewsUpdates #BollywoodActress #BollywoodActor #BollywoodFilmIndustry #BollywoodBoxOffice #bollywoodreview \n",
+            "languages": [
+              "hi"
+            ],
+            "public_key": "0284f14640ed2259d2e2f1258d2b246973cecc179cc3713e89a7c3cc4fc2772543",
+            "public_key_id": "bT7jnt3WYL6zNScL6HRSXVDxkDbM3T2Hbr",
+            "thumbnail": {
+              "url": "https://thumbnails.lbry.com/UCiznvx1x_s4VdVmVPSTl4ew"
+            },
+            "title": "Bollywood Galiyara"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1712741499,
+        "txid": "3bf111e4bd96104867ebb1364f884047c96f911e25ac488f17efeaa7d27ce407",
+        "type": "claim",
+        "value": {
+          "description": "\n...\nhttps://www.youtube.com/watch?v=6E34-koMu4A",
+          "license": "Copyrighted (contact publisher)",
+          "release_time": "1660608000",
+          "source": {
+            "hash": "bc66100e3d5c5492f6d9db3329da88cdbb9f16e1af24e68a8847465b9db6ab36c81816864c9f83fd6a35ecbbe9bd01ff",
+            "media_type": "video/mp4",
+            "name": "tamannah-bhatia-at-airport.mp4",
+            "sd_hash": "a90903ad2d1e20d0dfcd38abb1f96cbfcb14857861a6682859de8d3a56100d32e9d957768335a4a0d086bd2d71b3a889",
+            "size": "2335997"
+          },
+          "stream_type": "video",
+          "thumbnail": {
+            "url": "https://thumbnails.lbry.com/6E34-koMu4A"
+          },
+          "title": "Tamannah Bhatia at airport arrival | #ytshorts #tamannaah",
+          "video": {
+            "duration": 15,
+            "height": 854,
+            "width": 480
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bGUoCgyMiUEnHfonSbJ5SmVeLSQFxtmDka",
+        "amount": "0.002",
+        "canonical_url": "lbry://@Benthetrainkid2k#e/septa-regional-rail-arriving-departing#6",
+        "claim_id": "6807a03c3b9ca563887061c099fd2b4e8ab7ae25",
+        "claim_op": "create",
+        "confirmations": 81062,
+        "height": 1541407,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1541407,
+          "creation_height": 1541407,
+          "creation_timestamp": 1712771131,
+          "effective_amount": "0.0218417",
+          "expiration_height": 3643807,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.0198417",
+          "take_over_height": 1541407
+        },
+        "name": "septa-regional-rail-arriving-departing",
+        "normalized_name": "septa-regional-rail-arriving-departing",
+        "nout": 0,
+        "permanent_url": "lbry://septa-regional-rail-arriving-departing#6807a03c3b9ca563887061c099fd2b4e8ab7ae25",
+        "short_url": "lbry://septa-regional-rail-arriving-departing#6",
+        "signing_channel": {
+          "address": "bGUoCgyMiUEnHfonSbJ5SmVeLSQFxtmDka",
+          "amount": "0.005",
+          "canonical_url": "lbry://@Benthetrainkid2k#e",
+          "claim_id": "e7b01ddeec1def5b7750da63da9e6d029c08a293",
+          "claim_op": "update",
+          "confirmations": 373649,
+          "has_signing_key": false,
+          "height": 1248820,
+          "meta": {
+            "activation_height": 1248820,
+            "claims_in_channel": 703,
+            "creation_height": 1205491,
+            "creation_timestamp": 1659904933,
+            "effective_amount": "0.060841",
+            "expiration_height": 3351220,
+            "is_controlling": true,
+            "reposted": 0,
+            "support_amount": "0.055841",
+            "take_over_height": 1205491
+          },
+          "name": "@Benthetrainkid2k",
+          "normalized_name": "@benthetrainkid2k",
+          "nout": 0,
+          "permanent_url": "lbry://@Benthetrainkid2k#e7b01ddeec1def5b7750da63da9e6d029c08a293",
+          "short_url": "lbry://@Benthetrainkid2k#e",
+          "timestamp": 1666863116,
+          "txid": "8f3ea05339b9e62aa29622f930bbaedfbbc33b8f74de286f9e141d8e7c80a0e5",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbnails.lbry.com/banner-UC5aZNcrpiw0jx90Wats4eaQ"
+            },
+            "description": "Welcome to my channel. In here, you can find railfan videos, Trainz videos (including media for my Trainz series, Philadelphia Rail Adventures), Emergency Alert System recordings, other misc. videos (including vehicle spotting), and more.\n\nDiscord tag: Benthetrainkid#1060\n\nNOTICE: Anyone caught reuploading my content without proper permission and/or credit will be reported.",
+            "languages": [
+              "en"
+            ],
+            "public_key": "02c3f8394ecc08534b5e9bfa24fb00fb26d462536c6d3b4aaa16e1bcf1bc72c9e1",
+            "public_key_id": "bSJJcDTBaqDx1eYhXzrjbNCnDsrF44nRMk",
+            "thumbnail": {
+              "url": "https://thumbnails.lbry.com/UC5aZNcrpiw0jx90Wats4eaQ"
+            },
+            "title": "Benthetrainkid"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1712771131,
+        "txid": "2eaa964b68ffd42fc7288e0f01263d395710e7a90f3a1c7de2c50a4e69550d25",
+        "type": "claim",
+        "value": {
+          "description": "Power:\nSEPTA Silverliner V #708, 857-858, 701\n...\nhttps://www.youtube.com/watch?v=CI-dROrXjg0",
+          "license": "Copyrighted (contact publisher)",
+          "release_time": "1712769887",
+          "source": {
+            "hash": "d2457118c837be708114f8aa8614009c95eee707b7b014a2d3d4cb3cf8c5d0ece5a01ab5eec380f6c5fdb8062fd6ae0e",
+            "media_type": "video/mp4",
+            "name": "septa-regional-rail-arriving.mp4",
+            "sd_hash": "3b2325fcb0ad6b0df3abcdcf2ce85927e3951222280a581972284eb23b562266dbb469c631d49a59f2011844ecb95293",
+            "size": "66254779"
+          },
+          "stream_type": "video",
+          "thumbnail": {
+            "url": "https://thumbnails.lbry.com/CI-dROrXjg0"
+          },
+          "title": "SEPTA Regional Rail arriving/departing Levittown Station",
+          "video": {
+            "duration": 128,
+            "height": 1080,
+            "width": 1920
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bbLtwEsiqhkg5TgfV4KQUXyYvpjjJPJA12",
+        "amount": "0.002",
+        "canonical_url": "lbry://@TrezoitãoPodcast#b/trezoitão-fala-em-vender-os-bitcoin#3",
+        "claim_id": "39cf3b8f046a71e4806b52d96272243bc80fe865",
+        "claim_op": "create",
+        "confirmations": 81706,
+        "height": 1540763,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1540763,
+          "creation_height": 1540763,
+          "creation_timestamp": 1712683153,
+          "effective_amount": "0.059587",
+          "expiration_height": 3643163,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.057587",
+          "take_over_height": 1540763
+        },
+        "name": "trezoitão-fala-em-vender-os-bitcoin",
+        "normalized_name": "trezoitão-fala-em-vender-os-bitcoin",
+        "nout": 0,
+        "permanent_url": "lbry://trezoitão-fala-em-vender-os-bitcoin#39cf3b8f046a71e4806b52d96272243bc80fe865",
+        "short_url": "lbry://trezoitão-fala-em-vender-os-bitcoin#3",
+        "signing_channel": {
+          "address": "bbLtwEsiqhkg5TgfV4KQUXyYvpjjJPJA12",
+          "amount": "0.005",
+          "canonical_url": "lbry://@TrezoitãoPodcast#b",
+          "claim_id": "b7b24afaeea51132e9a48708d106988195fd59f5",
+          "claim_op": "update",
+          "confirmations": 89477,
+          "has_signing_key": false,
+          "height": 1532992,
+          "meta": {
+            "activation_height": 1532992,
+            "claims_in_channel": 222,
+            "creation_height": 1519224,
+            "creation_timestamp": 1709745118,
+            "effective_amount": "0.005",
+            "expiration_height": 3635392,
+            "is_controlling": true,
+            "reposted": 0,
+            "support_amount": "0.0",
+            "take_over_height": 1519226
+          },
+          "name": "@TrezoitãoPodcast",
+          "normalized_name": "@trezoitãopodcast",
+          "nout": 0,
+          "permanent_url": "lbry://@TrezoitãoPodcast#b7b24afaeea51132e9a48708d106988195fd59f5",
+          "short_url": "lbry://@TrezoitãoPodcast#b",
+          "timestamp": 1711637026,
+          "txid": "bf88ec5a0909849badfbebdee3141f025a3026184554b6167f042b7b585f2065",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbnails.lbry.com/banner-UCKZIK48iBQmLJMTRDAz6X_A"
+            },
+            "description": "🧠⏬CURSO LIVROS E REDES SOCIAIS\n\n\n✅ Inscreva-se no canal para nos motivar fazer mais vídeos!\n",
+            "languages": [
+              "pt-BR"
+            ],
+            "public_key": "02a1958b153bb00a21055e658b7ba5c23224f4cd900f7d199920173151b398ffcf",
+            "public_key_id": "bM2EEoTFeDaRWEJqwi28E1AjkGAb43EGyk",
+            "thumbnail": {
+              "url": "https://thumbs.odycdn.com/57de02c60b256c32b0eeaa7d20434bf0.webp"
+            },
+            "title": "Renato 38 Trezoitão Podcast"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1712683153,
+        "txid": "97cf7f8748c434d9cc66b029deb84b92a114e3507972d73081bca45d336b6766",
+        "type": "claim",
+        "value": {
+          "description": "Canal de Lives Renato38➔https://www.youtube.com/@TrechosRenato38\n\n🚨Curso 38tão Bitcoin 50% OFF ➔https://hotm.art/BitcoinBlackPill\n\n🚨Livro Bitcoin Red Pill (Capa dura) https://amzn.to/3Rr3BIs\n\n📲Grupo Telegram: https://t.me/TrezoitaoPodcast\n\n📲Link das Redes Sociais➔ https://linktr.ee/trezoitaopodcast\n\nSeja membro deste canal e ganhe benefícios:\nhttps://www.youtube.com/channel/UCKZIK48iBQmLJMTRDAz6X_A/join\n_______________________________________________________________\n\n⬇️Playlist Lives do Renato Trezoitão\n\n➡️https://www.youtube.com/playlist?list=PLy5Z_xgEQSKIBtA0FR6unGk3oWoyX-rDL\n\n➡️https://www.youtube.com/playlist?list=PLbtNy8oM7FqmV1EpZsdODKobnRR02W__Q\n\nVídeos Recomendados:\n🪙 TREZOITAO EXPLICA como FUNCIONA O BITCOIN\n➡️https://youtu.be/PO1X1jiY748\n\n🪙 TREZOITÃO ENSINA como fazer AUTOCUSTÓDIA DO BITCOIN | Renato 38  \n➡️https://youtu.be/_10E9UwwxWE\n\n---------------------------------------------\n\nRENATO AMOEDO no INTELIGÊNCIA LTDA!\n➡️https://youtu.be/e8CSALtP3BY\n\n➡️https://youtu.be/e8CSALtP3BY\n\n➡️https://youtu.be/DjJL3Dl1k3Q\n\n➡️https://youtu.be/i4MboCvG6x8\n\nRENATO TREZOITAO NO PODCAST 3 IRMÃOS !\n➡️https://youtu.be/jw5ev2SbARI\n\n➡️https://youtu.be/TXDFmFLAno4\n\n➡️https://youtu.be/z_e6InLfyMc\n\n➡️https://youtu.be/HGxttOXyfkM\n\n➡️https://youtu.be/75GL18IFu8w\n\n➡️https://youtu.be/jZJI-tSKhzg\n\n➡️https://youtu.be/eP-i5kB9nWo\n\n➡️https://youtu.be/-F3FXg3aIS0\n------------------------------------------------------------------\n\n📚 Recomendações de Livros Físicos.  📚 \n\n📚Bitcoin Red Pill - Amazon➔https://amzn.to/3Rr3BIs\n\n📚Bitcoin Red Pill - Mercado Livre➔https://mercadolivre.com/sec/1wp48PV\n\n📚O padrão Bitcoin (edição brasileira)➔https://amzn.to/3T7CfIr\n\n📚Os antifrageis➔https://amzn.to/3uGmHBf\n\n📚As 6 lições  de Ludwig Von Mises➔https://amzn.to/4a3caR1\n\n📚A internet do dinheiro➔https://amzn.to/3GrXIV9\n\n📚O que o governo fez com nosso dinheiro?➔https://amzn.to/3t2fQ4S\n\n📚Democracia o deus que falhou➔https://amzn.to/3TdmwHU\n\n📚Ponerologia. Psicopatas no Poder➔https://amzn.to/3R0Mpb6\n\n📚A Mente Esquerdista➔ https://amzn.to/3TbiFLn\n\n📚Mercados financeiros fora do controle➔https://amzn.to/3GsBdiH\n\nrenato trezoitao fala em vender seus bitcoins\n...\nhttps://www.youtube.com/watch?v=3vaeUqRmc1E",
+          "languages": [
+            "pt"
+          ],
+          "license": "Copyrighted (contact publisher)",
+          "release_time": "1712682060",
+          "source": {
+            "hash": "ce4892e59dc375a6923ac85a1f2ec64e6e83c8bfe654779be6b69fc16d21d10123058e2b82c2dba0e1430c4b97e8cbad",
+            "media_type": "video/mp4",
+            "name": "trezoit-o-fala-em-vender-os.mp4",
+            "sd_hash": "41ff193dc7654ad39944fe9ebb72b1c7fb68ebd054f69b242ae6f9488a51ac0d2df806d50d521a376bfb4da29916a2d7",
+            "size": "238084755"
+          },
+          "stream_type": "video",
+          "thumbnail": {
+            "url": "https://thumbnails.lbry.com/3vaeUqRmc1E"
+          },
+          "title": "TREZOITÃO FALA EM VENDER OS BITCOIN - RENATO AMOEDO 38",
+          "video": {
+            "duration": 623,
+            "height": 1080,
+            "width": 1920
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bGyKdmJM9eHcpNQLAJ1tvu1G2YfQQNSJoH",
+        "amount": "0.001",
+        "canonical_url": "lbry://@ThinkAboutIt#3/AUTHORITY-ONLY-Comes-From-God#7",
+        "claim_id": "78e21e6f280726e24ee3a7bdcc9904caa6b1c925",
+        "claim_op": "create",
+        "confirmations": 115009,
+        "height": 1507460,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1507460,
+          "creation_height": 1507460,
+          "creation_timestamp": 1707941442,
+          "effective_amount": "0.32639306",
+          "expiration_height": 3609860,
+          "is_controlling": true,
+          "reposted": 1,
+          "support_amount": "0.32539306",
+          "take_over_height": 1507530
+        },
+        "name": "AUTHORITY-ONLY-Comes-From-God",
+        "normalized_name": "authority-only-comes-from-god",
+        "nout": 0,
+        "permanent_url": "lbry://AUTHORITY-ONLY-Comes-From-God#78e21e6f280726e24ee3a7bdcc9904caa6b1c925",
+        "short_url": "lbry://AUTHORITY-ONLY-Comes-From-God#7",
+        "signing_channel": {
+          "address": "bGyKdmJM9eHcpNQLAJ1tvu1G2YfQQNSJoH",
+          "amount": "0.005",
+          "canonical_url": "lbry://@ThinkAboutIt#3",
+          "claim_id": "3645cf2f5d0bdac0523f945be1c3ff60758f7845",
+          "claim_op": "update",
+          "confirmations": 510723,
+          "has_signing_key": false,
+          "height": 1111746,
+          "meta": {
+            "activation_height": 1111746,
+            "claims_in_channel": 1381,
+            "creation_height": 593486,
+            "creation_timestamp": 1562029558,
+            "effective_amount": "21538.015",
+            "expiration_height": 3214146,
+            "is_controlling": true,
+            "reposted": 0,
+            "support_amount": "21538.01",
+            "take_over_height": 599441
+          },
+          "name": "@ThinkAboutIt",
+          "normalized_name": "@thinkaboutit",
+          "nout": 0,
+          "permanent_url": "lbry://@ThinkAboutIt#3645cf2f5d0bdac0523f945be1c3ff60758f7845",
+          "short_url": "lbry://@ThinkAboutIt#3",
+          "timestamp": 1644863574,
+          "txid": "e9be25a146f2999a0d917e69a8ec015a22ec2ec88dea9fd2f4f6d813b26958ed",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbnails.lbry.com/banner-UC899cA_uLKzjS50mLrZLkrQ"
+            },
+            "description": "What's ahead for mankind? Plenty. That's what this channel is all about. If you can't handle the truth... you better find another channel that will keep filling your mind with lies and false information. But, \"When You're Tired Of The Lies...\" You may like \"Think About It\"\n\n\n",
+            "locations": [
+              {
+                "country": "US"
+              }
+            ],
+            "public_key": "029ef76b490c5f4b19f222cd70cc209e68e05e463db88eeb597de44f9526414006",
+            "public_key_id": "bLdzaE2UNntAQuurJFcTSVxRDoGphBPrEf",
+            "thumbnail": {
+              "url": "https://thumbnails.lbry.com/UC899cA_uLKzjS50mLrZLkrQ"
+            },
+            "title": "Think About It"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1707941442,
+        "txid": "6045c93a6e703f009b01b0ddaba8ea1fa972cb93b424a8c8d05a63844519ec68",
+        "type": "claim",
+        "value": {
+          "description": "Tucker Carlson tells the World Government Summit the absolute truth. And this is America now, with no moral authority and government that is illegitimate. Whether you want to face the truth or not the election was stolen.... Joe Biden is not a president. He's a puppet that's been installed.\n\n\n\nIf you would you like to pray to accept Jesus Christ as your Lord and Savior... Click this link:\n\nhttps://www.thinkaboutit.online/want-jesus-christ-now/\n\n\n\nIF YOU ARE ABLE TO HELP, PLEASE use the Donorbox link below. THANK YOU SO MUCH! https://donorbox.org/think-about-it-support\n\n\n\nWEBSITE:\n\nhttps://thinkaboutit.news\n\n\n\nVISIT US ON SUBSTACK:\n\nhttps://thinkaboutitnow.substack.com/\n\n\n\n\n\nCopyright Disclaimer Under Section 107 of the Copyright Act 1976, allowance is made for \"fair use\" for purposes such as criticism, comment, news reporting, teaching, scholarship, and research. Fair use is a use permitted by copyright statute that might otherwise be infringing. Non-profit, educational or personal use tips the balance in favor of fair use.",
+          "languages": [
+            "en"
+          ],
+          "license": "None",
+          "release_time": "1707941293",
+          "source": {
+            "hash": "d9e1fccf2dd76dfb2fefc4ccf60769104328a3f6eab845395c28a81dcac17c80aee7bfe9db427723435ddf6eb54da27c",
+            "media_type": "video/mp4",
+            "name": "AUTHORITY ONLY Comes From God.mp4",
+            "sd_hash": "b6bc756fca292dbd2f63d7324d29fb16eebbb324df85bc8d98c68ae959aeef8bb639d6562d31ca3b507ea5a978db6c9e",
+            "size": "102506701"
+          },
+          "stream_type": "video",
+          "thumbnail": {
+            "url": "https://thumbs.odycdn.com/cb4f48c0e23a004db27514a52ff14445.webp"
+          },
+          "title": "AUTHORITY ONLY Comes From God",
+          "video": {
+            "duration": 384,
+            "height": 714,
+            "width": 1274
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bDCsQCufuEzgXnR9K5ubzquqLdwXpuqkec",
+        "amount": "0.002",
+        "canonical_url": "lbry://@roblanderosmusic#6/white-room-cream-karaoke-2#c",
+        "claim_id": "c0c4d67226a7d293aa9d1a3b668b88dc502d479e",
+        "claim_op": "create",
+        "confirmations": 129428,
+        "height": 1493041,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1493041,
+          "creation_height": 1493041,
+          "creation_timestamp": 1705624430,
+          "effective_amount": "0.04081637",
+          "expiration_height": 3595441,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.03881637",
+          "take_over_height": 1493041
+        },
+        "name": "white-room-cream-karaoke-2",
+        "normalized_name": "white-room-cream-karaoke-2",
+        "nout": 0,
+        "permanent_url": "lbry://white-room-cream-karaoke-2#c0c4d67226a7d293aa9d1a3b668b88dc502d479e",
+        "short_url": "lbry://white-room-cream-karaoke-2#c",
+        "signing_channel": {
+          "address": "bDCsQCufuEzgXnR9K5ubzquqLdwXpuqkec",
+          "amount": "0.01",
+          "canonical_url": "lbry://@roblanderosmusic#6",
+          "claim_id": "67e312878ad816ca6933204ec785e7fbc1b97c20",
+          "claim_op": "update",
+          "confirmations": 667228,
+          "has_signing_key": false,
+          "height": 955241,
+          "meta": {
+            "activation_height": 958119,
+            "claims_in_channel": 983,
+            "creation_height": 955202,
+            "creation_timestamp": 1619977260,
+            "effective_amount": "0.01",
+            "expiration_height": 3057641,
+            "is_controlling": true,
+            "reposted": 0,
+            "support_amount": "0.0",
+            "take_over_height": 958119
+          },
+          "name": "@roblanderosmusic",
+          "normalized_name": "@roblanderosmusic",
+          "nout": 0,
+          "permanent_url": "lbry://@roblanderosmusic#67e312878ad816ca6933204ec785e7fbc1b97c20",
+          "short_url": "lbry://@roblanderosmusic#6",
+          "timestamp": 1619982983,
+          "txid": "ecc8e053394eef93dd6074789e5a1a6a086640310777aa25e5391c1679907e98",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbnails.lbry.com/banner-UC5HUJVIe_VAvwvY8NCh8Eeg"
+            },
+            "description": "Although I make song covers and karaoke videos entirely for my own personal enjoyment, it would be a shame not to make them public in case others might appreciate my approach and also share the love for some of my favorite vocal artists and the wonderful music they create.\n\nAnd even though it's the music and lyrics that are of primary importance for karaoke videos, I do try to use minimal imagery that complements the theme and mood and adds a modicum of visual aesthetics.",
+            "public_key": "0271c14ac2da9eff1b28dec696ea8efe6054c6c6f309c5ff1f68aed8bd8a55f7ef",
+            "public_key_id": "bLjHGPNELrxiUJhVStjAeS6engZjg1rtDw",
+            "thumbnail": {
+              "url": "https://thumbnails.lbry.com/UC5HUJVIe_VAvwvY8NCh8Eeg"
+            },
+            "title": "Rob Landeros Karaoke"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1705624430,
+        "txid": "a1bd5dc86f9a84fdc7acd8986a99e60a758150ba068e54487fce1e75ee30cfbf",
+        "type": "claim",
+        "value": {
+          "description": "Please read this disclaimer:\n\nI create my videos from found materials and make no claim of ownership other than the fact of my having conceived of and realized them. Nor do I monetize them in any way. So, if you wish to use them for your own use, you needn't seek permission from me. \n\nI make these videos entirely for my personal use but share them publicly so that others might appreciate and share the love for some of my favorite musical pieces.\n\nAnd because I primarily make these videos for myself, I make them the way I prefer them, which is to have the lyrics presented in complete blocks of verse, pre-chorus, and chorus, making sure they are accurate in terms of in and out points of the original recording artist, not dictating the exact phrasing but instead leaving the vocal interpretation up to the singer. They assume a fairly thorough familiarity with the song beforehand. And if you are not familiar with the song, a version of this video using the original artist's recording can be found at: https://www.bitchute.com/video/meHPtf9dlGbO/\n\nAnd although it's the music and lyrics that are of primary importance for karaoke videos, I use minimal imagery that hopefully complements the theme and mood and adds a modicum of visual aesthetics.\n\nAlso note that I post the songs in the same key as the original artist's recording and will also post in an alternate key that suits my range. So if the key register is not noted in the title, you can assume it is in the same key as that of the original recording artist.\n\nMy covers of several songs can be listened to and downloaded at https://bit.ly/2ojU2N7\n\nThank you for subscribing!\n...\nhttps://www.youtube.com/watch?v=aHaA6ZLc6rk",
+          "languages": [
+            "en"
+          ],
+          "license": "Copyrighted (contact publisher)",
+          "release_time": "1705622627",
+          "source": {
+            "hash": "4e72569b4a9f6510257031bd0034136e75017b884bec6d568f2e45b27f5439e09c222eb804317a32baf696a3cbc0a72d",
+            "media_type": "video/mp4",
+            "name": "white-room-cream-karaoke.mp4",
+            "sd_hash": "2be990a2760e51d62205cb0647ec9b297a78fe42c8b39b9aae2a906f1629b75b8b7aa6c802d1559765b7454f3bcdf7cd",
+            "size": "62724926"
+          },
+          "stream_type": "video",
+          "tags": [
+            "music",
+            "backing track",
+            "backing tracks",
+            "cover songs",
+            "covers",
+            "instrumental",
+            "instrumentals",
+            "karaoke",
+            "lyrics",
+            "original recording artist",
+            "pop music",
+            "pop songs",
+            "popular songs",
+            "sing",
+            "sing along",
+            "singers",
+            "songs"
+          ],
+          "thumbnail": {
+            "url": "https://thumbnails.lbry.com/aHaA6ZLc6rk"
+          },
+          "title": "White Room | Cream Karaoke",
+          "video": {
+            "duration": 312,
+            "height": 720,
+            "width": 1280
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bF7obnEXBnMYF21WgQQHS8YcPfRVE9bwv3",
+        "amount": "0.001",
+        "canonical_url": "lbry://@RTArabic#0/Israeli-military-releases-correct-video-of-what-it-says-is-a-strike-in-which-it-killed-Hezbollah-commander#0",
+        "claim_id": "0339617f5c0c5b7b32ecbe55ae4f3db30b06ec04",
+        "claim_op": "create",
+        "confirmations": 81927,
+        "height": 1540542,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1540542,
+          "creation_height": 1540542,
+          "creation_timestamp": 1712657292,
+          "effective_amount": "0.05915265",
+          "expiration_height": 3642942,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.05815265",
+          "take_over_height": 1540542
+        },
+        "name": "Israeli-military-releases-correct-video-of-what-it-says-is-a-strike-in-which-it-killed-Hezbollah-commander",
+        "normalized_name": "israeli-military-releases-correct-video-of-what-it-says-is-a-strike-in-which-it-killed-hezbollah-commander",
+        "nout": 0,
+        "permanent_url": "lbry://Israeli-military-releases-correct-video-of-what-it-says-is-a-strike-in-which-it-killed-Hezbollah-commander#0339617f5c0c5b7b32ecbe55ae4f3db30b06ec04",
+        "short_url": "lbry://Israeli-military-releases-correct-video-of-what-it-says-is-a-strike-in-which-it-killed-Hezbollah-commander#0",
+        "signing_channel": {
+          "address": "bF7obnEXBnMYF21WgQQHS8YcPfRVE9bwv3",
+          "amount": "0.001",
+          "canonical_url": "lbry://@RTArabic#0",
+          "claim_id": "05155f4800fd11a21f83b8efc6446fa3d5d7b619",
+          "claim_op": "update",
+          "confirmations": 493930,
+          "has_signing_key": false,
+          "height": 1128539,
+          "meta": {
+            "activation_height": 1128539,
+            "claims_in_channel": 4073,
+            "creation_height": 1128533,
+            "creation_timestamp": 1647549341,
+            "effective_amount": "10.001",
+            "expiration_height": 3230939,
+            "is_controlling": true,
+            "reposted": 0,
+            "support_amount": "10.0",
+            "take_over_height": 1128533
+          },
+          "name": "@RTArabic",
+          "normalized_name": "@rtarabic",
+          "nout": 0,
+          "permanent_url": "lbry://@RTArabic#05155f4800fd11a21f83b8efc6446fa3d5d7b619",
+          "short_url": "lbry://@RTArabic#0",
+          "timestamp": 1647550170,
+          "txid": "22f4ac9946a42c2740a7a0aec726074745cfd8fec0403cf4745dd882dedab5d0",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbs.odycdn.com/d398e632672498db973774a902bb5a26.jpg"
+            },
+            "description": "قناة \"RT Arabic\" الفضائية هيئة إخبارية إعلامية ناطقة باللغة العربية تابعة الى مؤسسة \"تي في -- نوفوستي\" المستقلة غير التجارية. بدأت القناة البث في 4 مايو/أيار عام 2007. يتضمن برنامج بث القناة أخبارا سياسية واقتصادية وثقافية ورياضية وجولات في الصحافة وبرامج دورية وأفلاما وثائقية وتحقيقات مصورة. تبث القناة 24 ساعة يوميا خلال سبعة أيام في الأسبوع. \n\nتابعونا على منصاتنا\n[الموقع](https://arabic.rt.com)\n[Facebook](https://www.facebook.com/rtarabic.ru)\n[Twitter](https://twitter.com/RTarabic)\n[Instagram](https://www.instagram.com/rtarabic_ru/)\n[Telegram](http://t.me/rtarabictelegram)\n[VK](https://vk.com/rt.arabic)\n",
+            "public_key": "02d1857f70b167437c3f06c703ae520bbee2c5b75da207ee47d93389483b21f786",
+            "public_key_id": "bEoHE69TSDSTT4NzPcPbfFkCJF2v2mpVZH",
+            "thumbnail": {
+              "url": "https://thumbs.odycdn.com/a993d26186a944b73f7d5eea0e1012f8.jpg"
+            },
+            "title": "RT Arabic"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1712657292,
+        "txid": "6962fae0aac454f955c19bfb2d2f3513ee7efb046ad62e57c2dfd43cedd0fe49",
+        "type": "claim",
+        "value": {
+          "description": "عرض الجيش الإسرائيلي فيديو جديدا لتصفية قيادي في فرقة الرضوان التابعة لحزب الله، علي أحمد حسين، مشيرا إلى أن فيديو الأمس تم نشره بالخطأ.\nوذكر الجيش الإسرائيلي أن الفيديو المرفق للبيان بشأن مقتل علي أحمد حسين منشور يوم أمس أظهر \"استهداف مجمع عسكري في منطقة كفركلا بلبنان في الليلة نفسها\".\nوأرفق الجيش الفيديو الصحيح للغارة التي أدت إلى مقتل القيادي في حزب الله في منطقة الحجر.",
+          "languages": [
+            "en"
+          ],
+          "license": "None",
+          "release_time": "1712657185",
+          "source": {
+            "hash": "a9b8b1f92acae0c8774bd522b90f96aaa187cf10b1e917500faa814679a80e06f10ac4f0efcfbff88d076285eb154b75",
+            "media_type": "video/mp4",
+            "name": "Israeli military releases correct video of what it says is a strike in which it killed Hezbollah commander.mp4",
+            "sd_hash": "9eb2b5263c5fbacc13e85d4919108bfdb62e2ab75a36b46d09b1cb6543d55d24cf8b020af70fb2ef24bae623fc8f7a61",
+            "size": "4573273"
+          },
+          "stream_type": "video",
+          "thumbnail": {
+            "url": "https://thumbs.odycdn.com/ab0a5d832bad87a1a48d061f7e17faa9.webp"
+          },
+          "title": "الجيش الإسرائيلي ينشر \"لقطات صحيحة\" لغارة قتل فيها قائدا في حزب الله",
+          "video": {
+            "duration": 20,
+            "height": 1080,
+            "width": 1920
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bTYirUe1trgRAfb9ecrWeyQtnu6jxSJXU7",
+        "amount": "0.002",
+        "canonical_url": "lbry://@BITCOIN#98c/bitcoin-the-halving-track-digital-dream#3",
+        "claim_id": "38522f5be9452600ffb16afe373ceebfbedd90d4",
+        "claim_op": "create",
+        "confirmations": 83113,
+        "height": 1539356,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1539356,
+          "creation_height": 1539356,
+          "creation_timestamp": 1712506544,
+          "effective_amount": "0.09858457",
+          "expiration_height": 3641756,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.09658457",
+          "take_over_height": 1539356
+        },
+        "name": "bitcoin-the-halving-track-digital-dream",
+        "normalized_name": "bitcoin-the-halving-track-digital-dream",
+        "nout": 0,
+        "permanent_url": "lbry://bitcoin-the-halving-track-digital-dream#38522f5be9452600ffb16afe373ceebfbedd90d4",
+        "short_url": "lbry://bitcoin-the-halving-track-digital-dream#3",
+        "signing_channel": {
+          "address": "bTYirUe1trgRAfb9ecrWeyQtnu6jxSJXU7",
+          "amount": "0.005",
+          "canonical_url": "lbry://@BITCOIN#98c",
+          "claim_id": "98c1cfa40b178c982a68946c289fa53d31ef05a5",
+          "claim_op": "update",
+          "confirmations": 339471,
+          "has_signing_key": false,
+          "height": 1282998,
+          "meta": {
+            "activation_height": 1282998,
+            "claims_in_channel": 1057,
+            "creation_height": 1200797,
+            "creation_timestamp": 1659153349,
+            "effective_amount": "126.005",
+            "expiration_height": 3385398,
+            "is_controlling": false,
+            "reposted": 0,
+            "support_amount": "126.0",
+            "take_over_height": 848915
+          },
+          "name": "@BITCOIN",
+          "normalized_name": "@bitcoin",
+          "nout": 0,
+          "permanent_url": "lbry://@BITCOIN#98c1cfa40b178c982a68946c289fa53d31ef05a5",
+          "short_url": "lbry://@BITCOIN#98c",
+          "timestamp": 1672163562,
+          "txid": "58687c2f571fdbe0280b42847819f150c8549c876b71e970818cd78cedcbd0c0",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbnails.lbry.com/banner-UC61jC9ggxeGu8HJ9Q_TxOGg"
+            },
+            "description": "Bitcoin is an innovative payment network and a new kind of money. Bitcoin's Lightning Network is faster than a speeding bullet and settles payments instantly for cheap. The BITCOIN YouTube Channel is a collaborative open source video project, supported by passionate volunteer Bitcoiners around the world. Join us! https://YouTube.com/BITC0IN\n\nThis channel is Bitcoin Only.\n\nTwitter.com/BITCOINALLCAPS\nGeyser.fund/project/BITCOIN - Tip Us With Bitcoin⚡Lightning⚡\nTallycoin.app/@bitcoinallcaps/bitcoin-youtube-tip-page-av5s8l/ - Tip Us with onchain Bitcoin\nPatreon.com/BITC0IN - Tip Us With Fiat\n\nBuy Bitcoin With Bull Bitcoin in Canada to Support The Channel. We Recommend Them and They Are Bitcoin Only!\nhttp://mission.bullbitcoin.com/satoshi\n\nLooking For A Hardware Wallet To secure your Bitcoin offline in Cold storage? We Recommend using Coinkite's Coldcard Wallet: http://bit.ly/CoinkiteStore\n\nSee our Geyser Article if you want to be a content contributor: https://geyser.fund/entry/280\n\n\n",
+            "email": "holdit21@protonmail.com",
+            "languages": [
+              "en",
+              "es"
+            ],
+            "public_key": "03a4c89a61b9d9fe1a6258c2bfc526df2775444119ab46cc32fb8665abc07df104",
+            "public_key_id": "bXSRG6MLZRkZyv81RevTYsa6BSL1A6uh1L",
+            "tags": [
+              "bitcoin",
+              "btc",
+              "channel",
+              "crypto",
+              "cryptocurrency"
+            ],
+            "thumbnail": {
+              "url": "https://thumbs.odycdn.com/169bfe8a7b690bccdbd5a525528c0464.webp"
+            },
+            "title": "BITCOIN",
+            "website_url": "YouTube.com/BITC0IN"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1712506544,
+        "txid": "4853eb56686de20b4d77709678edec20ba962fbd60c5664ea8e59e5d4f21e88d",
+        "type": "claim",
+        "value": {
+          "description": "@BITC0IN \nhttps://BitcoinCore.org/ ⬅️ Run A Bitcoin Node\nhttps://BitcoinKnots.org/ ⬅️ Run A Bitcoin Node\nhttps://Bitcoin.org/en/choose-your-wallet ⬅️ Choose a Bitcoin Software Wallet\nhttp://Bit.ly/CoinkiteStore ⬅️ Choose a Bitcoin Hardware Wallet\n\nhttps://Discord.gg/K5H25KZHke ⬅️ Join Our Bitcoin Tech \u0026 Discord Support Chat\n\nLNURL: 2140@ZBD.gg ⬅️⚡Help Us by Tipping BITCOIN⚡\nhttps://patreon.com/BITC0IN ⬅️ or tip us fiat\n\nFollow us at:\nhttps://twitter.com/BITCOINALLCAPS\n\nNOSTR: npub1wfvjajv0336mpxhdk6xvlafp20p8mch5083wyjd6xxnerlaxf5kqhsvx9a\n\nWant to contribute content to the BITCOIN Channel and earn some sats? See our Github readme: https://github.com/Fiach-Dubh/BITCOIN-YouTube\n\nBuy Bitcoin: We Recommend using Bull Bitcoin in Canada\nhttp://mission.bullbitcoin.com/satoshi\n\nKraken is also a popular exchange to use for Buying Bitcoin:\nhttps://bit.ly/KrakenApp\n\nMusic Provided By: https://linktr.ee/electronautsinc\n\nBitcoin Resources:\nhttps://www.reddit.com/r/bitcoin - for more information\nhttps://www.reddit.com/r/bitcoinbeginners - if you are new and want to learn about Bitcoin\nhttps://lopp.net\n\nPlease comment, like, subscribe and ring the bell! everything helps. \n\n#bitcoin #Bitcoin #BITCOIN #BTC #BITC0IN #crypto #Crypto #CRYPTO\n\nCopyright Disclaimer: BITCOIN is a web channel intended to provide Bitcoin knowledge through video essays, news and analytical compilations. It is intended primarily for the purpose of encouraging informed discussions, criticism, and review of Bitcoin topics and towards such purpose, the programs use short extracts of cinematographic films, news clips, sounds recording, and photographic works. These clips and extracts are of a minimal nature and the use is not intended to interfere in any manner with their commercial exploitation of the competition for work by the owners of the copyright. The use of works is in compliance with the fair dealing exception provided under Sec. 52 of the Copyright Act, and we asset our use of the works under the exception provided for criticism and review.\n\nhttps://creativecommons.org/licenses/by-sa/2.0/legalcode\n...\nhttps://www.youtube.com/watch?v=0BzDx3c3ps0",
+          "languages": [
+            "en"
+          ],
+          "license": "Copyrighted (contact publisher)",
+          "release_time": "1712505600",
+          "source": {
+            "hash": "8faf24601ac5a8cd0aed8bdb720ba3ecbf9ae2c42fa3d9065d97cf99ba982a5a33f91c9021230c550def674ee8b042a7",
+            "media_type": "video/mp4",
+            "name": "bitcoin-the-halving-track.mp4",
+            "sd_hash": "ef3daf3463e2a13ddbb1a67899c047e22af3c2fba1a348ceab6703b2f0c1820f5a286cad12f93e7575e108a96ff98ed4",
+            "size": "9721081"
+          },
+          "stream_type": "video",
+          "tags": [
+            "blockchain",
+            "bit",
+            "bit coin",
+            "bitc0in",
+            "bitc0in youtube",
+            "bitcoin",
+            "bitcoin channel",
+            "bitcoin channel youtube",
+            "bitcoin mining",
+            "bitcoin the halving track",
+            "bitcoin youtube",
+            "bitcoin youtube channel",
+            "bitcoiner",
+            "bitcoins",
+            "btc",
+            "channel bitcoin",
+            "coin",
+            "michael saylor",
+            "mining",
+            "the halving track"
+          ],
+          "thumbnail": {
+            "url": "https://thumbnails.lbry.com/0BzDx3c3ps0"
+          },
+          "title": "BITCOIN | The Halving Track | Digital Dream",
+          "video": {
+            "duration": 94,
+            "height": 720,
+            "width": 1280
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bb2WaErYx9aFmsqcu4Wdon7rHCp5HYKQ7Y",
+        "amount": "0.002",
+        "canonical_url": "lbry://@GamingAmbience#6/destiny-2-the-dreaming-city-spine-of-3#c",
+        "claim_id": "c70e645076b5025e999fe06892d703cee7a69e5c",
+        "claim_op": "create",
+        "confirmations": 81535,
+        "height": 1540934,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1540934,
+          "creation_height": 1540934,
+          "creation_timestamp": 1712707085,
+          "effective_amount": "0.0799195",
+          "expiration_height": 3643334,
+          "is_controlling": true,
+          "reposted": 1,
+          "support_amount": "0.0779195",
+          "take_over_height": 1540934
+        },
+        "name": "destiny-2-the-dreaming-city-spine-of-3",
+        "normalized_name": "destiny-2-the-dreaming-city-spine-of-3",
+        "nout": 0,
+        "permanent_url": "lbry://destiny-2-the-dreaming-city-spine-of-3#c70e645076b5025e999fe06892d703cee7a69e5c",
+        "short_url": "lbry://destiny-2-the-dreaming-city-spine-of-3#c",
+        "signing_channel": {
+          "address": "bb2WaErYx9aFmsqcu4Wdon7rHCp5HYKQ7Y",
+          "amount": "10.005",
+          "canonical_url": "lbry://@GamingAmbience#6",
+          "claim_id": "63512b8fc1e64eaa171ff4a3079869ba6167c476",
+          "claim_op": "update",
+          "confirmations": 285894,
+          "has_signing_key": false,
+          "height": 1336575,
+          "meta": {
+            "activation_height": 1336575,
+            "claims_in_channel": 1896,
+            "creation_height": 729359,
+            "creation_timestamp": 1583843670,
+            "effective_amount": "701.005",
+            "expiration_height": 3438975,
+            "is_controlling": true,
+            "reposted": 0,
+            "support_amount": "691.0",
+            "take_over_height": 729359
+          },
+          "name": "@GamingAmbience",
+          "normalized_name": "@gamingambience",
+          "nout": 0,
+          "permanent_url": "lbry://@GamingAmbience#63512b8fc1e64eaa171ff4a3079869ba6167c476",
+          "short_url": "lbry://@GamingAmbience#6",
+          "timestamp": 1680580817,
+          "txid": "b72978ba0f21c160096862e4c707da34dc8d90f0b7afa4087fdbb4683372f0da",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://spee.ch/5/cecd6bbd0babdf54.jpg"
+            },
+            "description": "I create ambient and extended music videos for many different games. All video footage is recorded and edited by myself, all music is also mixed and extended by myself. Nothing on this channel has been re-uploaded or taken from another source. I strive to be as unique as I can be with the content I upload on this channel and am truly grateful to share my passion for gaming with you all.\n\nNot only is this channel for nostalgia, but it's also to show my appreciation to the fantastic audio and level design from some of my favorite games. Thank you to all the people who put their time into creating these worlds for us to enjoy and explore.\n\nLastly if there is anyone out there wanting me to credit them on any of the videos I create and what you've worked on within them (audio, level design, artist etc.) I'd gladly add your name to the description. Send me an email: gamingambience@gmail.com",
+            "languages": [
+              "en"
+            ],
+            "locations": [
+              {
+                "country": "CA"
+              }
+            ],
+            "public_key": "03387d5e562aab8ff5f9145315599453b3c35336a94a04cdc249b31cf6c0e29728",
+            "public_key_id": "bZ3EtagGedN3U3h8kBEGYGywKcB5sgniax",
+            "tags": [
+              "game ambience",
+              "games",
+              "gaming",
+              "music",
+              "video game"
+            ],
+            "thumbnail": {
+              "url": "https://thumbs.odycdn.com/283f0f51111efb38fd51543ef33756ec.webp"
+            },
+            "title": "Gaming Ambience"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1712707085,
+        "txid": "e34ba518b239decfb4435bc2c49ca7bfcda17de72f83b597fb073cbfd6b6e681",
+        "type": "claim",
+        "value": {
+          "description": "1 hour of in-game exploration music featuring the ascendant ambient version of the song Accursed. Scenes are from the Spine of Keres which resides in the Divalian Mists patrol zone during the strongest phase of the curse on the Dreaming City.\n\n► Subscribe for more https://bit.ly/2k5Pyew\n► Support me on Patreon https://www.patreon.com/gamingambience\n► Ko-fi Tips https://ko-fi.com/gamingambience\n► PayPal donations https://goo.gl/SW44wp\n► If you enjoy the content on @GamingAmbience please leave a comment and a like.\n\nMusic composed by Skye Lewin http://skyelewinmusic.com/, Michael Salvatori https://michaelsalvatori.com/, Rotem Moav https://rotemmoav.com/, Pieter Schlosser http://www.pieterschlosser.com/ \u0026 C Paul Johnson\nDestiny 2 official website https://www.bungie.net/7/en/Destiny/\n\nDestiny 2 Ambient \u0026 Music Playlists:\n▶️ Destiny 2 Music - https://www.youtube.com/playlist?list=PLYFEK0EdxB0piMv6dg7L7ER2PQ72SMSCB\n▶️ Destiny 2 Ambience - https://www.youtube.com/playlist?list=PLYFEK0EdxB0qBFkkGaslyEMmmVNPCeGII\n\n-PC Specs-\nCase: Phanteks Eclipse P500a DRGB\nMotherboard: Gigabyte B550 Aorus Pro\nProcessor: AMD Ryzen 7 5800X\nMemory: Corsair Vengeance LPX.32 GB DDR4\nGPU: EVGA RTX 3080 Ti FTW3 Ultra\nMouse: Razer DeathAdder Essential\nKeyboard: HyperX Alloy Core RGB\nHeadphones: Audio-Technica ATH-M40x\nMonitor: BenQ 27\"\nOS: Windows 10 Home 64-bit\n...\nhttps://www.youtube.com/watch?v=MjZBcMb9QNM",
+          "languages": [
+            "en"
+          ],
+          "license": "Copyrighted (contact publisher)",
+          "release_time": "1712705213",
+          "source": {
+            "hash": "1b662f68e4ecc6824c50edc2592b02afe8b104d5d6a65a7190020c1729e9726f1c54b5a7bdd12ea90ef2864744ef5203",
+            "media_type": "video/mp4",
+            "name": "destiny-2-the-dreaming-city.mp4",
+            "sd_hash": "05ecbaa9748a71d17d3d87dc996114af642d6e9853c19bc188691a6dd779273212d60366b0b41c009c43b69d62618a51",
+            "size": "842145538"
+          },
+          "stream_type": "video",
+          "tags": [
+            "gaming",
+            "technology",
+            "amd",
+            "destiny",
+            "destiny 2",
+            "destiny 2 accursed",
+            "destiny 2 ambience",
+            "destiny 2 ambient music",
+            "destiny 2 dreaming city",
+            "destiny 2 dreaming city ambient",
+            "destiny 2 dreaming city music",
+            "destiny 2 dreaming city theme",
+            "destiny 2 music",
+            "destiny 2 music extended",
+            "destiny 2 ost",
+            "destiny 2 ost extended",
+            "destiny 2 patrol zone",
+            "destiny 2 soundtrack",
+            "destiny 2 spine of keres",
+            "destiny 2 the reef",
+            "dreaming city curse",
+            "games",
+            "geforce",
+            "mods",
+            "nvidia",
+            "pc games",
+            "petra venj",
+            "ryzen",
+            "video games"
+          ],
+          "thumbnail": {
+            "url": "https://thumbnails.lbry.com/MjZBcMb9QNM"
+          },
+          "title": "Destiny 2 - The Dreaming City: Spine of Keres (Accursed - Ambient Theme)",
+          "video": {
+            "duration": 3653,
+            "height": 720,
+            "width": 1280
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bU2xZPwfsiKi32LCEhccanzZMZE6wdS2w6",
+        "amount": "0.01",
+        "canonical_url": "lbry://@ThatGuyScottWebb#c/Ultra-processed-foods-is-royally-backed#7",
+        "claim_id": "75a53241984666229c7d06fd4045e8631655d6c3",
+        "claim_op": "update",
+        "confirmations": 275216,
+        "height": 1347253,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1347253,
+          "creation_height": 1347252,
+          "creation_timestamp": 1682293448,
+          "effective_amount": "0.08710438",
+          "expiration_height": 3449653,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.07710438",
+          "take_over_height": 1347252
+        },
+        "name": "Ultra-processed-foods-is-royally-backed",
+        "normalized_name": "ultra-processed-foods-is-royally-backed",
+        "nout": 0,
+        "permanent_url": "lbry://Ultra-processed-foods-is-royally-backed#75a53241984666229c7d06fd4045e8631655d6c3",
+        "short_url": "lbry://Ultra-processed-foods-is-royally-backed#7",
+        "signing_channel": {
+          "address": "bU2xZPwfsiKi32LCEhccanzZMZE6wdS2w6",
+          "amount": "0.005",
+          "canonical_url": "lbry://@ThatGuyScottWebb#c",
+          "claim_id": "c13d78a9c00e32904f190c4c4c31f806c8f6912a",
+          "claim_op": "update",
+          "confirmations": 153901,
+          "has_signing_key": false,
+          "height": 1468568,
+          "meta": {
+            "activation_height": 1468568,
+            "claims_in_channel": 1274,
+            "creation_height": 935246,
+            "creation_timestamp": 1616786299,
+            "effective_amount": "6.005",
+            "expiration_height": 3570968,
+            "is_controlling": true,
+            "reposted": 0,
+            "support_amount": "6.0",
+            "take_over_height": 935246
+          },
+          "name": "@ThatGuyScottWebb",
+          "normalized_name": "@thatguyscottwebb",
+          "nout": 0,
+          "permanent_url": "lbry://@ThatGuyScottWebb#c13d78a9c00e32904f190c4c4c31f806c8f6912a",
+          "short_url": "lbry://@ThatGuyScottWebb#c",
+          "timestamp": 1701709664,
+          "txid": "74d86fb571202cff6930884b03b65433e070eead85866ebb8e79358c9e20c913",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbnails.lbry.com/banner-UC-jkhDQU_o56KJ9YO8wOQmA"
+            },
+            "description": "Please checkout many of my older videos as they are as relevant today as when first uploaded, some more so. Oh and don't forget to subscribe and ring that bell for future notifications on uploads....and if you like what I do, buy me a beer or two https://www.paypal.me/MrScottWebb",
+            "public_key": "031645812b9909c0428dadc4babc196f49af9e98b907d499ead3ddeb26c68eae1f",
+            "public_key_id": "bVATLmpLhMSBLJ9Fn6W1i8iobfKyoHggM2",
+            "tags": [
+              "that guy scott webb",
+              "agenda 21",
+              "agenda 2030",
+              "world government",
+              "immigration"
+            ],
+            "thumbnail": {
+              "url": "https://thumbnails.lbry.com/UC-jkhDQU_o56KJ9YO8wOQmA"
+            },
+            "title": "That Guy Scott Webb"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1682293536,
+        "txid": "0a0107fe96dbaf440aa80129a12adb896ae41b006e3502e68c124f6ac4870a60",
+        "type": "claim",
+        "value": {
+          "description": "Universal basic income the bread crumb trail to your early demise https://odysee.com/@ThatGuyScottWebb:c/Universal-basic-income-the-bread-crumb-trail-to-your-early-demise:f\nhttps://www.dailymail.co.uk/health/article-12003173/DR-CHRIS-VAN-TULLEKEN-reveals-care-ultra-processed-food.html\nhttps://sustainability.iceland.co.uk/news/hrh-the-prince-of-wales-visits-iceland-head-office/\nhttps://www.express.co.uk/news/royal/1458800/Prince-charles-royal-iceland-supermarket-self-checkout-Clarence-House-wales-week-ont\nhttps://www.thesun.co.uk/fabulous/21954523/princess-kate-flirty-comment-compliments-iceland-boss/\nPlease like and subscribe and if you like what I do, buy me a beer or two https://www.paypal.me/MrScottWebb\nMy twitter https://twitter.com/ScottWe41924972\nMy facebook https://www.facebook.com/Scott.Webb123/\nMy Rumble channel https://rumble.com/user/ThatGuyScottWebb",
+          "languages": [
+            "en"
+          ],
+          "license": "None",
+          "release_time": "1682293238",
+          "source": {
+            "hash": "d8ee8f7f86c57d3cb1add9e77fa4d6206bb063cd0bd5a3262f6316cc72931fae1f6dcb31ccd369ce17f2e5c42d21a276",
+            "media_type": "video/mp4",
+            "name": "Ultra-processed foods is royally backed.mp4",
+            "sd_hash": "dd8ef1f35d76d49c97a39d46a7dc071a7ec037de638fa26a07fea79cdae11a0e6c0a41ef7c26d3042c2b215a94a19868",
+            "size": "48101570"
+          },
+          "stream_type": "video",
+          "thumbnail": {
+            "url": "https://thumbs.odycdn.com/59d5682fef341c9bae12689b3acb1e7e.webp"
+          },
+          "title": "Ultra-processed foods are royally backed",
+          "video": {
+            "duration": 317,
+            "height": 1080,
+            "width": 1920
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bUjiw8B9a1Ht5Pf1LFZN1uCT93U4nyb9MD",
+        "amount": "0.002",
+        "canonical_url": "lbry://@haqiqatjou#6/former-christian-owen-benjamin-doesn't#6",
+        "claim_id": "64ce4de0bf4381d3a2d632a60842d29b2b127ff4",
+        "claim_op": "create",
+        "confirmations": 90572,
+        "height": 1531897,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1531897,
+          "creation_height": 1531897,
+          "creation_timestamp": 1711487766,
+          "effective_amount": "0.12773399",
+          "expiration_height": 3634297,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.12573399",
+          "take_over_height": 1531897
+        },
+        "name": "former-christian-owen-benjamin-doesn't",
+        "normalized_name": "former-christian-owen-benjamin-doesn't",
+        "nout": 0,
+        "permanent_url": "lbry://former-christian-owen-benjamin-doesn't#64ce4de0bf4381d3a2d632a60842d29b2b127ff4",
+        "short_url": "lbry://former-christian-owen-benjamin-doesn't#6",
+        "signing_channel": {
+          "address": "bUjiw8B9a1Ht5Pf1LFZN1uCT93U4nyb9MD",
+          "amount": "0.005",
+          "canonical_url": "lbry://@haqiqatjou#6",
+          "claim_id": "616cca8a6341042a7e004dd7a8424c9ac4af0b3e",
+          "claim_op": "update",
+          "confirmations": 580398,
+          "has_signing_key": false,
+          "height": 1042071,
+          "meta": {
+            "activation_height": 1045649,
+            "claims_in_channel": 675,
+            "creation_height": 1041014,
+            "creation_timestamp": 1633555444,
+            "effective_amount": "22.498725",
+            "expiration_height": 3144471,
+            "is_controlling": false,
+            "reposted": 0,
+            "support_amount": "22.493725",
+            "take_over_height": 1387727
+          },
+          "name": "@haqiqatjou",
+          "normalized_name": "@haqiqatjou",
+          "nout": 0,
+          "permanent_url": "lbry://@haqiqatjou#616cca8a6341042a7e004dd7a8424c9ac4af0b3e",
+          "short_url": "lbry://@haqiqatjou#6",
+          "timestamp": 1633722593,
+          "txid": "accdaf8930cbb9d51f4197e3056f2971d634e5880510dd57a1aa57c8b7c77966",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbnails.lbry.com/banner-UCWdkdpfxKpfi6aGT8hwFXtA"
+            },
+            "description": "Official Youtube channel of the Muslim Skeptic.",
+            "public_key": "021df0cca75b4ad3d2eceeae86e09739816b84d6bc32d2b479b48df860032e29b9",
+            "public_key_id": "bT6fRDTWcMb8mzLGYUVgBXN2aSm8DTEK4e",
+            "thumbnail": {
+              "url": "https://thumbnails.lbry.com/UCWdkdpfxKpfi6aGT8hwFXtA"
+            },
+            "title": "The Muslim Skeptic"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1711487766,
+        "txid": "c1a2c9c58749edf443917428f67e1f0343534bf3afc091bbe458d941dfdcc326",
+        "type": "claim",
+        "value": {
+          "description": "\n...\nhttps://www.youtube.com/watch?v=V0xZ7kwWyLE",
+          "languages": [
+            "en"
+          ],
+          "license": "Copyrighted (contact publisher)",
+          "release_time": "1711486965",
+          "source": {
+            "hash": "1849f2a7797bb5ce6318366be9d3bcc9166948b05e9bdaff83cc155baeed428827e71ffc8445ba7037744bfc23db931a",
+            "media_type": "video/mp4",
+            "name": "former-christian-owen-benjamin.mp4",
+            "sd_hash": "57df44ffd032b563ff14452b1b57086209d71c9d6592cbb2e8c143626134556d8c8bba0a670f425a5f76647639c61d21",
+            "size": "4524252"
+          },
+          "stream_type": "video",
+          "thumbnail": {
+            "url": "https://thumbnails.lbry.com/V0xZ7kwWyLE"
+          },
+          "title": "Former Christian Owen Benjamin Doesn't Understand the Trinity",
+          "video": {
+            "duration": 54,
+            "height": 854,
+            "width": 480
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bGJm9CgcYUWumzVqdoqGyEAXbPVMWesN4f",
+        "amount": "0.01",
+        "canonical_url": "lbry://@STUDIO2000HERTZ#2/Sempre-meno-invisibili---Reportage#0",
+        "claim_id": "07292e5e72ae08b662c7bc596de82ed61e3cb035",
+        "claim_op": "create",
+        "confirmations": 173478,
+        "height": 1448991,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1448991,
+          "creation_height": 1448991,
+          "creation_timestamp": 1698568984,
+          "effective_amount": "0.07889564",
+          "expiration_height": 3551391,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.06889564",
+          "take_over_height": 1448991
+        },
+        "name": "Sempre-meno-invisibili---Reportage",
+        "normalized_name": "sempre-meno-invisibili---reportage",
+        "nout": 0,
+        "permanent_url": "lbry://Sempre-meno-invisibili---Reportage#07292e5e72ae08b662c7bc596de82ed61e3cb035",
+        "short_url": "lbry://Sempre-meno-invisibili---Reportage#0",
+        "signing_channel": {
+          "address": "bGJm9CgcYUWumzVqdoqGyEAXbPVMWesN4f",
+          "amount": "0.001",
+          "canonical_url": "lbry://@STUDIO2000HERTZ#2",
+          "claim_id": "2a9d6d6141cdf13f1d5ab2d11243f3e21a12d183",
+          "claim_op": "update",
+          "confirmations": 301323,
+          "has_signing_key": false,
+          "height": 1321146,
+          "meta": {
+            "activation_height": 1321146,
+            "claims_in_channel": 30,
+            "creation_height": 1321060,
+            "creation_timestamp": 1678099029,
+            "effective_amount": "0.001",
+            "expiration_height": 3423546,
+            "is_controlling": false,
+            "reposted": 0,
+            "support_amount": "0.0",
+            "take_over_height": 1320138
+          },
+          "name": "@STUDIO2000HERTZ",
+          "normalized_name": "@studio2000hertz",
+          "nout": 0,
+          "permanent_url": "lbry://@STUDIO2000HERTZ#2a9d6d6141cdf13f1d5ab2d11243f3e21a12d183",
+          "short_url": "lbry://@STUDIO2000HERTZ#2",
+          "timestamp": 1678112335,
+          "txid": "184480114b6a961b9ca55ef5be85132aaabed9be544ce8d2611fe7fa8c0dabc5",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbs.odycdn.com/af394083b9bf77a422aabc977b1311fc.webp"
+            },
+            "description": "Canale di contenuti video vari realizzati dallo Studio 2000 Hertz: studio di produzione di audiovisivi con sede in Veneto, da molti anni attivo specialmente nel nordest italiano, ma anche nel resto d'Italia e paesi confinanti.",
+            "email": "video@studio2000hertz.it",
+            "languages": [
+              "it"
+            ],
+            "public_key": "0235c6bef387721f8b3e798918453b37d6095a15f8b83d2b2fc183e305302ef627",
+            "public_key_id": "bSvtgUHZkisb3zW36qiHDDRztusWnTvgFM",
+            "tags": [
+              "videoproduzione",
+              "video",
+              "audiovisivi",
+              "comunicazione video",
+              "documentari"
+            ],
+            "thumbnail": {
+              "url": "https://thumbs.odycdn.com/b6e88fb85ff15bb5c929a8c53132e467.webp"
+            },
+            "title": "VIDEOPRODUZIONI PROFESSIONALI E COMUNICAZIONE MULTIMEDIALE"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1698568984,
+        "txid": "45e9339b25318178d86ea79c953642739ca7a086deb9a84fbb3562586e4ec2a8",
+        "type": "claim",
+        "value": {
+          "description": "Sempre meno invisibili è un reportage realizzato da Alessandro Amori e Paolo Cassina e prodotto da Playmastermovie che racconta il successo dal basso delle proiezioni di Invisibili.\n“Centinaia di migliaia di visualizzazioni online, più di 400 proiezioni in tutta Italia e all'estero in sale attrezzate, teatri, cinema e una chiesa. Dibattiti di alto livello con medici, avvocati, giuristi e professionisti di vario genere, sindaci e rappresentanti delle forze dell'ordine, testimonianze dei danneggiati; censure di ogni tipo ma che non hanno impedito al documentario “che tutti devono vedere” di offrire un grande servizio alla collettività.”",
+          "languages": [
+            "it"
+          ],
+          "license": "None",
+          "release_time": "1698568479",
+          "source": {
+            "hash": "78f99037bd6a464ce6baf523d50ff585d2939ab32f0d3f7ebcc1ae6c2884e8b06f7580ed19e790652090cdee7d6fff0c",
+            "media_type": "video/mp4",
+            "name": "Sempre meno invisibili - Reportage.mp4",
+            "sd_hash": "9865903cca71373a88b8d1b88be5ea321a1d54fab0abf6f53cd9a528b190a6ecb890420da788bb395c6229e8db1c9b6d",
+            "size": "627319949"
+          },
+          "stream_type": "video",
+          "tags": [
+            "effetti avversi",
+            "vaccini covid effetti avversi",
+            "inganno sieri covid"
+          ],
+          "thumbnail": {
+            "url": "https://thumbs.odycdn.com/16e22d7a6dca19755fcdbd814e29e760.webp"
+          },
+          "title": "Sempre meno invisibili - Reportage",
+          "video": {
+            "duration": 5006,
+            "height": 480,
+            "width": 854
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bCpWw1ADnjQqC4fXch5fmn8TA6E3dJhem1",
+        "amount": "0.002",
+        "canonical_url": "lbry://@geopolitique-profonde#0/que-pensez-vous-de-cette-initiative#4",
+        "claim_id": "4c481b648c94d2a01babdd562984f6058ce7a124",
+        "claim_op": "create",
+        "confirmations": 81181,
+        "height": 1541288,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1541288,
+          "creation_height": 1541288,
+          "creation_timestamp": 1712755553,
+          "effective_amount": "0.46607053",
+          "expiration_height": 3643688,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.46407053",
+          "take_over_height": 1541288
+        },
+        "name": "que-pensez-vous-de-cette-initiative",
+        "normalized_name": "que-pensez-vous-de-cette-initiative",
+        "nout": 0,
+        "permanent_url": "lbry://que-pensez-vous-de-cette-initiative#4c481b648c94d2a01babdd562984f6058ce7a124",
+        "short_url": "lbry://que-pensez-vous-de-cette-initiative#4",
+        "signing_channel": {
+          "address": "bCpWw1ADnjQqC4fXch5fmn8TA6E3dJhem1",
+          "amount": "0.005",
+          "canonical_url": "lbry://@geopolitique-profonde#0",
+          "claim_id": "0de4444828156581df06501fe8bb22859f352ea6",
+          "claim_op": "update",
+          "confirmations": 118396,
+          "has_signing_key": false,
+          "height": 1504073,
+          "meta": {
+            "activation_height": 1504073,
+            "claims_in_channel": 3156,
+            "creation_height": 913195,
+            "creation_timestamp": 1613313163,
+            "effective_amount": "1.305",
+            "expiration_height": 3606473,
+            "is_controlling": true,
+            "reposted": 0,
+            "support_amount": "1.3",
+            "take_over_height": 913195
+          },
+          "name": "@geopolitique-profonde",
+          "normalized_name": "@geopolitique-profonde",
+          "nout": 0,
+          "permanent_url": "lbry://@geopolitique-profonde#0de4444828156581df06501fe8bb22859f352ea6",
+          "short_url": "lbry://@geopolitique-profonde#0",
+          "timestamp": 1707400320,
+          "txid": "c4b7682dfbc02a57b682ddd6835996e2b899467977baa2ed0d61ca51dea9f8e1",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbnails.lbry.com/banner-UCwAS7bowP5S5P44eP_f7W0Q"
+            },
+            "description": "https://geopolitique-profonde.com/\n\nGéopolitique Profonde​ décrypte l'actualité à travers des thèmes tels que l'Or et l'Argent, la Multipolarité, le Pouvoir Profond ou encore la Dédollarisation.\n\n​La ligne éditoriale est strictement indépendante ce qui nous permet de traiter nos sujets avec une saine radicalité critique.  \n\nVotre soutien est le bienvenue pour alimenter cette liberté de ton. Par exemple, avec de simples relais ou republications de nos articles et vidéos sur Internet.\n\nhttps://geopolitique-profonde.com/\n",
+            "public_key": "031227e9e4ee6e2bf33201d1884b7db81e9d8139d9d60c19055de4b67f243a4fa1",
+            "public_key_id": "bF7PA6d4U2G6WuXsQ27PphnyDBwHuc9j1i",
+            "thumbnail": {
+              "url": "https://thumbs.odycdn.com/d279e9ff778fad140db17579b9205e0c.webp"
+            },
+            "title": "GÉOPOLITIQUE PROFONDE"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1712755553,
+        "txid": "98426eccb78b17a05cae1b69e5ba8144b8e013944abed0668bdd1e5e6f28717b",
+        "type": "claim",
+        "value": {
+          "description": "#gptv #Russie #OTAN #Ukraine #Zelensky\n...\nhttps://www.youtube.com/watch?v=XYLmKyPybjM",
+          "license": "Copyrighted (contact publisher)",
+          "release_time": "1712754527",
+          "source": {
+            "hash": "e74d10cf532645499dc906971477ce56a7b6588e075986ceae10b04f2ffcf48311d143c8b288a7edb5d69643ea00cb09",
+            "media_type": "video/mp4",
+            "name": "que-pensez-vous-de-cette.mp4",
+            "sd_hash": "4a8a26febd9c90d6f0656547e5022e1f8e1f1a79656383cd33ef2bdf69956cee1db6db940fa26ada86d667a6d7bffbaf",
+            "size": "2351125"
+          },
+          "stream_type": "video",
+          "thumbnail": {
+            "url": "https://thumbnails.lbry.com/XYLmKyPybjM"
+          },
+          "title": "Que pensez-vous de cette initiative ?",
+          "video": {
+            "duration": 33,
+            "height": 854,
+            "width": 480
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bV26NxrncbmFxAfijnYXGPAKbQFMuWRH2W",
+        "amount": "0.002",
+        "canonical_url": "lbry://@Pinkibeast#6/eid-mubarak-tranding-foryou-youtuber#f",
+        "claim_id": "f78836c07501e03d5d5c2c951d41fb2ee0d03411",
+        "claim_op": "create",
+        "confirmations": 81487,
+        "height": 1540982,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1540982,
+          "creation_height": 1540982,
+          "creation_timestamp": 1712714431,
+          "effective_amount": "0.02178095",
+          "expiration_height": 3643382,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.01978095",
+          "take_over_height": 1540982
+        },
+        "name": "eid-mubarak-tranding-foryou-youtuber",
+        "normalized_name": "eid-mubarak-tranding-foryou-youtuber",
+        "nout": 0,
+        "permanent_url": "lbry://eid-mubarak-tranding-foryou-youtuber#f78836c07501e03d5d5c2c951d41fb2ee0d03411",
+        "short_url": "lbry://eid-mubarak-tranding-foryou-youtuber#f",
+        "signing_channel": {
+          "address": "bV26NxrncbmFxAfijnYXGPAKbQFMuWRH2W",
+          "amount": "0.005",
+          "canonical_url": "lbry://@Pinkibeast#6",
+          "claim_id": "6f149c874871ff56531cd02294aa6cede528476a",
+          "claim_op": "update",
+          "confirmations": 14780,
+          "has_signing_key": false,
+          "height": 1607689,
+          "meta": {
+            "activation_height": 1607689,
+            "claims_in_channel": 809,
+            "creation_height": 1395151,
+            "creation_timestamp": 1689954323,
+            "effective_amount": "0.109589",
+            "expiration_height": 3710089,
+            "is_controlling": true,
+            "reposted": 0,
+            "support_amount": "0.104589",
+            "take_over_height": 1395151
+          },
+          "name": "@Pinkibeast",
+          "normalized_name": "@pinkibeast",
+          "nout": 0,
+          "permanent_url": "lbry://@Pinkibeast#6f149c874871ff56531cd02294aa6cede528476a",
+          "short_url": "lbry://@Pinkibeast#6",
+          "timestamp": 1722146978,
+          "txid": "7f35d655f4501cbfa0040a15883560a7dcc5d658c53e22283d920636be638337",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbnails.lbry.com/banner-UC1k2Saa7x63tmJ-fUpMS4HA"
+            },
+            "description": "\"Welcome to Pinki prank 420! Your go-to destination for love and other topic. Subscribe for weekly videos packed with tips, and fun! Join our community today!\"",
+            "languages": [
+              "en"
+            ],
+            "public_key": "02bdf8c0d6b4690a744f8482bcba4a9d19273a9882c7b1ad85d42d1f812694ef3d",
+            "public_key_id": "bWjwDarzw7keBdwCAJj47acQRfByQGq1bK",
+            "thumbnail": {
+              "url": "https://thumbnails.lbry.com/UC1k2Saa7x63tmJ-fUpMS4HA"
+            },
+            "title": "Pinki prank 420"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1712714431,
+        "txid": "256f4cdbfeb7f640694385205202d5952bca06d56f2fc8fd5f9c583e2352499c",
+        "type": "claim",
+        "value": {
+          "description": "Video from Muhammad Arslan\n...\nhttps://www.youtube.com/watch?v=U89kwsmzgE8",
+          "license": "Copyrighted (contact publisher)",
+          "release_time": "1712713437",
+          "source": {
+            "hash": "7816e8498bd7de943e23e219aa3170e0be48ef4859a0ce2d367d9e8d64e204f4ac4c472817f3d333e6c792ec517b7208",
+            "media_type": "video/mp4",
+            "name": "eid-mubarak-tranding-foryou.mp4",
+            "sd_hash": "d1d9706d266c53704b0d47e16d86e1db441811469c4c071f21d21c113207d86a08da59fee841d3c8f5502b2252b0771c",
+            "size": "1427089"
+          },
+          "stream_type": "video",
+          "thumbnail": {
+            "url": "https://thumbnails.lbry.com/U89kwsmzgE8"
+          },
+          "title": "eid Mubarak #tranding #foryou #youtuber #youtube #ytstudio #eid #eidmubarak #eidspecial #eid2024 #1k",
+          "video": {
+            "duration": 15,
+            "height": 640,
+            "width": 360
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bCtAEHdCNB91DCtMRSwrFZFmaejUYKA7fq",
+        "amount": "0.002",
+        "canonical_url": "lbry://@leloup5.1#d/resident-evil-zero-y'a-t-il-vraiment-des#c",
+        "claim_id": "ce16af05aa4f4dc464aaa17077cc3ca60c81d7aa",
+        "claim_op": "create",
+        "confirmations": 81075,
+        "height": 1541394,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1541394,
+          "creation_height": 1541394,
+          "creation_timestamp": 1712769230,
+          "effective_amount": "0.05985478",
+          "expiration_height": 3643794,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.05785478",
+          "take_over_height": 1541394
+        },
+        "name": "resident-evil-zero-y'a-t-il-vraiment-des",
+        "normalized_name": "resident-evil-zero-y'a-t-il-vraiment-des",
+        "nout": 0,
+        "permanent_url": "lbry://resident-evil-zero-y'a-t-il-vraiment-des#ce16af05aa4f4dc464aaa17077cc3ca60c81d7aa",
+        "short_url": "lbry://resident-evil-zero-y'a-t-il-vraiment-des#c",
+        "signing_channel": {
+          "address": "bNTeYQiRhwZnYrTUSMjaz5n5F2LwEz7PXm",
+          "amount": "0.01",
+          "canonical_url": "lbry://@leloup5.1#d",
+          "claim_id": "d12bd33613d0fdb7d8ef8ee202fa237e93204d0e",
+          "claim_op": "update",
+          "confirmations": 400399,
+          "has_signing_key": false,
+          "height": 1222070,
+          "meta": {
+            "activation_height": 1222070,
+            "claims_in_channel": 293,
+            "creation_height": 1157283,
+            "creation_timestamp": 1652164552,
+            "effective_amount": "0.01",
+            "expiration_height": 3324470,
+            "is_controlling": true,
+            "reposted": 0,
+            "support_amount": "0.0",
+            "take_over_height": 1157283
+          },
+          "name": "@leloup5.1",
+          "normalized_name": "@leloup5.1",
+          "nout": 0,
+          "permanent_url": "lbry://@leloup5.1#d12bd33613d0fdb7d8ef8ee202fa237e93204d0e",
+          "short_url": "lbry://@leloup5.1#d",
+          "timestamp": 1662565534,
+          "txid": "c97c55d433a06823a32953e7f3124f2805400a67a22256a6a13d6c8474a3281d",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbnails.lbry.com/banner-UCTbZF65PcP3b7kufEzDBUow"
+            },
+            "description": "La forêt du Dolby est un endroit mystérieux qui ressemble à ceux que l'on connait mais...pas tout à fait...C'est la nostalgie qui y prime regroupant tous les héros des jeux vidéo toute époque confondue et la culture pop incroyable qui, dans notre cerveau, permet la diffusion d'un bien-être qui soulage. Le tout sans tabou parce qu'être coincé du fion, c'est être malheureux toute sa vie ! Le Loup 5.1, aux fins fonds de sa cabane, vous emmène pour un voyage...au delà de vos rêves !\n\nMail : leloup5.1@hotmail.com",
+            "languages": [
+              "fr"
+            ],
+            "public_key": "0392de53db125f993e344c1f11f1443ade84bb766d6797df41636567f8fb9349ba",
+            "public_key_id": "bEEyzKiiDXurqsY7REfnNV2nXjVhW7A3Bm",
+            "thumbnail": {
+              "url": "https://thumbnails.lbry.com/UCTbZF65PcP3b7kufEzDBUow"
+            },
+            "title": "LeLoup 5.1"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1712769230,
+        "txid": "cea79b491146520b40c12b6187739e92268c69248ada2125f7e789f453665c66",
+        "type": "claim",
+        "value": {
+          "description": "Début d'arc narratif en 3 petits épisodes : Pepilla débarque, c'est la cousine du Loup 5.1, un personnage haut en couleurs mais parfois incohérente et illogique. De quoi reparler de Resident Evil Zéro, le jeu où l'on interprète à la fois Rebecca et Billy !\n\n_______________Pour Soutenir Les Productions de la Chaîne_______________\n\n🐺 Rejoindre la chaîne : https://www.youtube.com/channel/UCTbZF65PcP3b7kufEzDBUow/join\n💲Tipeee : https://fr.tipeee.com/leloup-5-1\n📧 Contact Mail (pour du Professionnel uniquement) : leloup5.1@hotmail.com\n\nLien du Discord du Dolby : https://discord.gg/G9bRVyUSG2\n\n_______________Dessins \u0026 3D_______________\n\n🧱Designer 3D Xaxon1987 : https://www.instagram.com/xaxon1987/?hl=fr\n✏️Graphiste Dessins : https://www.instagram.com/toyxic_donnie/?hl=fr\n\n0:00 • Intro\n\n#residentevil0 #capcom #logique\n...\nhttps://www.youtube.com/watch?v=3cBeov7uEq4",
+          "languages": [
+            "fr"
+          ],
+          "license": "Copyrighted (contact publisher)",
+          "release_time": "1712768401",
+          "source": {
+            "hash": "136caa4c3ae2aac257422d96a701ca10752bc57f51c4979626abe45500bf365286af43ea1768926e39cbc26898737a0a",
+            "media_type": "video/mp4",
+            "name": "resident-evil-zero-y-a-t-il.mp4",
+            "sd_hash": "1eb92e02aad75bd0bd06f3b1f89fc7a2924dffd06977606c9f118e2b1ce1f498eda77b7a3746f90c80b41ff42dcfaf7f",
+            "size": "237300644"
+          },
+          "stream_type": "video",
+          "tags": [
+            "chronique sur resident evil 0",
+            "divertissement",
+            "nostalgie",
+            "rebecca resident evil",
+            "resident evil zero",
+            "resident evil zero remake",
+            "retrogaming",
+            "train resident evil"
+          ],
+          "thumbnail": {
+            "url": "https://thumbnails.lbry.com/3cBeov7uEq4"
+          },
+          "title": "Resident Evil Zero - Y'A-T-IL VRAIMENT DES INCOHÉRENCES ?",
+          "video": {
+            "duration": 792,
+            "height": 1080,
+            "width": 1920
+          }
+        },
+        "value_type": "stream"
+      },
+      {
+        "address": "bDF4tmnCukmx9o6xVTZddfR99UXqRbbHBN",
+        "amount": "0.002",
+        "canonical_url": "lbry://@TartarusCastZije#a/felvídci!!!-hry-zrozené-aprílem-a#2",
+        "claim_id": "2f087aee3174a16a97da574181b1f3bef372b7a5",
+        "claim_op": "create",
+        "confirmations": 83374,
+        "height": 1539095,
+        "is_channel_signature_valid": true,
+        "meta": {
+          "activation_height": 1539095,
+          "creation_height": 1539095,
+          "creation_timestamp": 1712475274,
+          "effective_amount": "0.09820542",
+          "expiration_height": 3641495,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "0.09620542",
+          "take_over_height": 1539095
+        },
+        "name": "felvídci!!!-hry-zrozené-aprílem-a",
+        "normalized_name": "felvídci!!!-hry-zrozené-aprílem-a",
+        "nout": 0,
+        "permanent_url": "lbry://felvídci!!!-hry-zrozené-aprílem-a#2f087aee3174a16a97da574181b1f3bef372b7a5",
+        "short_url": "lbry://felvídci!!!-hry-zrozené-aprílem-a#2",
+        "signing_channel": {
+          "address": "bDF4tmnCukmx9o6xVTZddfR99UXqRbbHBN",
+          "amount": "0.005",
+          "canonical_url": "lbry://@TartarusCastZije#a",
+          "claim_id": "a9e8796b98be3facc15d3a84535cfb7ff14071f1",
+          "claim_op": "update",
+          "confirmations": 695653,
+          "has_signing_key": false,
+          "height": 926816,
+          "meta": {
+            "activation_height": 926816,
+            "claims_in_channel": 674,
+            "creation_height": 925765,
+            "creation_timestamp": 1615286469,
+            "effective_amount": "26.105",
+            "expiration_height": 3029216,
+            "is_controlling": true,
+            "reposted": 0,
+            "support_amount": "26.1",
+            "take_over_height": 925765
+          },
+          "name": "@TartarusCastZije",
+          "normalized_name": "@tartaruscastzije",
+          "nout": 0,
+          "permanent_url": "lbry://@TartarusCastZije#a9e8796b98be3facc15d3a84535cfb7ff14071f1",
+          "short_url": "lbry://@TartarusCastZije#a",
+          "timestamp": 1615455953,
+          "txid": "feb78058e077d5876fc655eb78759975b0d7b51a611c41247a0edbb8c62d8bec",
+          "type": "claim",
+          "value": {
+            "cover": {
+              "url": "https://thumbnails.lbry.com/banner-UCF6uqXDoi77rmxEFKxkTnJQ"
+            },
+            "description": "Toto je záloha, kdyby se stalo to nejhorší.\n\nJsme česká herní skupina, která se snaží informovat a recenzovat a ve stejný čas přiblížit zážitky z her a hry obecně za využití desítek let v průmyslu. Pro širší komunitu Čechů i Slováků připravujeme videa i seriály s živým komentářem. Hry komentujeme jednotlivě, či ve více lidech česky (za použití anglických termínů) pro neanglicky hovořící hráče i nehráče. Nahrávací software je OBS, stejně tak pro Live stream, plochu a 2D záležitosti \n\nV případě zájmu o určité hry, případně dotazy, nápady (novinky)... pište na kanálové fórum (http://tartaruscast.cz) nebo TheTarcast@gmail.com\n",
+            "public_key": "03caaef59331d25e9b0573430a3b938cee9c266da49c8137be22e1e726d2350510",
+            "public_key_id": "bNxJ8rjZBJLpgpDAjHPZapABjGMGRDzwHs",
+            "thumbnail": {
+              "url": "https://thumbnails.lbry.com/UCF6uqXDoi77rmxEFKxkTnJQ"
+            },
+            "title": "Tartarus Cast Žije"
+          },
+          "value_type": "channel"
+        },
+        "timestamp": 1712475274,
+        "txid": "6cb3c76e2fe7e2477d21584c2aa31752f9d7bd716cbd5c4bd4f6f0f517fcd801",
+        "type": "claim",
+        "value": {
+          "description": "00:00 START\n02:09 HUMBLE DUBEN 2024 \nhttps://www.humblebundle.com/?partner=tartaruscast\n13:50 Red vs Blue: Restoration\n16:35 MechWarrior 5 CLANS Gameplay\n23:11 FELVIDEK\n30:00 Incursion Red River Early Access\n35:10 Aprílové hry, co jsou skutečné!\nPO'ed, ArmA Tiny Wars, Goat Simulator 3 Anniversary\n\n#hry #Gaming #Novinky\n\nPodpořte TARC zde: \nhttp://www.pickey.cz/tartaruscast\nhttps://streamlabs.com/tartaruscast/tip\nhttp://www.patreon.com/tartaruscast\n\nStreamuje se na www.twitch.tv/tartaruscast\n...\nhttps://www.youtube.com/watch?v=QZTsQmuRxOk",
+          "languages": [
+            "en"
+          ],
+          "license": "Copyrighted (contact publisher)",
+          "release_time": "1712474279",
+          "source": {
+            "hash": "03b2a9014e1045ea0110ada027f59a103318097f13356ddeabf82723bd022d139711cb2f9186be3141c5cbdf9a6e7365",
+            "media_type": "video/mp4",
+            "name": "felv-dci-hry-zrozen-apr-lem-a.mp4",
+            "sd_hash": "895dbac58b7aefad82384cfa4654c2a64c5ad21911480311b076933c22784559a7148773239b2ed4cf1adb78c1786756",
+            "size": "1010698193"
+          },
+          "stream_type": "video",
+          "tags": [
+            "alfaverze",
+            "beta version",
+            "betaverze",
+            "cesky",
+            "cz-sk",
+            "cz/sk",
+            "czech",
+            "hry",
+            "ludologie",
+            "predvadeni",
+            "recenze",
+            "tarc",
+            "tartarus cast",
+            "tartarus cast zije",
+            "thorvald",
+            "thorvald angersson",
+            "tomas",
+            "trailery",
+            "ukazky"
+          ],
+          "thumbnail": {
+            "url": "https://thumbnails.lbry.com/QZTsQmuRxOk"
+          },
+          "title": "Felvídci!!! Hry zrozené Aprílem a návrat Red vs Blue! - Game Maršál 123",
+          "video": {
+            "duration": 2549,
+            "height": 1080,
+            "width": 1920
+          }
+        },
+        "value_type": "stream"
+      }
+    ],
+    "page": 1,
+    "page_size": 20,
+    "total_items": 1000,
+    "total_pages": 50
+  },
+  "id": 0
+}

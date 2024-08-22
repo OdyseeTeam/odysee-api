@@ -3,6 +3,7 @@ package arweave
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"regexp"
 	"testing"
 
@@ -12,10 +13,13 @@ import (
 )
 
 func TestReplaceAssetUrls(t *testing.T) {
+	t.Skip("skipping this in automated mode as it requires extra setup on arfleet")
+
 	require := require.New(t)
 	assert := assert.New(t)
 
-	f, err := os.ReadFile("../../claims.json")
+	absPath, _ := filepath.Abs("./testdata/claim_search.json")
+	f, err := os.ReadFile(absPath)
 	require.NoError(err)
 	var resp jsonrpc.RPCResponse
 	require.NoError(json.Unmarshal(f, &resp))
@@ -30,10 +34,13 @@ func TestReplaceAssetUrls(t *testing.T) {
 }
 
 func TestReplaceAssetUrl(t *testing.T) {
+	t.Skip("skipping this in automated mode as it requires extra setup on arfleet")
+
 	require := require.New(t)
 	assert := assert.New(t)
 
-	f, err := os.ReadFile("../../resolve.json")
+	absPath, _ := filepath.Abs("./testdata/resolve.json")
+	f, err := os.ReadFile(absPath)
 	require.NoError(err)
 	var resp jsonrpc.RPCResponse
 	require.NoError(json.Unmarshal(f, &resp))
