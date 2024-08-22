@@ -359,7 +359,7 @@ func Test_fetchFileWithRetries(t *testing.T) {
 		t.Parallel()
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(600)
+			w.WriteHeader(500)
 		}))
 		defer ts.Close()
 
@@ -371,7 +371,7 @@ func Test_fetchFileWithRetries(t *testing.T) {
 
 		assert.NotNil(t, err)
 		assert.Nil(t, f)
-		assert.Contains(t, err.Error(), "remote server returned non-OK status 600")
+		assert.Contains(t, err.Error(), "unexpected HTTP status code 500")
 	})
 
 	t.Run("FailedWithClosedConnection", func(t *testing.T) {
