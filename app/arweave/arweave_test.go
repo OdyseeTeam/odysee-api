@@ -51,3 +51,13 @@ func TestReplaceAssetUrl(t *testing.T) {
 	require.NoError(err)
 	assert.Regexp(`http://odycdn.com/explore/\w{64}\?filename=\w{64}\.jpg`, string(out))
 }
+
+func TestGetClaimUrl(t *testing.T) {
+	// t.Skip("skipping this in automated mode as it requires extra setup on arfleet")
+
+	require := require.New(t)
+	assert := assert.New(t)
+	url, err := GetClaimUrl("https://cdnhost.com", "91e8caf6d1e740aaa6235d4eb81b21ec21cb2652")
+	require.NoError(err)
+	assert.Regexp(`^https://cdnhost.com/explore/\w+\?data_item_id=\w+&filename=\w+.mp4$`, url)
+}

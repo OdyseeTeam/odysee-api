@@ -30,7 +30,7 @@ func ReplaceAssetUrls(baseUrl string, structure any, collPath, itemPath string) 
 		return true
 	})
 
-	resolver := NewAssetResolver(baseUrl)
+	resolver := NewArfleetResolver(baseUrl)
 	subsUrls, err := resolver.ResolveUrls(origUrls)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func ReplaceAssetUrl(baseUrl string, structure any, path string) (any, error) {
 
 	origUrl := gjson.GetBytes(jsonData, path).String()
 
-	resolver := NewAssetResolver(baseUrl)
+	resolver := NewArfleetResolver(baseUrl)
 	subsUrls, err := resolver.ResolveUrls([]string{origUrl})
 
 	if err != nil {
@@ -72,7 +72,7 @@ func ReplaceAssetUrl(baseUrl string, structure any, path string) (any, error) {
 }
 
 func GetClaimUrl(baseUrl, claim_id string) (string, error) {
-	resolver := NewAssetResolver(baseUrl)
+	resolver := NewArfleetResolver(baseUrl)
 	r, err := resolver.ResolveClaims([]string{claim_id})
 	if err != nil {
 		return "", err
