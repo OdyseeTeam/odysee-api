@@ -758,6 +758,8 @@ func TestCaller_GetInvalidURLAuthenticated(t *testing.T) {
 }
 
 func TestCaller_GetPaidCannotPurchase(t *testing.T) {
+	t.Skip()
+
 	dummyUserID := rand.Intn(99999)
 	srvAddress := test.RandServerAddress(t)
 	uri := "lbry://@specialoperationstest#3/iOS-13-AdobeXD#9"

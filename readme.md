@@ -83,18 +83,22 @@ Make sure you have `lbrynet`, `postgres` and `postgres-collector` containers run
 
 ## Building Docker images
 
-Make sure you have Go 1.22 installed.
+Make sure you have Go 1.23 installed.
 
-Then build the binary, create a docker image locally and run off it:
+Then build the binary, create a docker image locally:
 
 ```
 make oapi && make oapi_image
 ```
 
-**Note:** If your default `go` version is different from 1.22, you can supply alternative Go binary path to `make` commands:
+## Tools used in development
+
+* [golangci-lint](https://golangci-lint.run/welcome/install/#local-installation)
+
+* govulncheck
 
 ```
-go=1.22.1 make oapi
+go install golang.org/x/vuln/cmd/govulncheck@latest
 ```
 
 ## Versioning

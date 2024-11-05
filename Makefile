@@ -19,15 +19,6 @@ prepare_test:
 		$(go) install $($(go) list -tags tools -f '{{range $_, $p := .Imports}}{{$p}} {{end}}')
 	$(go) run . db_migrate_up
 
-.PHONY: test_circleci
-test_circleci:
-	scripts/wait_for_wallet.sh
-	cd tools &&\
-		$(go) install $($(go) list -tags tools -f '{{range $_, $p := .Imports}}{{$p}} {{end}}')
-	$(go) run . db_migrate_up
-	$(go) test -covermode=count -coverprofile=coverage.out ./...
-	goveralls -coverprofile=coverage.out -service=circle-ci -ignore=models/ -repotoken $(COVERALLS_TOKEN)
-
 .PHONY: clean
 clean:
 	rm -rf ./dist
