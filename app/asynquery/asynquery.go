@@ -13,6 +13,7 @@ import (
 
 	"github.com/OdyseeTeam/odysee-api/app/geopublish/metrics"
 	"github.com/OdyseeTeam/odysee-api/app/query"
+	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/internal/tasks"
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
@@ -232,8 +233,9 @@ func (m *CallManager) robustCall(ctx context.Context, aq *models.Asynquery, patc
 		log.Info("error getting sdk address for user")
 		return asynq.SkipRetry
 	}
+	sdkAddress := u.R.LbrynetServer.Address
 
-	caller := query.NewCaller(u.R.LbrynetServer.Address, aq.UserID)
+	caller := query.NewCaller(sdkAddress, aq.UserID)
 
 	t := time.Now()
 
@@ -261,18 +263,23 @@ func (m *CallManager) robustCall(ctx context.Context, aq *models.Asynquery, patc
 	}
 	delete(pp, "file_path")
 
-	res, err := caller.Call(context.TODO(), request)
+	ctx = query.AttachOrigin(ctx, "asynquery")
+	res, err := caller.Call(ctx, request)
 	metrics.ProcessingTime.WithLabelValues(metrics.LabelProcessingQuery).Observe(float64(time.Since(t)))
-
 	QueriesSent.Inc()
+
 	if err != nil {
 		QueriesFailed.Inc()
-		log.Warn(sdkNetError.Error(), "err", err)
-		resErrMsg := err.Error()
-		log.Warn("asynquery failed", "err", resErrMsg)
-		m.finalizeQueryRecord(ctx, aq.ID, nil, err.Error())
+		log.Warn("asynquery request failed", "err", err)
+		monitor.ErrorToSentry(fmt.Errorf("asynquery request failed: %w", err), map[string]string{
+			"user_id":  fmt.Sprintf("%d", u.ID),
+			"endpoint": sdkAddress,
+			"method":   request.Method,
+		})
+
+		err := m.finalizeQueryRecord(ctx, aq.ID, nil, err.Error())
 		if err != nil {
-			log.Warn("failed to finalize query record", "err", err)
+			log.Warn("failed to finalize asynquery record", "err", err)
 		}
 		return sdkNetError
 	}
