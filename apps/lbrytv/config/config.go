@@ -143,6 +143,10 @@ func GetArfleetCDN() string {
 	return Config.Viper.GetString("ArfleetCDN")
 }
 
+func GetArfleetEnabled() bool {
+	return Config.Viper.GetBool("ArfleetEnabled")
+}
+
 // GetReflectorUpstream returns config map for publish reflector server.
 func GetReflectorUpstream() map[string]string {
 	return Config.Viper.GetStringMapString("ReflectorUpstream")

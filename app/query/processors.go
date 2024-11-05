@@ -264,14 +264,15 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		contentURL = "https://" + stConfig["host"] + fmt.Sprintf(stConfig["startpath"], claim.ClaimID, sdHash)
 	}
 
-	// Inject Arfleet URL
-	arUrl, err := arweave.GetClaimUrl(config.GetArfleetCDN(), claim.ClaimID)
-	if err != nil || arUrl == "" {
-		responseResult[ParamStreamingUrl] = contentURL
-	} else {
-		responseResult[ParamStreamingUrl] = arUrl
+	if config.GetArfleetEnabled() {
+		// Inject Arfleet URL
+		arUrl, err := arweave.GetClaimUrl(config.GetArfleetCDN(), claim.ClaimID)
+		if err != nil || arUrl == "" {
+			responseResult[ParamStreamingUrl] = contentURL
+		} else {
+			responseResult[ParamStreamingUrl] = arUrl
+		}
 	}
-
 	response.Result = responseResult
 	return response, nil
 }
