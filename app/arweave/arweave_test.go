@@ -53,7 +53,7 @@ func TestReplaceAssetUrl(t *testing.T) {
 }
 
 func TestGetClaimUrl(t *testing.T) {
-	// t.Skip("skipping this in automated mode as it requires extra setup on arfleet")
+	t.Skip("skipping this in automated mode as it requires extra setup on arfleet")
 
 	require := require.New(t)
 	assert := assert.New(t)
