@@ -34,12 +34,7 @@ go install github.com/volatiletech/sqlboiler/drivers/sqlboiler-psql
 
 `go run .`
 
-**5. Clone [lbry-desktop](https://github.com/lbryio/lbry-desktop/) repo, if you don't have it**
-
-```
-cd ..
-git clone git@github.com:lbryio/lbry-desktop.git
-```
+**5. Clone [odysee-frontend](https://github.com/OdyseeTeam/odysee-frontend) repo, if you don't have it**
 
 **6. Launch UI in lbry-desktop repo folder**
 
@@ -88,20 +83,22 @@ Make sure you have `lbrynet`, `postgres` and `postgres-collector` containers run
 
 ## Building Docker images
 
-Make sure you have Go 1.22 installed.
+Make sure you have Go 1.23 installed.
 
-Then build the binary, create a docker image locally and run off it:
+Then build the binary, create a docker image locally:
 
 ```
 make oapi && make oapi_image
 ```
 
-Check readme files to see available builds for other services like `forklift` and `uploads`.
+## Tools used in development
 
-**Note:** If your default `go` version is different from 1.22, you can supply alternative Go binary path to `make` commands:
+* [golangci-lint](https://golangci-lint.run/welcome/install/#local-installation)
+
+* govulncheck
 
 ```
-go=1.22.1 make oapi
+go install golang.org/x/vuln/cmd/govulncheck@latest
 ```
 
 ## Versioning

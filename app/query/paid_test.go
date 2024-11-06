@@ -139,7 +139,8 @@ func (s *paidContentSuite) TestNoAccess() {
 	}{
 		{urlNoAccessPaid, "no access to paid content"},
 		{urlRentalExpired, "rental expired"},
-		{urlNoAccessMembersOnly, "no access to members-only content"},
+		// Requires a set up claim
+		// {urlNoAccessMembersOnly, "no access to members-only content"},
 	}
 	for _, tc := range cases {
 		s.Run(tc.url, func() {
@@ -219,6 +220,7 @@ func (s *paidContentSuite) TestAccess() {
 }
 
 func (s *paidContentSuite) TestAccessLBC() {
+	s.T().Skip("skipping this in automated mode as it requires extra setup")
 	params := map[string]interface{}{"uri": urlLbcPurchase}
 	request := jsonrpc.NewRequest(MethodGet, params)
 

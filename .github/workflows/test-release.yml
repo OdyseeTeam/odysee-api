@@ -15,13 +15,13 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: FedericoCarboni/setup-ffmpeg@v2
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: '1.22.x'
+          go-version: '1.23'
         id: go
 
       - name: Retrieve release details
@@ -78,12 +78,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: '1.22.x'
+          go-version: '1.23'
         id: go
 
       - run: git branch
@@ -91,13 +91,13 @@ jobs:
       - name: Retrieve release details
         id: release
         run: |
-          echo "APP_NAME=$(git describe --tags|sed -e 's/\-v.*//')" >> $GITHUB_OUTPUT
-          echo "APP_VERSION=$(git describe --tags|sed 's/api-v\([0-9.]*\)-.*/\1/')" >> $GITHUB_OUTPUT
+          echo "APP_NAME=$(git describe --tags|sed -e 's/\-v.*//')" >> $GITHUB_ENV
+          echo "APP_VERSION=$(git describe --tags --match 'api-v*'|sed 's/api-v\([0-9.]*\)/\1/')" >> $GITHUB_ENV
 
       - name: Release details
         run: |
-            echo "::group::${{ steps.release.outputs.APP_NAME }}"
-            echo "version ${{ steps.release.outputs.APP_VERSION }}"
+            echo "::group::${{ env.APP_NAME }}"
+            echo "version ${{ env.APP_VERSION }}"
             echo "env ${{ github.ref }}"
             echo "::endgroup::"
 
@@ -110,21 +110,21 @@ jobs:
       # odysee-api deployment
 
       - name: Build odysee-api
-        if: steps.release.outputs.APP_NAME == 'api'
+        if: env.APP_NAME == 'api'
         run: make oapi
 
       - name: Build and push odysee-api docker image
-        if: steps.release.outputs.APP_NAME == 'api'
+        if: env.APP_NAME == 'api'
         uses: docker/build-push-action@v2
         with:
           push: true
           context: .
           tags: |
-            odyseeteam/odysee-${{ steps.release.outputs.APP_NAME }}:latest
-            odyseeteam/odysee-${{ steps.release.outputs.APP_NAME }}:${{ steps.release.outputs.APP_VERSION }}
+            odyseeteam/odysee-${{ env.APP_NAME }}:latest
+            odyseeteam/odysee-${{ env.APP_NAME }}:${{ env.APP_VERSION }}
 
       - name: Deploy odysee-api
-        if: steps.release.outputs.APP_NAME == 'api'
+        if: env.APP_NAME == 'api'
         uses: octokit/request-action@v2.x
         id: deploy-odysee-api
         env:
@@ -134,29 +134,29 @@ jobs:
           repository: odyseeteam/misc-deployment
           event_type: deploy-odysee
           client_payload: |
-            tag: ${{ steps.release.outputs.APP_VERSION }}
+            tag: ${{ env.APP_VERSION }}
             ref: ${{ github.ref }}
             service: odysee-api
 
       # Watchman deployment
 
       - name: Build watchman
-        if: steps.release.outputs.APP_NAME == 'watchman'
+        if: env.APP_NAME == 'watchman'
         run: make watchman
 
       - name: Build watchman docker image
-        if: steps.release.outputs.APP_NAME == 'watchman'
+        if: env.APP_NAME == 'watchman'
         uses: docker/build-push-action@v2
         with:
           push: true
-          context: apps/${{ steps.release.outputs.APP_NAME }}/
+          context: apps/${{ env.APP_NAME }}/
           tags: |
-            odyseeteam/${{ steps.release.outputs.APP_NAME }}:latest
-            odyseeteam/${{ steps.release.outputs.APP_NAME }}:${{ steps.release.outputs.APP_VERSION }}
-          file: apps/${{ steps.release.outputs.APP_NAME }}/Dockerfile
+            odyseeteam/${{ env.APP_NAME }}:latest
+            odyseeteam/${{ env.APP_NAME }}:${{ env.APP_VERSION }}
+          file: apps/${{ env.APP_NAME }}/Dockerfile
 
       - name: Deploy watchman
-        if: steps.release.outputs.APP_NAME == 'watchman'
+        if: env.APP_NAME == 'watchman'
         uses: octokit/request-action@v2.x
         id: deploy-watchman
         env:
@@ -166,6 +166,6 @@ jobs:
           repository: OdyseeTeam/misc-deployment
           event_type: deploy-odysee
           client_payload: |
-            tag: ${{ steps.release.outputs.APP_VERSION }}
+            tag: ${{ env.APP_VERSION }}
             ref: ${{ github.ref }}
-            service: ${{ steps.release.outputs.APP_NAME }}
+            service: ${{ env.APP_NAME }}

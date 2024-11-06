@@ -136,9 +136,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 
 	c.Cache = qCache
 
-	metrics.ProxyCallCounter.WithLabelValues(rpcReq.Method, c.Endpoint(), origin).Inc()
 	rpcRes, err := c.Call(r.Context(), rpcReq)
-	metrics.ProxyCallDurations.WithLabelValues(rpcReq.Method, c.Endpoint(), origin).Observe(c.Duration)
 
 	if err != nil {
 		writeResponse(w, rpcerrors.ToJSON(err))
@@ -154,8 +152,6 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		}
 		monitor.ErrorToSentry(err, map[string]string{"request": fmt.Sprintf("%+v", rpcReq), "response": fmt.Sprintf("%+v", rpcRes)})
 		observeFailure(metrics.GetDuration(r), rpcReq.Method, metrics.FailureKindNet)
-		metrics.ProxyCallFailedDurations.WithLabelValues(rpcReq.Method, c.Endpoint(), origin, metrics.FailureKindNet).Observe(c.Duration)
-		metrics.ProxyCallFailedCounter.WithLabelValues(rpcReq.Method, c.Endpoint(), origin, metrics.FailureKindNet).Inc()
 		logger.Log().Errorf("error calling lbrynet: %v, request: %+v", err, rpcReq)
 		return
 	}

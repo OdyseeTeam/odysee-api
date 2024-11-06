@@ -1,0 +1,59 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "lbry://@MySillyReactions#d1ae6a9097b44691d318a5bfc6dc1240311c75e2": {
+      "address": "bN7RZQAUbQPJb3gtDYAGe96j9ifqydR56S",
+      "amount": "0.005",
+      "canonical_url": "lbry://@MySillyReactions#d",
+      "claim_id": "d1ae6a9097b44691d318a5bfc6dc1240311c75e2",
+      "claim_op": "update",
+      "confirmations": 82454,
+      "has_signing_key": false,
+      "height": 1540061,
+      "meta": {
+        "activation_height": 1540061,
+        "claims_in_channel": 162,
+        "creation_height": 1539258,
+        "creation_timestamp": 1712496693,
+        "effective_amount": "0.005",
+        "expiration_height": 3642461,
+        "is_controlling": true,
+        "reposted": 0,
+        "support_amount": "0.0",
+        "take_over_height": 1539258
+      },
+      "name": "@MySillyReactions",
+      "normalized_name": "@mysillyreactions",
+      "nout": 0,
+      "permanent_url": "lbry://@MySillyReactions#d1ae6a9097b44691d318a5bfc6dc1240311c75e2",
+      "short_url": "lbry://@MySillyReactions#d",
+      "timestamp": 1712594133,
+      "txid": "d3b28cf6710788bb73c2165c19328c7762fb5e273241089f0db7974dc28861c6",
+      "type": "claim",
+      "value": {
+        "cover": {
+          "url": "https://thumbnails.lbry.com/banner-UCl7NKDdDxrxdWPEb_ezVYJg"
+        },
+        "description": "As the channel name suggest I offer my silly reactions with a twist of fun.\n\nSilly Reactions on:\nMovie Trailers\nFilm Songs, Reviews\nRumors Talks,\nFunny Videos\n\n\u0026 More important heart-to-heart live talks with our dear members. \n\nFollow-on Instagram: @my_sillyreactions\n\nFor any feedback mysillyreactions@gmail.com\n",
+        "languages": [
+          "en"
+        ],
+        "public_key": "03d29c87bb2ae3f83be70003c9ed7fd23598c9c2ea56fc7423fcd23251de1bf29d",
+        "public_key_id": "bJiBUzH3JiTiXy7jMEgvPRB9HduxHmFHZB",
+        "tags": [
+          "movie trailers",
+          "trailer reactions",
+          "funny reactions",
+          "silly reactions",
+          "telugu movie reactions"
+        ],
+        "thumbnail": {
+          "url": "https://thumbnails.lbry.com/UCl7NKDdDxrxdWPEb_ezVYJg"
+        },
+        "title": "My Silly Reactions"
+      },
+      "value_type": "channel"
+    }
+  },
+  "id": 0
+}

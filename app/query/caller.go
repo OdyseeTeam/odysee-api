@@ -33,14 +33,6 @@ const (
 	AllMethodsHook = ""
 )
 
-type contextKey string
-
-var (
-	contextKeyQuery    = contextKey("query")
-	contextKeyResponse = contextKey("response")
-	contextKeyLogEntry = contextKey("log-entry")
-)
-
 type HTTPRequester interface {
 	Do(req *http.Request) (res *http.Response, err error)
 }
@@ -50,36 +42,11 @@ type HTTPRequester interface {
 // Hooks can modify both query and response, as well as perform additional queries via supplied Caller.
 // If nil is returned instead of *jsonrpc.RPCResponse, original response is returned.
 type Hook func(*Caller, context.Context) (*jsonrpc.RPCResponse, error)
+
 type hookEntry struct {
 	method   string
 	function Hook
 	name     string
-}
-
-func AttachToContext(ctx context.Context, query *Query) context.Context {
-	return context.WithValue(ctx, contextKeyQuery, query)
-}
-
-func GetFromContext(ctx context.Context) *Query {
-	return ctx.Value(contextKeyQuery).(*Query)
-}
-
-func WithResponse(ctx context.Context, response *jsonrpc.RPCResponse) context.Context {
-	return context.WithValue(ctx, contextKeyResponse, response)
-}
-
-func GetResponse(ctx context.Context) *jsonrpc.RPCResponse {
-	return ctx.Value(contextKeyResponse).(*jsonrpc.RPCResponse)
-}
-
-func WithLogEntry(ctx context.Context, entry *logrus.Entry) context.Context {
-	return context.WithValue(ctx, contextKeyLogEntry, entry)
-}
-
-// WithLogField injects additional data into default post-query log entry
-func WithLogField(ctx context.Context, key string, value interface{}) {
-	e := ctx.Value(contextKeyLogEntry).(*logrus.Entry)
-	e.Data[key] = value
 }
 
 // Caller patches through JSON-RPC requests from clients, doing pre/post-processing,
@@ -158,6 +125,11 @@ func (c *Caller) addDefaultHooks() {
 	c.AddPreflightHook(MethodStatus, getStatusResponse, builtinHookName)
 	c.AddPreflightHook(MethodGet, preflightHookGet, builtinHookName)
 	c.AddPreflightHook(MethodClaimSearch, preflightHookClaimSearch, builtinHookName)
+
+	if config.GetArfleetEnabled() {
+		c.AddPostflightHook(MethodClaimSearch, postClaimSearchArfleetThumbs, builtinHookName)
+		c.AddPostflightHook(MethodResolve, postResolveArfleetThumbs, builtinHookName)
+	}
 }
 
 func (c *Caller) CloneWithoutHook(endpoint, method, name string) *Caller {
@@ -184,6 +156,20 @@ func (c *Caller) Endpoint() string {
 // Call method forwards a JSON-RPC request to the lbrynet server.
 // It returns a response that is ready to be sent back to the JSON-RPC client as is.
 func (c *Caller) Call(ctx context.Context, req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
+	origin := OriginFromContext(ctx)
+	metrics.ProxyCallCounter.WithLabelValues(req.Method, c.Endpoint(), origin).Inc()
+	res, err := c.call(ctx, req)
+	metrics.ProxyCallDurations.WithLabelValues(req.Method, c.Endpoint(), origin).Observe(c.Duration)
+	if err != nil {
+		metrics.ProxyCallFailedDurations.WithLabelValues(req.Method, c.Endpoint(), origin, metrics.FailureKindNet).Observe(c.Duration)
+		metrics.ProxyCallFailedCounter.WithLabelValues(req.Method, c.Endpoint(), origin, metrics.FailureKindNet).Inc()
+	}
+	return res, err
+}
+
+// Call method forwards a JSON-RPC request to the lbrynet server.
+// It returns a response that is ready to be sent back to the JSON-RPC client as is.
+func (c *Caller) call(ctx context.Context, req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 	if c.endpoint == "" {
 		return nil, errors.Err("cannot call blank endpoint")
 	}
@@ -200,7 +186,7 @@ func (c *Caller) Call(ctx context.Context, req *jsonrpc.RPCRequest) (*jsonrpc.RP
 
 	// Applying preflight hooks
 	var res *jsonrpc.RPCResponse
-	ctx = AttachToContext(ctx, q)
+	ctx = AttachQuery(ctx, q)
 	for _, hook := range c.preflightHooks {
 		if isMatchingHook(q.Method(), hook) {
 			res, err = hook.function(c, ctx)
@@ -248,7 +234,7 @@ func (c *Caller) SendQuery(ctx context.Context, q *Query) (*jsonrpc.RPCResponse,
 		start := time.Now()
 		client := c.getRPCClient(q.Method())
 		r, err = client.CallRaw(q.Request)
-		c.Duration = time.Since(start).Seconds()
+		c.Duration += time.Since(start).Seconds()
 		logger.Log().Debugf("sent request: %s %+v (%.2fs)", q.Method(), q.Params(), c.Duration)
 
 		// Generally a HTTP transport failure (connect error etc)
@@ -300,8 +286,8 @@ func (c *Caller) SendQuery(ctx context.Context, q *Query) (*jsonrpc.RPCResponse,
 
 	// Applying postflight hooks
 	var hookResp *jsonrpc.RPCResponse
-	ctx = WithLogEntry(ctx, logEntry)
-	ctx = WithResponse(ctx, r)
+	ctx = AttachLogEntry(ctx, logEntry)
+	ctx = AttachResponse(ctx, r)
 	for _, hook := range c.postflightHooks {
 		if isMatchingHook(q.Method(), hook) {
 			hookResp, err = hook.function(c, ctx)

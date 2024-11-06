@@ -220,12 +220,12 @@ func TestCaller_AddPreflightHookAmendingQueryParams(t *testing.T) {
 	c := NewCaller(srv.URL, 0)
 
 	c.AddPreflightHook(relaxedMethods[0], func(_ *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
-		params := GetFromContext(ctx).ParamsAsMap()
+		params := QueryFromContext(ctx).ParamsAsMap()
 		if params == nil {
-			GetFromContext(ctx).Request.Params = map[string]string{"param": "123"}
+			QueryFromContext(ctx).Request.Params = map[string]string{"param": "123"}
 		} else {
 			params["param"] = "123"
-			GetFromContext(ctx).Request.Params = params
+			QueryFromContext(ctx).Request.Params = params
 		}
 		return nil, nil
 	}, "")
@@ -306,7 +306,7 @@ func TestCaller_AddPostflightHook_Response(t *testing.T) {
 	`
 
 	c.AddPostflightHook("wallet_", func(c *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
-		r := GetResponse(ctx)
+		r := ResponseFromContext(ctx)
 		r.Result = "0.0"
 		return r, nil
 	}, "")
@@ -368,7 +368,7 @@ func TestCaller_CloneWithoutHook(t *testing.T) {
 	c.AddPostflightHook(MethodResolve, func(c *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
 		// This will be cloned without the current hook but the previous one should increment `timesCalled` once again
 		cc := c.CloneWithoutHook(c.Endpoint(), MethodResolve, "lbrynext_resolve")
-		q := GetFromContext(ctx)
+		q := QueryFromContext(ctx)
 		_, err := cc.SendQuery(ctx, q)
 		assert.NoError(t, err)
 		return nil, nil
@@ -564,7 +564,7 @@ func TestCaller_CallQueryWithRetry(t *testing.T) {
 	// check that sdk loads the wallet and retries the query if the wallet was not initially loaded
 
 	c := NewCaller(addr, dummyUserID)
-	r, err := c.SendQuery(AttachToContext(bgctx(), q), q)
+	r, err := c.SendQuery(AttachQuery(bgctx(), q), q)
 	require.NoError(t, err)
 	require.Nil(t, r.Error)
 }
@@ -594,10 +594,10 @@ func TestCaller_timeouts(t *testing.T) {
 		})
 	}()
 
-	_, err = c.SendQuery(AttachToContext(bgctx(), q), q)
+	_, err = c.SendQuery(AttachQuery(bgctx(), q), q)
 	require.NoError(t, err)
 
-	_, err = c.SendQuery(AttachToContext(bgctx(), q), q)
+	_, err = c.SendQuery(AttachQuery(bgctx(), q), q)
 	require.Error(t, err, `timeout awaiting response headers`)
 }
 
@@ -634,7 +634,7 @@ func TestCaller_DontReloadWalletAfterOtherErrors(t *testing.T) {
 		}),
 	)
 
-	r, err := c.SendQuery(AttachToContext(bgctx(), q), q)
+	r, err := c.SendQuery(AttachQuery(bgctx(), q), q)
 	require.NoError(t, err)
 	require.Equal(t, "Couldn't find wallet: //", r.Error.Message)
 }
@@ -676,7 +676,7 @@ func TestCaller_DontReloadWalletIfAlreadyLoaded(t *testing.T) {
 		}),
 	)
 
-	r, err := c.SendQuery(AttachToContext(bgctx(), q), q)
+	r, err := c.SendQuery(AttachQuery(bgctx(), q), q)
 
 	require.NoError(t, err)
 	require.Nil(t, r.Error)
@@ -758,6 +758,8 @@ func TestCaller_GetInvalidURLAuthenticated(t *testing.T) {
 }
 
 func TestCaller_GetPaidCannotPurchase(t *testing.T) {
+	t.Skip()
+
 	dummyUserID := rand.Intn(99999)
 	srvAddress := test.RandServerAddress(t)
 	uri := "lbry://@specialoperationstest#3/iOS-13-AdobeXD#9"

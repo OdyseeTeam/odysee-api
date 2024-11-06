@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   lbrynet:
     image: odyseeteam/lbrynet-tv:0.110.0
