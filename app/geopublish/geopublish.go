@@ -1,7 +1,6 @@
 package geopublish
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -14,7 +13,6 @@ import (
 	"github.com/OdyseeTeam/odysee-api/app/geopublish/forklift"
 	"github.com/OdyseeTeam/odysee-api/app/proxy"
 	"github.com/OdyseeTeam/odysee-api/app/query"
-	"github.com/OdyseeTeam/odysee-api/app/query/cache"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/metrics"
@@ -420,19 +418,6 @@ func (h *Handler) preCreateHook(hook tusd.HookEvent) error {
 
 func (h *Handler) getUserFromRequest(r *http.Request) (*models.User, error) {
 	return h.options.userGetter.FromRequest(r)
-}
-
-func getCaller(sdkAddress, filename string, userID int, qCache *cache.Cache) *query.Caller {
-	c := query.NewCaller(sdkAddress, userID)
-	c.Cache = qCache
-	c.AddPreflightHook(query.AllMethodsHook, func(_ *query.Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
-		q := query.QueryFromContext(ctx)
-		params := q.ParamsAsMap()
-		params[fileNameParam] = filename
-		q.Request.Params = params
-		return nil, nil
-	}, "")
-	return c
 }
 
 // observeFailure requires metrics.MeasureMiddleware middleware to be present on the request

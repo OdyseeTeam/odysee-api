@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OdyseeTeam/odysee-api/app/query/cache"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/app/wallet"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
@@ -58,7 +57,7 @@ type Caller struct {
 	postflightHooks []hookEntry
 
 	// Cache stores cacheable queries to improve performance
-	Cache *cache.Cache
+	Cache *QueryCache
 
 	Duration float64
 
@@ -110,7 +109,7 @@ func (c *Caller) getRPCClient(method string) jsonrpc.RPCClient {
 // to JSON-RPC server altogether.
 func (c *Caller) AddPreflightHook(method string, hf Hook, name string) {
 	c.preflightHooks = append(c.preflightHooks, hookEntry{method, hf, name})
-	logger.Log().Debugf("added a preflight hook for method %v", method)
+	logger.Log().Debugf("added a preflight hook for method %s, %s", method, name)
 }
 
 // AddPostflightHook adds query postflight hook function,
@@ -118,7 +117,7 @@ func (c *Caller) AddPreflightHook(method string, hf Hook, name string) {
 // or to modify log entry fields.
 func (c *Caller) AddPostflightHook(method string, hf Hook, name string) {
 	c.postflightHooks = append(c.postflightHooks, hookEntry{method, hf, name})
-	logger.Log().Debugf("added a postflight hook for method %v", method)
+	logger.Log().Debugf("added a postflight hook for method %s, %s", method, name)
 }
 
 func (c *Caller) addDefaultHooks() {
@@ -130,8 +129,13 @@ func (c *Caller) addDefaultHooks() {
 		c.AddPostflightHook(MethodClaimSearch, postClaimSearchArfleetThumbs, builtinHookName)
 		c.AddPostflightHook(MethodResolve, postResolveArfleetThumbs, builtinHookName)
 	}
+
+	// This should be applied after all preflight hooks had a chance
+	c.AddPreflightHook(MethodResolve, preflightCacheHook, "cache")
+	c.AddPreflightHook(MethodClaimSearch, preflightCacheHook, "cache")
 }
 
+// CloneWithoutHook is for testing and debugging purposes.
 func (c *Caller) CloneWithoutHook(endpoint, method, name string) *Caller {
 	cc := NewCaller(endpoint, c.userID)
 	for _, h := range c.postflightHooks {
@@ -184,7 +188,7 @@ func (c *Caller) call(ctx context.Context, req *jsonrpc.RPCRequest) (*jsonrpc.RP
 		return nil, err
 	}
 
-	// Applying preflight hooks
+	// Applying preflight hooks, if any one of them returns, this will be returned as response
 	var res *jsonrpc.RPCResponse
 	ctx = AttachQuery(ctx, q)
 	for _, hook := range c.preflightHooks {
@@ -199,27 +203,7 @@ func (c *Caller) call(ctx context.Context, req *jsonrpc.RPCRequest) (*jsonrpc.RP
 		}
 	}
 
-	if res == nil {
-		// Attempt to retrieve the result from cache, retrieving and setting it if it's missing,
-		// and only send the query directly if it's still missing after the cache call somehow.
-		var ires interface{}
-		retriever := func() (interface{}, error) { return c.SendQuery(ctx, q) }
-		if q.IsCacheable() && c.Cache != nil {
-			ires, err = c.Cache.Retrieve(q.Method(), q.Params(), retriever)
-			if err != nil {
-				return nil, rpcerrors.NewSDKError(err)
-			}
-			res, _ = ires.(*jsonrpc.RPCResponse)
-		}
-		if res == nil {
-			res, err = c.SendQuery(ctx, q)
-		}
-		if err != nil {
-			return nil, rpcerrors.NewSDKError(err)
-		}
-	}
-
-	return res, nil
+	return c.SendQuery(ctx, q)
 }
 
 func (c *Caller) SendQuery(ctx context.Context, q *Query) (*jsonrpc.RPCResponse, error) {

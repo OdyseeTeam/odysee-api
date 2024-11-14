@@ -65,6 +65,12 @@ RedisBus: redis://:odyredis@localhost:6379/2
 # This corresponds to AsynqueryRequestsConnURL in forklift.yml config.
 AsynqueryRequestsConnURL: redis://:odyredis@localhost:6379/3
 
+SturdyCache:
+  Master: localhost:6379
+  Replicas:
+    - localhost:6379
+  Password: odyredis
+
 ReflectorUpstream:
   DatabaseDSN: 'user:password@tcp(localhost:3306)/blobs'
   Region: us-east-1
