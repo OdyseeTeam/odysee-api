@@ -58,7 +58,9 @@ func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*Cached
 			metrics.SturdyQueryCacheErrorCount.WithLabelValues(cacheReq.Method).Inc()
 			return nil, fmt.Errorf("failed to cache.get: %w", err)
 		}
-		metrics.SturdyQueryCacheHitCount.WithLabelValues(cacheReq.Method).Inc()
+
+		metrics.SturdyQueryCacheMissCount.WithLabelValues(cacheReq.Method).Inc()
+
 		if getter == nil {
 			log.Warnf("nil getter provided for %s", query.Method())
 			metrics.SturdyQueryCacheErrorCount.WithLabelValues(cacheReq.Method).Inc()
