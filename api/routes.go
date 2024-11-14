@@ -209,7 +209,7 @@ func defaultMiddlewares(oauthAuther auth.Authenticator, legacyProvider auth.Prov
 		panic(err)
 	}
 	cache := query.NewQueryCache(store)
-	logger.Log().Infof("cache configured: master=%s", config.GetSturdyCacheMaster())
+	logger.Log().Infof("cache configured: master=%s, replicas=%s", config.GetSturdyCacheMaster(), config.GetSturdyCacheReplicas())
 
 	defaultHeaders := []string{
 		wallet.LegacyTokenHeader, wallet.AuthorizationHeader, "X-Requested-With", "Content-Type", "Accept",
