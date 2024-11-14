@@ -136,7 +136,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 
 	c.Cache = qCache
 
-	rpcRes, err := c.Call(r.Context(), rpcReq)
+	rpcRes, err := c.Call(query.AttachOrigin(r.Context(), origin), rpcReq)
 
 	if err != nil {
 		writeResponse(w, rpcerrors.ToJSON(err))
