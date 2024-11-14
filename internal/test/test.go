@@ -3,7 +3,7 @@ package test
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -45,7 +45,7 @@ func MockHTTPServer(requestChan chan *Request) *mockServer {
 		Server: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer r.Body.Close()
 			if requestChan != nil {
-				data, _ := ioutil.ReadAll(r.Body)
+				data, _ := io.ReadAll(r.Body)
 				requestChan <- &Request{r, w, string(data)}
 			}
 			fmt.Fprintf(w, <-next)

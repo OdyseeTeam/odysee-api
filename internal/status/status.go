@@ -9,7 +9,6 @@ import (
 
 	"github.com/OdyseeTeam/odysee-api/app/auth"
 	"github.com/OdyseeTeam/odysee-api/app/query"
-	"github.com/OdyseeTeam/odysee-api/app/query/cache"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/app/wallet"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
@@ -17,6 +16,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/internal/responses"
 	"github.com/OdyseeTeam/odysee-api/models"
+
 	"github.com/gorilla/mux"
 	"github.com/ybbus/jsonrpc"
 )
@@ -92,7 +92,6 @@ func StatusV2(w http.ResponseWriter, r *http.Request) {
 
 	var (
 		userID        int
-		qCache        *cache.Cache
 		lbrynetServer *models.LbrynetServer
 	)
 	rt := sdkrouter.New(config.GetLbrynetServers())
@@ -106,12 +105,11 @@ func StatusV2(w http.ResponseWriter, r *http.Request) {
 
 	srv := serverItem{Name: lbrynetServer.Name, Status: statusOK}
 
-	if cache.IsOnRequest(r) {
-		qCache = cache.FromRequest(r)
+	c := query.NewCaller(lbrynetServer.Address, userID)
+	if query.HasCache(r) {
+		c.Cache = query.CacheFromRequest(r)
 	}
 
-	c := query.NewCaller(lbrynetServer.Address, userID)
-	c.Cache = qCache
 	rpcRes, err := c.Call(r.Context(), jsonrpc.NewRequest("resolve", map[string]interface{}{"urls": resolveURL}))
 
 	if err != nil {

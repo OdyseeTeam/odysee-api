@@ -263,10 +263,10 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// upload is completed, notify it to lbrynet server
-	var qCache *cache.Cache
-	if cache.IsOnRequest(r) {
-		qCache = cache.FromRequest(r)
+	// upload is completed, notify lbrynet server
+	var qCache *query.QueryCache
+	if cache.HasCache(r) {
+		qCache = query.CacheFromRequest(r)
 	}
 
 	var rpcReq *jsonrpc.RPCRequest

@@ -7,17 +7,18 @@ import (
 )
 
 const (
-	nsPlayer     = "player"
-	nsAPI        = "api"
-	nsIAPI       = "iapi"
-	nsAuth       = "auth"
-	nsProxy      = "proxy"
-	nsLbrynext   = "lbrynext"
-	nsLbrynet    = "lbrynet"
-	nsUI         = "ui"
-	nsLbrytv     = "lbrytv"
-	nsOperations = "op"
-	nsPublish    = "publish"
+	nsPlayer      = "player"
+	nsAPI         = "api"
+	nsIAPI        = "iapi"
+	nsAuth        = "auth"
+	nsProxy       = "proxy"
+	nsSturdyCache = "sturdycache"
+	nsLbrynext    = "lbrynext"
+	nsLbrynet     = "lbrynet"
+	nsUI          = "ui"
+	nsLbrytv      = "lbrytv"
+	nsOperations  = "op"
+	nsPublish     = "publish"
 
 	LabelSource   = "source"
 	LabelInstance = "instance"
@@ -173,6 +174,25 @@ var (
 		Subsystem: "cache",
 		Name:      "error_count",
 		Help:      "Total number of errors retrieving queries from the local cache",
+	}, []string{"method"})
+
+	SturdyQueryCacheHitCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: nsSturdyCache,
+		Subsystem: "query",
+		Name:      "hit_count",
+		Help:      "Total number of queries found in sturdycache",
+	}, []string{"method"})
+	SturdyQueryCacheMissCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: nsSturdyCache,
+		Subsystem: "query",
+		Name:      "miss_count",
+		Help:      "Total number of queries that were not in sturdycache",
+	}, []string{"method"})
+	SturdyQueryCacheErrorCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: nsSturdyCache,
+		Subsystem: "query",
+		Name:      "error_count",
+		Help:      "Total number of errors retrieving queries from sturdycache",
 	}, []string{"method"})
 
 	LbrynetWalletsLoaded = promauto.NewGaugeVec(prometheus.GaugeOpts{

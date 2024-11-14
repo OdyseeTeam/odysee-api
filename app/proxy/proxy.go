@@ -117,10 +117,6 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		sdkAddress = rt.RandomServer().Address
 	}
 
-	var qCache *cache.Cache
-	if cache.IsOnRequest(r) {
-		qCache = cache.FromRequest(r)
-	}
 	c := query.NewCaller(sdkAddress, userID)
 
 	remoteIP := ip.FromRequest(r)
@@ -134,7 +130,9 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		return nil, nil
 	}, "")
 
-	c.Cache = qCache
+	if cache.HasCache(r) {
+		c.Cache = query.CacheFromRequest(r)
+	}
 
 	rpcRes, err := c.Call(query.AttachOrigin(r.Context(), origin), rpcReq)
 
