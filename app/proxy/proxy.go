@@ -10,13 +10,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
 	"github.com/OdyseeTeam/odysee-api/app/auth"
 	"github.com/OdyseeTeam/odysee-api/app/query"
-	"github.com/OdyseeTeam/odysee-api/app/query/cache"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/internal/audit"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
@@ -72,7 +71,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		writeResponse(w, rpcerrors.NewJSONParseError(errors.Err("error reading request body")).JSON())
@@ -130,7 +129,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		return nil, nil
 	}, "")
 
-	if cache.HasCache(r) {
+	if query.HasCache(r) {
 		c.Cache = query.CacheFromRequest(r)
 	}
 

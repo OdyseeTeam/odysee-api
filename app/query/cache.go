@@ -43,6 +43,7 @@ func NewQueryCache(store cache.CacheInterface[any]) *QueryCache {
 }
 
 func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*CachedResponse, error) {
+	log := logger.Log()
 	cacheReq := CacheRequest{
 		Method: query.Method(),
 		Params: query.Params(),
@@ -59,10 +60,12 @@ func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*Cached
 		}
 		metrics.SturdyQueryCacheHitCount.WithLabelValues(cacheReq.Method).Inc()
 		if getter == nil {
+			log.Warnf("nil getter provided for %s", query.Method())
 			metrics.SturdyQueryCacheErrorCount.WithLabelValues(cacheReq.Method).Inc()
 			return nil, errors.New("cache miss with no object getter provided")
 		}
 
+		log.Infof("cold cache retrieval for %s", query.Method())
 		obj, err, _ := c.singleflight.Do(cacheReq.GetCacheKey(), getter)
 		if err != nil {
 			metrics.SturdyQueryCacheErrorCount.WithLabelValues(cacheReq.Method).Inc()
@@ -144,17 +147,20 @@ func (r *CachedResponse) UnmarshalBinary(data []byte) error {
 	return json.Unmarshal(data, r)
 }
 
-func preflightCacheHook(c *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
-	if c.Cache == nil {
+func preflightCacheHook(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
+	log := logger.Log()
+	if caller.Cache == nil {
+		log.Warn("no cache present on caller")
 		return nil, nil
 	}
 	query := QueryFromContext(ctx)
-	cachedResp, err := c.Cache.Retrieve(query, func() (any, error) {
-		return c.SendQuery(ctx, query)
+	cachedResp, err := caller.Cache.Retrieve(query, func() (any, error) {
+		log.Debugf("cache miss, calling %s", query.Method())
+		return caller.SendQuery(ctx, query)
 	})
 	if err != nil {
 		return nil, rpcerrors.NewSDKError(err)
 	}
-	logger.Log().Debugf("FFS")
+	log.Debugf("cache hit for %s", query.Method())
 	return cachedResp.RPCResponse(query.Request.ID), nil
 }

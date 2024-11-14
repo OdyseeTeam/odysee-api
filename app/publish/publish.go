@@ -14,7 +14,6 @@ import (
 	"github.com/OdyseeTeam/odysee-api/app/auth"
 	"github.com/OdyseeTeam/odysee-api/app/proxy"
 	"github.com/OdyseeTeam/odysee-api/app/query"
-	"github.com/OdyseeTeam/odysee-api/app/query/cache"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/metrics"
@@ -161,7 +160,7 @@ retry:
 	}()
 
 	var qCache *query.QueryCache
-	if cache.HasCache(r) {
+	if query.HasCache(r) {
 		qCache = query.CacheFromRequest(r)
 	}
 

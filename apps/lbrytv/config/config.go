@@ -90,7 +90,7 @@ func GetSturdyCacheReplicas() []string {
 }
 
 func GetSturdyCachePassword() string {
-	return Config.Viper.GetString("sturdycache.replicas")
+	return Config.Viper.GetString("sturdycache.password")
 }
 
 // GetDatabase returns postgresql database server connection config.
