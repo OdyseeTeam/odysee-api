@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"os"
-	"time"
 
 	"github.com/OdyseeTeam/odysee-api/api"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
@@ -22,13 +20,12 @@ var rootCmd = &cobra.Command{
 	Use:   "oapi",
 	Short: "backend server for Odysee frontend",
 	Run: func(_ *cobra.Command, _ []string) {
-		rand.Seed(time.Now().UnixNano()) // always seed random!
 		sdkRouter := sdkrouter.New(config.GetLbrynetServers())
 		go sdkRouter.WatchLoad()
 
 		s := server.NewServer(config.GetAddress(), sdkRouter, &api.RoutesOptions{
 			EnableProfiling: config.GetProfiling(),
-			EnableV3Publish: true,
+			EnableV3Publish: false,
 		})
 		err := s.Start()
 		if err != nil {
