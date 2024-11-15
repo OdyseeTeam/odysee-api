@@ -56,40 +56,49 @@ func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*Cached
 	if err != nil {
 		if !errors.Is(err, &store.NotFound{}) {
 			metrics.SturdyQueryCacheErrorCount.WithLabelValues(cacheReq.Method).Inc()
-			return nil, fmt.Errorf("failed to cache.get: %w", err)
+			return nil, fmt.Errorf("error during cache.get: %w", err)
 		}
 
 		metrics.SturdyQueryCacheMissCount.WithLabelValues(cacheReq.Method).Inc()
 
 		if getter == nil {
-			log.Warnf("nil getter provided for %s", query.Method())
+			log.Warnf("nil getter provided for %s", cacheReq.Method)
 			metrics.SturdyQueryCacheErrorCount.WithLabelValues(cacheReq.Method).Inc()
-			return nil, errors.New("cache miss with no object getter provided")
+			return nil, nil
 		}
 
-		log.Infof("cold cache retrieval for %s", query.Method())
+		// Cold object retrieval after cache miss
+		log.Infof("cold object retrieval for %s [%s]", cacheReq.Method, cacheReq.GetCacheKey())
 		obj, err, _ := c.singleflight.Do(cacheReq.GetCacheKey(), getter)
 		if err != nil {
 			metrics.SturdyQueryCacheErrorCount.WithLabelValues(cacheReq.Method).Inc()
-			return nil, fmt.Errorf("failed to call object getter: %w", err)
+			return nil, fmt.Errorf("error calling getter: %w", err)
 		}
+
 		res, ok := obj.(*jsonrpc.RPCResponse)
 		if !ok {
 			return nil, errors.New("unknown type returned by getter")
 		}
+
 		cacheResp := &CachedResponse{Result: res.Result, Error: res.Error}
-		err = c.cache.Set(
-			ctx, cacheReq, cacheResp,
-			store.WithExpiration(cacheReq.Expiration()),
-			store.WithTags(cacheReq.Tags()),
-		)
-		if err != nil {
-			metrics.SturdyQueryCacheErrorCount.WithLabelValues(cacheReq.Method).Inc()
-			monitor.ErrorToSentry(fmt.Errorf("failed to cache.set: %w", err), map[string]string{"method": cacheReq.Method})
-			return nil, fmt.Errorf("failed to cache.set: %w", err)
+		if res.Error != nil {
+			log.Debugf("rpc error received (%s), not caching", cacheReq.Method)
+		} else {
+			err = c.cache.Set(
+				ctx, cacheReq, cacheResp,
+				store.WithExpiration(cacheReq.Expiration()),
+				store.WithTags(cacheReq.Tags()),
+			)
+			if err != nil {
+				metrics.SturdyQueryCacheErrorCount.WithLabelValues(cacheReq.Method).Inc()
+				monitor.ErrorToSentry(fmt.Errorf("error during cache.set: %w", err), map[string]string{"method": cacheReq.Method})
+				return cacheResp, fmt.Errorf("error during cache.set: %w", err)
+			}
 		}
+
 		return cacheResp, nil
 	}
+	log.Debugf("cache hit for %s [%s]", cacheReq.Method, cacheReq.GetCacheKey())
 	cacheResp, ok := hit.(*CachedResponse)
 	if !ok {
 		metrics.SturdyQueryCacheErrorCount.WithLabelValues(cacheReq.Method).Inc()
@@ -157,12 +166,10 @@ func preflightCacheHook(caller *Caller, ctx context.Context) (*jsonrpc.RPCRespon
 	}
 	query := QueryFromContext(ctx)
 	cachedResp, err := caller.Cache.Retrieve(query, func() (any, error) {
-		log.Debugf("cache miss, calling %s", query.Method())
 		return caller.SendQuery(ctx, query)
 	})
 	if err != nil {
 		return nil, rpcerrors.NewSDKError(err)
 	}
-	log.Debugf("cache hit for %s", query.Method())
 	return cachedResp.RPCResponse(query.Request.ID), nil
 }

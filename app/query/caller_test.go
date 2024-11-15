@@ -381,27 +381,11 @@ func TestCaller_CloneWithoutHook(t *testing.T) {
 
 func TestCaller_CallCachingResponses(t *testing.T) {
 	var err error
+
 	srv := test.MockHTTPServer(nil)
 	defer srv.Close()
-	srv.NextResponse <- `
-	{
-		"jsonrpc": "2.0",
-		"result": {
-		  "blocked": {
-			"channels": [],
-			"total": 0
-		  },
-		  "items": [
-			{
-			  "address": "bHz3LpVcuadmbK8g6VVUszF9jjH4pxG2Ct",
-			  "amount": "0.5",
-			  "canonical_url": "lbry://@lbry#3f/youtube-is-over-lbry-odysee-are-here#4"
-			}
-		  ]
-		},
-		"id": 0
-	}
-	`
+
+	srv.NextResponse <- resolveResponseFree
 
 	c := NewCaller(srv.URL, 0)
 
@@ -410,21 +394,30 @@ func TestCaller_CallCachingResponses(t *testing.T) {
 	c.Cache = NewQueryCache(cache)
 	require.NoError(t, err)
 
-	rpcReq := jsonrpc.NewRequest("claim_search", map[string]any{"urls": "what"})
+	rpcReq := jsonrpc.NewRequest("resolve", map[string]any{"urls": "what"})
 	rpcResponse, err := c.Call(bgctx(), rpcReq)
 	require.NoError(t, err)
 	assert.Nil(t, rpcResponse.Error)
 
-	time.Sleep(1 * time.Second)
-	q, _ := NewQuery(rpcReq, "")
-
-	cResp, err := c.Cache.Retrieve(q, nil)
+	expResponse, err := decodeResponse(resolveResponseFree)
 	require.NoError(t, err)
-	assert.NotNil(t, cResp.Result)
+	assert.EqualValues(t, expResponse.Result, rpcResponse.Result)
+
+	srv.NextResponse <- resolveResponseCouldntFind
+
+	rpcReq2 := jsonrpc.NewRequest("resolve", map[string]any{"urls": "one"})
+	rpcResponse2, err := c.Call(bgctx(), rpcReq2)
+	require.NoError(t, err)
+	assert.Nil(t, rpcResponse.Error)
+
+	expResponse2, err := decodeResponse(resolveResponseCouldntFind)
+	require.NoError(t, err)
+	assert.Nil(t, rpcResponse2.Error)
+	assert.EqualValues(t, expResponse2.Result, rpcResponse2.Result)
+
 }
 
 func TestCaller_CallNotCachingErrors(t *testing.T) {
-	t.SkipNow()
 	var err error
 	srv := test.MockHTTPServer(nil)
 	defer srv.Close()
@@ -453,7 +446,7 @@ func TestCaller_CallNotCachingErrors(t *testing.T) {
 	q, err := NewQuery(rpcReq, "")
 	require.NoError(t, err)
 
-	cResp, err := c.Cache.Retrieve(q, func() (any, error) { return nil, nil })
+	cResp, err := c.Cache.Retrieve(q, nil)
 	require.NoError(t, err)
 	assert.Nil(t, cResp)
 }

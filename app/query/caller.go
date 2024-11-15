@@ -157,8 +157,8 @@ func (c *Caller) Endpoint() string {
 	return c.endpoint
 }
 
-// Call method forwards a JSON-RPC request to the lbrynet server.
-// It returns a response that is ready to be sent back to the JSON-RPC client as is.
+// Call method takes JSON-RPC request through a set of hooks and forwards it to lbrynet server.
+// It returns a response that is ready to be sent back to the JSON-RPC client.
 func (c *Caller) Call(ctx context.Context, req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 	origin := OriginFromContext(ctx)
 	metrics.ProxyCallCounter.WithLabelValues(req.Method, c.Endpoint(), origin).Inc()
@@ -171,8 +171,6 @@ func (c *Caller) Call(ctx context.Context, req *jsonrpc.RPCRequest) (*jsonrpc.RP
 	return res, err
 }
 
-// Call method forwards a JSON-RPC request to the lbrynet server.
-// It returns a response that is ready to be sent back to the JSON-RPC client as is.
 func (c *Caller) call(ctx context.Context, req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
 	if c.endpoint == "" {
 		return nil, errors.Err("cannot call blank endpoint")
@@ -207,6 +205,7 @@ func (c *Caller) call(ctx context.Context, req *jsonrpc.RPCRequest) (*jsonrpc.RP
 	return c.SendQuery(ctx, q)
 }
 
+// SendQuery is where the actual RPC call happens, bypassing all hooks and retrying in case of "wallet not loaded" errors.
 func (c *Caller) SendQuery(ctx context.Context, q *Query) (*jsonrpc.RPCResponse, error) {
 	var (
 		r   *jsonrpc.RPCResponse
