@@ -9,7 +9,7 @@ import (
 
 const ContextKey = "cache"
 
-func IsOnRequest(r *http.Request) bool {
+func HasCache(r *http.Request) bool {
 	return r.Context().Value(ContextKey) != nil
 }
 

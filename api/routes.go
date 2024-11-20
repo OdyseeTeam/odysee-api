@@ -13,7 +13,7 @@ import (
 	gpmetrics "github.com/OdyseeTeam/odysee-api/app/geopublish/metrics"
 	"github.com/OdyseeTeam/odysee-api/app/proxy"
 	"github.com/OdyseeTeam/odysee-api/app/publish"
-	"github.com/OdyseeTeam/odysee-api/app/query/cache"
+	"github.com/OdyseeTeam/odysee-api/app/query"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/app/wallet"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
@@ -26,6 +26,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/keybox"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
 	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
+	"github.com/OdyseeTeam/odysee-api/pkg/sturdycache"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
@@ -199,10 +200,17 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 }
 
 func defaultMiddlewares(oauthAuther auth.Authenticator, legacyProvider auth.Provider, router *sdkrouter.Router) mux.MiddlewareFunc {
-	queryCache, err := cache.New(cache.DefaultConfig())
+	store, err := sturdycache.NewReplicatedCache(
+		config.GetSturdyCacheMaster(),
+		config.GetSturdyCacheReplicas(),
+		config.GetSturdyCachePassword(),
+	)
 	if err != nil {
 		panic(err)
 	}
+	cache := query.NewQueryCache(store)
+	logger.Log().Infof("cache configured: master=%s, replicas=%s", config.GetSturdyCacheMaster(), config.GetSturdyCacheReplicas())
+
 	defaultHeaders := []string{
 		wallet.LegacyTokenHeader, wallet.AuthorizationHeader, "X-Requested-With", "Content-Type", "Accept",
 	}
@@ -222,7 +230,7 @@ func defaultMiddlewares(oauthAuther auth.Authenticator, legacyProvider auth.Prov
 		sdkrouter.Middleware(router),
 		auth.Middleware(oauthAuther), // Will pass forward user/error to next
 		auth.LegacyMiddleware(legacyProvider),
-		cache.Middleware(queryCache),
+		query.CacheMiddleware(cache),
 	)
 }
 

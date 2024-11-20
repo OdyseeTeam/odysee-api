@@ -8,18 +8,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/OdyseeTeam/odysee-api/app/query/cache"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/app/wallet"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/OdyseeTeam/odysee-api/pkg/rpcerrors"
+	"github.com/OdyseeTeam/odysee-api/pkg/sturdycache"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
-	"github.com/Pallinder/go-randomdata"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 
+	"github.com/Pallinder/go-randomdata"
 	"github.com/sirupsen/logrus"
 	logrusTest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
@@ -381,38 +381,40 @@ func TestCaller_CloneWithoutHook(t *testing.T) {
 
 func TestCaller_CallCachingResponses(t *testing.T) {
 	var err error
+
 	srv := test.MockHTTPServer(nil)
 	defer srv.Close()
-	srv.NextResponse <- `
-	{
-		"jsonrpc": "2.0",
-		"result": {
-		  "blocked": {
-			"channels": [],
-			"total": 0
-		  },
-		  "items": [
-			{
-			  "address": "bHz3LpVcuadmbK8g6VVUszF9jjH4pxG2Ct",
-			  "amount": "0.5",
-			  "canonical_url": "lbry://@lbry#3f/youtube-is-over-lbry-odysee-are-here#4"
-			}
-		  ]
-		},
-		"id": 0
-	}
-	`
+
+	srv.NextResponse <- resolveResponseFree
 
 	c := NewCaller(srv.URL, 0)
-	c.Cache, err = cache.New(cache.DefaultConfig())
+
+	cache, _, _, teardown := sturdycache.CreateTestCache(t)
+	defer teardown()
+	c.Cache = NewQueryCache(cache)
 	require.NoError(t, err)
-	rpcResponse, err := c.Call(bgctx(), jsonrpc.NewRequest("claim_search", map[string]any{"urls": "what"}))
+
+	rpcReq := jsonrpc.NewRequest("resolve", map[string]any{"urls": "what"})
+	rpcResponse, err := c.Call(bgctx(), rpcReq)
 	require.NoError(t, err)
 	assert.Nil(t, rpcResponse.Error)
-	c.Cache.Wait()
-	cResp, err := c.Cache.Retrieve("claim_search", map[string]any{"urls": "what"}, nil)
+
+	expResponse, err := decodeResponse(resolveResponseFree)
 	require.NoError(t, err)
-	assert.NotNil(t, cResp.(*jsonrpc.RPCResponse).Result)
+	assert.EqualValues(t, expResponse.Result, rpcResponse.Result)
+
+	srv.NextResponse <- resolveResponseCouldntFind
+
+	rpcReq2 := jsonrpc.NewRequest("resolve", map[string]any{"urls": "one"})
+	rpcResponse2, err := c.Call(bgctx(), rpcReq2)
+	require.NoError(t, err)
+	assert.Nil(t, rpcResponse.Error)
+
+	expResponse2, err := decodeResponse(resolveResponseCouldntFind)
+	require.NoError(t, err)
+	assert.Nil(t, rpcResponse2.Error)
+	assert.EqualValues(t, expResponse2.Result, rpcResponse2.Result)
+
 }
 
 func TestCaller_CallNotCachingErrors(t *testing.T) {
@@ -430,16 +432,21 @@ func TestCaller_CallNotCachingErrors(t *testing.T) {
 		}`
 
 	c := NewCaller(srv.URL, 0)
-	c.Cache, err = cache.New(cache.DefaultConfig())
+	cache, _, _, teardown := sturdycache.CreateTestCache(t)
+	defer teardown()
+	c.Cache = NewQueryCache(cache)
 	require.NoError(t, err)
-	rpcResponse, err := c.Call(bgctx(), jsonrpc.NewRequest("claim_search", map[string]any{"urls": "what"}))
+
+	rpcReq := jsonrpc.NewRequest("claim_search", map[string]any{"urls": "what"})
+	rpcResponse, err := c.Call(bgctx(), rpcReq)
 	require.NoError(t, err)
 	assert.Equal(t, rpcResponse.Error.Code, -32000)
 	time.Sleep(500 * time.Millisecond)
-	cResp, err := c.Cache.Retrieve(
-		"claim_search",
-		map[string]any{"urls": "what"},
-		func() (any, error) { return nil, nil })
+
+	q, err := NewQuery(rpcReq, "")
+	require.NoError(t, err)
+
+	cResp, err := c.Cache.Retrieve(q, nil)
 	require.NoError(t, err)
 	assert.Nil(t, cResp)
 }
@@ -1012,9 +1019,10 @@ func TestCaller_JSONRPCNotCut(t *testing.T) {
 		"id": 0
 	}
 	`
-
 	c := NewCaller(srv.URL, 0)
-	c.Cache, err = cache.New(cache.DefaultConfig())
+	cache, _, _, teardown := sturdycache.CreateTestCache(t)
+	defer teardown()
+	c.Cache = NewQueryCache(cache)
 	require.NoError(t, err)
 
 	channelIds := []any{"1234", "4321", "5678", "8765", "9999", "0000", "1111"}
@@ -1112,3 +1120,10 @@ func TestCaller_preflightHookClaimSearch(t *testing.T) {
 		})
 	}
 }
+
+// func TestMain(m *testing.M) {
+// 	var err error
+
+// 	code := m.Run()
+// 	os.Exit(code)
+// }

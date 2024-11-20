@@ -1,5 +1,9 @@
 #!/bin/sh
 
-ssh-keygen -t rsa -f token_privkey.rsa -m pem
+file="token_privkey.rsa"
+if [ ! -f "$file" ]; then
+    ssh-keygen -t rsa -f "$file" -m pem
+fi
+
 ./oapi db_migrate_up
 ./oapi

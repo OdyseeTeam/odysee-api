@@ -10,13 +10,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
 	"github.com/OdyseeTeam/odysee-api/app/auth"
 	"github.com/OdyseeTeam/odysee-api/app/query"
-	"github.com/OdyseeTeam/odysee-api/app/query/cache"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/internal/audit"
 	"github.com/OdyseeTeam/odysee-api/internal/errors"
@@ -72,7 +71,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		writeResponse(w, rpcerrors.NewJSONParseError(errors.Err("error reading request body")).JSON())
@@ -117,10 +116,6 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		sdkAddress = rt.RandomServer().Address
 	}
 
-	var qCache *cache.Cache
-	if cache.IsOnRequest(r) {
-		qCache = cache.FromRequest(r)
-	}
 	c := query.NewCaller(sdkAddress, userID)
 
 	remoteIP := ip.FromRequest(r)
@@ -134,7 +129,9 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		return nil, nil
 	}, "")
 
-	c.Cache = qCache
+	if query.HasCache(r) {
+		c.Cache = query.CacheFromRequest(r)
+	}
 
 	rpcRes, err := c.Call(query.AttachOrigin(r.Context(), origin), rpcReq)
 
@@ -152,7 +149,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		}
 		monitor.ErrorToSentry(err, map[string]string{"request": fmt.Sprintf("%+v", rpcReq), "response": fmt.Sprintf("%+v", rpcRes)})
 		observeFailure(metrics.GetDuration(r), rpcReq.Method, metrics.FailureKindNet)
-		logger.Log().Errorf("error calling lbrynet: %v, request: %+v", err, rpcReq)
+		logger.Log().Errorf("error calling sdk method %s: %s", rpcReq.Method, err)
 		return
 	}
 

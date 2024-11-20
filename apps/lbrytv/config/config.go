@@ -81,6 +81,18 @@ func GetAsynqueryRequestsConnOpts() (asynq.RedisConnOpt, error) {
 	return asynq.ParseRedisURI(Config.Viper.GetString("AsynqueryRequestsConnURL"))
 }
 
+func GetSturdyCacheMaster() string {
+	return Config.Viper.GetString("sturdycache.master")
+}
+
+func GetSturdyCacheReplicas() []string {
+	return Config.Viper.GetStringSlice("sturdycache.replicas")
+}
+
+func GetSturdyCachePassword() string {
+	return Config.Viper.GetString("sturdycache.password")
+}
+
 // GetDatabase returns postgresql database server connection config.
 func GetDatabase() cfg.DBConfig {
 	return Config.GetDatabase()
