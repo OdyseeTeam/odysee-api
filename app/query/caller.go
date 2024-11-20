@@ -297,11 +297,6 @@ func (c *Caller) SendQuery(ctx context.Context, q *Query) (*jsonrpc.RPCResponse,
 	return r, err
 }
 
-// IsCacheable returns true if this query can be cached.
-func (q *Query) IsCacheable() bool {
-	return q.Method() == MethodResolve || q.Method() == MethodClaimSearch
-}
-
 func getLogLevel(m string) logrus.Level {
 	if methodInList(m, []string{MethodWalletBalance, MethodSyncApply}) {
 		return logrus.DebugLevel
