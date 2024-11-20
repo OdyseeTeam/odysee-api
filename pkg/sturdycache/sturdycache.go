@@ -36,11 +36,11 @@ func NewReplicatedCache(
 
 	for i, addr := range replicaAddrs {
 		replicaClient := redis.NewClient(&redis.Options{
-			Addr:     addr,
-			Password: password,
-			DB:       0,
-			// PoolSize:     10,
-			// MinIdleConns: 5,
+			Addr:         addr,
+			Password:     password,
+			DB:           0,
+			PoolSize:     200,
+			MinIdleConns: 10,
 		})
 
 		replicaStore := redis_store.NewRedis(replicaClient)
