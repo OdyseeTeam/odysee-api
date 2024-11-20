@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/OdyseeTeam/odysee-api/internal/metrics"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/pkg/rpcerrors"
 
@@ -35,9 +34,9 @@ type QueryCache struct {
 }
 
 func NewQueryCache(store cache.CacheInterface[any]) *QueryCache {
-	m := marshaler.New(store)
+	marshal := marshaler.New(store)
 	return &QueryCache{
-		cache:        m,
+		cache:        marshal,
 		singleflight: &singleflight.Group{},
 	}
 }
@@ -49,31 +48,34 @@ func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*Cached
 		Params: query.Params(),
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 5000*time.Millisecond)
 	defer cancel()
+
+	start := time.Now()
 
 	hit, err := c.cache.Get(ctx, cacheReq, &CachedResponse{})
 	if err != nil {
 		if !errors.Is(err, &store.NotFound{}) {
-			metrics.SturdyQueryCacheErrorCount.WithLabelValues(cacheReq.Method).Inc()
+			ObserveQueryCacheOperation(CacheOperationGet, CacheResultError, cacheReq.Method, start)
 			return nil, fmt.Errorf("error during cache.get: %w", err)
 		}
 
-		metrics.SturdyQueryCacheMissCount.WithLabelValues(cacheReq.Method).Inc()
+		ObserveQueryCacheOperation(CacheOperationGet, CacheResultMiss, cacheReq.Method, start)
 
 		if getter == nil {
 			log.Warnf("nil getter provided for %s", cacheReq.Method)
-			metrics.SturdyQueryCacheErrorCount.WithLabelValues(cacheReq.Method).Inc()
 			return nil, nil
 		}
 
+		log.Infof("cache miss for %s, key=%s, duration=%.2fs", cacheReq.Method, cacheReq.GetCacheKey(), time.Since(start).Seconds())
 		// Cold object retrieval after cache miss
-		log.Infof("cold object retrieval for %s [%s]", cacheReq.Method, cacheReq.GetCacheKey())
+		start := time.Now()
 		obj, err, _ := c.singleflight.Do(cacheReq.GetCacheKey(), getter)
 		if err != nil {
-			metrics.SturdyQueryCacheErrorCount.WithLabelValues(cacheReq.Method).Inc()
+			ObserveQueryRetrievalDuration(CacheResultError, cacheReq.Method, start)
 			return nil, fmt.Errorf("error calling getter: %w", err)
 		}
+		ObserveQueryRetrievalDuration(CacheResultSuccess, cacheReq.Method, start)
 
 		res, ok := obj.(*jsonrpc.RPCResponse)
 		if !ok {
@@ -84,27 +86,29 @@ func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*Cached
 		if res.Error != nil {
 			log.Debugf("rpc error received (%s), not caching", cacheReq.Method)
 		} else {
+			start := time.Now()
 			err = c.cache.Set(
 				ctx, cacheReq, cacheResp,
 				store.WithExpiration(cacheReq.Expiration()),
 				store.WithTags(cacheReq.Tags()),
 			)
 			if err != nil {
-				metrics.SturdyQueryCacheErrorCount.WithLabelValues(cacheReq.Method).Inc()
+				ObserveQueryCacheOperation(CacheOperationSet, CacheResultError, cacheReq.Method, start)
 				monitor.ErrorToSentry(fmt.Errorf("error during cache.set: %w", err), map[string]string{"method": cacheReq.Method})
-				return cacheResp, fmt.Errorf("error during cache.set: %w", err)
+				log.Warnf("error during cache.set: %s", err)
+				return cacheResp, nil
 			}
+			ObserveQueryCacheOperation(CacheOperationSet, CacheResultSuccess, cacheReq.Method, start)
 		}
 
 		return cacheResp, nil
 	}
-	log.Debugf("cache hit for %s [%s]", cacheReq.Method, cacheReq.GetCacheKey())
+	log.Infof("cache hit for %s, key=%s, duration=%.2fs", cacheReq.Method, cacheReq.GetCacheKey(), time.Since(start).Seconds())
+	ObserveQueryCacheOperation(CacheOperationGet, CacheResultHit, cacheReq.Method, start)
 	cacheResp, ok := hit.(*CachedResponse)
 	if !ok {
-		metrics.SturdyQueryCacheErrorCount.WithLabelValues(cacheReq.Method).Inc()
 		return nil, errors.New("unknown cache object retrieved")
 	}
-	metrics.SturdyQueryCacheHitCount.WithLabelValues(cacheReq.Method).Inc()
 	return cacheResp, nil
 }
 

@@ -25,8 +25,8 @@ func NewReplicatedCache(
 		Addr:         masterAddr,
 		Password:     password,
 		DB:           0,
-		PoolSize:     10,
-		MinIdleConns: 5,
+		PoolSize:     200,
+		MinIdleConns: 10,
 	})
 
 	masterStore := redis_store.NewRedis(masterClient)

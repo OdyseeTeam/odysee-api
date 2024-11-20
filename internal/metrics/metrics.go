@@ -47,7 +47,7 @@ const (
 )
 
 var (
-	callsSecondsBuckets = []float64{0.005, 0.025, 0.05, 0.1, 0.25, 0.4, 1, 2, 5, 10, 20, 60, 120, 300}
+	callDurationBuckets = []float64{0.005, 0.025, 0.05, 0.1, 0.25, 0.4, 1, 2, 5, 10, 20, 60, 120, 300}
 
 	IAPIAuthSuccessDurations = promauto.NewHistogram(prometheus.HistogramOpts{
 		Namespace: nsIAPI,
@@ -85,7 +85,7 @@ var (
 			Subsystem: "e2e_calls",
 			Name:      "total_seconds",
 			Help:      "End-to-end method call latency distributions",
-			Buckets:   callsSecondsBuckets,
+			Buckets:   callDurationBuckets,
 		},
 		[]string{"method"},
 	)
@@ -95,7 +95,7 @@ var (
 			Subsystem: "e2e_calls",
 			Name:      "failed_seconds",
 			Help:      "Failed end-to-end method call latency distributions",
-			Buckets:   callsSecondsBuckets,
+			Buckets:   callDurationBuckets,
 		},
 		[]string{"method", "kind"},
 	)
@@ -124,7 +124,7 @@ var (
 			Subsystem: "calls",
 			Name:      "total_seconds",
 			Help:      "Method call latency distributions",
-			Buckets:   callsSecondsBuckets,
+			Buckets:   callDurationBuckets,
 		},
 		[]string{"method", "endpoint", "origin"},
 	)
@@ -134,7 +134,7 @@ var (
 			Subsystem: "calls",
 			Name:      "failed_seconds",
 			Help:      "Failed method call latency distributions",
-			Buckets:   callsSecondsBuckets,
+			Buckets:   callDurationBuckets,
 		},
 		[]string{"method", "endpoint", "origin", "kind"},
 	)
@@ -176,25 +176,6 @@ var (
 		Help:      "Total number of errors retrieving queries from the local cache",
 	}, []string{"method"})
 
-	SturdyQueryCacheHitCount = promauto.NewCounterVec(prometheus.CounterOpts{
-		Namespace: nsSturdyCache,
-		Subsystem: "query",
-		Name:      "hit_count",
-		Help:      "Total number of queries found in sturdycache",
-	}, []string{"method"})
-	SturdyQueryCacheMissCount = promauto.NewCounterVec(prometheus.CounterOpts{
-		Namespace: nsSturdyCache,
-		Subsystem: "query",
-		Name:      "miss_count",
-		Help:      "Total number of queries that were not in sturdycache",
-	}, []string{"method"})
-	SturdyQueryCacheErrorCount = promauto.NewCounterVec(prometheus.CounterOpts{
-		Namespace: nsSturdyCache,
-		Subsystem: "query",
-		Name:      "error_count",
-		Help:      "Total number of errors retrieving queries from sturdycache",
-	}, []string{"method"})
-
 	LbrynetWalletsLoaded = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: nsLbrynet,
 		Subsystem: "wallets",
@@ -222,7 +203,7 @@ var (
 			Subsystem: "calls",
 			Name:      "total_seconds",
 			Help:      "How long do calls to lbrytv take (end-to-end)",
-			Buckets:   callsSecondsBuckets,
+			Buckets:   callDurationBuckets,
 		},
 		[]string{"path"},
 	)
@@ -278,7 +259,7 @@ var (
 			Subsystem: "calls",
 			Name:      "total_seconds",
 			Help:      "Method call latency distributions",
-			Buckets:   callsSecondsBuckets,
+			Buckets:   callDurationBuckets,
 		},
 		[]string{"method", "endpoint", "group"},
 	)
@@ -288,7 +269,7 @@ var (
 			Subsystem: "calls",
 			Name:      "failed_seconds",
 			Help:      "Failed method call latency distributions",
-			Buckets:   callsSecondsBuckets,
+			Buckets:   callDurationBuckets,
 		},
 		[]string{"method", "endpoint", "group", "kind"},
 	)

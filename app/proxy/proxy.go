@@ -149,7 +149,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		}
 		monitor.ErrorToSentry(err, map[string]string{"request": fmt.Sprintf("%+v", rpcReq), "response": fmt.Sprintf("%+v", rpcRes)})
 		observeFailure(metrics.GetDuration(r), rpcReq.Method, metrics.FailureKindNet)
-		logger.Log().Errorf("error calling lbrynet: %v, request: %+v", err, rpcReq)
+		logger.Log().Errorf("error calling sdk method %s: %s", rpcReq.Method, err)
 		return
 	}
 
