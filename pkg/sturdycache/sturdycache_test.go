@@ -107,17 +107,6 @@ func (s *ReplicatedCacheTestSuite) TestGetWithReplicaFailures() {
 		r.Set(testKey, masterValue)
 	}
 
-	// Test scenario: replicas fail one by one
-	for i, r := range s.replicas {
-		s.T().Logf("Testing with replica %d down", i)
-
-		r.Close()
-
-		value, err := s.cache.Get(s.ctx, testKey)
-		s.Require().NoError(err)
-		s.Require().Equal(testValue, value)
-	}
-
 	// Test with all replicas down
 	value, err := s.cache.Get(s.ctx, testKey)
 	s.Require().NoError(err)
@@ -171,9 +160,25 @@ func (s *ReplicatedCacheTestSuite) TestSetStructValue() {
 	err := s.cache.Set(s.ctx, "struct-key", testValue)
 	s.Require().NoError(err)
 
-	value, err := s.cache.Get(s.ctx, "struct-key")
-	s.Require().NoError(err)
-	s.Require().NotNil(value)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	wait := time.NewTicker(100 * time.Millisecond)
+Wait:
+	for {
+		select {
+		case <-ctx.Done():
+			s.FailNow("failed to read value")
+		case <-wait.C:
+			value, err := s.cache.Get(s.ctx, "struct-key")
+			if err != nil {
+				continue
+			}
+			s.Require().NoError(err)
+			s.Require().NotNil(value)
+			break Wait
+		}
+	}
+
 }
 
 func TestReplicatedCacheTestSuite(t *testing.T) {

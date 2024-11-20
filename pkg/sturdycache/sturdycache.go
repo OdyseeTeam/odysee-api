@@ -7,11 +7,13 @@ import (
 	"github.com/eko/gocache/lib/v4/store"
 	redis_store "github.com/eko/gocache/store/redis/v4"
 	"github.com/redis/go-redis/v9"
+	"golang.org/x/exp/rand"
 )
 
 type ReplicatedCache struct {
 	masterCache   *cache.Cache[any]
 	replicaCaches []*cache.Cache[any]
+	readCaches    []*cache.Cache[any]
 }
 
 // NewReplicatedCache creates a new gocache store instance for redis master-replica setups.
@@ -32,9 +34,9 @@ func NewReplicatedCache(
 	masterStore := redis_store.NewRedis(masterClient)
 	masterCache := cache.New[any](masterStore)
 
-	replicaCaches := make([]*cache.Cache[any], len(replicaAddrs))
+	replicaCaches := []*cache.Cache[any]{}
 
-	for i, addr := range replicaAddrs {
+	for _, addr := range replicaAddrs {
 		replicaClient := redis.NewClient(&redis.Options{
 			Addr:         addr,
 			Password:     password,
@@ -44,12 +46,13 @@ func NewReplicatedCache(
 		})
 
 		replicaStore := redis_store.NewRedis(replicaClient)
-		replicaCaches[i] = cache.New[any](replicaStore)
+		replicaCaches = append(replicaCaches, cache.New[any](replicaStore))
 	}
 
 	cache := &ReplicatedCache{
 		masterCache:   masterCache,
 		replicaCaches: replicaCaches,
+		readCaches:    append(replicaCaches, masterCache),
 	}
 
 	return cache, nil
@@ -60,17 +63,9 @@ func (rc *ReplicatedCache) Set(ctx context.Context, key any, value any, options 
 	return rc.masterCache.Set(ctx, key, value, options...)
 }
 
-// Get tries replicas first, falls back to master.
+// Get reads from master and replica caches.
 func (rc *ReplicatedCache) Get(ctx context.Context, key any) (any, error) {
-	for _, replica := range rc.replicaCaches {
-		value, err := replica.Get(ctx, key)
-		if err == nil {
-			return value, nil
-		}
-	}
-
-	// Fallback to master
-	return rc.masterCache.Get(ctx, key)
+	return rc.readCaches[rand.Intn(len(rc.readCaches))].Get(ctx, key)
 }
 
 // Invalidate master cache entries for given options.

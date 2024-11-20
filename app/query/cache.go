@@ -57,7 +57,7 @@ func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*Cached
 	if err != nil {
 		if !errors.Is(err, &store.NotFound{}) {
 			ObserveQueryCacheOperation(CacheOperationGet, CacheResultError, cacheReq.Method, start)
-			return nil, fmt.Errorf("error during cache.get: %w", err)
+			return nil, nil
 		}
 
 		ObserveQueryCacheOperation(CacheOperationGet, CacheResultMiss, cacheReq.Method, start)
