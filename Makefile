@@ -1,10 +1,15 @@
 date := $(shell date "+%Y-%m-%d-%H-%M")
 git_hash := $(shell git rev-parse --short HEAD)
-oapi_version ?= $(shell git describe --tags --match 'api-v*'|sed 's/api-v\([0-9.]*\)/\1/')
-watchman_version := $(shell git describe --tags --match 'watchman-v*'|sed 's/api-v\([0-9.]*\)/\1/')
-forklift_version ?= $(shell git describe --tags --match 'forklift-v*'|sed 's/forklift-v\([0-9.]*\).*/\1/')
-uploads_version ?= $(shell git describe --tags --match 'uploads-v*'|sed 's/uploads-v\([0-9.]*\).*/\1/')
+oapi_version ?= $(shell git describe --tags --match 'api-v*'|sed 's/.*v\([0-9.]*\).*/\1/')
+watchman_version := $(shell git describe --tags --match 'watchman-v*'|sed 's/.*v\([0-9.]*\).*/\1/')
+forklift_version ?= $(shell git describe --tags --match 'forklift-v*'|sed 's/.*v\([0-9.]*\).*/\1/')
+uploads_version ?= $(shell git describe --tags --match 'uploads-v*'|sed 's/.*v\([0-9.]*\).*/\1/')
 go ?= go
+
+.PHONY: versions
+versions:
+	echo $(oapi_version)
+	echo $(watchman_version)
 
 .PHONY: test
 test:
