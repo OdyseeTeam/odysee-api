@@ -28,7 +28,7 @@ jobs:
         id: release_details
         run: |
           echo "APP_NAME=$(git describe --tags|sed -e 's/\-v.*//')" >> $GITHUB_ENV
-          echo "APP_VERSION=$(git describe --tags --match 'api-v*'|sed 's/api-v\([0-9.]*\)/\1/')" >> $GITHUB_ENV
+          echo "APP_VERSION=$(git describe --tags --match '*-v*'|sed 's/.*v\([0-9.]*\).*/\1/')" >> $GITHUB_ENV
 
       - name: Release details
         run: |
