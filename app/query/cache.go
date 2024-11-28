@@ -127,7 +127,7 @@ func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*Cached
 			if err != nil {
 				ObserveQueryCacheOperation(CacheOperationSet, CacheResultError, cacheReq.Method, start)
 				monitor.ErrorToSentry(fmt.Errorf("error during cache.set: %w", err), map[string]string{ParamMethod: cacheReq.Method})
-				log.Warnf("error during cache.set: %s", err)
+				log.Warnf("error during cache.set (query returned): %s", err)
 				return cacheResp, nil
 			}
 			ObserveQueryCacheOperation(CacheOperationSet, CacheResultSuccess, cacheReq.Method, start)
@@ -239,6 +239,9 @@ func preflightCacheHook(caller *Caller, ctx context.Context) (*jsonrpc.RPCRespon
 	})
 	if err != nil {
 		return nil, rpcerrors.NewSDKError(err)
+	}
+	if cachedResp == nil {
+		return nil, nil
 	}
 	return cachedResp.RPCResponse(query.Request.ID), nil
 }
