@@ -15,11 +15,14 @@ const (
 	CacheResultMiss    = "miss"
 	CacheResultSuccess = "success"
 	CacheResultError   = "error"
+
+	CacheAreaChainquery     = "chainquery"
+	CacheAreaInvalidateCall = "invalidate_call"
 )
 
 var (
-	queryRetrievalDurationBuckets = []float64{0.025, 0.05, 0.1, 0.25, 0.4, 1, 2.5, 5, 10, 25, 50, 100, 300}
-	cacheDurationBuckets          = []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0}
+	QueryCacheRetrievalDurationBuckets = []float64{0.025, 0.05, 0.1, 0.25, 0.4, 1, 2.5, 5, 10, 25, 50, 100, 300}
+	cacheDurationBuckets               = []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0}
 
 	QueryCacheOperationDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -30,14 +33,22 @@ var (
 		},
 		[]string{"operation", "result", "method"},
 	)
-	QueryRetrievalDuration = promauto.NewHistogramVec(
+	QueryCacheRetrievalDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "query_cache",
 			Name:      "retrieval_duration_seconds",
 			Help:      "Latency for cold cache retrieval",
-			Buckets:   queryRetrievalDurationBuckets,
+			Buckets:   QueryCacheRetrievalDurationBuckets,
 		},
 		[]string{"result", "method"},
+	)
+	QueryCacheErrorCount = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "query_cache",
+			Name:      "error_count",
+			Help:      "Errors unrelated to cache setting/retrieval",
+		},
+		[]string{"area"},
 	)
 )
 
@@ -45,6 +56,6 @@ func ObserveQueryCacheOperation(operation, result, method string, start time.Tim
 	QueryCacheOperationDuration.WithLabelValues(operation, result, method).Observe(float64(time.Since(start).Seconds()))
 }
 
-func ObserveQueryRetrievalDuration(result, method string, start time.Time) {
-	QueryRetrievalDuration.WithLabelValues(result, method).Observe(float64(time.Since(start).Seconds()))
+func ObserveQueryCacheRetrievalDuration(result, method string, start time.Time) {
+	QueryCacheRetrievalDuration.WithLabelValues(result, method).Observe(float64(time.Since(start).Seconds()))
 }

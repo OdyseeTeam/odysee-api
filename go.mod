@@ -19,6 +19,8 @@ require (
 	github.com/dgraph-io/ristretto v0.2.0
 	github.com/eko/gocache/lib/v4 v4.1.6
 	github.com/eko/gocache/store/redis/v4 v4.2.2
+	github.com/eko/gocache/store/ristretto/v4 v4.2.2
+	github.com/friendsofgo/errors v0.9.2
 	github.com/getsentry/sentry-go v0.13.0
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-chi/cors v1.2.1
@@ -61,6 +63,7 @@ require (
 	go.uber.org/zap v1.21.0
 	goa.design/goa/v3 v3.5.2
 	goa.design/plugins/v3 v3.4.3
+	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
 	golang.org/x/oauth2 v0.6.0
 	golang.org/x/sync v0.9.0
 	gopkg.in/vansante/go-ffprobe.v2 v2.1.0
@@ -79,7 +82,7 @@ require (
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/yuin/gopher-lua v1.1.1 // indirect
-	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f // indirect
+	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 )
 
 require (

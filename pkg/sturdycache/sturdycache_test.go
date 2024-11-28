@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/store"
 	"github.com/stretchr/testify/suite"
 )
@@ -16,12 +17,13 @@ import (
 type ReplicatedCacheTestSuite struct {
 	suite.Suite
 
-	master       *miniredis.Miniredis
-	replicas     []*miniredis.Miniredis
-	cache        *ReplicatedCache
-	teardownFunc teardownFunc
-	ctx          context.Context
-	cancel       context.CancelFunc
+	master          *miniredis.Miniredis
+	replicas        []*miniredis.Miniredis
+	cache           cache.CacheInterface[any]
+	replicatedCache *ReplicatedCache
+	teardownFunc    teardownFunc
+	ctx             context.Context
+	cancel          context.CancelFunc
 }
 
 type TestStruct struct {
@@ -38,12 +40,16 @@ func (t *TestStruct) UnmarshalBinary(data []byte) error {
 }
 
 func (s *ReplicatedCacheTestSuite) SetupTest() {
-	s.cache, s.master, s.replicas, s.teardownFunc = CreateTestCache(s.T())
+	var err error
+	s.replicatedCache, s.master, s.replicas, s.teardownFunc = CreateTestCache(s.T())
+	s.cache, err = AddLocalCache(s.replicatedCache)
+	s.Require().NoError(err)
 }
 
 func (s *ReplicatedCacheTestSuite) TearDownTest() {
 	s.teardownFunc()
 }
+
 func (s *ReplicatedCacheTestSuite) SetupSuite() {
 	s.ctx, s.cancel = context.WithTimeout(context.Background(), 30*time.Second)
 }
@@ -54,8 +60,8 @@ func (s *ReplicatedCacheTestSuite) TearDownSuite() {
 
 func (s *ReplicatedCacheTestSuite) TestNewReplicatedCache() {
 	s.Require().NotNil(s.cache)
-	s.Require().NotNil(s.cache.masterCache)
-	s.Require().Len(s.cache.replicaCaches, len(s.replicas))
+	s.Require().NotNil(s.replicatedCache.masterCache)
+	s.Require().Len(s.replicatedCache.replicaCaches, len(s.replicas))
 }
 
 func (s *ReplicatedCacheTestSuite) TestSet() {

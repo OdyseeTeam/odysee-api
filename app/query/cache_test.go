@@ -12,7 +12,6 @@ import (
 func TestGetCacheKey(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	assert.Equal(1, 1)
 	seen := map[string]bool{}
 	params := []map[string]any{{}, {"uri": "what"}, {"uri": "odysee"}, nil}
 	genCacheKey := func(params map[string]any) string {

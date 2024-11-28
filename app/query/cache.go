@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
+	"github.com/OdyseeTeam/odysee-api/pkg/chainquery"
 	"github.com/OdyseeTeam/odysee-api/pkg/rpcerrors"
 
 	"github.com/eko/gocache/lib/v4/cache"
@@ -16,6 +17,11 @@ import (
 	"github.com/eko/gocache/lib/v4/store"
 	"github.com/ybbus/jsonrpc"
 	"golang.org/x/sync/singleflight"
+)
+
+const (
+	methodTagSeparator   = ":"
+	invalidationInterval = 15 * time.Second
 )
 
 type CacheRequest struct {
@@ -31,14 +37,40 @@ type CachedResponse struct {
 type QueryCache struct {
 	cache        *marshaler.Marshaler
 	singleflight *singleflight.Group
+	height       int
+	stopChan     chan struct{}
 }
 
-func NewQueryCache(store cache.CacheInterface[any]) *QueryCache {
-	marshal := marshaler.New(store)
+func NewQueryCache(baseCache cache.CacheInterface[any]) *QueryCache {
+	marshal := marshaler.New(baseCache)
 	return &QueryCache{
 		cache:        marshal,
 		singleflight: &singleflight.Group{},
+		stopChan:     make(chan struct{}),
 	}
+}
+
+func NewQueryCacheWithInvalidator(baseCache cache.CacheInterface[any]) (*QueryCache, error) {
+	qc := NewQueryCache(baseCache)
+	height, err := chainquery.GetHeight()
+	if err != nil {
+		QueryCacheErrorCount.WithLabelValues(CacheAreaChainquery).Inc()
+		return nil, fmt.Errorf("failed to get current height: %w", err)
+	}
+	qc.height = height
+	go func() {
+		ticker := time.NewTicker(invalidationInterval)
+		for {
+			select {
+			case <-ticker.C:
+				qc.runInvalidator()
+			case <-qc.stopChan:
+				return
+			}
+		}
+	}()
+
+	return qc, nil
 }
 
 func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*CachedResponse, error) {
@@ -72,10 +104,10 @@ func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*Cached
 		start := time.Now()
 		obj, err, _ := c.singleflight.Do(cacheReq.GetCacheKey(), getter)
 		if err != nil {
-			ObserveQueryRetrievalDuration(CacheResultError, cacheReq.Method, start)
+			ObserveQueryCacheRetrievalDuration(CacheResultError, cacheReq.Method, start)
 			return nil, fmt.Errorf("error calling getter: %w", err)
 		}
-		ObserveQueryRetrievalDuration(CacheResultSuccess, cacheReq.Method, start)
+		ObserveQueryCacheRetrievalDuration(CacheResultSuccess, cacheReq.Method, start)
 
 		res, ok := obj.(*jsonrpc.RPCResponse)
 		if !ok {
@@ -94,7 +126,7 @@ func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*Cached
 			)
 			if err != nil {
 				ObserveQueryCacheOperation(CacheOperationSet, CacheResultError, cacheReq.Method, start)
-				monitor.ErrorToSentry(fmt.Errorf("error during cache.set: %w", err), map[string]string{"method": cacheReq.Method})
+				monitor.ErrorToSentry(fmt.Errorf("error during cache.set: %w", err), map[string]string{ParamMethod: cacheReq.Method})
 				log.Warnf("error during cache.set: %s", err)
 				return cacheResp, nil
 			}
@@ -102,6 +134,10 @@ func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*Cached
 		}
 
 		return cacheResp, nil
+	}
+	if hit == nil {
+		ObserveQueryCacheOperation(CacheOperationGet, CacheResultError, cacheReq.Method, start)
+		return nil, nil
 	}
 	log.Infof("cache hit for %s, key=%s, duration=%.2fs", cacheReq.Method, cacheReq.GetCacheKey(), time.Since(start).Seconds())
 	ObserveQueryCacheOperation(CacheOperationGet, CacheResultHit, cacheReq.Method, start)
@@ -112,19 +148,48 @@ func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*Cached
 	return cacheResp, nil
 }
 
+func (c *QueryCache) runInvalidator() error {
+	log := logger.Log()
+	height, err := chainquery.GetHeight()
+	if err != nil {
+		QueryCacheErrorCount.WithLabelValues(CacheAreaChainquery).Inc()
+		return fmt.Errorf("failed to get current height: %w", err)
+	}
+	if c.height >= height {
+		log.Infof("block height unchanged (%v = %v), cache invalidation skipped", height, c.height)
+		return nil
+	}
+
+	log.Infof("new block height (%v > %v), running invalidation", height, c.height)
+	c.height = height
+
+	ctx, cancel := context.WithTimeout(context.Background(), invalidationInterval)
+	defer cancel()
+	err = c.cache.Invalidate(ctx, store.WithInvalidateTags(
+		[]string{fmt.Sprintf("%s%s%s", ParamMethod, methodTagSeparator, MethodClaimSearch)},
+	))
+	if err != nil {
+		QueryCacheErrorCount.WithLabelValues(CacheAreaInvalidateCall).Inc()
+		log.Warnf("failed to invalidate %s entries: %s", MethodClaimSearch, err)
+		return fmt.Errorf("failed to invalidate %s entries: %w", MethodClaimSearch, err)
+	}
+
+	return nil
+}
+
 func (r CacheRequest) Expiration() time.Duration {
 	switch r.Method {
 	case MethodResolve:
 		return 600 * time.Second
 	case MethodClaimSearch:
-		return 180 * time.Second
+		return 300 * time.Second
 	default:
 		return 60 * time.Second
 	}
 }
 
 func (r CacheRequest) Tags() []string {
-	return []string{"method:" + r.Method}
+	return []string{fmt.Sprintf("%s%s%s", ParamMethod, methodTagSeparator, r.Method)}
 }
 
 func (r CacheRequest) GetCacheKey() string {
@@ -135,7 +200,7 @@ func (r CacheRequest) GetCacheKey() string {
 		params = "()"
 	} else {
 		if p, err := json.Marshal(r.Params); err != nil {
-			params = "(x)"
+			params = "(error)"
 		} else {
 			params = string(p)
 		}
