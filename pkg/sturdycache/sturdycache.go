@@ -2,13 +2,18 @@ package sturdycache
 
 import (
 	"context"
+	"time"
 
+	"github.com/dgraph-io/ristretto"
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/store"
 	redis_store "github.com/eko/gocache/store/redis/v4"
+	ristretto_store "github.com/eko/gocache/store/ristretto/v4"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/exp/rand"
 )
+
+const ReplicatedCacheType = "redis"
 
 type ReplicatedCache struct {
 	masterCache   *cache.Cache[any]
@@ -23,6 +28,7 @@ func NewReplicatedCache(
 	replicaAddrs []string,
 	password string,
 ) (*ReplicatedCache, error) {
+
 	masterClient := redis.NewClient(&redis.Options{
 		Addr:         masterAddr,
 		Password:     password,
@@ -49,11 +55,28 @@ func NewReplicatedCache(
 		replicaCaches = append(replicaCaches, cache.New[any](replicaStore))
 	}
 
-	cache := &ReplicatedCache{
+	baseStore := &ReplicatedCache{
 		masterCache:   masterCache,
 		replicaCaches: replicaCaches,
 		readCaches:    append(replicaCaches, masterCache),
 	}
+
+	return baseStore, nil
+}
+
+// AddLocalCache adds a local in-memory cache layer to a replicated cache instance.
+func AddLocalCache(baseCache *ReplicatedCache) (cache.CacheInterface[any], error) {
+	// About 50k resolve responses with average size of 10KB
+	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{NumCounters: 500_000, MaxCost: 500_000_000, BufferItems: 64})
+	if err != nil {
+		return nil, err
+	}
+	ristrettoStore := ristretto_store.NewRistretto(ristrettoCache)
+
+	cache := cache.NewChain[any](
+		cache.New[any](ristrettoStore),
+		cache.New[any](baseCache),
+	)
 
 	return cache, nil
 }
@@ -66,6 +89,11 @@ func (rc *ReplicatedCache) Set(ctx context.Context, key any, value any, options 
 // Get reads from master and replica caches.
 func (rc *ReplicatedCache) Get(ctx context.Context, key any) (any, error) {
 	return rc.readCaches[rand.Intn(len(rc.readCaches))].Get(ctx, key)
+}
+
+// Get reads from master and replica caches.
+func (rc *ReplicatedCache) GetWithTTL(ctx context.Context, key any) (any, time.Duration, error) {
+	return rc.readCaches[rand.Intn(len(rc.readCaches))].GetWithTTL(ctx, key)
 }
 
 // Invalidate master cache entries for given options.
@@ -85,5 +113,5 @@ func (rc *ReplicatedCache) Clear(ctx context.Context) error {
 
 // GetType returns cache type name.
 func (rc *ReplicatedCache) GetType() string {
-	return "replicated_redis"
+	return ReplicatedCacheType
 }
