@@ -69,6 +69,8 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 	legacyProvider := auth.NewIAPIProvider(sdkRouter, config.GetInternalAPIHost())
 	sentryHandler := sentryhttp.New(sentryhttp.Options{})
 
+	allMiddlewares := defaultMiddlewares(oauthAuther, legacyProvider, sdkRouter)
+
 	r.Use(methodTimer, sentryHandler.Handle)
 
 	r.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
@@ -77,7 +79,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 	r.HandleFunc("", emptyHandler)
 
 	v1Router := r.PathPrefix("/api/v1").Subrouter()
-	v1Router.Use(defaultMiddlewares(oauthAuther, legacyProvider, sdkRouter))
+	v1Router.Use(allMiddlewares)
 
 	v1Router.HandleFunc("/proxy", upHandler.Handle).MatcherFunc(publish.CanHandle)
 	v1Router.HandleFunc("/proxy", proxy.Handle).Methods(http.MethodPost)
@@ -108,7 +110,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 	}
 
 	v2Router := r.PathPrefix("/api/v2").Subrouter()
-	v2Router.Use(defaultMiddlewares(oauthAuther, legacyProvider, sdkRouter))
+	v2Router.Use(allMiddlewares)
 	status.InstallRoutes(v2Router)
 
 	composer := tusd.NewStoreComposer()
@@ -153,7 +155,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 	gpl := zapadapter.NewNamedKV("geopublish", config.GetLoggingOpts())
 	if opts.EnableV3Publish {
 		v3Router := r.PathPrefix("/api/v3").Subrouter()
-		v3Router.Use(defaultMiddlewares(oauthAuther, legacyProvider, sdkRouter))
+		v3Router.Use(allMiddlewares)
 		ug := auth.NewUniversalUserGetter(oauthAuther, legacyProvider, gpl)
 		gPath := config.GetGeoPublishSourceDir()
 		v3Handler, err = geopublish.InstallRoutes(v3Router.PathPrefix("/publish").Subrouter(), ug, gPath, "/api/v3/publish/", gpl)
@@ -212,6 +214,7 @@ func defaultMiddlewares(oauthAuther auth.Authenticator, legacyProvider auth.Prov
 	if err != nil {
 		panic(err)
 	}
+
 	cache, err := query.NewQueryCacheWithInvalidator(lstore)
 	if err != nil {
 		panic(err)

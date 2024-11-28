@@ -58,16 +58,12 @@ func NewQueryCacheWithInvalidator(baseCache cache.CacheInterface[any]) (*QueryCa
 		return nil, fmt.Errorf("failed to get current height: %w", err)
 	}
 	qc.height = height
-
 	go func() {
 		ticker := time.NewTicker(invalidationInterval)
 		for {
 			select {
 			case <-ticker.C:
-				err := qc.runInvalidator()
-				if err != nil {
-					logger.Log().Warn(err.Error())
-				}
+				qc.runInvalidator()
 			case <-qc.stopChan:
 				return
 			}
@@ -153,14 +149,18 @@ func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*Cached
 }
 
 func (c *QueryCache) runInvalidator() error {
+	log := logger.Log()
 	height, err := chainquery.GetHeight()
 	if err != nil {
 		QueryCacheErrorCount.WithLabelValues(CacheAreaChainquery).Inc()
 		return fmt.Errorf("failed to get current height: %w", err)
 	}
 	if c.height >= height {
+		log.Infof("block height unchanged (%v = %v), cache invalidation skipped", height, c.height)
 		return nil
 	}
+
+	log.Infof("new block height (%v > %v), running invalidation", height, c.height)
 	c.height = height
 
 	ctx, cancel := context.WithTimeout(context.Background(), invalidationInterval)
@@ -170,6 +170,7 @@ func (c *QueryCache) runInvalidator() error {
 	))
 	if err != nil {
 		QueryCacheErrorCount.WithLabelValues(CacheAreaInvalidateCall).Inc()
+		log.Warnf("failed to invalidate %s entries: %s", MethodClaimSearch, err)
 		return fmt.Errorf("failed to invalidate %s entries: %w", MethodClaimSearch, err)
 	}
 
@@ -181,7 +182,7 @@ func (r CacheRequest) Expiration() time.Duration {
 	case MethodResolve:
 		return 600 * time.Second
 	case MethodClaimSearch:
-		return 180 * time.Second
+		return 300 * time.Second
 	default:
 		return 60 * time.Second
 	}

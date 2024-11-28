@@ -196,7 +196,7 @@ func (c *Caller) call(ctx context.Context, req *jsonrpc.RPCRequest) (*jsonrpc.RP
 				return nil, rpcerrors.NewSDKError(err)
 			}
 			if res != nil {
-				logger.Log().Infof("got %s response from %s hook", q.Method(), hook.name)
+				logger.Log().Debugf("got %s response from %s hook", q.Method(), hook.name)
 				return res, nil
 			}
 		}

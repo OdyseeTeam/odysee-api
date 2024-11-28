@@ -31,9 +31,9 @@ func NewServer(address string, sdkRouter *sdkrouter.Router, rOpts *api.RoutesOpt
 	api.InstallRoutes(r, sdkRouter, rOpts)
 	r.Use(monitor.ErrorLoggingMiddleware)
 	r.Use(defaultHeadersMiddleware(map[string]string{
-		"Server":                       "api.lbry.tv",
+		"Server":                       "api.odysee.com",
 		"Access-Control-Allow-Origin":  "*",
-		"Access-Control-Allow-Headers": "content-type", // Needed this to get any request to work
+		"Access-Control-Allow-Headers": "content-type",
 	}))
 
 	return &Server{
