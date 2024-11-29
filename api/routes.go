@@ -210,15 +210,7 @@ func defaultMiddlewares(oauthAuther auth.Authenticator, legacyProvider auth.Prov
 	if err != nil {
 		panic(err)
 	}
-	lstore, err := sturdycache.AddLocalCache(store)
-	if err != nil {
-		panic(err)
-	}
-
-	cache, err := query.NewQueryCacheWithInvalidator(lstore)
-	if err != nil {
-		panic(err)
-	}
+	cache := query.NewQueryCache(store)
 	logger.Log().Infof("cache configured: master=%s, replicas=%s", config.GetSturdyCacheMaster(), config.GetSturdyCacheReplicas())
 
 	defaultHeaders := []string{
