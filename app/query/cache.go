@@ -182,7 +182,7 @@ func (r CacheRequest) Expiration() time.Duration {
 	case MethodResolve:
 		return 600 * time.Second
 	case MethodClaimSearch:
-		return 300 * time.Second
+		return 160 * time.Second
 	default:
 		return 60 * time.Second
 	}
