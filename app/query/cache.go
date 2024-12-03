@@ -1,16 +1,19 @@
 package query
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/pkg/chainquery"
 	"github.com/OdyseeTeam/odysee-api/pkg/rpcerrors"
+	"github.com/pierrec/lz4"
 
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/marshaler"
@@ -220,11 +223,33 @@ func (r *CachedResponse) RPCResponse(id int) *jsonrpc.RPCResponse {
 }
 
 func (r *CachedResponse) MarshalBinary() ([]byte, error) {
-	return json.Marshal(r)
+	val, err := json.Marshal(r)
+	if err != nil {
+		return nil, err
+	}
+
+	vr := bytes.NewBuffer(val)
+	vw := &bytes.Buffer{}
+	zw := lz4.NewWriter(vw)
+	_, err = io.Copy(zw, vr)
+	zw.Close()
+	if err != nil {
+		return nil, err
+	}
+	return vw.Bytes(), nil
 }
 
 func (r *CachedResponse) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, r)
+	vr := bytes.NewBuffer(data)
+	vw := &bytes.Buffer{}
+	zr := lz4.NewReader(vr)
+	_, err := io.Copy(vw, zr)
+	if err != nil {
+		return err
+	}
+	decoder := json.NewDecoder(vw)
+	decoder.UseNumber()
+	return decoder.Decode(r)
 }
 
 func preflightCacheHook(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {

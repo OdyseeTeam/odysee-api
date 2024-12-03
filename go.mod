@@ -19,7 +19,6 @@ require (
 	github.com/dgraph-io/ristretto v0.2.0
 	github.com/eko/gocache/lib/v4 v4.1.6
 	github.com/eko/gocache/store/redis/v4 v4.2.2
-	github.com/eko/gocache/store/ristretto/v4 v4.2.2
 	github.com/friendsofgo/errors v0.9.2
 	github.com/getsentry/sentry-go v0.13.0
 	github.com/go-chi/chi/v5 v5.0.8
@@ -189,7 +188,7 @@ require (
 	github.com/oschwald/maxminddb-golang v1.8.0 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
-	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
+	github.com/pierrec/lz4 v2.6.1+incompatible
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/pquerna/cachecontrol v0.1.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect

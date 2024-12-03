@@ -42,7 +42,6 @@ func (t *TestStruct) UnmarshalBinary(data []byte) error {
 func (s *ReplicatedCacheTestSuite) SetupTest() {
 	var err error
 	s.replicatedCache, s.master, s.replicas, s.teardownFunc = CreateTestCache(s.T())
-	s.cache, err = AddLocalCache(s.replicatedCache)
 	s.Require().NoError(err)
 }
 

@@ -34,3 +34,23 @@ func TestGetCacheKey(t *testing.T) {
 	}
 	assert.Contains(seen, genCacheKey(params[1]))
 }
+
+func TestCachedResponseMarshal(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	jr, err := decodeResponse(resolveResponseWithPurchase)
+	require.NoError(err)
+	require.NotNil(jr.Result)
+	r := &CachedResponse{
+		Result: jr.Result,
+		Error:  jr.Error,
+	}
+	mr, err := r.MarshalBinary()
+	require.NoError(err)
+	require.NotEmpty(mr)
+	assert.Less(len(mr), len(resolveResponseWithPurchase))
+	r2 := &CachedResponse{}
+	err = r2.UnmarshalBinary(mr)
+	require.NoError(err)
+	assert.Equal(r, r2)
+}
