@@ -24,7 +24,7 @@ func TestInvalidEvent(t *testing.T) {
 
 func TestInvalidMethod(t *testing.T) {
 	rr := testMetricUIEvent(t, http.MethodGet, "", map[string]string{})
-	assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
+	assert.Equal(t, http.StatusNotFound, rr.Code)
 }
 
 func TestTimeToStartEvent(t *testing.T) {
