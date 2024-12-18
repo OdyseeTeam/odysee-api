@@ -26,7 +26,7 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	werrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/ybbus/jsonrpc"
+	"github.com/ybbus/jsonrpc/v2"
 )
 
 var logger = monitor.NewModuleLogger("publish")

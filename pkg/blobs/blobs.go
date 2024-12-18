@@ -70,7 +70,8 @@ func NewStore(reflectorConfig map[string]string) (*Store, error) {
 		cfg: reflectorConfig,
 		db:  db,
 		dbs: store.NewDBBackedStore(store.NewS3Store(
-			reflectorConfig["key"], reflectorConfig["secret"], reflectorConfig["region"], reflectorConfig["bucket"],
+			reflectorConfig["key"], reflectorConfig["secret"], reflectorConfig["region"],
+			reflectorConfig["bucket"], reflectorConfig["endpoint"],
 		), db, false),
 		workers: 1,
 	}, nil

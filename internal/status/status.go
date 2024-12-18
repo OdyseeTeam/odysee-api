@@ -18,7 +18,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/models"
 
 	"github.com/gorilla/mux"
-	"github.com/ybbus/jsonrpc"
+	"github.com/ybbus/jsonrpc/v2"
 )
 
 var logger = monitor.NewModuleLogger("status")

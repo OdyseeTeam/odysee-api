@@ -71,6 +71,7 @@ SturdyCache:
 
 ReflectorUpstream:
   DatabaseDSN: 'user:password@tcp(localhost:3306)/blobs'
+  Endpoint: http://localhost:1337
   Region: us-east-1
   Bucket: blobs'
   Key: key

@@ -24,7 +24,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/migrator"
 
 	"github.com/stretchr/testify/require"
-	"github.com/ybbus/jsonrpc"
+	"github.com/ybbus/jsonrpc/v2"
 )
 
 const proxySuffix = "/api/v1/proxy"

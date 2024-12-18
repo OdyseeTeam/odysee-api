@@ -27,7 +27,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/rpcerrors"
 	"github.com/sirupsen/logrus"
 
-	"github.com/ybbus/jsonrpc"
+	"github.com/ybbus/jsonrpc/v2"
 )
 
 var logger = monitor.NewModuleLogger("proxy")

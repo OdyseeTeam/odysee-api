@@ -25,7 +25,7 @@ import (
 	"github.com/sirupsen/logrus"
 	tusd "github.com/tus/tusd/pkg/handler"
 	"github.com/volatiletech/sqlboiler/boil"
-	"github.com/ybbus/jsonrpc"
+	"github.com/ybbus/jsonrpc/v2"
 )
 
 var logger = monitor.NewModuleLogger("geopublish")
