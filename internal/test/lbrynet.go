@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"text/template"
 
-	"github.com/ybbus/jsonrpc"
+	"github.com/ybbus/jsonrpc/v2"
 )
 
 var SDKAddress = "http://localhost:15279"

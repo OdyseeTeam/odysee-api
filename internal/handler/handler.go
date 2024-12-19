@@ -10,7 +10,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/sirupsen/logrus"
 
-	"github.com/ybbus/jsonrpc"
+	"github.com/ybbus/jsonrpc/v2"
 )
 
 var logger = monitor.NewModuleLogger("internal_handler")

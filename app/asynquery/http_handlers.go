@@ -17,7 +17,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/rpcerrors"
 	"github.com/mitchellh/mapstructure"
-	"github.com/ybbus/jsonrpc"
+	"github.com/ybbus/jsonrpc/v2"
 
 	"github.com/gorilla/mux"
 )

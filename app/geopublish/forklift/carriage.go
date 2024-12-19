@@ -21,7 +21,7 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/volatiletech/sqlboiler/queries/qm"
-	"github.com/ybbus/jsonrpc"
+	"github.com/ybbus/jsonrpc/v2"
 )
 
 // A list of task types.

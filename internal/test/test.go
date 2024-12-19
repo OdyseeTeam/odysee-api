@@ -10,7 +10,7 @@ import (
 
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
 
-	"github.com/ybbus/jsonrpc"
+	"github.com/ybbus/jsonrpc/v2"
 )
 
 type mockServer struct {

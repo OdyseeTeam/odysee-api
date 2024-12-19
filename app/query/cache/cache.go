@@ -10,7 +10,7 @@ import (
 
 	"github.com/OdyseeTeam/odysee-api/internal/metrics"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
-	"github.com/ybbus/jsonrpc"
+	"github.com/ybbus/jsonrpc/v2"
 
 	"github.com/dgraph-io/ristretto"
 	"github.com/sirupsen/logrus"

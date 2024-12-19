@@ -27,7 +27,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/suite"
 	"github.com/volatiletech/sqlboiler/queries/qm"
-	"github.com/ybbus/jsonrpc"
+	"github.com/ybbus/jsonrpc/v2"
 )
 
 type publishV3Suite struct {

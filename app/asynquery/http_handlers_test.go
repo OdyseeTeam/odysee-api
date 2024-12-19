@@ -23,7 +23,7 @@ import (
 	"github.com/Pallinder/go-randomdata"
 	"github.com/gorilla/mux"
 	"github.com/volatiletech/sqlboiler/queries/qm"
-	"github.com/ybbus/jsonrpc"
+	"github.com/ybbus/jsonrpc/v2"
 
 	"github.com/stretchr/testify/suite"
 )
