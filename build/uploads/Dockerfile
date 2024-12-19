@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM alpine:3.17
+FROM alpine:3.21
 EXPOSE 8080
 
 # RUN apk add --no-cache libc6-compat

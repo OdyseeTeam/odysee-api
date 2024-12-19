@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 FROM odyseeteam/transcoder-ffmpeg:5.1.1 AS ffmpeg
-FROM alpine:3.20
+FROM alpine:3.21
 EXPOSE 8080
 
 RUN apk update && \
