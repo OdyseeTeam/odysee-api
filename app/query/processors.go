@@ -18,6 +18,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/iapi"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
+	"github.com/OdyseeTeam/odysee-api/pkg/rpcerrors"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
@@ -632,4 +633,44 @@ func isUserAMod(ctx context.Context, environ string) bool {
 		return false
 	}
 	return userResp.Success && userResp.Data.GlobalMod
+}
+
+// preflightCacheHook should be routed into caller for methods that must be cached:
+//
+//	c.AddPreflightHook(MethodResolve, preflightCacheHook, "cache")
+func preflightCacheHook(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
+	log := logger.Log()
+	if caller.Cache == nil {
+		log.Warn("no cache present on caller")
+		return nil, nil
+	}
+	query := QueryFromContext(ctx)
+
+	retrieverRetries := 3
+	retriever := func() (any, error) {
+		var resp *jsonrpc.RPCResponse
+		var err error
+		for attempt := range retrieverRetries {
+			resp, err = caller.SendQuery(ctx, query)
+			switch {
+			case err == nil && resp.Error == nil:
+				return resp, err
+			case err != nil:
+				log.Infof("cache retriever %s attempt #%d failed, err=%+v", query.Method(), attempt, err)
+			case resp.Error != nil:
+				log.Infof("cache retriever %s attempt #%d failed, resp=%+v", query.Method(), attempt, resp.Error)
+			}
+		}
+		return resp, err
+	}
+
+	cachedResp, err := caller.Cache.Retrieve(query, retriever)
+	if err != nil {
+		return nil, rpcerrors.NewSDKError(err)
+	}
+	if cachedResp == nil {
+		return nil, nil
+	}
+
+	return cachedResp.RPCResponse(query.Request.ID), nil
 }

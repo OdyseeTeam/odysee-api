@@ -15,12 +15,12 @@ import (
 
 type mockServer struct {
 	*httptest.Server
-	NextResponse chan<- string
+	NextResponse chan<- any
 }
 
 func EmptyResponse() string { return "" } // helper method to make it clearer what's happening
 
-func (m *mockServer) QueueResponses(responses ...string) {
+func (m *mockServer) QueueResponses(responses ...any) {
 	go func() {
 		for _, r := range responses {
 			m.NextResponse <- r
@@ -39,7 +39,7 @@ type Request struct {
 // channel to a buffer size of 1. then writes to the chan will block until you read it. see
 // ReqChan() for how to do this
 func MockHTTPServer(requestChan chan *Request) *mockServer {
-	next := make(chan string, 1)
+	next := make(chan any, 1)
 	return &mockServer{
 		NextResponse: next,
 		Server: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +48,19 @@ func MockHTTPServer(requestChan chan *Request) *mockServer {
 				data, _ := io.ReadAll(r.Body)
 				requestChan <- &Request{r, w, string(data)}
 			}
-			fmt.Fprintf(w, <-next)
+			nextResponse := <-next
+			switch v := nextResponse.(type) {
+			case string:
+				fmt.Fprint(w, v)
+			case int:
+				w.WriteHeader(v)
+			case func(http.ResponseWriter, *http.Request):
+				v(w, r)
+			default:
+				fmt.Printf("test server: unknown type %T\n", v)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(fmt.Sprintf("test server: unknown type %T\n", v)))
+			}
 		})),
 	}
 }
@@ -107,4 +119,10 @@ func RandServerAddress(t *testing.T) string {
 	}
 	t.Fatal("no lbrynet servers configured")
 	return ""
+}
+
+func NetworkErrorResponse(w http.ResponseWriter, r *http.Request) {
+	hj, _ := w.(http.Hijacker)
+	conn, _, _ := hj.Hijack()
+	conn.Close()
 }
