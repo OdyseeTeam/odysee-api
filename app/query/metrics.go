@@ -18,6 +18,9 @@ const (
 
 	CacheAreaChainquery     = "chainquery"
 	CacheAreaInvalidateCall = "invalidate_call"
+
+	CacheRetrievalErrorNet = "net"
+	CacheRetrievalErrorSdk = "sdk"
 )
 
 var (
@@ -41,6 +44,14 @@ var (
 			Buckets:   QueryCacheRetrievalDurationBuckets,
 		},
 		[]string{"result", "method"},
+	)
+	QueryCacheRetrievalFailures = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "query_cache",
+			Name:      "retrieval_retries",
+			Help:      "Retries for cold cache retrieval",
+		},
+		[]string{"kind", "method"},
 	)
 	QueryCacheErrorCount = promauto.NewCounterVec(
 		prometheus.CounterOpts{
