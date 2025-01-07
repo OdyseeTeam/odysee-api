@@ -1,6 +1,8 @@
 package monitor
 
 import (
+	"fmt"
+
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
 	"github.com/OdyseeTeam/odysee-api/version"
 
@@ -58,7 +60,7 @@ func configureLogLevelAndFormat(l *logrus.Logger) {
 func LogSuccessfulQuery(method string, time float64, params interface{}, response interface{}) {
 	fields := logrus.Fields{
 		"method":   method,
-		"duration": time,
+		"duration": fmt.Sprintf("%.3f", time),
 		"params":   params,
 	}
 	// if config.ShouldLogResponses() {

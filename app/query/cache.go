@@ -12,12 +12,11 @@ import (
 
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/pkg/chainquery"
-	"github.com/OdyseeTeam/odysee-api/pkg/rpcerrors"
-	"github.com/pierrec/lz4"
 
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/marshaler"
 	"github.com/eko/gocache/lib/v4/store"
+	"github.com/pierrec/lz4"
 	"github.com/ybbus/jsonrpc/v2"
 	"golang.org/x/sync/singleflight"
 )
@@ -102,8 +101,8 @@ func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*Cached
 			return nil, nil
 		}
 
-		log.Infof("cache miss for %s, key=%s, duration=%.2fs", cacheReq.Method, cacheReq.GetCacheKey(), time.Since(start).Seconds())
 		// Cold object retrieval after cache miss
+		log.Infof("cache miss for %s, key=%s, duration=%.2fs", cacheReq.Method, cacheReq.GetCacheKey(), time.Since(start).Seconds())
 		start := time.Now()
 		obj, err, _ := c.singleflight.Do(cacheReq.GetCacheKey(), getter)
 		if err != nil {
@@ -250,23 +249,4 @@ func (r *CachedResponse) UnmarshalBinary(data []byte) error {
 	decoder := json.NewDecoder(vw)
 	decoder.UseNumber()
 	return decoder.Decode(r)
-}
-
-func preflightCacheHook(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
-	log := logger.Log()
-	if caller.Cache == nil {
-		log.Warn("no cache present on caller")
-		return nil, nil
-	}
-	query := QueryFromContext(ctx)
-	cachedResp, err := caller.Cache.Retrieve(query, func() (any, error) {
-		return caller.SendQuery(ctx, query)
-	})
-	if err != nil {
-		return nil, rpcerrors.NewSDKError(err)
-	}
-	if cachedResp == nil {
-		return nil, nil
-	}
-	return cachedResp.RPCResponse(query.Request.ID), nil
 }

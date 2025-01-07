@@ -257,7 +257,7 @@ func (c *Caller) SendQuery(ctx context.Context, q *Query) (*jsonrpc.RPCResponse,
 		"method":   q.Method(),
 		"endpoint": c.endpoint,
 		"user_id":  c.userID,
-		"duration": c.Duration,
+		"duration": fmt.Sprintf("%.3f", c.Duration),
 	}
 	// Don't log query params for "sync_apply" method,
 	// and also log only some entries of lists to avoid clogging

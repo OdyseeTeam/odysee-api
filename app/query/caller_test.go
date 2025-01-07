@@ -417,19 +417,23 @@ func TestCaller_CallCachingResponses(t *testing.T) {
 
 }
 
-func TestCaller_CallNotCachingErrors(t *testing.T) {
+func TestCaller_CallRetryingErrors(t *testing.T) {
 	var err error
 	srv := test.MockHTTPServer(nil)
 	defer srv.Close()
-	srv.NextResponse <- `
-		{
+
+	srv.QueueResponses(
+		`{
 			"jsonrpc": "2.0",
 			"error": {
 			  "code": -32000,
 			  "message": "sqlite query timed out"
 			},
 			"id": 0
-		}`
+		}`,
+		test.NetworkErrorResponse,
+		resolveResponseFree,
+	)
 
 	c := NewCaller(srv.URL, 0)
 	cache, _, _, teardown := sturdycache.CreateTestCache(t)
@@ -440,20 +444,14 @@ func TestCaller_CallNotCachingErrors(t *testing.T) {
 	rpcReq := jsonrpc.NewRequest("claim_search", map[string]any{"urls": "what"})
 	rpcResponse, err := c.Call(bgctx(), rpcReq)
 	require.NoError(t, err)
-	assert.Equal(t, rpcResponse.Error.Code, -32000)
-	time.Sleep(500 * time.Millisecond)
-
-	q, err := NewQuery(rpcReq, "")
-	require.NoError(t, err)
-
-	cResp, err := c.Cache.Retrieve(q, nil)
-	require.NoError(t, err)
-	assert.Nil(t, cResp)
+	require.Nil(t, rpcResponse.Error)
+	require.NotEmpty(t, rpcResponse.Result.(map[string]any)["what"])
 }
 
 func TestCaller_CallSDKError(t *testing.T) {
 	srv := test.MockHTTPServer(nil)
 	defer srv.Close()
+
 	srv.NextResponse <- `
 		{
 			"jsonrpc": "2.0",
