@@ -2,6 +2,7 @@ package olapdb
 
 import (
 	"fmt"
+	"sort"
 	"testing"
 	"time"
 
@@ -38,20 +39,36 @@ func (s *batchWriterSuite) TestBatch() {
 	time.Sleep(3 * time.Second)
 	bw.Stop()
 
-	var (
-		url      string
-		duration int32
-	)
 	rows, err := conn.Query(fmt.Sprintf("SELECT URL, Duration from %s.playback ORDER BY Timestamp DESC", database))
 	s.Require().NoError(err)
 	defer rows.Close()
+	type duration struct {
+		URL      string
+		Duration int32
+	}
+	retDurations := []duration{}
 	for i, r := range reports {
 		n := rows.Next()
 		s.Require().True(n, "only %v rows in db, expected %v", i, len(reports))
-		err = rows.Scan(&url, &duration)
+		d := duration{}
+		err = rows.Scan(&d.URL, &d.Duration)
 		s.Require().NoError(err)
-		s.Equal(r.URL, url)
-		s.Equal(r.Duration, duration)
+		retDurations = append(retDurations, d)
+		s.Equal(r.URL, d.URL)
+		s.Equal(r.Duration, d.Duration)
 	}
 	s.False(rows.Next())
+
+	sort.Slice(retDurations, func(i, j int) bool {
+		return retDurations[i].Duration < retDurations[j].Duration
+	})
+	sort.Slice(reports, func(i, j int) bool {
+		return reports[i].Duration < reports[j].Duration
+	})
+
+	s.Equal(len(reports), len(retDurations))
+	for i := range reports {
+		s.Equal(reports[i].URL, retDurations[i].URL)
+		s.Equal(reports[i].Duration, retDurations[i].Duration)
+	}
 }
