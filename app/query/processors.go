@@ -651,16 +651,24 @@ func preflightCacheHook(caller *Caller, ctx context.Context) (*jsonrpc.RPCRespon
 		var resp *jsonrpc.RPCResponse
 		var err error
 		for attempt := range retrieverRetries {
+			start := time.Now()
 			resp, err = caller.SendQuery(ctx, query)
+			duration := time.Since(start).Seconds()
 			switch {
 			case err == nil && resp.Error == nil:
 				return resp, err
 			case err != nil:
 				QueryCacheRetrievalFailures.WithLabelValues(CacheRetrievalErrorNet, query.Method()).Inc()
-				log.Infof("cache retriever %s attempt #%d failed, err=%+v", query.Method(), attempt, err)
+				log.Infof(
+					"cache retriever %s attempt #%d failed after %.3fs, err=%+v @ %s",
+					query.Method(), attempt, duration, err, caller.Endpoint(),
+				)
 			case resp.Error != nil:
 				QueryCacheRetrievalFailures.WithLabelValues(CacheRetrievalErrorSdk, query.Method()).Inc()
-				log.Infof("cache retriever %s attempt #%d failed, resp=%+v", query.Method(), attempt, resp.Error)
+				log.Infof(
+					"cache retriever %s attempt #%d failed after %.3fs, resp=%+v @ %s",
+					query.Method(), attempt, duration, resp.Error, caller.Endpoint(),
+				)
 			}
 		}
 		return resp, err
