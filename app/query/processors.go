@@ -657,6 +657,13 @@ func preflightCacheHook(caller *Caller, ctx context.Context) (*jsonrpc.RPCRespon
 			duration := time.Since(start).Seconds()
 			switch {
 			case err == nil && resp.Error == nil:
+				if attempt > 0 {
+					log.Infof(
+						"cache retriever %s attempt #%d succeeded",
+						query.Method(), attempt,
+					)
+					QueryCacheRetrySuccesses.Observe(float64(attempt))
+				}
 				return resp, err
 			case err != nil:
 				QueryCacheRetrievalFailures.WithLabelValues(CacheRetrievalErrorNet, query.Method()).Inc()
