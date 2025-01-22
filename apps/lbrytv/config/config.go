@@ -196,6 +196,10 @@ func GetTokenCacheTimeout() time.Duration {
 	return Config.Viper.GetDuration("TokenCacheTimeout") * time.Second
 }
 
+func GetCacheGetterRetries() int {
+	return Config.Viper.GetInt("CacheGetterRetries")
+}
+
 func GetCORSDomains() []string {
 	return Config.Viper.GetStringSlice("CORSDomains")
 }
@@ -254,4 +258,5 @@ func init() {
 	c.Viper.SetDefault("Address", ":8080")
 	c.Viper.SetDefault("Host", "http://localhost:8080")
 	c.Viper.SetDefault("Logging", map[string]string{"level": "debug", "format": "console"})
+	c.Viper.SetDefault("CacheGetterRetries", 3)
 }
