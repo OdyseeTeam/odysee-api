@@ -27,8 +27,9 @@ const (
 )
 
 type CacheRequest struct {
-	Method string
-	Params any
+	Method  string
+	Params  any
+	metaKey string
 }
 
 type CachedResponse struct {
@@ -75,12 +76,18 @@ func NewQueryCacheWithInvalidator(baseCache cache.CacheInterface[any]) (*QueryCa
 	return qc, nil
 }
 
-func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*CachedResponse, error) {
-	log := logger.Log()
-	cacheReq := CacheRequest{
-		Method: query.Method(),
-		Params: query.Params(),
+func NewCacheRequest(method string, params any, metaKey string) CacheRequest {
+	return CacheRequest{
+		Method:  method,
+		Params:  params,
+		metaKey: metaKey,
 	}
+}
+
+func (c *QueryCache) Retrieve(query *Query, metaKey string, getter func() (any, error)) (*CachedResponse, error) {
+	log := logger.Log()
+
+	cacheReq := NewCacheRequest(query.Method(), query.Params(), metaKey)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5000*time.Millisecond)
 	defer cancel()
@@ -207,7 +214,7 @@ func (r CacheRequest) GetCacheKey() string {
 			params = string(p)
 		}
 	}
-	fmt.Fprintf(digester, "%s:%s:%s", "request", r.Method, params)
+	fmt.Fprintf(digester, "[%s]%s:%s:%s", r.metaKey, "request", r.Method, params)
 	hash := digester.Sum(nil)
 	return fmt.Sprintf("%x", hash)
 }

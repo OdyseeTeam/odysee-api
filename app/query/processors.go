@@ -646,11 +646,12 @@ func preflightCacheHook(caller *Caller, ctx context.Context) (*jsonrpc.RPCRespon
 	}
 	query := QueryFromContext(ctx)
 
-	retrieverRetries := 3
-	retriever := func() (any, error) {
+	getterRetries := config.GetCacheGetterRetries()
+	getter := func() (any, error) {
 		var resp *jsonrpc.RPCResponse
 		var err error
-		for attempt := range retrieverRetries {
+		for attempt := range getterRetries {
+			time.Sleep(time.Duration(attempt) * time.Second)
 			start := time.Now()
 			resp, err = caller.SendQuery(ctx, query)
 			duration := time.Since(start).Seconds()
@@ -674,7 +675,8 @@ func preflightCacheHook(caller *Caller, ctx context.Context) (*jsonrpc.RPCRespon
 		return resp, err
 	}
 
-	cachedResp, err := caller.Cache.Retrieve(query, retriever)
+	metaKey := fmt.Sprintf("%d@%s", caller.userID, caller.Endpoint())
+	cachedResp, err := caller.Cache.Retrieve(query, metaKey, getter)
 	if err != nil {
 		return nil, rpcerrors.NewSDKError(err)
 	}
