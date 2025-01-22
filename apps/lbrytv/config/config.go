@@ -193,11 +193,15 @@ func GetLbrynetServers() map[string]string {
 }
 
 func GetTokenCacheTimeout() time.Duration {
-	return Config.Viper.GetDuration("TokenCacheTimeout") * time.Second
+	return Config.Viper.GetDuration("TokenCacheTimeout")
 }
 
 func GetCacheGetterRetries() int {
 	return Config.Viper.GetInt("CacheGetterRetries")
+}
+
+func GetCacheGetterInterval() time.Duration {
+	return Config.Viper.GetDuration("CacheGetterInterval")
 }
 
 func GetCORSDomains() []string {
@@ -259,4 +263,5 @@ func init() {
 	c.Viper.SetDefault("Host", "http://localhost:8080")
 	c.Viper.SetDefault("Logging", map[string]string{"level": "debug", "format": "console"})
 	c.Viper.SetDefault("CacheGetterRetries", 3)
+	c.Viper.SetDefault("CacheGetterInterval", 1*time.Second)
 }

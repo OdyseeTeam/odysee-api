@@ -29,7 +29,7 @@ func TestGetLbrynetServersNoDB(t *testing.T) {
 }
 
 func TestGetTokenCacheTimeout(t *testing.T) {
-	Config.Override("TokenCacheTimeout", 325)
+	Config.Override("TokenCacheTimeout", "325s")
 	defer Config.RestoreOverridden()
 	assert.Equal(t, 325*time.Second, GetTokenCacheTimeout())
 }
