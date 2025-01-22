@@ -53,6 +53,13 @@ var (
 		},
 		[]string{"kind", "method"},
 	)
+	QueryCacheRetrySuccesses = promauto.NewSummary(
+		prometheus.SummaryOpts{
+			Namespace: "query_cache",
+			Name:      "retry_successes",
+			Help:      "Successful counts of cache retrieval retries",
+		},
+	)
 	QueryCacheErrorCount = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "query_cache",
