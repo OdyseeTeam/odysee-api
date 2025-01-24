@@ -84,10 +84,10 @@ func NewCacheRequest(method string, params any, metaKey string) CacheRequest {
 	}
 }
 
-func (c *QueryCache) Retrieve(query *Query, metaKey string, getter func() (any, error)) (*CachedResponse, error) {
+func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*CachedResponse, error) {
 	log := logger.Log()
 
-	cacheReq := NewCacheRequest(query.Method(), query.Params(), metaKey)
+	cacheReq := NewCacheRequest(query.Method(), query.Params(), "")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5000*time.Millisecond)
 	defer cancel()

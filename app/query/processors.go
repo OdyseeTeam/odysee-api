@@ -686,8 +686,7 @@ func preflightCacheHook(caller *Caller, ctx context.Context) (*jsonrpc.RPCRespon
 		return resp, err
 	}
 
-	metaKey := fmt.Sprintf("%d@%s", caller.userID, caller.Endpoint())
-	cachedResp, err := caller.Cache.Retrieve(query, metaKey, getter)
+	cachedResp, err := caller.Cache.Retrieve(query, getter)
 	if err != nil {
 		return nil, rpcerrors.NewSDKError(err)
 	}
