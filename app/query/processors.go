@@ -663,8 +663,8 @@ func preflightCacheHook(caller *Caller, ctx context.Context) (*jsonrpc.RPCRespon
 			case err == nil && resp.Error == nil:
 				if attempt > 0 {
 					log.Infof(
-						"cache retriever %s attempt #%d succeeded (after spending %.2f seconds)",
-						query.Method(), attempt, time.Since(totalStart).Seconds(),
+						"cache retriever %s attempt #%d succeeded (after spending %.2f seconds) for %d@%s",
+						query.Method(), attempt, time.Since(totalStart).Seconds(), caller.userID, caller.Endpoint(),
 					)
 					QueryCacheRetrySuccesses.Observe(float64(attempt))
 				}
@@ -672,14 +672,14 @@ func preflightCacheHook(caller *Caller, ctx context.Context) (*jsonrpc.RPCRespon
 			case err != nil:
 				QueryCacheRetrievalFailures.WithLabelValues(CacheRetrievalErrorNet, query.Method()).Inc()
 				log.Infof(
-					"cache retriever %s attempt #%d failed after %.3fs, err=%+v @ %s",
-					query.Method(), attempt, duration, err, caller.Endpoint(),
+					"cache retriever %s attempt #%d failed after %.3fs, err=%+v for %d@%s",
+					query.Method(), attempt, duration, err, caller.userID, caller.Endpoint(),
 				)
 			case resp.Error != nil:
 				QueryCacheRetrievalFailures.WithLabelValues(CacheRetrievalErrorSdk, query.Method()).Inc()
 				log.Infof(
-					"cache retriever %s attempt #%d failed after %.3fs, resp=%+v @ %s",
-					query.Method(), attempt, duration, resp.Error, caller.Endpoint(),
+					"cache retriever %s attempt #%d failed after %.3fs, resp=%+v @ %d@%s",
+					query.Method(), attempt, duration, resp.Error, caller.userID, caller.Endpoint(),
 				)
 			}
 		}
