@@ -423,18 +423,7 @@ func TestCaller_CallRetryingErrors(t *testing.T) {
 	okSrv := test.MockHTTPServer(nil)
 	defer okSrv.Close()
 
-	failSrv.QueueResponses(
-		`{
-			"jsonrpc": "2.0",
-			"error": {
-			  "code": -32000,
-			  "message": "sqlite query timed out"
-			},
-			"id": 0
-		}`,
-		// test.NetworkErrorResponse,
-		// resolveResponseFree,
-	)
+	failSrv.QueueResponses(responseInternalError)
 	okSrv.QueueResponses(resolveResponseFree)
 
 	c := NewCaller(failSrv.URL, 0)
@@ -450,6 +439,31 @@ func TestCaller_CallRetryingErrors(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, rpcResponse.Error)
 	require.NotEmpty(t, rpcResponse.Result.(map[string]any)["what"])
+}
+
+func TestCaller_CallNotRetryingInputErrors(t *testing.T) {
+	var err error
+	failSrv := test.MockHTTPServer(nil)
+	defer failSrv.Close()
+	okSrv := test.MockHTTPServer(nil)
+	defer okSrv.Close()
+
+	failSrv.QueueResponses(responseUserInputError)
+	okSrv.QueueResponses(resolveResponseFree)
+
+	c := NewCaller(failSrv.URL, 0)
+	c.AddBackupEndpoints([]string{okSrv.URL})
+
+	cache, _, _, teardown := sturdycache.CreateTestCache(t)
+	defer teardown()
+	c.Cache = NewQueryCache(cache)
+	require.NoError(t, err)
+
+	rpcReq := jsonrpc.NewRequest(MethodResolve, map[string]any{"urls": "what"})
+	rpcResponse, err := c.Call(bgctx(), rpcReq)
+	require.NoError(t, err)
+	require.NotNil(t, rpcResponse.Error)
+	require.Equal(t, "expected string or bytes-like object", rpcResponse.Error.Message)
 }
 
 func TestCaller_CallSDKError(t *testing.T) {

@@ -19,8 +19,9 @@ const (
 	CacheAreaChainquery     = "chainquery"
 	CacheAreaInvalidateCall = "invalidate_call"
 
-	CacheRetrievalErrorNet = "net"
-	CacheRetrievalErrorSdk = "sdk"
+	CacheRetrieverErrorNet   = "net"
+	CacheRetrieverErrorSdk   = "sdk"
+	CacheRetrieverErrorInput = "input"
 )
 
 var (
