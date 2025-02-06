@@ -189,7 +189,6 @@ func TestCaller_CallForbiddenMethod(t *testing.T) {
 }
 
 func TestCaller_CallAttachesWalletID(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
 	dummyUserID := 123321
 
 	reqChan := test.ReqChan()
@@ -559,7 +558,6 @@ func TestCaller_WalletBalance(t *testing.T) {
 }
 
 func TestCaller_CallQueryWithRetry(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
 	dummyUserID := rand.Intn(100)
 	addr := test.RandServerAddress(t)
 
@@ -612,7 +610,6 @@ func TestCaller_timeouts(t *testing.T) {
 }
 
 func TestCaller_DontReloadWalletAfterOtherErrors(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
 	walletID := sdkrouter.WalletID(rand.Intn(100))
 
 	srv := test.MockHTTPServer(nil)
@@ -650,7 +647,6 @@ func TestCaller_DontReloadWalletAfterOtherErrors(t *testing.T) {
 }
 
 func TestCaller_DontReloadWalletIfAlreadyLoaded(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
 	walletID := sdkrouter.WalletID(rand.Intn(100))
 
 	srv := test.MockHTTPServer(nil)

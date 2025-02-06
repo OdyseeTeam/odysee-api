@@ -1,7 +1,6 @@
 package main
 
 import (
-	"math/rand"
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
@@ -15,13 +14,6 @@ import (
 )
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-
-	// defer func() {
-	// 	sentry.Flush(3 * time.Second)
-	// 	sentry.Recover()
-	// }()
-
 	monitor.IsProduction = config.IsProduction()
 	monitor.ConfigureSentry(config.GetSentryDSN(), version.GetDevVersion(), monitor.LogMode())
 	defer sentry.Flush(2 * time.Second)
