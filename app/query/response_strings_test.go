@@ -478,3 +478,21 @@ var resolveResponseCouldntFind = `
 	"id": 0
 }
 `
+
+var responseInternalError = `{
+	"jsonrpc": "2.0",
+	"error": {
+	  "code": -32000,
+	  "message": "sqlite query timed out"
+	},
+	"id": 0
+}`
+
+var responseUserInputError = `{
+	"jsonrpc": "2.0",
+	"error": {
+	  "code": -32500,
+	  "message": "expected string or bytes-like object"
+	},
+	"id": 0
+}`

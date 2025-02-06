@@ -663,23 +663,26 @@ func preflightCacheHook(caller *Caller, ctx context.Context) (*jsonrpc.RPCRespon
 			switch {
 			case err == nil && resp.Error == nil:
 				if attempt > 0 {
+					QueryCacheRetrySuccesses.Observe(float64(attempt))
 					log.Infof(
 						"cache retriever %s attempt #%d succeeded (after spending %.2f seconds) for %d @ %s",
 						query.Method(), attempt, time.Since(totalStart).Seconds(), caller.userID, caller.Endpoint(),
 					)
-					QueryCacheRetrySuccesses.Observe(float64(attempt))
 				}
 				return resp, err
 			case err != nil:
-				QueryCacheRetrievalFailures.WithLabelValues(CacheRetrievalErrorNet, query.Method()).Inc()
+				QueryCacheRetrievalFailures.WithLabelValues(CacheRetrieverErrorNet, query.Method()).Inc()
 				log.Infof(
 					"cache retriever %s attempt #%d failed after %.3fs, err=%+v for %d @ %s",
 					query.Method(), attempt, duration, err, caller.userID, caller.Endpoint(),
 				)
+			case resp.Error != nil && isUserInputError(resp):
+				QueryCacheRetrievalFailures.WithLabelValues(CacheRetrieverErrorInput, query.Method()).Inc()
+				return resp, err
 			case resp.Error != nil:
-				QueryCacheRetrievalFailures.WithLabelValues(CacheRetrievalErrorSdk, query.Method()).Inc()
+				QueryCacheRetrievalFailures.WithLabelValues(CacheRetrieverErrorSdk, query.Method()).Inc()
 				log.Infof(
-					"cache retriever %s attempt #%d failed after %.3fs, resp=%+v @ %d @ %s",
+					"cache retriever %s attempt #%d failed after %.3fs, resp=%+v for %d @ %s",
 					query.Method(), attempt, duration, resp.Error, caller.userID, caller.Endpoint(),
 				)
 			}
