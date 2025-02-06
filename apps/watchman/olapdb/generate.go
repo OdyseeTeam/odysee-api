@@ -58,7 +58,6 @@ func Generate(number int, days int) {
 		stmt *sql.Stmt
 		tx   *sql.Tx
 	)
-	rand.Seed(time.Now().UnixNano())
 
 	l := log.Log.Named("clickhouse.generate")
 	counter := 1

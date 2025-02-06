@@ -3,7 +3,6 @@ package proxy
 import (
 	"bytes"
 	"encoding/json"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,7 +28,6 @@ import (
 const testSetupWait = 200 * time.Millisecond
 
 func TestMain(m *testing.M) {
-	rand.Seed(time.Now().UnixNano())
 	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
 	if err != nil {
 		panic(err)

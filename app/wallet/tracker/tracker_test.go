@@ -29,14 +29,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	rand.Seed(time.Now().UnixNano())
-
-	// dbConfig := config.GetDatabase()
-	// params := storage.ConnParams{
-	// 	Connection: dbConfig.Connection,
-	// 	DBName:     dbConfig.DBName,
-	// 	Options:    dbConfig.Options + "&TimeZone=UTC",
-	// }
 	db, dbCleanup, err := migrator.CreateTestDB(migrator.DBConfigFromApp(config.GetDatabase()), storage.MigrationsFS)
 	if err != nil {
 		panic(err)

@@ -110,13 +110,16 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		userID = user.ID
 	}
 
+	backupEndpoints := []string{}
 	sdkAddress := sdkrouter.GetSDKAddress(user)
 	if sdkAddress == "" {
 		rt := sdkrouter.FromRequest(r)
 		sdkAddress = rt.RandomServer().Address
+		backupEndpoints = rt.GetAllAddresses()
 	}
 
 	c := query.NewCaller(sdkAddress, userID)
+	c.AddBackupEndpoints(backupEndpoints)
 
 	remoteIP := ip.FromRequest(r)
 	// Logging remote IP with query

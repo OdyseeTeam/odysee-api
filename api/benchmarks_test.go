@@ -11,7 +11,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/proxy"
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
@@ -89,8 +88,6 @@ func BenchmarkWalletCommands(b *testing.B) {
 	wallet.DisableLogger()
 	sdkrouter.DisableLogger()
 	log.SetOutput(ioutil.Discard)
-
-	rand.Seed(time.Now().UnixNano())
 
 	rt := sdkrouter.New(config.GetLbrynetServers())
 

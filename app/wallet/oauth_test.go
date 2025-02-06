@@ -35,7 +35,6 @@ func TestOauthAuthenticatorAuthenticate(t *testing.T) {
 	assert.True(t, u.LbrynetServerID.IsZero()) // because the server came from a config, it should not have an id set
 
 	// now assign the user a new server thats set in the db
-	//      rand.Intn(99999),
 	sdk := &models.LbrynetServer{
 		Name:    "testing",
 		Address: "test.test.test.test",

@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
@@ -86,7 +85,6 @@ func TestGetUserWithWallet_NewUser(t *testing.T) {
 	assert.True(t, u.LbrynetServerID.IsZero()) // because the server came from a config, it should not have an id set
 
 	// now assign the user a new server thats set in the db
-	//      rand.Intn(99999),
 	sdk := &models.LbrynetServer{
 		Name:    randomdata.Alphanumeric(12),
 		Address: "test.test.test.test",
@@ -264,7 +262,6 @@ func TestAssignSDKServerToUser_ConcurrentUpdates(t *testing.T) {
 }
 
 func TestInitializeWallet(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
 	userID := rand.Int()
 	addr := test.RandServerAddress(t)
 
@@ -279,7 +276,6 @@ func TestInitializeWallet(t *testing.T) {
 }
 
 func TestCreateWalletLoadWallet(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
 	userID := rand.Int()
 	addr := test.RandServerAddress(t)
 

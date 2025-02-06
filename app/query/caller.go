@@ -20,6 +20,7 @@ import (
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc/v2"
+	"golang.org/x/exp/rand"
 )
 
 const (
@@ -61,46 +62,19 @@ type Caller struct {
 
 	Duration float64
 
-	userID   int
-	endpoint string
+	userID          int
+	endpoint        string
+	backupEndpoints []string
 }
 
 func NewCaller(endpoint string, userID int) *Caller {
 	caller := &Caller{
-		endpoint: endpoint,
-		userID:   userID,
+		endpoint:        endpoint,
+		userID:          userID,
+		backupEndpoints: []string{},
 	}
 	caller.addDefaultHooks()
 	return caller
-}
-
-func (c *Caller) newRPCClient(timeout time.Duration) jsonrpc.RPCClient {
-	client := jsonrpc.NewClientWithOpts(c.endpoint, &jsonrpc.RPCClientOpts{
-		HTTPClient: &http.Client{
-			Timeout: sdkrouter.RPCTimeout + timeout,
-			Transport: &http.Transport{
-				Dial: (&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 120 * time.Second,
-				}).Dial,
-				ResponseHeaderTimeout: timeout * 2,
-			},
-		},
-	})
-	return client
-}
-
-func (c *Caller) getRPCTimeout(method string) time.Duration {
-	t := config.GetRPCTimeout(method)
-	if t != nil {
-		return *t
-	}
-	return defaultRPCTimeout
-}
-
-func (c *Caller) getRPCClient(method string) jsonrpc.RPCClient {
-	var client jsonrpc.RPCClient = c.newRPCClient(c.getRPCTimeout(method))
-	return client
 }
 
 // AddPreflightHook adds query preflight hook function,
@@ -133,6 +107,26 @@ func (c *Caller) addDefaultHooks() {
 	// This should be applied after all preflight hooks had a chance
 	c.AddPreflightHook(MethodResolve, preflightCacheHook, "cache")
 	c.AddPreflightHook(MethodClaimSearch, preflightCacheHook, "cache")
+}
+
+// AddBackupEndpoints can accept a list of RPC endpoints to be called
+// for retries in cache routines etc.
+func (c *Caller) AddBackupEndpoints(endpoints []string) {
+	c.backupEndpoints = endpoints
+}
+
+func (c *Caller) RandomizeEndpoint() {
+	if c.userID != 0 || len(c.backupEndpoints) == 0 {
+		return
+	}
+	exEndpoints := []string{}
+	for _, e := range c.backupEndpoints {
+		if e == c.endpoint {
+			continue
+		}
+		exEndpoints = append(exEndpoints, e)
+	}
+	c.endpoint = exEndpoints[rand.Intn(len(exEndpoints))]
 }
 
 // CloneWithoutHook is for testing and debugging purposes.
@@ -172,7 +166,7 @@ func (c *Caller) Call(ctx context.Context, req *jsonrpc.RPCRequest) (*jsonrpc.RP
 }
 
 func (c *Caller) call(ctx context.Context, req *jsonrpc.RPCRequest) (*jsonrpc.RPCResponse, error) {
-	if c.endpoint == "" {
+	if c.Endpoint() == "" {
 		return nil, errors.Err("cannot call blank endpoint")
 	}
 
@@ -223,7 +217,7 @@ func (c *Caller) SendQuery(ctx context.Context, q *Query) (*jsonrpc.RPCResponse,
 
 		// Generally a HTTP transport failure (connect error etc)
 		if err != nil {
-			logger.Log().Errorf("error sending query to %v: %v", c.endpoint, err)
+			logger.Log().Errorf("error sending query to %v: %v", c.Endpoint(), err)
 			return nil, errors.Err(err)
 		}
 
@@ -232,17 +226,17 @@ func (c *Caller) SendQuery(ctx context.Context, q *Query) (*jsonrpc.RPCResponse,
 		if isErrWalletNotLoaded(r) {
 			time.Sleep(walletLoadRetryWait)
 			// Using LBRY JSON-RPC client here for easier request/response processing
-			err := wallet.LoadWallet(c.endpoint, c.userID)
+			err := wallet.LoadWallet(c.Endpoint(), c.userID)
 			// Alert sentry on the last failed wallet load attempt
 			if err != nil && i >= walletLoadRetries-1 {
 				e := errors.Prefix("gave up manually adding wallet", err)
 				logger.WithFields(logrus.Fields{
 					"user_id":  c.userID,
-					"endpoint": c.endpoint,
+					"endpoint": c.Endpoint(),
 				}).Error(e)
 				monitor.ErrorToSentry(e, map[string]string{
 					"user_id":  fmt.Sprintf("%d", c.userID),
-					"endpoint": c.endpoint,
+					"endpoint": c.Endpoint(),
 					"retries":  fmt.Sprintf("%d", i),
 				})
 			}
@@ -255,7 +249,7 @@ func (c *Caller) SendQuery(ctx context.Context, q *Query) (*jsonrpc.RPCResponse,
 
 	logFields := logrus.Fields{
 		"method":   q.Method(),
-		"endpoint": c.endpoint,
+		"endpoint": c.Endpoint(),
 		"user_id":  c.userID,
 		"duration": fmt.Sprintf("%.3f", c.Duration),
 	}
@@ -295,6 +289,35 @@ func (c *Caller) SendQuery(ctx context.Context, q *Query) (*jsonrpc.RPCResponse,
 	}
 
 	return r, err
+}
+
+func (c *Caller) newRPCClient(timeout time.Duration) jsonrpc.RPCClient {
+	client := jsonrpc.NewClientWithOpts(c.Endpoint(), &jsonrpc.RPCClientOpts{
+		HTTPClient: &http.Client{
+			Timeout: sdkrouter.RPCTimeout + timeout,
+			Transport: &http.Transport{
+				Dial: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 120 * time.Second,
+				}).Dial,
+				ResponseHeaderTimeout: timeout * 2,
+			},
+		},
+	})
+	return client
+}
+
+func (c *Caller) getRPCTimeout(method string) time.Duration {
+	t := config.GetRPCTimeout(method)
+	if t != nil {
+		return *t
+	}
+	return defaultRPCTimeout
+}
+
+func (c *Caller) getRPCClient(method string) jsonrpc.RPCClient {
+	var client jsonrpc.RPCClient = c.newRPCClient(c.getRPCTimeout(method))
+	return client
 }
 
 func getLogLevel(m string) logrus.Level {
