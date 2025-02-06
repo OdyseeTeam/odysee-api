@@ -29,10 +29,6 @@ func TestInitializeWithYML(t *testing.T) {
 	assert.True(t, len(r.GetAll()) > 0, "No servers")
 }
 
-func TestServerOrder(t *testing.T) {
-	t.Skip("might bring this back when servers have an order")
-}
-
 func TestOverrideLbrynetDefaultConf(t *testing.T) {
 	address := "http://space.com:1234"
 	config.Override("LbrynetServers", map[string]string{"x": address})
@@ -84,4 +80,19 @@ func TestLeastLoaded(t *testing.T) {
 	r.updateLoadAndMetrics()
 	assert.Equal(t, "srv3", r.LeastLoaded().Name)
 
+}
+
+func TestGetAllAddresses(t *testing.T) {
+	servers := []*models.LbrynetServer{
+		{Name: "srv1", Address: "http://srv1/"},
+		{Name: "srv2", Address: "http://srv2/"},
+		{Name: "srv3", Address: "http://srv3/"},
+		{Name: "srv4", Address: "http://srv4/"},
+	}
+	r := NewWithServers(servers...)
+	assert.Equal(
+		t,
+		[]string{"http://srv1/", "http://srv2/", "http://srv3/", "http://srv4/"},
+		r.GetAllAddresses(),
+	)
 }

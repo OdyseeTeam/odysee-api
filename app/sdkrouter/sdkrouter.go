@@ -66,6 +66,15 @@ func (r *Router) RandomServer() *models.LbrynetServer {
 	return r.servers[rand.Intn(len(r.servers))]
 }
 
+func (r *Router) GetAllAddresses() []string {
+	servers := r.GetAll()
+	addrs := make([]string, len(servers))
+	for i, s := range servers {
+		addrs[i] = s.Address
+	}
+	return addrs
+}
+
 func (r *Router) reloadServersFromDB() {
 	op := metrics.StartOperation("db", "get_server")
 	defer op.End()

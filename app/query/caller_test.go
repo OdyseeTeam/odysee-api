@@ -405,7 +405,7 @@ func TestCaller_CallCachingResponses(t *testing.T) {
 
 	srv.NextResponse <- resolveResponseCouldntFind
 
-	rpcReq2 := jsonrpc.NewRequest("resolve", map[string]any{"urls": "one"})
+	rpcReq2 := jsonrpc.NewRequest(MethodResolve, map[string]any{"urls": "one"})
 	rpcResponse2, err := c.Call(bgctx(), rpcReq2)
 	require.NoError(t, err)
 	assert.Nil(t, rpcResponse.Error)
@@ -419,10 +419,12 @@ func TestCaller_CallCachingResponses(t *testing.T) {
 
 func TestCaller_CallRetryingErrors(t *testing.T) {
 	var err error
-	srv := test.MockHTTPServer(nil)
-	defer srv.Close()
+	failSrv := test.MockHTTPServer(nil)
+	defer failSrv.Close()
+	okSrv := test.MockHTTPServer(nil)
+	defer okSrv.Close()
 
-	srv.QueueResponses(
+	failSrv.QueueResponses(
 		`{
 			"jsonrpc": "2.0",
 			"error": {
@@ -431,17 +433,20 @@ func TestCaller_CallRetryingErrors(t *testing.T) {
 			},
 			"id": 0
 		}`,
-		test.NetworkErrorResponse,
-		resolveResponseFree,
+		// test.NetworkErrorResponse,
+		// resolveResponseFree,
 	)
+	okSrv.QueueResponses(resolveResponseFree)
 
-	c := NewCaller(srv.URL, 0)
+	c := NewCaller(failSrv.URL, 0)
+	c.AddBackupEndpoints([]string{okSrv.URL})
+
 	cache, _, _, teardown := sturdycache.CreateTestCache(t)
 	defer teardown()
 	c.Cache = NewQueryCache(cache)
 	require.NoError(t, err)
 
-	rpcReq := jsonrpc.NewRequest("claim_search", map[string]any{"urls": "what"})
+	rpcReq := jsonrpc.NewRequest(MethodResolve, map[string]any{"urls": "what"})
 	rpcResponse, err := c.Call(bgctx(), rpcReq)
 	require.NoError(t, err)
 	require.Nil(t, rpcResponse.Error)
