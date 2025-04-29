@@ -59,7 +59,7 @@ func MockHTTPServer(requestChan chan *Request) *mockServer {
 			default:
 				fmt.Printf("test server: unknown type %T\n", v)
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(fmt.Sprintf("test server: unknown type %T\n", v)))
+				fmt.Fprintf(w, "test server: unknown type %T\n", v)
 			}
 		})),
 	}

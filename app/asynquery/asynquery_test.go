@@ -9,10 +9,10 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/e2etest"
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
-	"github.com/Pallinder/go-randomdata"
-	"github.com/ybbus/jsonrpc/v2"
 
+	"github.com/Pallinder/go-randomdata"
 	"github.com/stretchr/testify/suite"
+	"github.com/ybbus/jsonrpc/v2"
 )
 
 type asynquerySuite struct {

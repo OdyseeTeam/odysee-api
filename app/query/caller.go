@@ -316,8 +316,7 @@ func (c *Caller) getRPCTimeout(method string) time.Duration {
 }
 
 func (c *Caller) getRPCClient(method string) jsonrpc.RPCClient {
-	var client jsonrpc.RPCClient = c.newRPCClient(c.getRPCTimeout(method))
-	return client
+	return c.newRPCClient(c.getRPCTimeout(method))
 }
 
 func getLogLevel(m string) logrus.Level {

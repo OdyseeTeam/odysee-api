@@ -13,7 +13,7 @@ import (
 
 type failureTestClient struct{}
 
-func (_ failureTestClient) Do(*http.Request) (*http.Response, error) {
+func (failureTestClient) Do(*http.Request) (*http.Response, error) {
 	data := HeightResponse{
 		Success: true,
 		Error:   nil,

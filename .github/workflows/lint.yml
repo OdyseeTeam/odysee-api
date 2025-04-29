@@ -1,4 +1,4 @@
-name: golangci-lint
+name: lint
 on:
   push:
     branches:
@@ -24,9 +24,8 @@ jobs:
           go-version: '1.24'
           cache: false
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
-          version: 'v1.60'
           only-new-issues: true
       - id: govulncheck
         uses: golang/govulncheck-action@v1
