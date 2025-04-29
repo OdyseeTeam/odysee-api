@@ -19,9 +19,11 @@ jobs:
         with:
           fetch-depth: 0
       - uses: FedericoCarboni/setup-ffmpeg@v3
+        with:
+          ffmpeg-version: release
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24'
         id: go
 
       - name: Retrieve release details
