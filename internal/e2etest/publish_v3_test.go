@@ -54,7 +54,7 @@ func (s *publishV3Suite) TestPublish() {
 		s.T().Skip("skipping testing in short mode")
 	}
 	if s.forkliftErr != nil {
-		s.T().Skipf("skipping: %w", s.forkliftErr.Error())
+		s.T().Skipf("skipping: %s", s.forkliftErr.Error())
 	}
 
 	fnb64 := base64.StdEncoding.EncodeToString([]byte("dummy.md"))

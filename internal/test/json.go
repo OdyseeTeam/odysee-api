@@ -55,7 +55,7 @@ func AssertEqualJSON(t *testing.T, expected, actual interface{}, msgAndArgs ...i
 	if len(msg) > 0 {
 		t.Errorf(diffLog+"\n\tMessages:"+indent+"%s", msg)
 	} else {
-		t.Errorf(diffLog)
+		t.Error(diffLog)
 	}
 	return false
 }
