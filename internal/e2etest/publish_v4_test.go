@@ -564,7 +564,7 @@ func (s *publishV4Suite) SetupSuite() {
 	s.forkliftHelper, err = forklift.NewTestHelper(t)
 	if err != nil {
 		if errors.Is(err, forklift.ErrMissingEnv) {
-			t.Skipf(err.Error())
+			t.Skipf("skipping due to missing env variable")
 		} else {
 			s.FailNow(err.Error())
 		}

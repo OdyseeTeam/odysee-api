@@ -147,7 +147,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if errors.Is(err, query.ErrClaimNotFound) {
-			logger.Log().Errorf(err.Error())
+			logger.Log().Error(err.Error())
 			return
 		}
 		monitor.ErrorToSentry(err, map[string]string{"request": fmt.Sprintf("%+v", rpcReq), "response": fmt.Sprintf("%+v", rpcRes)})

@@ -151,7 +151,7 @@ func (s *forkliftSuite) SetupSuite() {
 
 	if err != nil {
 		if errors.Is(err, ErrMissingEnv) {
-			s.T().Skipf(err.Error())
+			s.T().Skip("skipping due to missing env variable")
 		} else {
 			s.FailNow(err.Error())
 		}

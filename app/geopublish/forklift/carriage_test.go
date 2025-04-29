@@ -256,7 +256,7 @@ func (s *carriageSuite) SetupSuite() {
 	s.Require().NoError(s.userHelper.Setup(s.T()))
 	err := s.forkliftHelper.Setup()
 	if errors.Is(err, ErrMissingEnv) {
-		s.T().Skipf(err.Error())
+		s.T().Skip("skipping due to missing env variable")
 	}
 	s.T().Cleanup(config.RestoreOverridden)
 }

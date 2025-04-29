@@ -83,7 +83,7 @@ Make sure you have `lbrynet`, `postgres` and `postgres-collector` containers run
 
 ## Building Docker images
 
-Make sure you have Go 1.23 installed.
+Make sure you have Go 1.24 installed.
 
 Then build the binary, create a docker image locally:
 
