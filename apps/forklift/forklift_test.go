@@ -25,6 +25,8 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+var waitForUpload = 240 * time.Second
+
 type forkliftSuite struct {
 	suite.Suite
 	helper   *TestHelper
@@ -94,6 +96,11 @@ func (s *forkliftSuite) TestHandleTask() {
 				s.Empty(payload.Meta.Duration)
 				s.NotEmpty(payload.Meta.SDHash)
 				s.False(fileExists(s.s3c, s.upHelper.S3Config.Bucket, upload.Key))
+
+				for _, blobStore := range l.forklift.store.BlobStores() {
+					_, _, err = blobStore.Get(payload.Meta.SDHash)
+					s.NoError(err)
+				}
 			},
 		},
 		{
@@ -109,6 +116,11 @@ func (s *forkliftSuite) TestHandleTask() {
 				s.Equal(29, payload.Meta.Duration)
 				s.NotEmpty(payload.Meta.SDHash)
 				s.False(fileExists(s.s3c, s.upHelper.S3Config.Bucket, upload.Key))
+
+				for _, blobStore := range l.forklift.store.BlobStores() {
+					_, _, err = blobStore.Get(payload.Meta.SDHash)
+					s.NoError(err)
+				}
 			},
 		},
 		{
@@ -124,6 +136,11 @@ func (s *forkliftSuite) TestHandleTask() {
 				s.Empty(payload.Meta.Duration)
 				s.NotEmpty(payload.Meta.SDHash)
 				s.False(fileExists(s.s3c, s.upHelper.S3Config.Bucket, upload.Key))
+
+				for _, blobStore := range l.forklift.store.BlobStores() {
+					_, _, err = blobStore.Get(payload.Meta.SDHash)
+					s.NoError(err)
+				}
 			},
 		},
 	}
@@ -137,8 +154,8 @@ func (s *forkliftSuite) TestHandleTask() {
 		select {
 		case payload := <-merges:
 			c.expected(upload, payload)
-		case <-time.After(60 * time.Second):
-			s.T().Logf("timeout after 60s for %s", c.fileName)
+		case <-time.After(waitForUpload):
+			s.T().Logf("timeout after %.0f for %s", waitForUpload.Seconds(), c.fileName)
 			s.Fail("timeout waiting for task to be processed")
 		}
 	}

@@ -80,7 +80,7 @@ func serve(logger logging.KVLogger) {
 
 	l := forklift.NewLauncher(
 		forklift.WithDB(db),
-		forklift.WithReflectorConfig(cfg.V.GetStringMapString("ReflectorStorage")),
+		forklift.WithReflectorConfig(cfg.V.Sub("ReflectorStorage")),
 		forklift.WithConcurrency(cfg.V.GetInt("Concurrency")),
 		forklift.WithReflectorWorkers(cfg.V.GetInt("ReflectorWorkers")),
 		forklift.WithBlobPath(blobPath),
