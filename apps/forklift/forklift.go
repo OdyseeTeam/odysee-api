@@ -18,6 +18,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/fileanalyzer"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/queue"
+	"github.com/spf13/viper"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-chi/chi/v5"
@@ -36,7 +37,7 @@ type Launcher struct {
 	downloadsPath    string
 	requestsConnURL  string
 	responsesConnURL string
-	reflectorConfig  map[string]string
+	reflectorConfig  *viper.Viper
 	retriever        *S3Retriever
 	httpRetriever    *HTTPRetriever
 	logger           logging.KVLogger
@@ -91,9 +92,9 @@ func WithResponsesConnURL(url string) LauncherOption {
 	}
 }
 
-func WithReflectorConfig(config map[string]string) LauncherOption {
+func WithReflectorConfig(cfg *viper.Viper) LauncherOption {
 	return func(l *Launcher) {
-		l.reflectorConfig = config
+		l.reflectorConfig = cfg
 	}
 }
 
@@ -193,7 +194,11 @@ func (l *Launcher) Build() (*queue.Queue, error) {
 		return nil, err
 	}
 
-	store, err := blobs.NewStore(l.reflectorConfig)
+	destinations, err := blobs.CreateStoresFromConfig(l.reflectorConfig, "destinations")
+	if err != nil {
+		return nil, fmt.Errorf("cannot initialize reflector destination stores: %w", err)
+	}
+	store, err := blobs.NewStore(l.reflectorConfig.GetString("databasedsn"), destinations)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize reflector store: %w", err)
 	}
