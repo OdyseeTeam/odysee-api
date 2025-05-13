@@ -19,11 +19,19 @@ IncomingStorage:
 
 ReflectorStorage:
   DatabaseDSN: 'user:password@tcp(host.com)/blobs'
-  Region: us-east-1
-  Bucket: blobs'
-  Key: key
-  Secret: secret
-
+  Destinations:
+    - Name: wasabi
+      Endpoint: https://s3.wasabisys.com
+      Region: us-east-1
+      Bucket: blobs
+      AWS_ID: key1
+      AWS_Secret: secret1
+    - Name: another
+      Endpoint: https://s3.wasabisys.com
+      Region: us-east-2
+      Bucket: blobs
+      AWS_ID: key2
+      AWS_Secret: secret2
 Concurrency: 10
 BlobPath: /tmp/blobs
 UploadPath: /tmp/uploads

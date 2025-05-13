@@ -54,4 +54,5 @@ func TestConfig(t *testing.T) {
 	require.Len(stores, 2)
 	require.Equal("s3-another", stores[0].Name())
 	require.Equal("s3-wasabi", stores[1].Name())
+	require.True(false)
 }

@@ -4,14 +4,14 @@ ReflectorStorage:
     Wasabi:
       Endpoint: https://s3.wasabisys.com
       Region: us-east-1
-      Bucket: blobs
+      Bucket: blobs1
       AWS_ID: key1
       AWS_Secret: secret1
       ShardingSize: 4
     Another:
-      Endpoint: https://s3.wasabisys.com
+      Endpoint: https://aws.another.com
       Region: us-east-2
-      Bucket: blobs
+      Bucket: blobs2
       AWS_ID: key2
       AWS_Secret: secret2
       ShardingSize: 0

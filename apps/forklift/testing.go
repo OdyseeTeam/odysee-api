@@ -1,35 +1,46 @@
 package forklift
 
 import (
+	"bytes"
+	"encoding/base64"
 	"errors"
 	"os"
 	"testing"
 
-	"gopkg.in/yaml.v2"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/require"
 )
 
-const envReflectorUplinkConfig = "REFLECTOR_UPLINK"
+const envReflectorConfig = "REFLECTOR_CONFIG"
 
-var ErrMissingEnv = errors.New("reflector uplink config env var is not set")
+var ErrMissingEnv = errors.New("REFLECTOR_CONFIG env var is not set")
 
 type TestHelper struct {
-	ReflectorConfig map[string]string
+	ReflectorConfig *viper.Viper
 }
 
-func NewTestHelper(_ *testing.T) (*TestHelper, error) {
+func NewTestHelper(t *testing.T) (*TestHelper, error) {
 	th := &TestHelper{}
 	os.Setenv("PATH", os.Getenv("PATH")+":/opt/homebrew/bin")
-	parsedCfg := map[string]string{}
-	envCfg := os.Getenv(envReflectorUplinkConfig)
+	envCfg := os.Getenv(envReflectorConfig)
 
 	if envCfg == "" {
 		return nil, ErrMissingEnv
 	}
 
-	err := yaml.Unmarshal([]byte(envCfg), &parsedCfg)
-	if err != nil {
-		return nil, err
-	}
-	th.ReflectorConfig = parsedCfg
+	th.ReflectorConfig = DecodeSecretViperConfig(t, envReflectorConfig)
 	return th, nil
+}
+
+func DecodeSecretViperConfig(t *testing.T, secretEnvName string) *viper.Viper {
+	require := require.New(t)
+	secretValueEncoded := os.Getenv(secretEnvName)
+	require.NotEmpty(secretValueEncoded)
+	secretValue, err := base64.StdEncoding.DecodeString(secretValueEncoded)
+	require.NoError(err)
+	v := viper.New()
+	v.SetConfigType("yaml")
+	err = v.ReadConfig(bytes.NewBuffer(secretValue))
+	require.NoError(err)
+	return v
 }

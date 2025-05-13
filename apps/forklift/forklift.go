@@ -46,6 +46,7 @@ type Launcher struct {
 	reflectorWorkers int
 	metricsAddress   string
 	s3client         *s3.Client
+	forklift         *Forklift
 }
 
 type Forklift struct {
@@ -243,6 +244,7 @@ func (l *Launcher) Build() (*queue.Queue, error) {
 		queries:       database.New(l.db),
 		queue:         taskQueue,
 	}
+	l.forklift = forklift
 	taskQueue.AddHandler(tasks.ForkliftUploadIncoming, forklift.HandleUpload)
 	taskQueue.AddHandler(tasks.ForkliftURLIncoming, forklift.HandleURL)
 	l.logger.Info("forklift initialized")
