@@ -3,15 +3,16 @@ package blobs
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
+	"sort"
 
 	"github.com/lbryio/lbry.go/v3/stream"
 	"github.com/lbryio/reflector.go/db"
 	"github.com/lbryio/reflector.go/reflector"
 	"github.com/lbryio/reflector.go/store"
 	pb "github.com/lbryio/types/v2/go"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -34,9 +35,8 @@ type Source struct {
 }
 
 type Store struct {
-	cfg     map[string]string
 	db      *db.SQL
-	dbs     *store.DBBackedStore
+	store   *store.DBBackedStore
 	workers int
 }
 
@@ -51,30 +51,65 @@ func NewSource(filePath, blobPath, encodedFileName string) *Source {
 		blobPath:        blobPath,
 		encodedFileName: encodedFileName,
 	}
-
 	return &s
 }
 
 // NewStore initializes blob storage with a config dictionary.
 // Required parameters in the config map are MySQL DSN and S3 config for the reflector.
-func NewStore(reflectorConfig map[string]string) (*Store, error) {
+func NewStore(dsn string, destinations []store.BlobStore) (*Store, error) {
 	db := &db.SQL{
 		LogQueries: false,
 	}
-	err := db.Connect(reflectorConfig["databasedsn"])
+
+	err := db.Connect(dsn)
 	if err != nil {
 		return nil, err
 	}
 
+	st := store.NewDBBackedStore(store.DBBackedParams{
+		Name: "global",
+		Store: store.NewMultiWriterStore(store.MultiWriterParams{
+			Name:         "s3",
+			Destinations: destinations,
+		}),
+		DB:           db,
+		DeleteOnMiss: false,
+		MaxSize:      nil,
+	})
 	return &Store{
-		cfg: reflectorConfig,
-		db:  db,
-		dbs: store.NewDBBackedStore(store.NewS3Store(
-			reflectorConfig["key"], reflectorConfig["secret"], reflectorConfig["region"],
-			reflectorConfig["bucket"], reflectorConfig["endpoint"],
-		), db, false),
+		db:      db,
+		store:   st,
 		workers: 1,
 	}, nil
+}
+
+func CreateStoresFromConfig(cfg *viper.Viper, path string) ([]store.BlobStore, error) {
+	destinations := cfg.Sub(path)
+	if destinations == nil {
+		return nil, fmt.Errorf("empty config path: %s", path)
+	}
+	stores := []store.BlobStore{}
+
+	keys := []string{}
+	for key := range destinations.AllSettings() {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, subKey := range keys {
+		subCfg := destinations.Sub(subKey)
+		if subCfg == nil {
+			return nil, fmt.Errorf("empty config path: %s.%s", path, subKey)
+		}
+		subCfg.Set("name", subKey)
+		bs, err := store.S3StoreFactory(subCfg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create S3 store from %s.%s: %w", path, subKey, err)
+		}
+
+		stores = append(stores, bs)
+	}
+	return stores, nil
 }
 
 // SetWorkers sets the number of workers uploading each stream to the reflector.
@@ -86,7 +121,7 @@ func (s *Store) SetWorkers(workers int) {
 // Can only be used for one stream upload and discarded afterwards.
 func (s *Store) Uploader() *Uploader {
 	return &Uploader{
-		uploader: reflector.NewUploader(s.db, s.dbs, s.workers, true, false),
+		uploader: reflector.NewUploader(s.db, s.store, s.workers, true, false),
 	}
 }
 
@@ -107,7 +142,7 @@ func (s *Source) Split() (*pb.Stream, error) {
 	}
 
 	s.blobsManifest, err = enc.Encode(func(h string, b []byte) error {
-		return ioutil.WriteFile(path.Join(s.finalPath, h), b, os.ModePerm)
+		return os.WriteFile(path.Join(s.finalPath, h), b, os.ModePerm)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("cannot encode stream: %w", err)
