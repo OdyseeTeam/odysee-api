@@ -13,6 +13,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/spf13/cast"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -160,8 +161,8 @@ func GetArfleetEnabled() bool {
 }
 
 // GetReflectorUpstream returns config map for publish reflector server.
-func GetReflectorUpstream() map[string]string {
-	return Config.Viper.GetStringMapString("ReflectorUpstream")
+func GetReflectorUpstream() *viper.Viper {
+	return Config.Viper.Sub("ReflectorUpstream")
 }
 
 // GetAddress sets API HTTP binding address.

@@ -18,6 +18,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/fileanalyzer"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
+	"github.com/spf13/viper"
 
 	"github.com/hibiken/asynq"
 	"github.com/volatiletech/sqlboiler/queries/qm"
@@ -55,7 +56,7 @@ type Carriage struct {
 	logger       logging.KVLogger
 }
 
-func NewCarriage(blobsPath string, resultWriter io.Writer, reflectorCfg map[string]string, logger logging.KVLogger) (*Carriage, error) {
+func NewCarriage(blobsPath string, resultWriter io.Writer, reflectorConfig *viper.Viper, logger logging.KVLogger) (*Carriage, error) {
 	analyzer, err := fileanalyzer.NewAnalyzer()
 	if err != nil {
 		return nil, err
@@ -65,13 +66,17 @@ func NewCarriage(blobsPath string, resultWriter io.Writer, reflectorCfg map[stri
 		logger = zapadapter.NewKV(nil)
 	}
 
-	s, err := blobs.NewStore(reflectorCfg)
+	destinations, err := blobs.CreateStoresFromConfig(reflectorConfig, "destinations")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot initialize reflector destination stores: %w", err)
+	}
+	store, err := blobs.NewStore(reflectorConfig.GetString("databasedsn"), destinations)
+	if err != nil {
+		return nil, fmt.Errorf("cannot initialize reflector store: %w", err)
 	}
 
 	c := &Carriage{
-		store:        s,
+		store:        store,
 		analyzer:     analyzer,
 		blobsPath:    blobsPath,
 		resultWriter: resultWriter,
