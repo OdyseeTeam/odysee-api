@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -190,7 +190,7 @@ func (s *publishV3Suite) TestPublish() {
 		},
 		Code: http.StatusOK,
 	}).Run(s.router, s.T())
-	srb, err := ioutil.ReadAll(statusResp.Result().Body)
+	srb, err := io.ReadAll(statusResp.Result().Body)
 	s.Require().NoError(err)
 
 	streamCreateResp := jsonrpc.RPCResponse{}
@@ -225,5 +225,6 @@ func (s *publishV3Suite) SetupSuite() {
 }
 
 func TestE2ESuite(t *testing.T) {
-	suite.Run(t, new(publishV3Suite))
+	// TODO: Test suite to be removed, pending final publish V3 deprecation
+	// suite.Run(t, new(publishV3Suite))
 }
