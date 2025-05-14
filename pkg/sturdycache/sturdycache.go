@@ -2,13 +2,13 @@ package sturdycache
 
 import (
 	"context"
+	"math/rand/v2"
 	"time"
 
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/store"
 	redis_store "github.com/eko/gocache/store/redis/v4"
 	"github.com/redis/go-redis/v9"
-	"golang.org/x/exp/rand"
 )
 
 const ReplicatedCacheType = "redis"
@@ -69,12 +69,14 @@ func (rc *ReplicatedCache) Set(ctx context.Context, key any, value any, options 
 
 // Get reads from master and replica caches.
 func (rc *ReplicatedCache) Get(ctx context.Context, key any) (any, error) {
-	return rc.readCaches[rand.Intn(len(rc.readCaches))].Get(ctx, key)
+	// #nosec G404
+	return rc.readCaches[rand.IntN(len(rc.readCaches))].Get(ctx, key)
 }
 
 // Get reads from master and replica caches.
 func (rc *ReplicatedCache) GetWithTTL(ctx context.Context, key any) (any, time.Duration, error) {
-	return rc.readCaches[rand.Intn(len(rc.readCaches))].GetWithTTL(ctx, key)
+	// #nosec G404
+	return rc.readCaches[rand.IntN(len(rc.readCaches))].GetWithTTL(ctx, key)
 }
 
 // Invalidate master cache entries for given options.

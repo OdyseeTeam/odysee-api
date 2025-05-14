@@ -18,11 +18,11 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/fileanalyzer"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/queue"
-	"github.com/spf13/viper"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-chi/chi/v5"
 	"github.com/hibiken/asynq"
+	"github.com/spf13/viper"
 	"github.com/sqlc-dev/pqtype"
 )
 

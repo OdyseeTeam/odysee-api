@@ -148,7 +148,7 @@ func (s *Source) Split() (*pb.Stream, error) {
 	}
 
 	s.blobsManifest, err = enc.Encode(func(h string, b []byte) error {
-		return os.WriteFile(path.Join(s.finalPath, h), b, os.ModePerm)
+		return os.WriteFile(path.Join(s.finalPath, h), b, 0600)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("cannot encode stream: %w", err)

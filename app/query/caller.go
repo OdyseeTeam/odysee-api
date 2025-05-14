@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 	"fmt"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"strings"
@@ -20,7 +21,6 @@ import (
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/sirupsen/logrus"
 	"github.com/ybbus/jsonrpc/v2"
-	"golang.org/x/exp/rand"
 )
 
 const (
@@ -126,7 +126,8 @@ func (c *Caller) RandomizeEndpoint() {
 		}
 		exEndpoints = append(exEndpoints, e)
 	}
-	c.endpoint = exEndpoints[rand.Intn(len(exEndpoints))]
+	// #nosec G404
+	c.endpoint = exEndpoints[rand.IntN(len(exEndpoints))]
 }
 
 // CloneWithoutHook is for testing and debugging purposes.
