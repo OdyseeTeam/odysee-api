@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const envReflectorConfig = "REFLECTOR_CONFIG"
+const EnvTestReflectorConfig = "REFLECTOR_CONFIG"
 
 var ErrMissingEnv = errors.New("REFLECTOR_CONFIG env var is not set")
 
@@ -22,13 +22,13 @@ type TestHelper struct {
 func NewTestHelper(t *testing.T) (*TestHelper, error) {
 	th := &TestHelper{}
 	os.Setenv("PATH", os.Getenv("PATH")+":/opt/homebrew/bin")
-	envCfg := os.Getenv(envReflectorConfig)
+	envCfg := os.Getenv(EnvTestReflectorConfig)
 
 	if envCfg == "" {
 		return nil, ErrMissingEnv
 	}
 
-	th.ReflectorConfig = DecodeSecretViperConfig(t, envReflectorConfig)
+	th.ReflectorConfig = DecodeSecretViperConfig(t, EnvTestReflectorConfig)
 	return th, nil
 }
 
@@ -42,5 +42,6 @@ func DecodeSecretViperConfig(t *testing.T, secretEnvName string) *viper.Viper {
 	v.SetConfigType("yaml")
 	err = v.ReadConfig(bytes.NewBuffer(secretValue))
 	require.NoError(err)
+	require.NotNil(v)
 	return v
 }

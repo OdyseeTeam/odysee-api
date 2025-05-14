@@ -20,6 +20,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/app/geopublish/forklift"
 	"github.com/OdyseeTeam/odysee-api/app/query"
 	"github.com/OdyseeTeam/odysee-api/app/wallet"
+	forkliftng "github.com/OdyseeTeam/odysee-api/apps/forklift"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
 	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/OdyseeTeam/odysee-api/models"
@@ -34,7 +35,7 @@ type publishV3Suite struct {
 	suite.Suite
 
 	userHelper     *UserTestHelper
-	forkliftHelper *forklift.ForkliftTestHelper
+	forkliftHelper *forkliftng.TestHelper
 	router         *mux.Router
 	forkliftErr    error
 }
@@ -210,12 +211,14 @@ func (s *publishV3Suite) SetupSuite() {
 	config.Config.Override("GeoPublishSourceDir", s.T().TempDir())
 
 	s.userHelper = &UserTestHelper{}
-	s.forkliftHelper = &forklift.ForkliftTestHelper{}
 	s.Require().NoError(s.userHelper.Setup(s.T()))
-	err := s.forkliftHelper.Setup()
-	if errors.Is(err, forklift.ErrMissingEnv) {
-		s.forkliftErr = err
-	}
+
+	fh, err := forkliftng.NewTestHelper(s.T())
+	s.Require().NoError(err)
+	s.forkliftHelper = fh
+	// if errors.Is(err, forkliftng.ErrMissingEnv) {
+	// 	s.forkliftErr = err
+	// }
 
 	s.router = mux.NewRouter()
 	api.InstallRoutes(s.router, s.userHelper.SDKRouter, &api.RoutesOptions{EnableV3Publish: true})

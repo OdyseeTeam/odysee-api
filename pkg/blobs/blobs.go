@@ -3,7 +3,6 @@ package blobs
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 	"path"
 	"sort"
@@ -75,7 +74,6 @@ func CreateStoresFromConfig(cfg *viper.Viper, path string) ([]store.BlobStore, e
 			return nil, fmt.Errorf("empty config path: %s.%s", path, subKey)
 		}
 		subCfg.Set("name", subKey)
-		slog.Info("store config built", "settings", subCfg.AllSettings())
 		bs, err := store.S3StoreFactory(subCfg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create S3 store from %s.%s: %w", path, subKey, err)
