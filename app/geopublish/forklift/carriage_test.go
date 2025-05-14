@@ -2,7 +2,6 @@ package forklift
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/OdyseeTeam/odysee-api/app/query"
+	forkliftng "github.com/OdyseeTeam/odysee-api/apps/forklift"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
 	"github.com/OdyseeTeam/odysee-api/internal/e2etest"
 	"github.com/OdyseeTeam/odysee-api/internal/test"
@@ -22,7 +22,7 @@ import (
 type carriageSuite struct {
 	suite.Suite
 	userHelper     *e2etest.UserTestHelper
-	forkliftHelper *ForkliftTestHelper
+	forkliftHelper *forkliftng.TestHelper
 }
 
 func TestCarriageSuite(t *testing.T) {
@@ -33,7 +33,7 @@ func TestCarriageSuite(t *testing.T) {
 }
 
 func (s *carriageSuite) TestProcessReel() {
-	c, err := NewCarriage(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
+	c, err := NewCarriage(s.T().TempDir(), nil, s.forkliftHelper.ReflectorConfig, nil)
 	s.Require().NoError(err)
 
 	ts := time.Now().Format("2006-01-02-15-04-05-000")
@@ -90,7 +90,7 @@ func (s *carriageSuite) TestProcessReel() {
 }
 
 func (s *carriageSuite) TestProcessReelWithNotTheBestName() {
-	c, err := NewCarriage(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
+	c, err := NewCarriage(s.T().TempDir(), nil, s.forkliftHelper.ReflectorConfig, nil)
 	s.Require().NoError(err)
 
 	ts := time.Now().Format("2006-01-02-15-04-05-000")
@@ -149,7 +149,7 @@ func (s *carriageSuite) TestProcessReelWithNotTheBestName() {
 	}
 }
 func (s *carriageSuite) TestProcessImage() {
-	c, err := NewCarriage(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
+	c, err := NewCarriage(s.T().TempDir(), nil, s.forkliftHelper.ReflectorConfig, nil)
 	s.Require().NoError(err)
 
 	ts := time.Now().Format("2006-01-02-15-04-05-000")
@@ -203,7 +203,7 @@ func (s *carriageSuite) TestProcessImage() {
 }
 
 func (s *carriageSuite) TestProcessDoc() {
-	c, err := NewCarriage(s.T().TempDir(), nil, config.GetReflectorUpstream(), nil)
+	c, err := NewCarriage(s.T().TempDir(), nil, s.forkliftHelper.ReflectorConfig, nil)
 	s.Require().NoError(err)
 	ts := time.Now().Format("2006-01-02-15-04-05-000")
 	claimName := fmt.Sprintf("publishv3testdoc-%s", ts)
@@ -252,11 +252,13 @@ func (s *carriageSuite) TestProcessDoc() {
 
 func (s *carriageSuite) SetupSuite() {
 	s.userHelper = &e2etest.UserTestHelper{}
-	s.forkliftHelper = &ForkliftTestHelper{}
 	s.Require().NoError(s.userHelper.Setup(s.T()))
-	err := s.forkliftHelper.Setup()
-	if errors.Is(err, ErrMissingEnv) {
-		s.T().Skip("skipping due to missing env variable")
-	}
+
+	fh, err := forkliftng.NewTestHelper(s.T())
+	s.Require().NoError(err)
+	s.forkliftHelper = fh
+	// if errors.Is(err, forkliftng.ErrMissingEnv) {
+	// 	s.T().Skip("skipping due to missing env variable")
+	// }
 	s.T().Cleanup(config.RestoreOverridden)
 }

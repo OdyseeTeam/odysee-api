@@ -1,37 +1,5 @@
 package forklift
 
-import (
-	"errors"
-	"os"
-
-	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
-
-	"gopkg.in/yaml.v2"
-)
-
-const envReflectorUplinkConfig = "REFLECTOR_UPLINK"
-
-var ErrMissingEnv = errors.New("reflector uplink config env var is not set")
-
-type ForkliftTestHelper struct{}
-
-func (s *ForkliftTestHelper) Setup() error {
-	os.Setenv("PATH", os.Getenv("PATH")+":/opt/homebrew/bin")
-	parsedCfg := map[string]string{}
-	envCfg := os.Getenv(envReflectorUplinkConfig)
-
-	if envCfg == "" {
-		return ErrMissingEnv
-	}
-
-	err := yaml.Unmarshal([]byte(envCfg), &parsedCfg)
-	if err != nil {
-		return err
-	}
-	config.Override("ReflectorUpstream", parsedCfg)
-	return nil
-}
-
 type StreamCreateResponse struct {
 	Height int    `json:"height"`
 	Hex    string `json:"hex"`

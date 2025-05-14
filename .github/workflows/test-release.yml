@@ -63,7 +63,7 @@ jobs:
           REAL_WALLET_PUBLIC_KEY: ${{ secrets.REAL_WALLET_PUBLIC_KEY }}
           BUYER_WALLET_PRIVATE_KEY: ${{ secrets.BUYER_WALLET_PRIVATE_KEY }}
           BUYER_WALLET_PUBLIC_KEY: ${{ secrets.BUYER_WALLET_PUBLIC_KEY }}
-          REFLECTOR_UPLINK: ${{ secrets.REFLECTOR_UPLINK }}
+          REFLECTOR_CONFIG: ${{ secrets.REFLECTOR_CONFIG }}
         run: |
           go install github.com/jandelgado/gcov2lcov@latest
           go test -short -covermode=count -coverprofile=coverage.out ./... && gcov2lcov -infile=coverage.out -outfile=coverage.lcov
