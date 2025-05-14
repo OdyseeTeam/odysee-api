@@ -73,11 +73,21 @@ SturdyCache:
 
 ReflectorUpstream:
   DatabaseDSN: 'user:password@tcp(localhost:3306)/blobs'
-  Endpoint: http://local
-  Region: us-east-1
-  Bucket: blobs
-  Key: key
-  Secret: secret
+  Destinations:
+    Wasabi:
+      Endpoint: https://s3.wasabisys.com
+      Region: us-east-1
+      Bucket: blobs1
+      AWS_ID: key1
+      AWS_Secret: secret1
+      ShardingSize: 4
+    Another:
+      Endpoint: https://aws.another.com
+      Region: us-east-2
+      Bucket: blobs2
+      AWS_ID: key2
+      AWS_Secret: secret2
+      ShardingSize: 0
 
 Logging:
   Level: debug

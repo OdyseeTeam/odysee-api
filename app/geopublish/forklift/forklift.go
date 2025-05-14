@@ -9,6 +9,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/app/geopublish/metrics"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
+	"github.com/spf13/viper"
 
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
@@ -61,7 +62,7 @@ func WithMaxRetry(maxRetry int) func(options *ForkliftOptions) {
 	}
 }
 
-func NewForklift(blobsPath string, reflectorCfg map[string]string, redisOpts asynq.RedisConnOpt, optionFuncs ...func(*ForkliftOptions)) (*Forklift, error) {
+func NewForklift(blobsPath string, reflectorConfig *viper.Viper, redisOpts asynq.RedisConnOpt, optionFuncs ...func(*ForkliftOptions)) (*Forklift, error) {
 	options := &ForkliftOptions{
 		logger:   zapadapter.NewKV(nil),
 		maxRetry: 10,
@@ -76,7 +77,7 @@ func NewForklift(blobsPath string, reflectorCfg map[string]string, redisOpts asy
 	}
 
 	resultBus := NewResultBus(redisOpts, QueueUploadUploadProcessResults)
-	c, err := NewCarriage(blobsPath, resultBus, reflectorCfg, options.logger)
+	c, err := NewCarriage(blobsPath, resultBus, reflectorConfig, options.logger)
 	if err != nil {
 		return nil, err
 	}
