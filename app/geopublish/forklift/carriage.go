@@ -18,9 +18,9 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/fileanalyzer"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/logging/zapadapter"
-	"github.com/spf13/viper"
 
 	"github.com/hibiken/asynq"
+	"github.com/spf13/viper"
 	"github.com/volatiletech/sqlboiler/queries/qm"
 	"github.com/ybbus/jsonrpc/v2"
 )

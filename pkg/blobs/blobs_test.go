@@ -8,8 +8,8 @@ import (
 
 	"github.com/OdyseeTeam/odysee-api/internal/test"
 	"github.com/lbryio/lbry.go/v3/stream"
-	"github.com/spf13/viper"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
 
@@ -54,5 +54,4 @@ func TestConfig(t *testing.T) {
 	require.Len(stores, 2)
 	require.Equal("s3-another", stores[0].Name())
 	require.Equal("s3-wasabi", stores[1].Name())
-	require.True(false)
 }
