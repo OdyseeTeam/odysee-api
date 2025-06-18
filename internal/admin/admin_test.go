@@ -39,7 +39,7 @@ func TestSimpleAdminAuthMiddleware(t *testing.T) {
 
 		middleware.ServeHTTP(recorder, req)
 
-		require.Equal(t, http.StatusForbidden, recorder.Code)
+		require.Equal(t, http.StatusUnauthorized, recorder.Code)
 	})
 
 	t.Run("returns 429 after too many attempts", func(t *testing.T) {
@@ -56,7 +56,7 @@ func TestSimpleAdminAuthMiddleware(t *testing.T) {
 
 		middleware.ServeHTTP(recorder1, req1)
 
-		require.Equal(t, http.StatusForbidden, recorder1.Code)
+		require.Equal(t, http.StatusUnauthorized, recorder1.Code)
 
 		req2 := httptest.NewRequest("GET", "/admin", nil)
 		req2.Header.Set("Authorization", "Bearer wrong-token")
@@ -90,7 +90,7 @@ func TestSimpleAdminAuthMiddleware(t *testing.T) {
 
 		middleware.ServeHTTP(recorder1, req1)
 
-		require.Equal(t, http.StatusForbidden, recorder1.Code)
+		require.Equal(t, http.StatusUnauthorized, recorder1.Code)
 
 		req2 := httptest.NewRequest("GET", "/admin", nil)
 		req2.Header.Set("Authorization", "Bearer wrong-token")
@@ -99,7 +99,7 @@ func TestSimpleAdminAuthMiddleware(t *testing.T) {
 
 		middleware.ServeHTTP(recorder2, req2)
 
-		require.Equal(t, http.StatusForbidden, recorder2.Code)
+		require.Equal(t, http.StatusUnauthorized, recorder2.Code)
 
 		req3 := httptest.NewRequest("GET", "/admin", nil)
 		req3.Header.Set("Authorization", "Bearer wrong-token")

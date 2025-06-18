@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"crypto/subtle"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -107,17 +108,27 @@ func SimpleAdminAuthMiddleware(token string, limiter *iprate.Limiter) func(next 
 				http.Error(w, "simple admin token not configured", http.StatusInternalServerError)
 				return
 			}
-			requestToken := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
-			if requestToken != token {
-				clientIP := ip.ForRequest(r)
+
+			clientIP := ip.ForRequest(r)
+			authHeader := r.Header.Get("Authorization")
+			if !strings.HasPrefix(authHeader, "Bearer ") {
+				logger.Log().Errorf("failed simple auth attempt for %s", clientIP)
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				return
+			}
+
+			requestToken := strings.TrimPrefix(authHeader, "Bearer ")
+			if subtle.ConstantTimeCompare([]byte(requestToken), []byte(token)) != 1 {
 				limiter := limiter.GetLimiter(clientIP)
 
 				if !limiter.Allow() {
+					logger.Log().Errorf("failed simple auth attempt for %s, rate limited", clientIP)
 					http.Error(w, "too many attempts", http.StatusTooManyRequests)
 					return
 				}
 
-				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+				logger.Log().Errorf("failed simple auth attempt for %s", clientIP)
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
 			next.ServeHTTP(w, r)
