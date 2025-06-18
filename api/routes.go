@@ -17,6 +17,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/app/sdkrouter"
 	"github.com/OdyseeTeam/odysee-api/app/wallet"
 	"github.com/OdyseeTeam/odysee-api/apps/lbrytv/config"
+	"github.com/OdyseeTeam/odysee-api/internal/admin"
 	"github.com/OdyseeTeam/odysee-api/internal/ip"
 	"github.com/OdyseeTeam/odysee-api/internal/metrics"
 	"github.com/OdyseeTeam/odysee-api/internal/middleware"
@@ -187,6 +188,11 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 	}
 
 	go launcher.Start()
+
+	v1AdminRouter := r.PathPrefix("/admin/v1").Subrouter()
+	if err := admin.InstallRoutes(v1AdminRouter); err != nil {
+		panic(err)
+	}
 
 	onceMetrics.Do(func() {
 		gpmetrics.RegisterMetrics(nil)

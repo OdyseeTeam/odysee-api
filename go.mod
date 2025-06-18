@@ -62,11 +62,9 @@ require (
 	go.uber.org/zap v1.26.0
 	goa.design/goa/v3 v3.5.2
 	goa.design/plugins/v3 v3.4.3
-	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac
-	golang.org/x/oauth2 v0.25.0
+	golang.org/x/oauth2 v0.27.0
 	golang.org/x/sync v0.13.0
 	gopkg.in/vansante/go-ffprobe.v2 v2.1.0
-	gopkg.in/yaml.v2 v2.4.0
 	logur.dev/logur v0.17.0
 )
 
@@ -79,7 +77,7 @@ require (
 	github.com/cloudwego/base64x v0.1.5 // indirect
 	github.com/getsentry/sentry-go/gin v0.31.1 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
-	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/pprof v0.0.0-20250208200701-d0013a598941 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
@@ -100,7 +98,9 @@ require (
 	github.com/volatiletech/strmangle v0.0.8 // indirect
 	github.com/yuin/gopher-lua v1.1.1 // indirect
 	go.uber.org/mock v0.5.0 // indirect
+	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
 require (
@@ -230,7 +230,7 @@ require (
 	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
-	golang.org/x/time v0.8.0 // indirect
+	golang.org/x/time v0.8.0
 	golang.org/x/tools v0.30.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect

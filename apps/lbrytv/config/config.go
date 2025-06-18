@@ -170,6 +170,10 @@ func GetAddress() string {
 	return Config.Viper.GetString("Address")
 }
 
+func GetSimpleAdminToken() string {
+	return Config.Viper.GetString("SimpleAdminToken")
+}
+
 // GetLbrynetServers returns the names/addresses of every SDK server.
 func GetLbrynetServers() map[string]string {
 	if Config.Viper.GetString(deprecatedLbrynetSetting) != "" &&
