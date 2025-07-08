@@ -201,11 +201,45 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 			if purchaseRes.Error != nil {
 				if reAlreadyPurchased.MatchString(purchaseRes.Error.Message) {
 					if claim.PurchaseReceipt == nil {
-						log.Error("couldn't find purchase receipt for paid stream")
-						return nil, errors.Err("couldn't find purchase receipt for paid stream")
+						log.Debug("purchase receipt not found, checking customer/list for access")
+						// Check customer/list for off-chain purchase access
+						cu, err := auth.GetCurrentUserData(ctx)
+						if err != nil {
+							log.Error("couldn't get user data for customer/list check")
+							return nil, errors.Err("couldn't find purchase receipt for paid stream")
+						}
+						iac := cu.IAPIClient()
+						if iac == nil {
+							log.Error("no iapi client available for customer/list check")
+							return nil, errors.Err("couldn't find purchase receipt for paid stream")
+						}
+						// Handle test environment if specified
+						paramsMap := query.ParamsAsMap()
+						if environ, ok := paramsMap[iapi.ParamEnviron].(string); ok && environ == iapi.EnvironTest {
+							iac = iac.Clone(iapi.WithEnvironment(iapi.EnvironTest))
+						}
+
+						resp := &iapi.CustomerListResponse{}
+						err = iac.Call(ctx, "customer/list", map[string]string{"claim_id_filter": claim.ClaimID}, resp)
+						if err != nil {
+							log.Error("customer/list call failed", "err", err)
+							return nil, errors.Err("couldn't find purchase receipt for paid stream")
+						}
+						if len(resp.Data) == 0 {
+							log.Error("no purchase found in customer/list")
+							return nil, errors.Err("couldn't find purchase receipt for paid stream")
+						}
+						purchase := resp.Data[0]
+						if purchase.Status != "confirmed" {
+							log.Error("purchase not confirmed in customer/list")
+							return nil, errors.Err("couldn't find purchase receipt for paid stream")
+						}
+						log.Debug("found confirmed purchase in customer/list")
+						purchaseTxId = "customer_list_confirmed"
+					} else {
+						log.Debug("purchase_create says stream is already purchased")
+						purchaseTxId = claim.PurchaseReceipt.Txid
 					}
-					log.Debug("purchase_create says stream is already purchased")
-					purchaseTxId = claim.PurchaseReceipt.Txid
 				} else if rePurchaseFree.MatchString(purchaseRes.Error.Message) {
 					log.Debug("purchase_create says stream is free")
 					isPaidStream = false
