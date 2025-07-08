@@ -230,11 +230,11 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 							return nil, errors.Err("couldn't find purchase receipt for paid stream")
 						}
 						purchase := resp.Data[0]
-						if purchase.Status != "confirmed" {
-							log.Error("purchase not confirmed in customer/list")
+						if purchase.Status != "confirmed" && purchase.Status != "submitted" {
+							log.Error("purchase not in valid state in customer/list", "status", purchase.Status)
 							return nil, errors.Err("couldn't find purchase receipt for paid stream")
 						}
-						log.Debug("found confirmed purchase in customer/list")
+						log.Debug("found valid purchase in customer/list", "status", purchase.Status)
 						purchaseTxId = "customer_list_confirmed"
 					} else {
 						log.Debug("purchase_create says stream is already purchased")
@@ -409,7 +409,7 @@ TagLoop:
 			return false, errors.Err("no access to paid content")
 		}
 		purchase := resp.Data[0]
-		if purchase.Status != "confirmed" {
+		if purchase.Status != "confirmed" && purchase.Status != "submitted" {
 			return false, errors.Err("unconfirmed purchase")
 		}
 		if accessType == accessTypeRental {
