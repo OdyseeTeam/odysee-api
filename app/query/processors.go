@@ -86,6 +86,13 @@ type ClaimSearchParams struct {
 	PageSize uint64 `json:"page_size"`
 }
 
+// CustomerPurchase is a minimal subset of customer/list purchase data that we care about
+type CustomerPurchase struct {
+	Status       string    `json:"status"`
+	Type         string    `json:"type"`
+	ValidThrough time.Time `json:"valid_through"`
+}
+
 type realTimeSource struct{}
 
 func (c *ClaimSearchParams) AnyTagsContains(tags ...string) bool {
@@ -223,20 +230,22 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 						return nil, err
 					}
 					if purchaseRes.Error != nil {
-						if reAlreadyPurchased.MatchString(purchaseRes.Error.Message) {
+						switch {
+						case reAlreadyPurchased.MatchString(purchaseRes.Error.Message):
 							log.Error("purchase_create says already purchased but no receipt or customer record found")
 							return nil, errors.Err("couldn't find purchase receipt for paid stream")
-						} else if rePurchaseFree.MatchString(purchaseRes.Error.Message) {
+						case rePurchaseFree.MatchString(purchaseRes.Error.Message):
 							log.Debug("purchase_create says stream is free")
 							isPaidStream = false
-						} else {
+						default:
 							log.Warn("purchase_create errored", "err", purchaseRes.Error.Message)
 							return nil, fmt.Errorf("purchase error: %v", purchaseRes.Error.Message)
 						}
 					} else {
 						metrics.LbrytvPurchases.Inc()
 						metrics.LbrytvPurchaseAmounts.Observe(float64(feeAmount))
-						logger.With("made a purchase for %d LBC", feeAmount)
+						log.Debug("made a purchase for %d LBC", feeAmount)
+
 						// This is needed so changes can propagate for the subsequent resolve
 						time.Sleep(1 * time.Second)
 						claim, err = resolve(ctx, caller, query, lbryUrl)
@@ -300,13 +309,6 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 
 	response.Result = responseResult
 	return response, nil
-}
-
-// CustomerPurchase is a minimal subset of customer/list purchase data that we care about
-type CustomerPurchase struct {
-	Status       string    `json:"status"`
-	Type         string    `json:"type"`
-	ValidThrough time.Time `json:"valid_through"`
 }
 
 // checkCustomerListPurchase checks if the user has a valid purchase in customer/list for the given claim
