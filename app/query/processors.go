@@ -200,6 +200,8 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 			}
 			if purchaseRes.Error != nil {
 				if reAlreadyPurchased.MatchString(purchaseRes.Error.Message) {
+					// TODO: this is a reimplementation of checkStreamAccess for accessTypePurchase,
+					// consider for future refactoring if changes are needed.
 					if claim.PurchaseReceipt == nil {
 						log.Debug("purchase receipt not found, checking customer/list for access")
 						// Check customer/list for off-chain purchase access
