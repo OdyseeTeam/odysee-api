@@ -19,14 +19,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup FFmpeg with retry
-        run: |
-          for i in 1 2 3; do
-            if gh workflow run FedericoCarboni/setup-ffmpeg@v3 --ffmpeg-version=6.1.1; then
-              break
-            fi
-            sleep 5
-          done
+      - uses: FedericoCarboni/setup-ffmpeg@v3
+        with:
+          ffmpeg-version: "6.1.1"
 
       - uses: actions/setup-go@v5
         with:
