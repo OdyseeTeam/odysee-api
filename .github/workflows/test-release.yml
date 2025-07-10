@@ -21,7 +21,7 @@ jobs:
 
       - uses: FedericoCarboni/setup-ffmpeg@v3
         with:
-          ffmpeg-version: "6.1.1"
+          ffmpeg-version: 7.1
 
       - uses: actions/setup-go@v5
         with:
