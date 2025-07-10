@@ -86,6 +86,13 @@ type ClaimSearchParams struct {
 	PageSize uint64 `json:"page_size"`
 }
 
+// CustomerPurchase is a minimal subset of customer/list purchase data that we care about
+type CustomerPurchase struct {
+	Status       string    `json:"status"`
+	Type         string    `json:"type"`
+	ValidThrough time.Time `json:"valid_through"`
+}
+
 type realTimeSource struct{}
 
 func (c *ClaimSearchParams) AnyTagsContains(tags ...string) bool {
@@ -184,86 +191,74 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 		isPaidStream = true
 
 		if !claim.IsMyOutput {
-			purchaseQuery, err := NewQuery(jsonrpc.NewRequest(
-				MethodPurchaseCreate,
-				map[string]any{
-					"url":      lbryUrl,
-					"blocking": true,
-				},
-			), query.WalletID)
-			if err != nil {
-				return nil, err
-			}
-			purchaseRes, err := caller.SendQuery(AttachQuery(ctx, purchaseQuery), purchaseQuery)
-			if err != nil {
-				return nil, err
-			}
-			if purchaseRes.Error != nil {
-				if reAlreadyPurchased.MatchString(purchaseRes.Error.Message) {
-					// TODO: this is a reimplementation of checkStreamAccess for accessTypePurchase,
-					// consider for future refactoring if changes are needed.
-					if claim.PurchaseReceipt == nil {
-						log.Debug("purchase receipt not found, checking customer/list for access")
-						// Check customer/list for off-chain purchase access
-						cu, err := auth.GetCurrentUserData(ctx)
-						if err != nil {
-							log.Error("couldn't get user data for customer/list check")
-							return nil, errors.Err("couldn't find purchase receipt for paid stream")
-						}
-						iac := cu.IAPIClient()
-						if iac == nil {
-							log.Error("no iapi client available for customer/list check")
-							return nil, errors.Err("couldn't find purchase receipt for paid stream")
-						}
-						// Handle test environment if specified
-						paramsMap := query.ParamsAsMap()
-						if environ, ok := paramsMap[iapi.ParamEnviron].(string); ok && environ == iapi.EnvironTest {
-							iac = iac.Clone(iapi.WithEnvironment(iapi.EnvironTest))
-						}
+			// First check if we already have a purchase receipt from resolve
+			if claim.PurchaseReceipt != nil {
+				log.Debug("found existing purchase receipt")
+				purchaseTxId = claim.PurchaseReceipt.Txid
+			} else {
+				// No receipt, check customer/list for off-chain purchase access
+				log.Debug("no purchase receipt found, checking customer/list for access")
+				paramsMap := query.ParamsAsMap()
+				environ := ""
+				if env, ok := paramsMap[iapi.ParamEnviron].(string); ok {
+					environ = env
+				}
 
-						resp := &iapi.CustomerListResponse{}
-						err = iac.Call(ctx, "customer/list", map[string]string{"claim_id_filter": claim.ClaimID}, resp)
-						if err != nil {
-							log.Error("customer/list call failed", "err", err)
+				purchase, err := checkCustomerListPurchase(ctx, claim.ClaimID, environ)
+				if err != nil {
+					log.Debug("couldn't check customer/list for purchase", "err", err)
+				} else if purchase != nil {
+					log.Debug("found valid purchase in customer/list", "status", purchase.Status)
+					purchaseTxId = "customer_list_confirmed"
+				}
+
+				// If no valid purchase found through customer/list, try purchase_create as fallback
+				if purchaseTxId == "" {
+					log.Debug("no existing purchase found, attempting purchase_create")
+					purchaseQuery, err := NewQuery(jsonrpc.NewRequest(
+						MethodPurchaseCreate,
+						map[string]any{
+							"url":      lbryUrl,
+							"blocking": true,
+						},
+					), query.WalletID)
+					if err != nil {
+						return nil, err
+					}
+					purchaseRes, err := caller.SendQuery(AttachQuery(ctx, purchaseQuery), purchaseQuery)
+					if err != nil {
+						return nil, err
+					}
+					if purchaseRes.Error != nil {
+						switch {
+						case reAlreadyPurchased.MatchString(purchaseRes.Error.Message):
+							log.Error("purchase_create says already purchased but no receipt or customer record found")
 							return nil, errors.Err("couldn't find purchase receipt for paid stream")
+						case rePurchaseFree.MatchString(purchaseRes.Error.Message):
+							log.Debug("purchase_create says stream is free")
+							isPaidStream = false
+						default:
+							log.Warn("purchase_create errored", "err", purchaseRes.Error.Message)
+							return nil, fmt.Errorf("purchase error: %v", purchaseRes.Error.Message)
 						}
-						if len(resp.Data) == 0 {
-							log.Error("no purchase found in customer/list")
-							return nil, errors.Err("couldn't find purchase receipt for paid stream")
-						}
-						purchase := resp.Data[0]
-						if purchase.Status != "confirmed" && purchase.Status != "submitted" {
-							log.Error("purchase not in valid state in customer/list", "status", purchase.Status)
-							return nil, errors.Err("couldn't find purchase receipt for paid stream")
-						}
-						log.Debug("found valid purchase in customer/list", "status", purchase.Status)
-						purchaseTxId = "customer_list_confirmed"
 					} else {
-						log.Debug("purchase_create says stream is already purchased")
+						metrics.LbrytvPurchases.Inc()
+						metrics.LbrytvPurchaseAmounts.Observe(float64(feeAmount))
+						log.Debug("made a purchase for %d LBC", feeAmount)
+
+						// This is needed so changes can propagate for the subsequent resolve
+						time.Sleep(1 * time.Second)
+						claim, err = resolve(ctx, caller, query, lbryUrl)
+						if err != nil {
+							return nil, err
+						}
+						if claim.PurchaseReceipt == nil {
+							log.Error("stream was paid for but receipt not found in the resolve response")
+							return nil, errors.Err("couldn't find purchase receipt for paid stream")
+						}
 						purchaseTxId = claim.PurchaseReceipt.Txid
 					}
-				} else if rePurchaseFree.MatchString(purchaseRes.Error.Message) {
-					log.Debug("purchase_create says stream is free")
-					isPaidStream = false
-				} else {
-					log.Warn("purchase_create errored", "err", purchaseRes.Error.Message)
-					return nil, fmt.Errorf("purchase error: %v", purchaseRes.Error.Message)
 				}
-			} else {
-				metrics.LbrytvPurchases.Inc()
-				metrics.LbrytvPurchaseAmounts.Observe(float64(feeAmount))
-				logger.With("made a purchase for %d LBC", feeAmount)
-				// This is needed so changes can propagate for the subsequent resolve
-				time.Sleep(1 * time.Second)
-				claim, err = resolve(ctx, caller, query, lbryUrl)
-				if err != nil {
-					return nil, err
-				}
-				if claim.PurchaseReceipt == nil {
-					log.Error("stream was paid for but receipt not found in the resolve response")
-					return nil, errors.Err("couldn't find purchase receipt for paid stream")
-				}
-				purchaseTxId = claim.PurchaseReceipt.Txid
 			}
 		} else {
 			purchaseTxId = "owner"
@@ -314,6 +309,48 @@ func preflightHookGet(caller *Caller, ctx context.Context) (*jsonrpc.RPCResponse
 
 	response.Result = responseResult
 	return response, nil
+}
+
+// checkCustomerListPurchase checks if the user has a valid purchase in customer/list for the given claim
+// Returns the purchase data if found and valid, nil otherwise. Error is returned only for authentication issues.
+func checkCustomerListPurchase(ctx context.Context, claimID string, environ string) (*CustomerPurchase, error) {
+	cu, err := auth.GetCurrentUserData(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	iac := cu.IAPIClient()
+	if iac == nil {
+		return nil, errors.Err("authentication required")
+	}
+
+	if environ == iapi.EnvironTest {
+		iac = iac.Clone(iapi.WithEnvironment(iapi.EnvironTest))
+	}
+
+	resp := &iapi.CustomerListResponse{}
+	err = iac.Call(ctx, "customer/list", map[string]string{"claim_id_filter": claimID}, resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(resp.Data) == 0 {
+		return nil, nil // No purchase found
+	}
+
+	purchase := resp.Data[0]
+	if purchase.Status != "confirmed" && purchase.Status != "submitted" {
+		return nil, nil // Purchase not in valid state
+	}
+
+	// Convert to our CustomerPurchase type
+	customerPurchase := &CustomerPurchase{
+		Status:       purchase.Status,
+		Type:         purchase.Type,
+		ValidThrough: purchase.ValidThrough,
+	}
+
+	return customerPurchase, nil
 }
 
 func checkStreamAccess(ctx context.Context, claim *ljsonrpc.Claim) (bool, error) {
@@ -387,32 +424,14 @@ TagLoop:
 		return false, errors.Err("claim release time is in the future, not ready to be viewed yet")
 	}
 
-	cu, err := auth.GetCurrentUserData(ctx)
-	if err != nil {
-		return false, errors.Err("no user data in context: %w", err)
-	}
-
-	iac := cu.IAPIClient()
-	if iac == nil {
-		return false, errors.Err("authentication required")
-	}
-	if environ == iapi.EnvironTest {
-		iac = iac.Clone(iapi.WithEnvironment(iapi.EnvironTest))
-	}
-
 	switch accessType {
 	case accessTypePurchase, accessTypeRental:
-		resp := &iapi.CustomerListResponse{}
-		err = iac.Call(ctx, "customer/list", map[string]string{"claim_id_filter": claim.ClaimID}, resp)
+		purchase, err := checkCustomerListPurchase(ctx, claim.ClaimID, environ)
 		if err != nil {
 			return false, err
 		}
-		if len(resp.Data) == 0 {
+		if purchase == nil {
 			return false, errors.Err("no access to paid content")
-		}
-		purchase := resp.Data[0]
-		if purchase.Status != "confirmed" && purchase.Status != "submitted" {
-			return false, errors.Err("unconfirmed purchase")
 		}
 		if accessType == accessTypeRental {
 			if purchase.Type != "rental" {
@@ -424,6 +443,19 @@ TagLoop:
 		}
 		return true, signErr
 	case accessTypeMemberOnly:
+		cu, err := auth.GetCurrentUserData(ctx)
+		if err != nil {
+			return false, errors.Err("no user data in context: %w", err)
+		}
+
+		iac := cu.IAPIClient()
+		if iac == nil {
+			return false, errors.Err("authentication required")
+		}
+		if environ == iapi.EnvironTest {
+			iac = iac.Clone(iapi.WithEnvironment(iapi.EnvironTest))
+		}
+
 		resp := &iapi.MembershipPerkCheck{}
 		perkType := iapiTypeMembershipVod
 		if isLivestream {

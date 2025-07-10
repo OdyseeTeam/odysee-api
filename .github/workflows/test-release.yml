@@ -19,9 +19,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: FedericoCarboni/setup-ffmpeg@v3
-        with:
-          ffmpeg-version: "6.1.1"
+      # - uses: FedericoCarboni/setup-ffmpeg@v3
+      #   with:
+      #     ffmpeg-version: 7.1
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt update
+          sudo apt install ffmpeg
 
       - uses: actions/setup-go@v5
         with:
