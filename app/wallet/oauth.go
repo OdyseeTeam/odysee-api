@@ -12,7 +12,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/storage"
 	"github.com/OdyseeTeam/odysee-api/models"
 
-	"github.com/coreos/go-oidc"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/sirupsen/logrus"
 	"github.com/volatiletech/null"
 	"github.com/volatiletech/sqlboiler/boil"

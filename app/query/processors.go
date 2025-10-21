@@ -364,6 +364,8 @@ func checkStreamAccess(ctx context.Context, claim *ljsonrpc.Claim) (bool, error)
 		environ, _ = p.(string)
 	}
 
+	logger := logging.GetFromContext(ctx).With("claim_id", claim.CanonicalURL)
+
 TagLoop:
 	for _, t := range claim.Value.Tags {
 		switch {
@@ -408,6 +410,7 @@ TagLoop:
 		// check signature and signature_ts params, error if not present
 		signature, ok := params["signature"]
 		if !ok {
+			logger.Warn("missing signature param for unlisted claim")
 			return false, errors.Err("missing required signature param")
 		}
 
