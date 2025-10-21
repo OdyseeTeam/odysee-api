@@ -96,12 +96,19 @@ func NewStore(dsn string, destinations []store.BlobStore) (*Store, error) {
 		return nil, err
 	}
 
-	st := store.NewDBBackedStore(store.DBBackedParams{
-		Name: "global",
-		Store: store.NewMultiWriterStore(store.MultiWriterParams{
+	var blobStore store.BlobStore
+	if len(destinations) == 1 {
+		blobStore = destinations[0]
+	} else {
+		blobStore = store.NewMultiWriterStore(store.MultiWriterParams{
 			Name:         "s3",
 			Destinations: destinations,
-		}),
+		})
+	}
+
+	st := store.NewDBBackedStore(store.DBBackedParams{
+		Name:         "global",
+		Store:        blobStore,
 		DB:           db,
 		DeleteOnMiss: false,
 		MaxSize:      nil,
