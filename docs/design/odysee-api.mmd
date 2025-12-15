@@ -1,0 +1,134 @@
+---
+title: Odysee API
+---
+flowchart TD
+
+User(("Site Visitor
+[Person]
+A user who wants to
+browse and watch videos"))
+
+FE["Frontend
+[Web App]
+Provides UI for platform interactions"]
+
+PL{{"Player
+[Service]
+Serves platform media"}}:::externalServiceClass
+
+OAPI["Odysee API
+[Service]
+Exposes LBRY SDK API"]:::oapiClass
+
+PX["Proxy
+[Package]
+Receives JSON-RPC query"]
+
+WL["Wallet
+[Package]
+Authenticates and caches user"]
+
+IAPI{{"Internal API
+[Service]
+Authenticates user by token"}}:::externalServiceClass
+
+QC[("Queries Cache
+[Redis]
+Stores cacheable
+query results")]:::databaseClass
+
+WDB[("Users
+[Postgres]
+Stores users
+and SDK addresses")]:::databaseClass
+
+SDR["SDK Router
+[Package]
+Handles user to SDK mapping"]
+
+Q["Query
+[Package]
+Processes and verifies
+JSON-RPC query"]
+
+SDK{{"SDK Instances
+[Services]
+Hundreds of stateful
+LBRY blockchain SDKs"}}:::externalServiceClass
+
+subgraph uploads["Uploads V4"]
+  direction LR
+
+  AQ["Asynquery
+  [Package]
+  Returns ad-hoc upload credentials
+  and handles associated query"]
+
+  UP["Uploads
+  [Service]
+  Receives user upload
+  using TUS protocol"]:::serviceClass
+
+  FL["Forklift
+  [Service]
+  Splits upload into blobs"]:::serviceClass
+
+  RFL{{"Reflector
+  [Service]
+  Stores blob data
+  "}}:::externalServiceClass
+
+  QDB[("Queries
+  [Postgres]
+  Stores JSON-RPC query
+  for settling upload on
+  LBRY blockchain")]:::databaseClass
+
+  AQRQ[("Uploads Queue
+  [Redis]
+  Stores completion signal")]:::queueClass
+end
+
+Legend["ℹ️ Notes
+
+**Services** are standalone deployed entities, code for which resides inside odysee-api repo, except for external services.
+**Package** names correspond to Go packages in odysee-api codebase.
+Some small packages and systems are omitted for brewity.
+"]
+
+User -- "Opens odysee.com in browser" --> FE
+
+FE -- "Sends JSON-RPC [HTTPS] request" --> OAPI
+FE -- "Requests media [HTTPS]" --> PL
+
+PL -- "Sends claim_resolve JSON-RPC [HTTPS] request to" --> OAPI
+
+OAPI -- "Dispatches request to" --> PX
+
+PX -- "Retrieves user from" --> WL
+WL -- "Authenticates user [REST] with" --> IAPI
+WL -- "Stores user with" --> WDB
+
+PX -- "Retrieves SDK instance from" --> SDR
+SDR -- "Retrieves SDK mapping from" --> WDB
+PX -- "Dispatches query for processing to" --> Q
+
+Q -- "Retrieves and saves cached query result from" --> QC
+Q -- "Sends patched JSON-RPC [HTTP] to" --> SDK
+
+FE -- "Sends upload creation request [REST] to" --> AQ
+FE -- "Sends upload data [TUS] to" --> UP
+AQ -- "Stores query in" --> QDB
+UP -. "Sends upload completion signal [Redis] to" .-> FL
+FL -. "Sends reflection completion signal to" .-> AQRQ
+FL -- "Reflects blobs [S3] to blobcache" --> RFL
+AQ -. "Reads completion signal from" .-> AQRQ
+
+
+classDef default fill:#f9f9f9,stroke:#333,stroke-width:1px,color:#000
+classDef databaseClass fill:#326ce5,stroke:#fff,stroke-width:2px,color:#fff
+classDef queueClass fill:#018506,stroke:#fff,stroke-width:2px,color:#fff
+classDef serviceClass fill:#D7EDC5,stroke:#2d5016,stroke-width:2px
+classDef externalServiceClass fill:#E8E8E8,stroke:#999,stroke-width:2px,stroke-dasharray: 2 5,color:#666
+classDef oapiClass fill:#D7EDC5,stroke:#2d5016,stroke-width:4px
+style Legend fill:#f9f9f9,stroke:#ccc,stroke-width:1px,text-align:left,color:#666
