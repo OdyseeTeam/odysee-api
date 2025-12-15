@@ -2,7 +2,6 @@ package sturdycache
 
 import (
 	"context"
-	"math/rand/v2"
 	"time"
 
 	"github.com/eko/gocache/lib/v4/cache"
@@ -16,7 +15,6 @@ const ReplicatedCacheType = "redis"
 type ReplicatedCache struct {
 	masterCache   *cache.Cache[any]
 	replicaCaches []*cache.Cache[any]
-	readCaches    []*cache.Cache[any]
 }
 
 // NewReplicatedCache creates a new gocache store instance for redis master-replica setups.
@@ -45,8 +43,8 @@ func NewReplicatedCache(
 			Addr:         addr,
 			Password:     password,
 			DB:           0,
-			PoolSize:     200,
-			MinIdleConns: 10,
+			PoolSize:     50,
+			MinIdleConns: 5,
 		})
 
 		replicaStore := redis_store.NewRedis(replicaClient)
@@ -56,7 +54,6 @@ func NewReplicatedCache(
 	baseStore := &ReplicatedCache{
 		masterCache:   masterCache,
 		replicaCaches: replicaCaches,
-		readCaches:    append(replicaCaches, masterCache),
 	}
 
 	return baseStore, nil
@@ -69,14 +66,26 @@ func (rc *ReplicatedCache) Set(ctx context.Context, key any, value any, options 
 
 // Get reads from master and replica caches.
 func (rc *ReplicatedCache) Get(ctx context.Context, key any) (any, error) {
-	// #nosec G404
-	return rc.readCaches[rand.IntN(len(rc.readCaches))].Get(ctx, key)
+	for _, cache := range rc.replicaCaches {
+		val, err := cache.Get(ctx, key)
+		if err == nil {
+			return val, nil
+		}
+	}
+	// Fallback to master if all replicas miss
+	return rc.masterCache.Get(ctx, key)
 }
 
 // Get reads from master and replica caches.
 func (rc *ReplicatedCache) GetWithTTL(ctx context.Context, key any) (any, time.Duration, error) {
-	// #nosec G404
-	return rc.readCaches[rand.IntN(len(rc.readCaches))].GetWithTTL(ctx, key)
+	for _, cache := range rc.replicaCaches {
+		val, dur, err := cache.GetWithTTL(ctx, key)
+		if err == nil {
+			return val, dur, nil
+		}
+	}
+	// Fallback to master if all replicas miss
+	return rc.masterCache.GetWithTTL(ctx, key)
 }
 
 // Invalidate master cache entries for given options.
