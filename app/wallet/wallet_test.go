@@ -347,11 +347,20 @@ func TestDeleteUser(t *testing.T) {
 	err := user.Insert(storage.DB, boil.Infer())
 	require.NoError(t, err)
 
-	require.NoError(t, DeleteUser(id))
-	_, err = getDBUser(storage.DB, ByID(id))
+	id2 := 124
+	user2 := &models.User{ID: id2}
+	err = user2.Insert(storage.DB, boil.Infer())
+	require.NoError(t, err)
 
+	require.NoError(t, DeleteUser(id))
+
+	_, err = getDBUser(storage.DB, ByID(id))
 	assert.EqualError(t, err, sql.ErrNoRows.Error())
 	assert.EqualError(t, DeleteUser(id), sql.ErrNoRows.Error())
+
+	_, err = getDBUser(storage.DB, ByID(id2))
+	require.NoError(t, err)
+
 }
 
 type firstQueryNoResults struct {
