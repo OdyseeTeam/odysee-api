@@ -41,6 +41,9 @@ func ErrorToSentry(err error, params ...map[string]string) *sentry.EventID {
 	}
 
 	sentry.WithScope(func(scope *sentry.Scope) {
+		user := sentry.User{ID: extra["user_id"]}
+		scope.SetUser(user)
+
 		for k, v := range extra {
 			scope.SetExtra(k, v)
 		}

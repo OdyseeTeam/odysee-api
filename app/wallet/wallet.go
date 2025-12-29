@@ -25,11 +25,17 @@ import (
 
 var ErrNoAuthInfo = errors.Base("authentication token missing")
 
+var (
+	// ByID filters the user by the id column in the database
+	ByID = func(id int) qm.QueryMod { return models.UserWhere.ID.EQ(id) }
+
+	// ByIDPID filters the user by the idp_id column in the database
+	ByIDPID = func(idpID string) qm.QueryMod { return models.UserWhere.IdpID.EQ(null.StringFrom(idpID)) }
+)
+
 const opName = "wallet"
 
 var logger = monitor.NewModuleLogger("wallet")
-
-func DisableLogger() { logger.Disable() } // for testing
 
 // LegacyTokenHeader is the name of HTTP header which is supplied by client and should contain internal-api auth_token.
 const (
@@ -40,6 +46,8 @@ const (
 	pgAbortedTransactionViolation = "25P02"
 	txMaxRetries                  = 2
 )
+
+func DisableLogger() { logger.Disable() } // for testing
 
 // GetUserWithSDKServer gets user by internal-apis auth token. If the user does not have a
 // wallet yet, they are assigned an SDK and a wallet is created for them on that SDK.
@@ -83,6 +91,11 @@ func GetUserWithSDKServer(rt *sdkrouter.Router, internalAPIHost, token, metaRemo
 	})
 
 	return user, err
+}
+
+// DeleteUser removes user from database, should be used with caution.
+func DeleteUser(userID int) error {
+	return deleteDBUser(storage.DB, userID)
 }
 
 func inTx(ctx context.Context, exec boil.ContextBeginner, f func(tx *sql.Tx) error) error {
@@ -171,12 +184,6 @@ func createUser(exec boil.Executor, user *models.User, log *logrus.Entry) (*mode
 	return nil, err
 }
 
-// ByID filters the user by the id column in the database
-var ByID = func(id int) qm.QueryMod { return models.UserWhere.ID.EQ(id) }
-
-// ByIDPID filters the user by the idp_id column in the database
-var ByIDPID = func(idpID string) qm.QueryMod { return models.UserWhere.IdpID.EQ(null.StringFrom(idpID)) }
-
 func getDBUser(exec boil.Executor, by qm.QueryMod) (*models.User, error) {
 	op := metrics.StartOperation("db", "get_user")
 	defer op.End()
@@ -186,6 +193,18 @@ func getDBUser(exec boil.Executor, by qm.QueryMod) (*models.User, error) {
 		qm.Load(models.UserRels.LbrynetServer),
 	).One(exec)
 	return user, errors.Err(err)
+}
+
+func deleteDBUser(exec boil.Executor, userID int) error {
+	op := metrics.StartOperation("db", "delete_user")
+	defer op.End()
+
+	u, err := getDBUser(exec, ByID(userID))
+	if err != nil {
+		return errors.Err(err)
+	}
+	_, err = u.Delete(exec)
+	return errors.Err(err)
 }
 
 // GetDBUserG returns a database user with LbrynetServer selected, using the global executor.
@@ -269,7 +288,7 @@ func assignSDKServerToUser(exec boil.Executor, user *models.User, server *models
 
 // Create creates a wallet on an sdk that can be immediately used in subsequent commands.
 // It can recover from errors like existing wallets, but if a wallet is known to exist
-// (eg. a wallet ID stored in the database already), loadWallet() should be called instead.
+// (eg. user is stored in the database already), loadWallet() should be called instead.
 func Create(serverAddress string, userID int) error {
 	err := createWallet(serverAddress, userID)
 	if err == nil {

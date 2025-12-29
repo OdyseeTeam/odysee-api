@@ -25,7 +25,7 @@ import (
 
 const (
 	walletLoadRetries   = 3
-	walletLoadRetryWait = 100 * time.Millisecond
+	walletLoadRetryWait = 250 * time.Millisecond
 	builtinHookName     = "builtin"
 	defaultRPCTimeout   = 240 * time.Second
 
@@ -228,17 +228,28 @@ func (c *Caller) SendQuery(ctx context.Context, q *Query) (*jsonrpc.RPCResponse,
 			time.Sleep(walletLoadRetryWait)
 			// Using LBRY JSON-RPC client here for easier request/response processing
 			err := wallet.LoadWallet(c.Endpoint(), c.userID)
-			// Alert sentry on the last failed wallet load attempt
+
+			// Remove DB user and alert sentry on the last failed wallet load attempt
+			// for it to be created on the next client call
 			if err != nil && i >= walletLoadRetries-1 {
-				e := errors.Prefix("gave up manually adding wallet", err)
+				var sentryErr error
+				err := wallet.DeleteUser(c.userID)
+
+				if err != nil {
+					sentryErr = errors.Prefix("failed to delete db user with missing wallet", err)
+				} else {
+					sentryErr = errors.Prefix("resorted to deleting db user with missing wallet", err)
+				}
+
 				logger.WithFields(logrus.Fields{
 					"user_id":  c.userID,
 					"endpoint": c.Endpoint(),
-				}).Error(e)
-				monitor.ErrorToSentry(e, map[string]string{
+				}).Error(sentryErr)
+				monitor.ErrorToSentry(sentryErr, map[string]string{
 					"user_id":  fmt.Sprintf("%d", c.userID),
 					"endpoint": c.Endpoint(),
 					"retries":  fmt.Sprintf("%d", i),
+					"method":   q.Method(),
 				})
 			}
 		} else if isErrWalletAlreadyLoaded(r) {

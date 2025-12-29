@@ -111,17 +111,13 @@ Contributions to this project are welcome.
 
 Please ensure that your code builds and automated tests run successfully before pushing your branch. You must `go fmt` your code before you commit it, or the build will fail.
 
-
 ## License
 
 This project is MIT licensed. For the full license, see [LICENSE](LICENSE).
 
-
 ## Security
 
-We take security seriously. Please contact security@lbry.io regarding any issues you may encounter.
-Our PGP key is [here](https://lbry.com/faq/pgp-key) if you need it.
-
+Please contact security@odysee.com regarding any issues you may encounter.
 
 ## Contact
 

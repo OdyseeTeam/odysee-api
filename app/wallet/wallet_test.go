@@ -301,7 +301,7 @@ func TestCreateDBUser_ConcurrentDuplicateUser(t *testing.T) {
 	err := user.Insert(storage.DB, boil.Infer())
 	require.NoError(t, err)
 
-	// we want the very first getDBUser() call in getOrCreateLocalUser() to return no results to
+	// We want the very first getDBUser() call in getOrCreateLocalUser() to return no results to
 	// simulate the case where that call returns nothing and then the user is created in another
 	// request
 
@@ -337,6 +337,21 @@ func TestCreateDBUser_ConcurrentDuplicateUserIDP(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
+}
+
+func TestDeleteUser(t *testing.T) {
+	setupTest()
+
+	id := 123
+	user := &models.User{ID: id}
+	err := user.Insert(storage.DB, boil.Infer())
+	require.NoError(t, err)
+
+	require.NoError(t, DeleteUser(id))
+	_, err = getDBUser(storage.DB, ByID(id))
+
+	assert.EqualError(t, err, sql.ErrNoRows.Error())
+	assert.EqualError(t, DeleteUser(id), sql.ErrNoRows.Error())
 }
 
 type firstQueryNoResults struct {
