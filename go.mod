@@ -63,7 +63,7 @@ require (
 	goa.design/goa/v3 v3.5.2
 	goa.design/plugins/v3 v3.4.3
 	golang.org/x/oauth2 v0.28.0
-	golang.org/x/sync v0.16.0
+	golang.org/x/sync v0.19.0
 	gopkg.in/vansante/go-ffprobe.v2 v2.1.0
 	logur.dev/logur v0.17.0
 )
@@ -77,17 +77,15 @@ require (
 	github.com/cloudwego/base64x v0.1.5 // indirect
 	github.com/getsentry/sentry-go/gin v0.31.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
-	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/golang/mock v1.6.0 // indirect
-	github.com/google/pprof v0.0.0-20250208200701-d0013a598941 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/sys/user v0.4.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/onsi/ginkgo/v2 v2.22.2 // indirect
-	github.com/quic-go/qpack v0.5.1 // indirect
-	github.com/quic-go/quic-go v0.49.1 // indirect
+	github.com/onsi/gomega v1.36.2 // indirect
+	github.com/quic-go/qpack v0.6.0 // indirect
+	github.com/quic-go/quic-go v0.57.0 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
@@ -99,7 +97,6 @@ require (
 	github.com/volatiletech/randomize v0.0.1 // indirect
 	github.com/volatiletech/strmangle v0.0.8 // indirect
 	github.com/yuin/gopher-lua v1.1.1 // indirect
-	go.uber.org/mock v0.5.0 // indirect
 	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
@@ -226,13 +223,13 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/arch v0.14.0 // indirect
-	golang.org/x/crypto v0.41.0 // indirect
-	golang.org/x/mod v0.26.0 // indirect
-	golang.org/x/net v0.43.0 // indirect
-	golang.org/x/sys v0.37.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
-	golang.org/x/time v0.8.0
-	golang.org/x/tools v0.35.0 // indirect
+	golang.org/x/crypto v0.46.0 // indirect
+	golang.org/x/mod v0.30.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
+	golang.org/x/time v0.12.0
+	golang.org/x/tools v0.39.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
