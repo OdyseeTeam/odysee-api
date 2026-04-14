@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/OdyseeTeam/player-server/pkg/logger"
 	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
 )
 
 // App holds entities that can be used to control the web server
@@ -18,7 +18,7 @@ type App struct {
 	Router  *mux.Router
 	Address string
 
-	logger   *logrus.Logger
+	logger   *slog.Logger
 	headers  map[string]string
 	stopChan chan os.Signal
 	stopWait time.Duration
@@ -34,7 +34,7 @@ type Options struct {
 	WriteTimeout      time.Duration
 	IdleTimeout       time.Duration
 	ReadHeaderTimeout time.Duration
-	Logger            *logrus.Logger
+	Logger            *slog.Logger
 }
 
 type Option func(*Options)
@@ -62,7 +62,7 @@ func AllowOrigin(origin string) Option {
 	}
 }
 
-func Logger(l *logrus.Logger) Option {
+func Logger(l *slog.Logger) Option {
 	return func(args *Options) {
 		args.Logger = l
 	}
@@ -122,11 +122,11 @@ func (a *App) InstallRoutes(f RouteInstaller) {
 // Start starts a HTTP server and returns immediately.
 func (a *App) Start() {
 	go func() {
-		a.logger.Infof("starting app server on %v", a.Address)
-		if err := a.server.ListenAndServe(); err != nil {
-			if err.Error() != "http: Server closed" {
-				a.logger.Fatal(err)
-			}
+		a.logger.Info("starting app server", "address", a.Address)
+		err := a.server.ListenAndServe()
+		if err != nil && err.Error() != "http: Server closed" {
+			a.logger.Error("server failed", "err", err)
+			os.Exit(1)
 		}
 	}()
 }
@@ -135,10 +135,10 @@ func (a *App) Start() {
 func (a *App) ServeUntilShutdown() {
 	signal.Notify(a.stopChan, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGINT)
 	sig := <-a.stopChan
-	a.logger.Printf("caught a signal (%v), shutting down http server...", sig)
+	a.logger.Info("caught signal, shutting down http server", "signal", sig)
 	err := a.Shutdown()
 	if err != nil {
-		a.logger.Error("error shutting down http server: ", err)
+		a.logger.Error("error shutting down http server", "err", err)
 	} else {
 		a.logger.Info("http server shut down")
 	}

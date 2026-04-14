@@ -15,7 +15,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/tasks"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
@@ -31,9 +31,9 @@ type LocalFile struct {
 }
 
 type S3Retriever struct {
-	tempPath   string
-	downloader *manager.Downloader
-	client     *s3.Client
+	tempPath string
+	tm       *transfermanager.Client
+	client   *s3.Client
 }
 
 type HTTPRetriever struct {
@@ -44,9 +44,9 @@ type HTTPRetriever struct {
 // NewS3Retriever creates a new retriever that downloads files from S3 uploads storage.
 func NewS3Retriever(tempPath string, client *s3.Client) *S3Retriever {
 	return &S3Retriever{
-		tempPath:   tempPath,
-		downloader: manager.NewDownloader(client),
-		client:     client,
+		tempPath: tempPath,
+		tm:       transfermanager.New(client),
+		client:   client,
 	}
 }
 
@@ -58,14 +58,19 @@ func (r *S3Retriever) Retrieve(ctx context.Context, uploadID string, loc tasks.F
 	}
 	defer sf.Close()
 
-	in := &s3.GetObjectInput{
-		Bucket: aws.String(loc.Bucket),
-		Key:    aws.String(loc.Key),
-	}
-	n, err := r.downloader.Download(ctx, sf, in)
+	out, err := r.tm.DownloadObject(ctx, &transfermanager.DownloadObjectInput{
+		Bucket:   aws.String(loc.Bucket),
+		Key:      aws.String(loc.Key),
+		WriterAt: sf,
+	})
 	if err != nil {
 		os.Remove(sf.Name())
 		return nil, err
+	}
+
+	var n int64
+	if out.ContentLength != nil {
+		n = *out.ContentLength
 	}
 
 	return &LocalFile{sf.Name(), n}, nil
