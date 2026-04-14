@@ -82,9 +82,13 @@ func TestCaller_CallRelaxedMethods(t *testing.T) {
 			assert.False(t, errors.Is(err, rpcerrors.ErrAuthRequired)) // but it should not be an auth error
 
 			receivedRequest := <-reqChan
+			var expectedParams any
+			if m == MethodClaimSearch {
+				expectedParams = map[string]any{"order_by": []string{"trending_score", "release_time"}}
+			}
 			expectedRequest := test.ReqToStr(t, &jsonrpc.RPCRequest{
 				Method:  m,
-				Params:  nil,
+				Params:  expectedParams,
 				JSONRPC: "2.0",
 				ID:      req.ID,
 			})
@@ -112,9 +116,13 @@ func TestCaller_CallAmbivalentMethodsWithoutWallet(t *testing.T) {
 			assert.False(t, errors.Is(err, rpcerrors.ErrAuthRequired))
 
 			receivedRequest := <-reqChan
+			var expectedParams any
+			if m == MethodClaimSearch {
+				expectedParams = map[string]any{"order_by": []string{"trending_score", "release_time"}}
+			}
 			expectedRequest := test.ReqToStr(t, &jsonrpc.RPCRequest{
 				Method:  m,
-				Params:  nil,
+				Params:  expectedParams,
 				JSONRPC: "2.0",
 			})
 			assert.EqualValues(t, expectedRequest, receivedRequest.Body)
@@ -144,11 +152,15 @@ func TestCaller_CallAmbivalentMethodsWithWallet(t *testing.T) {
 			assert.False(t, errors.Is(err, rpcerrors.ErrAuthRequired))
 
 			receivedRequest := <-reqChan
+			expectedParams := map[string]any{
+				"wallet_id": sdkrouter.WalletID(dummyUserID),
+			}
+			if m == MethodClaimSearch {
+				expectedParams["order_by"] = []string{"trending_score", "release_time"}
+			}
 			expectedRequest := test.ReqToStr(t, &jsonrpc.RPCRequest{
-				Method: m,
-				Params: map[string]any{
-					"wallet_id": sdkrouter.WalletID(dummyUserID),
-				},
+				Method:  m,
+				Params:  expectedParams,
 				JSONRPC: "2.0",
 			})
 
@@ -1072,7 +1084,7 @@ func TestCaller_preflightHookClaimSearch(t *testing.T) {
 		{
 			params: map[string]any{},
 			asserts: func(t *testing.T, pp map[string]any) {
-
+				assert.EqualValues(t, []any{"trending_score", "release_time"}, pp["order_by"])
 			},
 		},
 		{
@@ -1120,6 +1132,58 @@ func TestCaller_preflightHookClaimSearch(t *testing.T) {
 					pp["release_time"])
 			},
 		},
+		{
+			params: map[string]any{"claim_type": []any{"stream"}, "has_source": true},
+			asserts: func(t *testing.T, pp map[string]any) {
+				assert.EqualValues(t, []any{"trending_score", "release_time"}, pp["order_by"])
+				assert.Contains(t, pp["not_tags"], ClaimTagPrivate)
+			},
+		},
+		{
+			params: map[string]any{"claim_type": []any{"stream"}, "text": "hello"},
+			asserts: func(t *testing.T, pp map[string]any) {
+				assert.Nil(t, pp["order_by"])
+			},
+		},
+		{
+			params: map[string]any{"claim_type": []any{"stream"}, "order_by": []any{"effective_amount"}},
+			asserts: func(t *testing.T, pp map[string]any) {
+				assert.EqualValues(t, []any{"effective_amount"}, pp["order_by"])
+			},
+		},
+		{
+			params: map[string]any{"claim_type": []any{"stream"}, "has_source": true, "text": "hello"},
+			asserts: func(t *testing.T, pp map[string]any) {
+				assert.Contains(t, pp["not_tags"], ClaimTagPrivate)
+				assert.Contains(t, pp["not_tags"], ClaimTagUnlisted)
+				assert.NotNil(t, pp["release_time"])
+				assert.Nil(t, pp["order_by"])
+			},
+		},
+		{
+			params: map[string]any{"claim_type": []any{"stream"}, "text": ""},
+			asserts: func(t *testing.T, pp map[string]any) {
+				assert.EqualValues(t, []any{"trending_score", "release_time"}, pp["order_by"])
+			},
+		},
+		{
+			params: map[string]any{"claim_type": []any{"stream"}, "text": nil},
+			asserts: func(t *testing.T, pp map[string]any) {
+				assert.EqualValues(t, []any{"trending_score", "release_time"}, pp["order_by"])
+			},
+		},
+		{
+			params: map[string]any{"claim_type": []any{"stream"}, "order_by": []any{}},
+			asserts: func(t *testing.T, pp map[string]any) {
+				assert.EqualValues(t, []any{"trending_score", "release_time"}, pp["order_by"])
+			},
+		},
+		{
+			params: map[string]any{"claim_type": []any{"stream"}, "text": 0},
+			asserts: func(t *testing.T, pp map[string]any) {
+				assert.EqualValues(t, []any{"trending_score", "release_time"}, pp["order_by"])
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -1132,6 +1196,15 @@ func TestCaller_preflightHookClaimSearch(t *testing.T) {
 			tc.asserts(t, pp)
 		})
 	}
+
+	t.Run("nil params", func(t *testing.T) {
+		srv.NextResponse <- test.EmptyResponse()
+		caller.Call(bgctx(), jsonrpc.NewRequest(MethodClaimSearch))
+		req := <-reqChan
+		patchedRequest := test.StrToReq(t, req.Body)
+		pp, _ := patchedRequest.Params.(map[string]any)
+		assert.EqualValues(t, []any{"trending_score", "release_time"}, pp["order_by"])
+	})
 }
 
 // func TestMain(m *testing.M) {

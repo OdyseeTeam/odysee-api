@@ -513,7 +513,7 @@ func resolve(ctx context.Context, c *Caller, q *Query, url string) (*ljsonrpc.Cl
 	return &claim, err
 }
 
-// preflightHookClaimSearch patches tag parameters of RPC request to support scheduled and unlisted content.
+// preflightHookClaimSearch patches tag parameters and injects a default order_by for claim_search requests.
 func preflightHookClaimSearch(_ *Caller, ctx context.Context) (*jsonrpc.RPCResponse, error) {
 	query := QueryFromContext(ctx)
 	origParams := query.ParamsAsMap()
@@ -540,6 +540,16 @@ func preflightHookClaimSearch(_ *Caller, ctx context.Context) (*jsonrpc.RPCRespo
 				params.ReleaseTime = []string{fmt.Sprintf("<%d", t)}
 			}
 			origParams["release_time"] = params.ReleaseTime
+		}
+	}
+	if len(params.OrderBy) == 0 {
+		textStr, isTextStr := origParams["text"].(string)
+		if !isTextStr || textStr == "" {
+			if origParams == nil {
+				origParams = map[string]interface{}{}
+				query.Request.Params = origParams
+			}
+			origParams["order_by"] = []string{"trending_score", "release_time"}
 		}
 	}
 	return nil, nil
