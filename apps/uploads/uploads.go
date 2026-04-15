@@ -5,10 +5,9 @@ import (
 	"crypto"
 	"errors"
 	"fmt"
-	"io"
-	stdlog "log"
 	"net/http"
 	"regexp"
+	"strings"
 	"strconv"
 	"sync"
 	"time"
@@ -22,18 +21,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/go-chi/render"
 	"github.com/hibiken/asynq"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	tusd "github.com/tus/tusd/pkg/handler"
-	"github.com/tus/tusd/pkg/prometheuscollector"
-	"github.com/tus/tusd/pkg/s3store"
+	tusd "github.com/tus/tusd/v2/pkg/handler"
+	"github.com/tus/tusd/v2/pkg/prometheuscollector"
+	"github.com/tus/tusd/v2/pkg/s3store"
 )
 
 const (
@@ -82,7 +81,7 @@ type Launcher struct {
 	publicKey     crypto.PublicKey
 	router        chi.Router
 	queueRedisURL string
-	s3client      *s3.S3
+	s3client      *s3.Client
 	s3bucket      string
 	handler       *Handler
 	httpServer    *http.Server
@@ -103,7 +102,7 @@ func WithLogger(logger logging.KVLogger) LauncherOption {
 	}
 }
 
-func WithS3Client(client *s3.S3) LauncherOption {
+func WithS3Client(client *s3.Client) LauncherOption {
 	return func(l *Launcher) {
 		l.s3client = client
 	}
@@ -202,12 +201,12 @@ func (l *Launcher) BuildHandler() (chi.Router, error) {
 	}
 
 	l.logger.Info("creating s3 bucket", "bucket", l.s3bucket)
-	_, err = l.s3client.CreateBucket(&s3.CreateBucketInput{
+	_, err = l.s3client.CreateBucket(context.Background(), &s3.CreateBucketInput{
 		Bucket: aws.String(l.s3bucket),
 	})
 	if err != nil {
-		var awsError awserr.Error
-		if errors.As(err, &awsError) && awsError.Code() == "BucketAlreadyOwnedByYou" {
+		var apiErr smithy.APIError
+		if errors.As(err, &apiErr) && apiErr.ErrorCode() == "BucketAlreadyOwnedByYou" {
 			l.logger.Info("bucket already exists", "bucket", l.s3bucket)
 		} else {
 			return nil, err
@@ -236,9 +235,19 @@ func (l *Launcher) BuildHandler() (chi.Router, error) {
 	composer.UseLocker(l.fileLocker)
 	store.UseIn(composer)
 
+	corsConfig := tusd.DefaultCorsConfig
+	regexDomains := make([]string, len(l.corsDomains))
+	for i, d := range l.corsDomains {
+		regexDomains[i] = strings.ReplaceAll(regexp.QuoteMeta(d), "\\*", ".*")
+	}
+	if len(regexDomains) > 0 {
+		corsConfig.AllowOrigin = regexp.MustCompile("^(" + strings.Join(regexDomains, "|") + ")$")
+	}
+
 	tusConfig := tusd.Config{
 		StoreComposer:           composer,
 		BasePath:                l.prefix + "/uploads",
+		Cors:                    &corsConfig,
 		RespectForwardedHeaders: true,
 		NotifyCreatedUploads:    true,
 		NotifyTerminatedUploads: true,
@@ -248,27 +257,22 @@ func (l *Launcher) BuildHandler() (chi.Router, error) {
 
 	httpLogger := &JSONLogger{logger: l.logger}
 
-	if iol, ok := l.logger.(io.Writer); ok {
-		l.logger.Info("attaching logger to tusd")
-		tusConfig.Logger = stdlog.New(iol, "", 0)
-	}
-
 	tusdHandler, err := tusd.NewUnroutedHandler(tusConfig)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create tusd handler: %v", err)
 	}
 	handler.UnroutedHandler = tusdHandler
 
-	router := chi.NewRouter()
-	router.Use(httpLogger.Middleware)
-	router.Use(cors.Handler(cors.Options{
+	nonUploadCors := cors.Handler(cors.Options{
 		AllowedOrigins:   l.corsDomains,
-		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodHead, http.MethodDelete, http.MethodOptions},
-		AllowedHeaders:   append([]string{"Accept", "Authorization", "Content-Type", "X-Requested-With"}, TusHeaders...),
-		ExposedHeaders:   []string{"Link"},
+		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodOptions},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Requested-With"},
 		AllowCredentials: false,
 		MaxAge:           300,
-	}))
+	})
+
+	router := chi.NewRouter()
+	router.Use(httpLogger.Middleware)
 
 	registry := prometheus.NewRegistry()
 	onceMetrics.Do(func() {
@@ -281,18 +285,27 @@ func (l *Launcher) BuildHandler() (chi.Router, error) {
 		registry, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
 	)
 
+	uploadsPrefix := l.prefix + "/uploads"
+	stripUploadsPrefix := func(next http.Handler) http.Handler {
+		return http.StripPrefix(uploadsPrefix, next)
+	}
+
 	// Public endpoints
 	router.Route(l.prefix, func(r chi.Router) {
 		r.Use(handler.authByToken)
 		r.Route("/uploads", func(r chi.Router) {
+			r.Use(stripUploadsPrefix)
 			r.Use(handler.Middleware)
 			r.Use(handler.verifyUploadFileAccess)
 			r.Post("/", handler.PostFile)
 			r.Head("/*", handler.HeadFile)
 			r.Patch("/*", handler.PatchFile)
 			r.Delete("/*", handler.DelFile)
+			r.Options("/", handler.PostFile)
+			r.Options("/*", handler.HeadFile)
 		})
 		r.Route("/urls", func(r chi.Router) {
+			r.Use(nonUploadCors)
 			r.Post("/", handler.PostURL)
 		})
 	})

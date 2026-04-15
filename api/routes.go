@@ -35,9 +35,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
-	"github.com/tus/tusd/pkg/filestore"
-	tusd "github.com/tus/tusd/pkg/handler"
-	"github.com/tus/tusd/pkg/prometheuscollector"
+	"github.com/tus/tusd/v2/pkg/filestore"
+	tusd "github.com/tus/tusd/v2/pkg/handler"
+	"github.com/tus/tusd/v2/pkg/prometheuscollector"
 )
 
 const preflightDuration = 86400
@@ -131,6 +131,7 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 	tusCfg := tusd.Config{
 		BasePath:      "/api/v2/publish/",
 		StoreComposer: composer,
+		Cors:          &tusd.CorsConfig{Disable: true},
 	}
 
 	tusHandler, err := publish.NewTusHandler(
@@ -144,6 +145,9 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 	}
 
 	tusRouter := v2Router.PathPrefix("/publish").Subrouter()
+	tusRouter.Use(func(next http.Handler) http.Handler {
+		return http.StripPrefix("/api/v2/publish", next)
+	})
 	tusRouter.Use(tusHandler.Middleware)
 	tusRouter.HandleFunc("/", tusHandler.PostFile).Methods(http.MethodPost).Name("tus_publish")
 	tusRouter.HandleFunc("/{id}", tusHandler.HeadFile).Methods(http.MethodHead)
@@ -227,6 +231,7 @@ func defaultMiddlewares(oauthAuther auth.Authenticator, legacyProvider auth.Prov
 		AllowCredentials: true,
 		AllowedHeaders:   append(defaultHeaders, publish.TusHeaders...),
 		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodHead, http.MethodDelete},
+		ExposedHeaders:   []string{"Location", "Upload-Offset", "Upload-Length", "Tus-Version", "Tus-Resumable", "Tus-Max-Size", "Tus-Extension", "Upload-Metadata", "Upload-Defer-Length", "Upload-Concat"},
 		MaxAge:           preflightDuration,
 	})
 	logger.Log().Infof("added CORS domains: %v", config.GetCORSDomains())

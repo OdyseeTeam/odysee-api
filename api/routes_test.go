@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -55,11 +56,16 @@ func TestCORS(t *testing.T) {
 	}
 
 	defaultRequestHeaders := []string{
-		"Content-Type",
-		"X-Lbry-Auth-Token",
+		"content-type",
+		"x-lbry-auth-token",
 	}
+	sort.Strings(defaultRequestHeaders)
 
-	tusRequestHeaders := append(defaultRequestHeaders, publish.TusHeaders...)
+	tusRequestHeaders := append([]string{}, defaultRequestHeaders...)
+	for _, h := range publish.TusHeaders {
+		tusRequestHeaders = append(tusRequestHeaders, strings.ToLower(h))
+	}
+	sort.Strings(tusRequestHeaders)
 
 	endpoints := []struct {
 		method, path, headers string
@@ -87,7 +93,7 @@ func TestCORS(t *testing.T) {
 
 				r.ServeHTTP(rr, req)
 				h := rr.Result().Header
-				require.Equal(t, http.StatusOK, rr.Code)
+				require.Equal(t, http.StatusNoContent, rr.Code)
 
 				assert.Equal(t, chost, h.Get("Access-Control-Allow-Origin"))
 				if chost != "" {

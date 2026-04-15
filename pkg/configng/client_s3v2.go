@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-func NewS3ClientV2(s3cfg S3Config) (*s3.Client, error) {
+func NewS3Client(s3cfg S3Config) (*s3.Client, error) {
 	switch s3cfg.Flavor {
 	case "aws", "":
 		return newS3ClientV2AWS(s3cfg)

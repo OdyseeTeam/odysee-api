@@ -55,7 +55,7 @@ func serve(logger logging.KVLogger) {
 	}
 
 	s3cfg.VerifyBucket = true
-	client, err := configng.NewS3ClientV2(s3cfg)
+	client, err := configng.NewS3Client(s3cfg)
 	if err != nil {
 		panic(fmt.Errorf("cannot create s3 client: %w", err))
 	}

@@ -558,7 +558,7 @@ func (s *publishV4Suite) SetupSuite() {
 	require.NoError(err)
 
 	// Forklift service setup
-	s.s3c, err = configng.NewS3ClientV2(s.uploadsHelper.S3Config)
+	s.s3c, err = configng.NewS3Client(s.uploadsHelper.S3Config)
 	require.NoError(err)
 
 	s.forkliftHelper, err = forklift.NewTestHelper(t)

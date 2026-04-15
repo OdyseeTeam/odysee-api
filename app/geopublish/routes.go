@@ -12,8 +12,8 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
 	"github.com/gorilla/mux"
 
-	"github.com/tus/tusd/pkg/filestore"
-	tushandler "github.com/tus/tusd/pkg/handler"
+	"github.com/tus/tusd/v2/pkg/filestore"
+	tushandler "github.com/tus/tusd/v2/pkg/handler"
 )
 
 func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPrefix string, logger logging.KVLogger) (*Handler, error) {
@@ -54,6 +54,7 @@ func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPre
 	tusCfg := tushandler.Config{
 		BasePath:      urlPrefix,
 		StoreComposer: composer,
+		Cors:          &tushandler.CorsConfig{Disable: true},
 	}
 
 	tusHandler, err := NewHandler(
@@ -68,6 +69,9 @@ func InstallRoutes(router *mux.Router, userGetter UserGetter, uploadPath, urlPre
 	}
 
 	r := router
+	r.Use(func(next http.Handler) http.Handler {
+		return http.StripPrefix(urlPrefix[:len(urlPrefix)-1], next)
+	})
 	r.Use(tusHandler.Middleware)
 	r.HandleFunc("/", tusHandler.PostFile).Methods(http.MethodPost).Name("geopublish")
 	r.HandleFunc("/{id}", tusHandler.HeadFile).Methods(http.MethodHead)

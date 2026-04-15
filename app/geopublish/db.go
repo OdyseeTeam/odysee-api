@@ -13,7 +13,7 @@ import (
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/hibiken/asynq"
 
-	"github.com/tus/tusd/pkg/handler"
+	"github.com/tus/tusd/v2/pkg/handler"
 	"github.com/volatiletech/null"
 	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/volatiletech/sqlboiler/queries/qm"

@@ -10,6 +10,7 @@ import (
 
 func TestOverride(t *testing.T) {
 	c := NewConfig()
+	c.Viper.SetConfigType("yaml")
 	err := c.Viper.ReadConfig(strings.NewReader("Lbrynet: http://localhost:5279"))
 	require.Nil(t, err)
 	originalSetting := c.Viper.Get("Lbrynet")

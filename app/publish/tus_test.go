@@ -32,9 +32,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tus/tusd/pkg/filestore"
-	"github.com/tus/tusd/pkg/handler"
-	tusd "github.com/tus/tusd/pkg/handler"
+	"github.com/tus/tusd/v2/pkg/filestore"
+	"github.com/tus/tusd/v2/pkg/handler"
+	tusd "github.com/tus/tusd/v2/pkg/handler"
 )
 
 const tusVersion = "1.0.0"

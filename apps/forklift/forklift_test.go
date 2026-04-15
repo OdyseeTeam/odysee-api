@@ -178,7 +178,7 @@ func (s *forkliftSuite) SetupSuite() {
 	s.Require().NoError(err)
 
 	flCfg := s.upHelper.S3Config
-	s.s3c, err = configng.NewS3ClientV2(flCfg)
+	s.s3c, err = configng.NewS3Client(flCfg)
 	s.Require().NoError(err)
 }
 

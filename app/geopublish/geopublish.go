@@ -1,6 +1,7 @@
 package geopublish
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -23,7 +24,7 @@ import (
 	"github.com/gorilla/mux"
 	werrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	tusd "github.com/tus/tusd/pkg/handler"
+	tusd "github.com/tus/tusd/v2/pkg/handler"
 	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/ybbus/jsonrpc/v2"
 )
@@ -210,7 +211,7 @@ func (h Handler) Notify(w http.ResponseWriter, r *http.Request) {
 	}
 	log = log.WithField("upload_id", id)
 
-	lock, err := h.lockUpload(id)
+	lock, err := h.lockUpload(r.Context(), id)
 	if err != nil {
 		monitor.ErrorToSentry(err, map[string]string{
 			"upload_id": id,
@@ -387,12 +388,12 @@ func (h Handler) Status(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h Handler) lockUpload(id string) (tusd.Lock, error) {
+func (h Handler) lockUpload(ctx context.Context, id string) (tusd.Lock, error) {
 	lock, err := h.composer.Locker.NewLock(id)
 	if err != nil {
 		return nil, err
 	}
-	if err := lock.Lock(); err != nil {
+	if err := lock.Lock(ctx, func() {}); err != nil {
 		return nil, err
 	}
 	return lock, nil
@@ -408,12 +409,12 @@ func (h Handler) lockUpload(id string) (tusd.Lock, error) {
 // to decouple before and after middleware to TUS hook callback functions.
 //
 // see: https://github.com/tus/tusd/pull/342
-func (h *Handler) preCreateHook(hook tusd.HookEvent) error {
+func (h *Handler) preCreateHook(hook tusd.HookEvent) (tusd.HTTPResponse, tusd.FileInfoChanges, error) {
 	r := &http.Request{
 		Header: hook.HTTPRequest.Header,
 	}
 	_, err := h.getUserFromRequest(r)
-	return err
+	return tusd.HTTPResponse{}, tusd.FileInfoChanges{}, err
 }
 
 func (h *Handler) getUserFromRequest(r *http.Request) (*models.User, error) {

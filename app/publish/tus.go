@@ -1,6 +1,7 @@
 package publish
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -25,7 +26,7 @@ import (
 	"github.com/gorilla/mux"
 	werrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	tusd "github.com/tus/tusd/pkg/handler"
+	tusd "github.com/tus/tusd/v2/pkg/handler"
 	"github.com/ybbus/jsonrpc/v2"
 )
 
@@ -173,7 +174,7 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if h.composer.UsesLocker {
-		lock, err := h.lockUpload(id)
+		lock, err := h.lockUpload(r.Context(), id)
 		if err != nil {
 			monitor.ErrorToSentry(err, map[string]string{
 				"upload_id": id,
@@ -335,12 +336,12 @@ func (h TusHandler) Notify(w http.ResponseWriter, r *http.Request) {
 	observeSuccess(metrics.GetDuration(r))
 }
 
-func (h TusHandler) lockUpload(id string) (tusd.Lock, error) {
+func (h TusHandler) lockUpload(ctx context.Context, id string) (tusd.Lock, error) {
 	lock, err := h.composer.Locker.NewLock(id)
 	if err != nil {
 		return nil, err
 	}
-	if err := lock.Lock(); err != nil {
+	if err := lock.Lock(ctx, func() {}); err != nil {
 		return nil, err
 	}
 	return lock, nil
@@ -356,12 +357,12 @@ func (h TusHandler) lockUpload(id string) (tusd.Lock, error) {
 // to decouple before and after middleware to TUS hook callback functions.
 //
 // see: https://github.com/tus/tusd/pull/342
-func (h *TusHandler) preCreateHook(hook tusd.HookEvent) error {
+func (h *TusHandler) preCreateHook(hook tusd.HookEvent) (tusd.HTTPResponse, tusd.FileInfoChanges, error) {
 	r := &http.Request{
 		Header: hook.HTTPRequest.Header,
 	}
 	_, err := h.multiAuthUser(r)
-	return err
+	return tusd.HTTPResponse{}, tusd.FileInfoChanges{}, err
 }
 
 func (h *TusHandler) multiAuthUser(r *http.Request) (*models.User, error) {

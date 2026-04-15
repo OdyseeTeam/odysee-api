@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -29,6 +30,7 @@ import (
 
 	"github.com/Pallinder/go-randomdata"
 	"github.com/go-chi/chi/v5"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -449,6 +451,33 @@ func (s *uploadSuite) createRandomFile(fileSize uint64) *os.File {
 	f, err = os.Open(f.Name())
 	s.Require().NoError(err)
 	return f
+}
+
+func TestCORSWildcardOrigin(t *testing.T) {
+	cases := []struct {
+		domains []string
+		origin  string
+		allowed bool
+	}{
+		{[]string{"http://localhost:9090"}, "http://localhost:9090", true},
+		{[]string{"http://localhost:9090"}, "http://evil.com", false},
+		{[]string{"http://*"}, "http://example.com", true},
+		{[]string{"https://*"}, "https://app.odysee.com", true},
+		{[]string{"https://*"}, "http://app.odysee.com", false},
+		{[]string{"http://localhost:*"}, "http://localhost:3000", true},
+		{[]string{"http://localhost:*"}, "http://example.com:3000", false},
+	}
+
+	for _, tc := range cases {
+		t.Run(fmt.Sprintf("%v_%s", tc.domains, tc.origin), func(t *testing.T) {
+			regexDomains := make([]string, len(tc.domains))
+			for i, d := range tc.domains {
+				regexDomains[i] = strings.ReplaceAll(regexp.QuoteMeta(d), "\\*", ".*")
+			}
+			pattern := regexp.MustCompile("^(" + strings.Join(regexDomains, "|") + ")$")
+			assert.Equal(t, tc.allowed, pattern.MatchString(tc.origin))
+		})
+	}
 }
 
 func TestUploadSuite(t *testing.T) {
