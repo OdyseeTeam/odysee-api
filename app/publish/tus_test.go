@@ -523,10 +523,9 @@ func TestTus(t *testing.T) {
 		resp := w.Result()
 		assert.Equal(t, http.StatusPreconditionFailed, resp.StatusCode)
 
-		wantBody := "unsupported version\n"
 		gotBody, err := ioutil.ReadAll(resp.Body)
 		assert.Nil(t, err)
-		assert.Equal(t, wantBody, string(gotBody))
+		assert.Contains(t, string(gotBody), "ERR_UNSUPPORTED_VERSION")
 	})
 
 	t.Run("WithForwardProto", func(t *testing.T) {
@@ -927,10 +926,9 @@ func TestTusLegacyToken(t *testing.T) {
 		resp := w.Result()
 		assert.Equal(t, http.StatusPreconditionFailed, resp.StatusCode)
 
-		wantBody := "unsupported version\n"
 		gotBody, err := ioutil.ReadAll(resp.Body)
 		assert.Nil(t, err)
-		assert.Equal(t, wantBody, string(gotBody))
+		assert.Contains(t, string(gotBody), "ERR_UNSUPPORTED_VERSION")
 	})
 
 	t.Run("WithForwardProto", func(t *testing.T) {

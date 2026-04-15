@@ -94,7 +94,7 @@ func (s *reporterSuite) TestAdd() {
 			s.Require().NoError(err)
 			cl := &http.Client{}
 			r.Header.Add("origin", c.origin)
-			r.Header.Add("access-control-request-method", http.MethodPost)
+			r.Header.Add("content-type", "application/json")
 
 			resp, err := cl.Do(r)
 			s.Require().NoError(err)
@@ -103,10 +103,24 @@ func (s *reporterSuite) TestAdd() {
 			s.Equal(c.respCode, resp.StatusCode, string(b))
 			s.Regexp(regexp.MustCompile(c.respBodyRegex), string(b))
 			s.Equal(c.origin, resp.Header.Get("access-control-allow-origin"))
-			s.Equal("GET, POST", resp.Header.Get("access-control-allow-methods"))
-			s.Equal("content-type", resp.Header.Get("access-control-allow-headers"))
 		})
 	}
+
+	s.Run("CORSPreflight", func() {
+		r, err := http.NewRequest(http.MethodOptions, s.ts.URL+reporterclt.AddReporterPath(), nil)
+		s.Require().NoError(err)
+		cl := &http.Client{}
+		r.Header.Add("origin", "https://odysee.com")
+		r.Header.Add("access-control-request-method", http.MethodPost)
+		r.Header.Add("access-control-request-headers", "content-type")
+
+		resp, err := cl.Do(r)
+		s.Require().NoError(err)
+		s.Equal(http.StatusNoContent, resp.StatusCode)
+		s.Equal("https://odysee.com", resp.Header.Get("access-control-allow-origin"))
+		s.Equal("GET, POST", resp.Header.Get("access-control-allow-methods"))
+		s.Equal("content-type", resp.Header.Get("access-control-allow-headers"))
+	})
 
 }
 
