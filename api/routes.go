@@ -131,7 +131,6 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 	tusCfg := tusd.Config{
 		BasePath:      "/api/v2/publish/",
 		StoreComposer: composer,
-		Cors:          &tusd.CorsConfig{Disable: true},
 	}
 
 	tusHandler, err := publish.NewTusHandler(
@@ -145,9 +144,6 @@ func InstallRoutes(r *mux.Router, sdkRouter *sdkrouter.Router, opts *RoutesOptio
 	}
 
 	tusRouter := v2Router.PathPrefix("/publish").Subrouter()
-	tusRouter.Use(func(next http.Handler) http.Handler {
-		return http.StripPrefix("/api/v2/publish", next)
-	})
 	tusRouter.Use(tusHandler.Middleware)
 	tusRouter.HandleFunc("/", tusHandler.PostFile).Methods(http.MethodPost).Name("tus_publish")
 	tusRouter.HandleFunc("/{id}", tusHandler.HeadFile).Methods(http.MethodHead)
@@ -231,7 +227,7 @@ func defaultMiddlewares(oauthAuther auth.Authenticator, legacyProvider auth.Prov
 		AllowCredentials: true,
 		AllowedHeaders:   append(defaultHeaders, publish.TusHeaders...),
 		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodHead, http.MethodDelete},
-		ExposedHeaders:   []string{"Location", "Upload-Offset", "Upload-Length", "Tus-Version", "Tus-Resumable", "Tus-Max-Size", "Tus-Extension", "Upload-Metadata", "Upload-Defer-Length", "Upload-Concat"},
+		ExposedHeaders:   []string{"Location", "Upload-Offset", "Upload-Length", "Tus-Version", "Tus-Resumable", "Tus-Max-Size", "Tus-Extension", "Upload-Metadata", "Upload-Defer-Length", "Upload-Concat", "Upload-Incomplete", "Upload-Complete", "Upload-Draft-Interop-Version"},
 		MaxAge:           preflightDuration,
 	})
 	logger.Log().Infof("added CORS domains: %v", config.GetCORSDomains())

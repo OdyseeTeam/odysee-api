@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/OdyseeTeam/odysee-api/app/auth"
 	"github.com/OdyseeTeam/odysee-api/app/proxy"
@@ -22,7 +23,6 @@ import (
 	"github.com/OdyseeTeam/odysee-api/internal/responses"
 	"github.com/OdyseeTeam/odysee-api/models"
 	"github.com/OdyseeTeam/odysee-api/pkg/rpcerrors"
-
 	"github.com/gorilla/mux"
 	werrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -49,6 +49,7 @@ type completedQuery struct {
 type TusHandler struct {
 	*tusd.UnroutedHandler
 
+	basePath string
 	options  *TusHandlerOptions
 	composer *tusd.StoreComposer
 	logger   monitor.ModuleLogger
@@ -126,6 +127,7 @@ func NewTusHandler(optionFuncs ...func(*TusHandlerOptions)) (*TusHandler, error)
 	// allow client to set location response protocol
 	// via X-Forwarded-Proto
 	cfg.RespectForwardedHeaders = true
+	cfg.Cors = &tusd.CorsConfig{Disable: true}
 
 	baseHandler, err := tusd.NewUnroutedHandler(*cfg)
 	if err != nil {
@@ -133,10 +135,19 @@ func NewTusHandler(optionFuncs ...func(*TusHandlerOptions)) (*TusHandler, error)
 	}
 
 	h.UnroutedHandler = baseHandler
+	bp := cfg.BasePath
+	if bp != "" && bp[0] != '/' {
+		bp = "/" + bp
+	}
+	h.basePath = strings.TrimSuffix(bp, "/")
 	h.logger = monitor.NewModuleLogger(module)
 	h.composer = cfg.StoreComposer
 
 	return h, nil
+}
+
+func (h *TusHandler) Middleware(next http.Handler) http.Handler {
+	return http.StripPrefix(h.basePath, h.UnroutedHandler.Middleware(next))
 }
 
 // Notify checks if the file upload is complete and sends jSON RPC request to lbrynet server.

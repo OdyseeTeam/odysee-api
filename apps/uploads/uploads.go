@@ -45,16 +45,6 @@ var (
 	reExtractFileID = regexp.MustCompile(`([^/]{32,})\/?$`)
 )
 
-var TusHeaders = []string{
-	"Http-Method-Override",
-	"Upload-Length",
-	"Upload-Offset",
-	"Tus-Resumable",
-	"Upload-Metadata",
-	"Upload-Defer-Length",
-	"Upload-Concat",
-}
-
 // Handler handle media publishing on odysee-api, it implements TUS
 // specifications to support resumable file upload and extends the handler to
 // support fetching media from remote url.
@@ -119,12 +109,6 @@ func WithFileLocker(fileLocker tusd.Locker) LauncherOption {
 	}
 }
 
-func WithPrefix(prefix string) LauncherOption {
-	return func(l *Launcher) {
-		l.prefix = prefix
-	}
-}
-
 func WithPublicKey(publicKey crypto.PublicKey) LauncherOption {
 	return func(l *Launcher) {
 		l.publicKey = publicKey
@@ -134,12 +118,6 @@ func WithPublicKey(publicKey crypto.PublicKey) LauncherOption {
 func WithForkliftRequestsConnURL(url string) LauncherOption {
 	return func(l *Launcher) {
 		l.queueRedisURL = url
-	}
-}
-
-func WithHTTPAddress(address string) LauncherOption {
-	return func(l *Launcher) {
-		l.httpAddress = address
 	}
 }
 
@@ -179,13 +157,13 @@ func (l *Launcher) Notifier() (*forkliftNotifier, error) {
 	if err != nil {
 		return nil, err
 	}
-	queue, err := queue.New(queue.WithRequestsConnOpts(opts), queue.WithLogger(l.logger))
+	q, err := queue.New(queue.WithRequestsConnOpts(opts), queue.WithLogger(l.logger))
 	if err != nil {
 		return nil, err
 	}
 	notifier := &forkliftNotifier{
 		queries: database.New(l.db),
-		queue:   queue,
+		queue:   q,
 		logger:  l.logger,
 	}
 	l.logger.Info("bus client created")
@@ -315,10 +293,10 @@ func (l *Launcher) BuildHandler() (chi.Router, error) {
 			http.Error(w, "upload service is shutting down", http.StatusServiceUnavailable)
 			return
 		}
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	})
 	router.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	})
 
 	router.Get("/internal/metrics", promHandler.ServeHTTP)
@@ -339,7 +317,7 @@ func (l *Launcher) BuildHandler() (chi.Router, error) {
 func (l *Launcher) Launch() {
 	l.logger.Info("launching http server", "address", l.httpAddress)
 	err := l.httpServer.ListenAndServe()
-	if err != nil && err != http.ErrServerClosed {
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		l.logger.Error("http server returned error", "err", err)
 	}
 	l.logger.Info("http server stopped")
@@ -364,7 +342,7 @@ func (h *Handler) PostURL(w http.ResponseWriter, r *http.Request) {
 	userID := h.getUserIDFromRequest(r)
 	data := &URLPayload{}
 	if err := render.Bind(r, data); err != nil {
-		render.Render(w, r, ErrInvalidRequest(err))
+		_ = render.Render(w, r, ErrInvalidRequest(err))
 		return
 	}
 	_, err := h.queries.CreateURL(r.Context(), database.CreateURLParams{
@@ -375,15 +353,15 @@ func (h *Handler) PostURL(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		render.Render(w, r, ErrInternalError(err))
+		_ = render.Render(w, r, ErrInternalError(err))
 		return
 	}
 	err = h.notifier.URLReceived(userID, data.UploadID, data.Filename, tasks.FileLocationHTTP{URL: data.URL})
 	if err != nil {
-		render.Render(w, r, ErrInvalidRequest(err))
+		_ = render.Render(w, r, ErrInvalidRequest(err))
 		return
 	}
-	render.Render(w, r, ResponseURLCreated(data.UploadID))
+	_ = render.Render(w, r, ResponseURLCreated(data.UploadID))
 }
 
 func (h *Handler) listenToHooks() {

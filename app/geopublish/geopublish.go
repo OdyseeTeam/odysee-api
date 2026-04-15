@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/OdyseeTeam/odysee-api/app/geopublish/forklift"
 	"github.com/OdyseeTeam/odysee-api/app/proxy"
@@ -64,6 +65,7 @@ type completedQuery struct {
 type Handler struct {
 	*tusd.UnroutedHandler
 
+	basePath string
 	options  *HandlerOptions
 	composer *tusd.StoreComposer
 	logger   monitor.ModuleLogger
@@ -155,6 +157,7 @@ func NewHandler(optionFuncs ...func(*HandlerOptions)) (*Handler, error) {
 	// Allow client to set location response protocol
 	// via X-Forwarded-Proto
 	cfg.RespectForwardedHeaders = true
+	cfg.Cors = &tusd.CorsConfig{Disable: true}
 
 	h.logger = monitor.NewModuleLogger(module)
 	udb := UploadsDB{logger: h.logger, db: options.db, queue: options.queue}
@@ -171,9 +174,18 @@ func NewHandler(optionFuncs ...func(*HandlerOptions)) (*Handler, error) {
 	}
 
 	h.UnroutedHandler = baseHandler
+	bp := cfg.BasePath
+	if bp != "" && bp[0] != '/' {
+		bp = "/" + bp
+	}
+	h.basePath = strings.TrimSuffix(bp, "/")
 	h.composer = cfg.StoreComposer
 
 	return h, nil
+}
+
+func (h *Handler) Middleware(next http.Handler) http.Handler {
+	return http.StripPrefix(h.basePath, h.UnroutedHandler.Middleware(next))
 }
 
 // Notify checks if the file upload is complete and sends jSON RPC request to lbrynet server.
