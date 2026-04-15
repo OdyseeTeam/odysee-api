@@ -15,7 +15,7 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -28,7 +28,7 @@ jobs:
           sudo apt update
           sudo apt install ffmpeg
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.26'
         id: go
@@ -87,10 +87,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.26'
         id: go
@@ -124,7 +124,7 @@ jobs:
 
       - name: Build and push odysee-api docker image
         if: env.APP_NAME == 'api'
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v6
         with:
           push: true
           context: .
@@ -134,18 +134,14 @@ jobs:
 
       - name: Deploy odysee-api
         if: env.APP_NAME == 'api'
-        uses: octokit/request-action@v2.x
-        id: deploy-odysee-api
         env:
-          GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
-        with:
-          route: POST /repos/:repository/dispatches
-          repository: odyseeteam/misc-deployment
-          event_type: deploy-odysee
-          client_payload: |
-            tag: ${{ env.APP_VERSION }}
-            ref: ${{ github.ref }}
-            service: odysee-api
+          GH_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
+        run: |
+          gh api repos/odyseeteam/misc-deployment/dispatches \
+            -f event_type=deploy-odysee \
+            -f 'client_payload[tag]=${{ env.APP_VERSION }}' \
+            -f 'client_payload[ref]=${{ github.ref }}' \
+            -f 'client_payload[service]=odysee-api'
 
       # Watchman deployment
 
@@ -155,7 +151,7 @@ jobs:
 
       - name: Build watchman docker image
         if: env.APP_NAME == 'watchman'
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v6
         with:
           push: true
           context: apps/${{ env.APP_NAME }}/
@@ -166,15 +162,11 @@ jobs:
 
       - name: Deploy watchman
         if: env.APP_NAME == 'watchman'
-        uses: octokit/request-action@v2.x
-        id: deploy-watchman
         env:
-          GITHUB_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
-        with:
-          route: POST /repos/:repository/dispatches
-          repository: OdyseeTeam/misc-deployment
-          event_type: deploy-odysee
-          client_payload: |
-            tag: ${{ env.APP_VERSION }}
-            ref: ${{ github.ref }}
-            service: ${{ env.APP_NAME }}
+          GH_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
+        run: |
+          gh api repos/OdyseeTeam/misc-deployment/dispatches \
+            -f event_type=deploy-odysee \
+            -f 'client_payload[tag]=${{ env.APP_VERSION }}' \
+            -f 'client_payload[ref]=${{ github.ref }}' \
+            -f 'client_payload[service]=${{ env.APP_NAME }}'
