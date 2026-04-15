@@ -33,7 +33,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tus/tusd/v2/pkg/filestore"
-	"github.com/tus/tusd/v2/pkg/handler"
 	tusd "github.com/tus/tusd/v2/pkg/handler"
 )
 
@@ -338,7 +337,7 @@ func TestNotify(t *testing.T) {
 		respBody, err := ioutil.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
 
-		wantErrMsg := handler.ErrNotFound.Error()
+		wantErrMsg := tusd.ErrNotFound.Error()
 		gotErrMsg := test.StrToRes(t, string(respBody)).Error.Message
 		assert.Contains(t, gotErrMsg, wantErrMsg)
 	})
@@ -743,7 +742,7 @@ func TestNotifyLegacy(t *testing.T) {
 		respBody, err := ioutil.ReadAll(w.Result().Body)
 		assert.Nil(t, err)
 
-		wantErrMsg := handler.ErrNotFound.Error()
+		wantErrMsg := tusd.ErrNotFound.Error()
 		gotErrMsg := test.StrToRes(t, string(respBody)).Error.Message
 		assert.Contains(t, gotErrMsg, wantErrMsg)
 	})

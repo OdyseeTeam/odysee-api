@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
-	"strings"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,9 +18,6 @@ import (
 	"github.com/OdyseeTeam/odysee-api/pkg/logging"
 	"github.com/OdyseeTeam/odysee-api/pkg/queue"
 	"github.com/OdyseeTeam/odysee-api/pkg/redislocker"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
@@ -30,6 +27,8 @@ import (
 	"github.com/go-chi/render"
 	"github.com/hibiken/asynq"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	tusd "github.com/tus/tusd/v2/pkg/handler"
 	"github.com/tus/tusd/v2/pkg/prometheuscollector"
 	"github.com/tus/tusd/v2/pkg/s3store"

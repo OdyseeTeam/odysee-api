@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	cli "github.com/OdyseeTeam/odysee-api/apps/watchman/gen/http/cli/watchman"
@@ -31,7 +32,7 @@ func doHTTP(scheme, host string, timeout int, debug bool) (goa.Endpoint, interfa
 }
 
 func httpUsageCommands() string {
-	return cli.UsageCommands()
+	return strings.Join(cli.UsageCommands(), "\n")
 }
 
 func httpUsageExamples() string {
