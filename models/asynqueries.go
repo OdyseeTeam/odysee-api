@@ -23,40 +23,49 @@ import (
 
 // Asynquery is an object representing the database table.
 type Asynquery struct {
-	ID        string    `boil:"id" json:"id" toml:"id" yaml:"id"`
-	UserID    int       `boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
-	CreatedAt time.Time `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt null.Time `boil:"updated_at" json:"updated_at,omitempty" toml:"updated_at" yaml:"updated_at,omitempty"`
-	Status    string    `boil:"status" json:"status" toml:"status" yaml:"status"`
-	Error     string    `boil:"error" json:"error" toml:"error" yaml:"error"`
-	UploadID  string    `boil:"upload_id" json:"upload_id" toml:"upload_id" yaml:"upload_id"`
-	Body      null.JSON `boil:"body" json:"body,omitempty" toml:"body" yaml:"body,omitempty"`
-	Response  null.JSON `boil:"response" json:"response,omitempty" toml:"response" yaml:"response,omitempty"`
+	ID         string    `boil:"id" json:"id" toml:"id" yaml:"id"`
+	UserID     int       `boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
+	CreatedAt  time.Time `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt  null.Time `boil:"updated_at" json:"updated_at,omitempty" toml:"updated_at" yaml:"updated_at,omitempty"`
+	Status     string    `boil:"status" json:"status" toml:"status" yaml:"status"`
+	Error      string    `boil:"error" json:"error" toml:"error" yaml:"error"`
+	UploadID   string    `boil:"upload_id" json:"upload_id" toml:"upload_id" yaml:"upload_id"`
+	Body       null.JSON `boil:"body" json:"body,omitempty" toml:"body" yaml:"body,omitempty"`
+	Response   null.JSON `boil:"response" json:"response,omitempty" toml:"response" yaml:"response,omitempty"`
+	ReadyToRun bool      `boil:"ready_to_run" json:"ready_to_run" toml:"ready_to_run" yaml:"ready_to_run"`
+	FileReady  bool      `boil:"file_ready" json:"file_ready" toml:"file_ready" yaml:"file_ready"`
+	FileMeta   null.JSON `boil:"file_meta" json:"file_meta,omitempty" toml:"file_meta" yaml:"file_meta,omitempty"`
 
 	R *asynqueryR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L asynqueryL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var AsynqueryColumns = struct {
-	ID        string
-	UserID    string
-	CreatedAt string
-	UpdatedAt string
-	Status    string
-	Error     string
-	UploadID  string
-	Body      string
-	Response  string
+	ID         string
+	UserID     string
+	CreatedAt  string
+	UpdatedAt  string
+	Status     string
+	Error      string
+	UploadID   string
+	Body       string
+	Response   string
+	ReadyToRun string
+	FileReady  string
+	FileMeta   string
 }{
-	ID:        "id",
-	UserID:    "user_id",
-	CreatedAt: "created_at",
-	UpdatedAt: "updated_at",
-	Status:    "status",
-	Error:     "error",
-	UploadID:  "upload_id",
-	Body:      "body",
-	Response:  "response",
+	ID:         "id",
+	UserID:     "user_id",
+	CreatedAt:  "created_at",
+	UpdatedAt:  "updated_at",
+	Status:     "status",
+	Error:      "error",
+	UploadID:   "upload_id",
+	Body:       "body",
+	Response:   "response",
+	ReadyToRun: "ready_to_run",
+	FileReady:  "file_ready",
+	FileMeta:   "file_meta",
 }
 
 // Generated where
@@ -189,9 +198,9 @@ func (*asynqueryR) NewStruct() *asynqueryR {
 type asynqueryL struct{}
 
 var (
-	asynqueryAllColumns            = []string{"id", "user_id", "created_at", "updated_at", "status", "error", "upload_id", "body", "response"}
-	asynqueryColumnsWithoutDefault = []string{"id", "user_id", "updated_at", "status", "error", "upload_id", "body", "response"}
-	asynqueryColumnsWithDefault    = []string{"created_at"}
+	asynqueryAllColumns            = []string{"id", "user_id", "created_at", "updated_at", "status", "error", "upload_id", "body", "response", "ready_to_run", "file_ready", "file_meta"}
+	asynqueryColumnsWithoutDefault = []string{"id", "user_id", "updated_at", "status", "error", "upload_id", "body", "response", "file_meta"}
+	asynqueryColumnsWithDefault    = []string{"created_at", "ready_to_run", "file_ready"}
 	asynqueryPrimaryKeyColumns     = []string{"id"}
 )
 

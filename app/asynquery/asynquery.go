@@ -26,7 +26,18 @@ import (
 	"github.com/ybbus/jsonrpc/v2"
 )
 
-const FilePathParam = "file_path"
+const (
+	FilePathParam = "file_path"
+	// DeferParam, when set to true in the request params, creates the
+	// asynquery row with ready_to_run=false. The actual SDK call is deferred
+	// until a subsequent Call without DeferParam arrives (or, if the file
+	// upload had already completed, queued immediately at that point).
+	// This lets the frontend pre-create the asynqueries row at upload-start
+	// time so forklift's upload:done event always finds a matching row,
+	// while still allowing the user's final form data to land before the
+	// SDK call fires. The flag is stripped from params before the SDK call.
+	DeferParam = "_defer"
+)
 
 var (
 	sdkNetError    = errors.New("network level sdk error")
@@ -59,9 +70,10 @@ type Result struct {
 }
 
 type queryParams struct {
-	queryID  string
-	uploadID string
-	userID   int
+	queryID    string
+	uploadID   string
+	userID     int
+	readyToRun bool
 }
 
 func NewCallManager(redisOpts asynq.RedisConnOpt, db boil.Executor, logger logging.KVLogger) (*CallManager, error) {
@@ -104,9 +116,18 @@ func (m *CallManager) Call(userID int, req *jsonrpc.RPCRequest) (*models.Asynque
 	)
 	p := req.Params.(map[string]any)
 
+	// Strip the _defer flag (frontend-only, never sent to SDK).
+	deferRun := false
+	if v, hasDefer := p[DeferParam]; hasDefer {
+		if b, isBool := v.(bool); isBool {
+			deferRun = b
+		}
+		delete(p, DeferParam)
+	}
+
 	// Metadata-only update
 	if filePathParam, ok = p[FilePathParam]; !ok {
-		aq, err := m.createQueryRecord(queryParams{userID: userID}, req)
+		aq, err := m.createQueryRecord(queryParams{userID: userID, readyToRun: !deferRun}, req)
 		if err != nil {
 			m.logger.Warn("error adding query record", "err", err, "user_id", userID)
 			return nil, fmt.Errorf("error adding query record: %w", err)
@@ -132,19 +153,54 @@ func (m *CallManager) Call(userID int, req *jsonrpc.RPCRequest) (*models.Asynque
 	}
 
 	aq, err := m.getQueryRecord(context.TODO(), queryParams{userID: userID, uploadID: fileLoc.UploadID})
-	// If query record exists and is not failed, return it
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
-	if err == nil && aq.Status != models.AsynqueryStatusFailed {
-		return aq, nil
+	if err == nil {
+		// Row exists. If still in Received state we treat this as a
+		// commit/update of an earlier deferred draft: overwrite Body with
+		// the latest params and, unless this call is itself deferred, mark
+		// the row ready to run. If forklift's upload:done already arrived
+		// (file_ready=true), queue the SDK call now so it doesn't sit idle.
+		if aq.Status == models.AsynqueryStatusReceived {
+			rb, mErr := json.Marshal(req)
+			if mErr != nil {
+				return nil, fmt.Errorf("error marshaling request: %w", mErr)
+			}
+			aq.Body = null.JSONFrom(rb)
+			if !deferRun {
+				aq.ReadyToRun = true
+			}
+			aq.UpdatedAt = null.TimeFrom(time.Now())
+			if _, uErr := aq.Update(m.db, boil.Infer()); uErr != nil {
+				m.logger.Warn("error updating query record", "err", uErr, "user_id", userID)
+				return nil, fmt.Errorf("error updating query record: %w", uErr)
+			}
+			if !deferRun && aq.FileReady {
+				if qErr := m.queue.SendRequest(tasks.AsynqueryIncomingQuery, tasks.AsynqueryIncomingQueryPayload{
+					QueryID: aq.ID,
+					UserID:  userID,
+				}, queue.WithRequestRetry(3)); qErr != nil {
+					m.logger.Warn("error queuing query", "err", qErr, "user_id", userID)
+					return nil, fmt.Errorf("error queuing query: %w", qErr)
+				}
+				m.logger.Info("query committed and queued", "id", aq.ID, "user_id", userID)
+			} else {
+				m.logger.Info("query updated", "id", aq.ID, "user_id", userID, "deferred", deferRun, "file_ready", aq.FileReady)
+			}
+			return aq, nil
+		}
+		if aq.Status != models.AsynqueryStatusFailed {
+			return aq, nil
+		}
+		// Failed: fall through and re-create.
 	}
-	aq, err = m.createQueryRecord(queryParams{userID: userID, uploadID: fileLoc.UploadID}, req)
+	aq, err = m.createQueryRecord(queryParams{userID: userID, uploadID: fileLoc.UploadID, readyToRun: !deferRun}, req)
 	if err != nil {
 		m.logger.Warn("error adding query record", "err", err, "user_id", userID)
 		return nil, fmt.Errorf("error adding query record: %w", err)
 	}
-	m.logger.Info("query added", "id", aq.ID, "user_id", userID, "upload_id", fileLoc.UploadID)
+	m.logger.Info("query added", "id", aq.ID, "user_id", userID, "upload_id", fileLoc.UploadID, "deferred", deferRun)
 
 	return aq, nil
 }
@@ -169,19 +225,29 @@ func (m *CallManager) HandleMerge(ctx context.Context, task *asynq.Task) error {
 		return err
 	}
 	meta := payload.Meta
-	patch := map[string]any{
-		"file_size": meta.Size,
-		"file_name": meta.FileName,
-		"file_hash": meta.Hash,
-		"sd_hash":   meta.SDHash,
+
+	// If the asynquery row is still a draft (ready_to_run=false) the
+	// frontend hasn't committed final params yet — stash the file metadata
+	// on the row and mark file_ready. The SDK call will be queued when
+	// Call() arrives with the final params.
+	if !aq.ReadyToRun {
+		metaJSON, mErr := json.Marshal(meta)
+		if mErr != nil {
+			log.Warn("error marshaling file meta", "err", mErr)
+			return mErr
+		}
+		aq.FileReady = true
+		aq.FileMeta = null.JSONFrom(metaJSON)
+		aq.UpdatedAt = null.TimeFrom(time.Now())
+		if _, uErr := aq.Update(m.db, boil.Infer()); uErr != nil {
+			log.Warn("error updating query record with file_ready", "err", uErr)
+			return uErr
+		}
+		log.Info("file_ready stored, awaiting commit", "id", aq.ID)
+		return nil
 	}
-	if meta.Width > 0 && meta.Height > 0 {
-		patch["width"] = meta.Width
-		patch["height"] = meta.Height
-	}
-	if meta.Duration > 0 {
-		patch["duration"] = meta.Duration
-	}
+
+	patch := buildPatchFromMeta(meta)
 	err = m.robustCall(logging.AddToContext(ctx, log), aq, patch)
 	if err != nil {
 		return err
@@ -208,7 +274,18 @@ func (m *CallManager) HandleQuery(ctx context.Context, task *asynq.Task) error {
 		log.Info("error getting query record", "err", err)
 		return err
 	}
-	err = m.robustCall(logging.AddToContext(ctx, log), aq, nil)
+
+	var patch map[string]any
+	if aq.FileMeta.Valid {
+		var meta tasks.UploadMeta
+		if uErr := json.Unmarshal(aq.FileMeta.JSON, &meta); uErr == nil {
+			patch = buildPatchFromMeta(meta)
+		} else {
+			log.Warn("error unmarshaling stored file meta", "err", uErr)
+		}
+	}
+
+	err = m.robustCall(logging.AddToContext(ctx, log), aq, patch)
 	if err != nil {
 		return err
 	}
@@ -306,8 +383,9 @@ func (m *CallManager) robustCall(ctx context.Context, aq *models.Asynquery, patc
 
 func (m *CallManager) createQueryRecord(params queryParams, request *jsonrpc.RPCRequest) (*models.Asynquery, error) {
 	q := models.Asynquery{
-		UserID: int(params.userID),
-		Status: models.AsynqueryStatusReceived,
+		UserID:     int(params.userID),
+		Status:     models.AsynqueryStatusReceived,
+		ReadyToRun: params.readyToRun,
 	}
 	if params.uploadID != "" {
 		q.UploadID = params.uploadID
@@ -319,6 +397,23 @@ func (m *CallManager) createQueryRecord(params queryParams, request *jsonrpc.RPC
 	q.ID = fmt.Sprintf("%x%v", md5.Sum(rb), time.Now().UnixMilli())
 	q.Body = null.JSONFrom(rb)
 	return &q, q.Insert(m.db, boil.Infer())
+}
+
+func buildPatchFromMeta(meta tasks.UploadMeta) map[string]any {
+	patch := map[string]any{
+		"file_size": meta.Size,
+		"file_name": meta.FileName,
+		"file_hash": meta.Hash,
+		"sd_hash":   meta.SDHash,
+	}
+	if meta.Width > 0 && meta.Height > 0 {
+		patch["width"] = meta.Width
+		patch["height"] = meta.Height
+	}
+	if meta.Duration > 0 {
+		patch["duration"] = meta.Duration
+	}
+	return patch
 }
 
 func (m *CallManager) getQueryRecord(ctx context.Context, params queryParams) (*models.Asynquery, error) {
