@@ -3,6 +3,7 @@ package asynquery
 import (
 	"context"
 	"crypto"
+	"database/sql"
 	"errors"
 	"net/http"
 
@@ -11,12 +12,11 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/hibiken/asynq"
-	"github.com/volatiletech/sqlboiler/boil"
 )
 
 type Launcher struct {
 	requestsConnOpts asynq.RedisConnOpt
-	db               boil.Executor
+	db               *sql.DB
 	logger           logging.KVLogger
 	manager          *CallManager
 	privateKey       crypto.PrivateKey
@@ -32,7 +32,7 @@ func WithPrivateKey(privateKey crypto.PrivateKey) LauncherOption {
 	}
 }
 
-func WithDB(db boil.Executor) LauncherOption {
+func WithDB(db *sql.DB) LauncherOption {
 	return func(l *Launcher) {
 		l.db = db
 	}

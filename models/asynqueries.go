@@ -155,26 +155,41 @@ func (w whereHelpernull_JSON) GTE(x null.JSON) qm.QueryMod {
 	return qmhelper.Where(w.field, qmhelper.GTE, x)
 }
 
+type whereHelperbool struct{ field string }
+
+func (w whereHelperbool) EQ(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
+func (w whereHelperbool) NEQ(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
+func (w whereHelperbool) LT(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
+func (w whereHelperbool) LTE(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
+func (w whereHelperbool) GT(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
+func (w whereHelperbool) GTE(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
+
 var AsynqueryWhere = struct {
-	ID        whereHelperstring
-	UserID    whereHelperint
-	CreatedAt whereHelpertime_Time
-	UpdatedAt whereHelpernull_Time
-	Status    whereHelperstring
-	Error     whereHelperstring
-	UploadID  whereHelperstring
-	Body      whereHelpernull_JSON
-	Response  whereHelpernull_JSON
+	ID         whereHelperstring
+	UserID     whereHelperint
+	CreatedAt  whereHelpertime_Time
+	UpdatedAt  whereHelpernull_Time
+	Status     whereHelperstring
+	Error      whereHelperstring
+	UploadID   whereHelperstring
+	Body       whereHelpernull_JSON
+	Response   whereHelpernull_JSON
+	ReadyToRun whereHelperbool
+	FileReady  whereHelperbool
+	FileMeta   whereHelpernull_JSON
 }{
-	ID:        whereHelperstring{field: "\"asynqueries\".\"id\""},
-	UserID:    whereHelperint{field: "\"asynqueries\".\"user_id\""},
-	CreatedAt: whereHelpertime_Time{field: "\"asynqueries\".\"created_at\""},
-	UpdatedAt: whereHelpernull_Time{field: "\"asynqueries\".\"updated_at\""},
-	Status:    whereHelperstring{field: "\"asynqueries\".\"status\""},
-	Error:     whereHelperstring{field: "\"asynqueries\".\"error\""},
-	UploadID:  whereHelperstring{field: "\"asynqueries\".\"upload_id\""},
-	Body:      whereHelpernull_JSON{field: "\"asynqueries\".\"body\""},
-	Response:  whereHelpernull_JSON{field: "\"asynqueries\".\"response\""},
+	ID:         whereHelperstring{field: "\"asynqueries\".\"id\""},
+	UserID:     whereHelperint{field: "\"asynqueries\".\"user_id\""},
+	CreatedAt:  whereHelpertime_Time{field: "\"asynqueries\".\"created_at\""},
+	UpdatedAt:  whereHelpernull_Time{field: "\"asynqueries\".\"updated_at\""},
+	Status:     whereHelperstring{field: "\"asynqueries\".\"status\""},
+	Error:      whereHelperstring{field: "\"asynqueries\".\"error\""},
+	UploadID:   whereHelperstring{field: "\"asynqueries\".\"upload_id\""},
+	Body:       whereHelpernull_JSON{field: "\"asynqueries\".\"body\""},
+	Response:   whereHelpernull_JSON{field: "\"asynqueries\".\"response\""},
+	ReadyToRun: whereHelperbool{field: "\"asynqueries\".\"ready_to_run\""},
+	FileReady:  whereHelperbool{field: "\"asynqueries\".\"file_ready\""},
+	FileMeta:   whereHelpernull_JSON{field: "\"asynqueries\".\"file_meta\""},
 }
 
 // AsynqueryRels is where relationship names are stored.

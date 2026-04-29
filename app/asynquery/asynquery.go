@@ -28,15 +28,7 @@ import (
 
 const (
 	FilePathParam = "file_path"
-	// DeferParam, when set to true in the request params, creates the
-	// asynquery row with ready_to_run=false. The actual SDK call is deferred
-	// until a subsequent Call without DeferParam arrives (or, if the file
-	// upload had already completed, queued immediately at that point).
-	// This lets the frontend pre-create the asynqueries row at upload-start
-	// time so forklift's upload:done event always finds a matching row,
-	// while still allowing the user's final form data to land before the
-	// SDK call fires. The flag is stripped from params before the SDK call.
-	DeferParam = "_defer"
+	DeferParam    = "_defer"
 )
 
 var (
@@ -48,7 +40,7 @@ var (
 )
 
 type CallManager struct {
-	db     boil.Executor
+	db     *sql.DB
 	logger logging.KVLogger
 	queue  *queue.Queue
 }
@@ -76,7 +68,7 @@ type queryParams struct {
 	readyToRun bool
 }
 
-func NewCallManager(redisOpts asynq.RedisConnOpt, db boil.Executor, logger logging.KVLogger) (*CallManager, error) {
+func NewCallManager(redisOpts asynq.RedisConnOpt, db *sql.DB, logger logging.KVLogger) (*CallManager, error) {
 	m := CallManager{
 		logger: logger,
 		db:     db,
@@ -94,7 +86,6 @@ func (m *CallManager) NewCaller(userID int) *Caller {
 	return &Caller{manager: m, userID: userID}
 }
 
-// Start launches asynchronous query handlers and blocks until stopped.
 func (m *CallManager) Start() error {
 	onceMetrics.Do(registerMetrics)
 	m.queue.AddHandler(tasks.ForkliftUploadDone, m.HandleMerge)
@@ -106,17 +97,9 @@ func (m *CallManager) Shutdown() {
 	m.queue.Shutdown()
 }
 
-// Call accepts JSON-RPC request for later asynchronous processing.
 func (m *CallManager) Call(userID int, req *jsonrpc.RPCRequest) (*models.Asynquery, error) {
-	var (
-		filePath      string
-		filePathParam any
-		fileLoc       *FileLocation
-		ok            bool
-	)
 	p := req.Params.(map[string]any)
 
-	// Strip the _defer flag (frontend-only, never sent to SDK).
 	deferRun := false
 	if v, hasDefer := p[DeferParam]; hasDefer {
 		if b, isBool := v.(bool); isBool {
@@ -125,14 +108,13 @@ func (m *CallManager) Call(userID int, req *jsonrpc.RPCRequest) (*models.Asynque
 		delete(p, DeferParam)
 	}
 
-	// Metadata-only update
-	if filePathParam, ok = p[FilePathParam]; !ok {
-		aq, err := m.createQueryRecord(queryParams{userID: userID, readyToRun: !deferRun}, req)
+	filePathParam, hasFilePath := p[FilePathParam]
+	if !hasFilePath {
+		aq, err := m.createQueryRecord(m.db, queryParams{userID: userID, readyToRun: true}, req)
 		if err != nil {
 			m.logger.Warn("error adding query record", "err", err, "user_id", userID)
 			return nil, fmt.Errorf("error adding query record: %w", err)
 		}
-		// Sending query for immediate processing
 		err = m.queue.SendRequest(tasks.AsynqueryIncomingQuery, tasks.AsynqueryIncomingQueryPayload{
 			QueryID: aq.ID,
 			UserID:  userID,
@@ -144,7 +126,8 @@ func (m *CallManager) Call(userID int, req *jsonrpc.RPCRequest) (*models.Asynque
 		m.logger.Info("query added and queued", "id", aq.ID, "user_id", userID)
 		return aq, nil
 	}
-	if filePath, ok = filePathParam.(string); !ok {
+	filePath, ok := filePathParam.(string)
+	if !ok {
 		return nil, errors.New("invalid file path")
 	}
 	fileLoc, err := parseFilePath(filePath)
@@ -152,60 +135,160 @@ func (m *CallManager) Call(userID int, req *jsonrpc.RPCRequest) (*models.Asynque
 		return nil, err
 	}
 
-	aq, err := m.getQueryRecord(context.TODO(), queryParams{userID: userID, uploadID: fileLoc.UploadID})
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	aq, shouldEnqueue, err := m.callUploadTx(userID, fileLoc.UploadID, deferRun, req)
+	if err != nil {
 		return nil, err
 	}
-	if err == nil {
-		// Row exists. If still in Received state we treat this as a
-		// commit/update of an earlier deferred draft: overwrite Body with
-		// the latest params and, unless this call is itself deferred, mark
-		// the row ready to run. If forklift's upload:done already arrived
-		// (file_ready=true), queue the SDK call now so it doesn't sit idle.
-		if aq.Status == models.AsynqueryStatusReceived {
-			rb, mErr := json.Marshal(req)
-			if mErr != nil {
-				return nil, fmt.Errorf("error marshaling request: %w", mErr)
-			}
-			aq.Body = null.JSONFrom(rb)
-			if !deferRun {
-				aq.ReadyToRun = true
-			}
-			aq.UpdatedAt = null.TimeFrom(time.Now())
-			if _, uErr := aq.Update(m.db, boil.Infer()); uErr != nil {
-				m.logger.Warn("error updating query record", "err", uErr, "user_id", userID)
-				return nil, fmt.Errorf("error updating query record: %w", uErr)
-			}
-			if !deferRun && aq.FileReady {
-				if qErr := m.queue.SendRequest(tasks.AsynqueryIncomingQuery, tasks.AsynqueryIncomingQueryPayload{
-					QueryID: aq.ID,
-					UserID:  userID,
-				}, queue.WithRequestRetry(3)); qErr != nil {
-					m.logger.Warn("error queuing query", "err", qErr, "user_id", userID)
-					return nil, fmt.Errorf("error queuing query: %w", qErr)
-				}
-				m.logger.Info("query committed and queued", "id", aq.ID, "user_id", userID)
-			} else {
-				m.logger.Info("query updated", "id", aq.ID, "user_id", userID, "deferred", deferRun, "file_ready", aq.FileReady)
-			}
-			return aq, nil
-		}
-		if aq.Status != models.AsynqueryStatusFailed {
-			return aq, nil
-		}
-		// Failed: fall through and re-create.
-	}
-	aq, err = m.createQueryRecord(queryParams{userID: userID, uploadID: fileLoc.UploadID, readyToRun: !deferRun}, req)
-	if err != nil {
-		m.logger.Warn("error adding query record", "err", err, "user_id", userID)
-		return nil, fmt.Errorf("error adding query record: %w", err)
-	}
-	m.logger.Info("query added", "id", aq.ID, "user_id", userID, "upload_id", fileLoc.UploadID, "deferred", deferRun)
 
+	if shouldEnqueue {
+		qErr := m.queue.SendRequest(tasks.AsynqueryIncomingQuery, tasks.AsynqueryIncomingQueryPayload{
+			QueryID: aq.ID,
+			UserID:  userID,
+		}, queue.WithRequestRetry(3))
+		if qErr != nil {
+			CommitEnqueueFailed.Inc()
+			m.logger.Error("commit enqueue failed", "err", qErr, "id", aq.ID, "user_id", userID)
+			return nil, fmt.Errorf("error queuing query: %w", qErr)
+		}
+		m.logger.Info("query committed and queued", "id", aq.ID, "user_id", userID)
+	}
 	return aq, nil
 }
 
-// HandleMerge handles signals about completed uploads from forklift.
+func (m *CallManager) callUploadTx(userID int, uploadID string, deferRun bool, req *jsonrpc.RPCRequest) (*models.Asynquery, bool, error) {
+	if !deferRun {
+		CommitsTotal.Inc()
+	}
+
+	tx, err := m.db.Begin()
+	if err != nil {
+		return nil, false, fmt.Errorf("begin tx: %w", err)
+	}
+
+	_, err = models.Users(
+		models.UserWhere.ID.EQ(userID),
+		qm.For("UPDATE"),
+	).One(tx)
+	if err != nil {
+		txRollback(tx)
+		return nil, false, fmt.Errorf("locking user row: %w", err)
+	}
+
+	aq, err := models.Asynqueries(
+		models.AsynqueryWhere.UploadID.EQ(uploadID),
+		models.AsynqueryWhere.UserID.EQ(userID),
+		qm.OrderBy(models.AsynqueryColumns.CreatedAt+" DESC"),
+		qm.For("UPDATE"),
+	).One(tx)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		txRollback(tx)
+		return nil, false, fmt.Errorf("looking up asynquery: %w", err)
+	}
+
+	if errors.Is(err, sql.ErrNoRows) {
+		newAq, cErr := m.createQueryRecord(tx, queryParams{
+			userID:     userID,
+			uploadID:   uploadID,
+			readyToRun: !deferRun,
+		}, req)
+		if cErr != nil {
+			txRollback(tx)
+			m.logger.Warn("error adding query record", "err", cErr, "user_id", userID)
+			return nil, false, fmt.Errorf("error adding query record: %w", cErr)
+		}
+		cErr = tx.Commit()
+		if cErr != nil {
+			return nil, false, fmt.Errorf("commit tx: %w", cErr)
+		}
+		if deferRun {
+			DraftsCreated.Inc()
+			m.logger.Info("draft query added", "id", newAq.ID, "user_id", userID, "upload_id", uploadID)
+		} else {
+			m.logger.Info("query added", "id", newAq.ID, "user_id", userID, "upload_id", uploadID)
+		}
+		return newAq, false, nil
+	}
+
+	if deferRun {
+		cErr := tx.Commit()
+		if cErr != nil {
+			return nil, false, fmt.Errorf("commit tx: %w", cErr)
+		}
+		m.logger.Info("late defer is a no-op", "id", aq.ID, "user_id", userID, "status", aq.Status, "ready_to_run", aq.ReadyToRun)
+		return aq, false, nil
+	}
+
+	switch aq.Status {
+	case models.AsynqueryStatusReceived:
+		if aq.ReadyToRun {
+			cErr := tx.Commit()
+			if cErr != nil {
+				return nil, false, fmt.Errorf("commit tx: %w", cErr)
+			}
+			m.logger.Info("idempotent re-commit no-op", "id", aq.ID, "user_id", userID)
+			return aq, false, nil
+		}
+
+		rb, mErr := json.Marshal(req)
+		if mErr != nil {
+			txRollback(tx)
+			return nil, false, fmt.Errorf("error marshaling request: %w", mErr)
+		}
+		aq.Body = null.JSONFrom(rb)
+		aq.ReadyToRun = true
+		aq.UpdatedAt = null.TimeFrom(time.Now())
+		_, uErr := aq.Update(tx, boil.Whitelist(
+			models.AsynqueryColumns.Body,
+			models.AsynqueryColumns.ReadyToRun,
+			models.AsynqueryColumns.UpdatedAt,
+		))
+		if uErr != nil {
+			txRollback(tx)
+			m.logger.Warn("error updating query record", "err", uErr, "user_id", userID)
+			return nil, false, fmt.Errorf("error updating query record: %w", uErr)
+		}
+
+		shouldEnqueue := aq.FileReady
+		cErr := tx.Commit()
+		if cErr != nil {
+			return nil, false, fmt.Errorf("commit tx: %w", cErr)
+		}
+		if !shouldEnqueue {
+			m.logger.Info("query committed, awaiting forklift", "id", aq.ID, "user_id", userID)
+		}
+		return aq, shouldEnqueue, nil
+
+	case models.AsynqueryStatusFailed:
+		newAq, cErr := m.createQueryRecord(tx, queryParams{
+			userID:     userID,
+			uploadID:   uploadID,
+			readyToRun: true,
+		}, req)
+		if cErr != nil {
+			txRollback(tx)
+			m.logger.Warn("error adding query record", "err", cErr, "user_id", userID)
+			return nil, false, fmt.Errorf("error adding query record: %w", cErr)
+		}
+		cErr = tx.Commit()
+		if cErr != nil {
+			return nil, false, fmt.Errorf("commit tx: %w", cErr)
+		}
+		m.logger.Info("query added (after failed)", "id", newAq.ID, "user_id", userID, "upload_id", uploadID)
+		return newAq, false, nil
+
+	default:
+		cErr := tx.Commit()
+		if cErr != nil {
+			return nil, false, fmt.Errorf("commit tx: %w", cErr)
+		}
+		return aq, false, nil
+	}
+}
+
+func txRollback(tx *sql.Tx) {
+	_ = tx.Rollback()
+}
+
 func (m *CallManager) HandleMerge(ctx context.Context, task *asynq.Task) error {
 	if task.Type() != tasks.ForkliftUploadDone {
 		m.logger.Warn("cannot handle task", "type", task.Type())
@@ -219,43 +302,80 @@ func (m *CallManager) HandleMerge(ctx context.Context, task *asynq.Task) error {
 	log := logging.TracedLogger(m.logger, payload)
 	log.Debug("task received")
 
-	aq, err := m.getQueryRecord(ctx, queryParams{uploadID: payload.UploadID, userID: int(payload.UserID)})
+	aq, shouldFireSDK, err := m.handleMergeTx(payload, log)
 	if err != nil {
-		log.Info("error getting query record", "err", err)
 		return err
 	}
-	meta := payload.Meta
+	if !shouldFireSDK {
+		return nil
+	}
 
-	// If the asynquery row is still a draft (ready_to_run=false) the
-	// frontend hasn't committed final params yet — stash the file metadata
-	// on the row and mark file_ready. The SDK call will be queued when
-	// Call() arrives with the final params.
+	patch := buildPatchFromMeta(payload.Meta)
+	return m.robustCall(logging.AddToContext(ctx, log), aq, patch)
+}
+
+func (m *CallManager) handleMergeTx(payload tasks.ForkliftUploadDonePayload, log logging.KVLogger) (*models.Asynquery, bool, error) {
+	tx, err := m.db.Begin()
+	if err != nil {
+		return nil, false, fmt.Errorf("begin tx: %w", err)
+	}
+
+	aq, err := models.Asynqueries(
+		models.AsynqueryWhere.UploadID.EQ(payload.UploadID),
+		models.AsynqueryWhere.UserID.EQ(int(payload.UserID)),
+		qm.OrderBy(models.AsynqueryColumns.CreatedAt+" DESC"),
+		qm.For("UPDATE"),
+	).One(tx)
+	if err != nil {
+		txRollback(tx)
+		log.Info("error getting query record", "err", err)
+		return nil, false, err
+	}
+
 	if !aq.ReadyToRun {
-		metaJSON, mErr := json.Marshal(meta)
+		metaJSON, mErr := json.Marshal(payload.Meta)
 		if mErr != nil {
+			txRollback(tx)
 			log.Warn("error marshaling file meta", "err", mErr)
-			return mErr
+			return nil, false, mErr
 		}
 		aq.FileReady = true
 		aq.FileMeta = null.JSONFrom(metaJSON)
 		aq.UpdatedAt = null.TimeFrom(time.Now())
-		if _, uErr := aq.Update(m.db, boil.Infer()); uErr != nil {
+		_, uErr := aq.Update(tx, boil.Whitelist(
+			models.AsynqueryColumns.FileReady,
+			models.AsynqueryColumns.FileMeta,
+			models.AsynqueryColumns.UpdatedAt,
+		))
+		if uErr != nil {
+			txRollback(tx)
 			log.Warn("error updating query record with file_ready", "err", uErr)
-			return uErr
+			return nil, false, uErr
+		}
+		cErr := tx.Commit()
+		if cErr != nil {
+			return nil, false, fmt.Errorf("commit tx: %w", cErr)
 		}
 		log.Info("file_ready stored, awaiting commit", "id", aq.ID)
-		return nil
+		return aq, false, nil
 	}
 
-	patch := buildPatchFromMeta(meta)
-	err = m.robustCall(logging.AddToContext(ctx, log), aq, patch)
-	if err != nil {
-		return err
+	if aq.Status == models.AsynqueryStatusSucceeded {
+		cErr := tx.Commit()
+		if cErr != nil {
+			return nil, false, fmt.Errorf("commit tx: %w", cErr)
+		}
+		log.Debug("dropping forklift:upload:done for already-succeeded row", "id", aq.ID)
+		return aq, false, nil
 	}
-	return nil
+
+	cErr := tx.Commit()
+	if cErr != nil {
+		return nil, false, fmt.Errorf("commit tx: %w", cErr)
+	}
+	return aq, true, nil
 }
 
-// HandleQuery handles asynchronous queries without uploads associated.
 func (m *CallManager) HandleQuery(ctx context.Context, task *asynq.Task) error {
 	if task.Type() != tasks.AsynqueryIncomingQuery {
 		m.logger.Warn("cannot handle task", "type", task.Type())
@@ -278,11 +398,17 @@ func (m *CallManager) HandleQuery(ctx context.Context, task *asynq.Task) error {
 	var patch map[string]any
 	if aq.FileMeta.Valid {
 		var meta tasks.UploadMeta
-		if uErr := json.Unmarshal(aq.FileMeta.JSON, &meta); uErr == nil {
-			patch = buildPatchFromMeta(meta)
-		} else {
+		uErr := json.Unmarshal(aq.FileMeta.JSON, &meta)
+		if uErr != nil {
 			log.Warn("error unmarshaling stored file meta", "err", uErr)
+			fErr := m.finalizeQueryRecord(logging.AddToContext(ctx, log), aq.ID, nil, fmt.Sprintf("invalid stored file metadata: %v", uErr))
+			if fErr != nil {
+				log.Warn("failed to finalize asynquery record after meta unmarshal error", "err", fErr)
+				return fErr
+			}
+			return asynq.SkipRetry
 		}
+		patch = buildPatchFromMeta(meta)
 	}
 
 	err = m.robustCall(logging.AddToContext(ctx, log), aq, patch)
@@ -323,7 +449,6 @@ func (m *CallManager) robustCall(ctx context.Context, aq *models.Asynquery, patc
 		return asynq.SkipRetry
 	}
 
-	// Patch the original SDK request
 	pp, ok := request.Params.(map[string]any)
 	if !ok {
 		log.Info("cannot extract params from request")
@@ -381,7 +506,7 @@ func (m *CallManager) robustCall(ctx context.Context, aq *models.Asynquery, patc
 	return nil
 }
 
-func (m *CallManager) createQueryRecord(params queryParams, request *jsonrpc.RPCRequest) (*models.Asynquery, error) {
+func (m *CallManager) createQueryRecord(exec boil.Executor, params queryParams, request *jsonrpc.RPCRequest) (*models.Asynquery, error) {
 	q := models.Asynquery{
 		UserID:     int(params.userID),
 		Status:     models.AsynqueryStatusReceived,
@@ -396,7 +521,7 @@ func (m *CallManager) createQueryRecord(params queryParams, request *jsonrpc.RPC
 	}
 	q.ID = fmt.Sprintf("%x%v", md5.Sum(rb), time.Now().UnixMilli())
 	q.Body = null.JSONFrom(rb)
-	return &q, q.Insert(m.db, boil.Infer())
+	return &q, q.Insert(exec, boil.Greylist(models.AsynqueryColumns.ReadyToRun))
 }
 
 func buildPatchFromMeta(meta tasks.UploadMeta) map[string]any {
@@ -458,7 +583,7 @@ func (m *CallManager) finalizeQueryRecord(ctx context.Context, queryID string, r
 	q.Response = jr
 	q.Error = callErr
 
-	if response.Error != nil || callErr != "" {
+	if response == nil || response.Error != nil || callErr != "" {
 		q.Status = models.AsynqueryStatusFailed
 	} else {
 		q.Status = models.AsynqueryStatusSucceeded
