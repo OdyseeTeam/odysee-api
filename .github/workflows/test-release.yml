@@ -111,7 +111,7 @@ jobs:
             echo "::endgroup::"
 
       - name: Login to DockerHub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -124,7 +124,7 @@ jobs:
 
       - name: Build and push odysee-api docker image
         if: env.APP_NAME == 'api'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           push: true
           context: .
@@ -151,7 +151,7 @@ jobs:
 
       - name: Build watchman docker image
         if: env.APP_NAME == 'watchman'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           push: true
           context: apps/${{ env.APP_NAME }}/
