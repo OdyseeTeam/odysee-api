@@ -23,40 +23,49 @@ import (
 
 // Asynquery is an object representing the database table.
 type Asynquery struct {
-	ID        string    `boil:"id" json:"id" toml:"id" yaml:"id"`
-	UserID    int       `boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
-	CreatedAt time.Time `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt null.Time `boil:"updated_at" json:"updated_at,omitempty" toml:"updated_at" yaml:"updated_at,omitempty"`
-	Status    string    `boil:"status" json:"status" toml:"status" yaml:"status"`
-	Error     string    `boil:"error" json:"error" toml:"error" yaml:"error"`
-	UploadID  string    `boil:"upload_id" json:"upload_id" toml:"upload_id" yaml:"upload_id"`
-	Body      null.JSON `boil:"body" json:"body,omitempty" toml:"body" yaml:"body,omitempty"`
-	Response  null.JSON `boil:"response" json:"response,omitempty" toml:"response" yaml:"response,omitempty"`
+	ID         string    `boil:"id" json:"id" toml:"id" yaml:"id"`
+	UserID     int       `boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
+	CreatedAt  time.Time `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt  null.Time `boil:"updated_at" json:"updated_at,omitempty" toml:"updated_at" yaml:"updated_at,omitempty"`
+	Status     string    `boil:"status" json:"status" toml:"status" yaml:"status"`
+	Error      string    `boil:"error" json:"error" toml:"error" yaml:"error"`
+	UploadID   string    `boil:"upload_id" json:"upload_id" toml:"upload_id" yaml:"upload_id"`
+	Body       null.JSON `boil:"body" json:"body,omitempty" toml:"body" yaml:"body,omitempty"`
+	Response   null.JSON `boil:"response" json:"response,omitempty" toml:"response" yaml:"response,omitempty"`
+	ReadyToRun bool      `boil:"ready_to_run" json:"ready_to_run" toml:"ready_to_run" yaml:"ready_to_run"`
+	FileReady  bool      `boil:"file_ready" json:"file_ready" toml:"file_ready" yaml:"file_ready"`
+	FileMeta   null.JSON `boil:"file_meta" json:"file_meta,omitempty" toml:"file_meta" yaml:"file_meta,omitempty"`
 
 	R *asynqueryR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L asynqueryL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var AsynqueryColumns = struct {
-	ID        string
-	UserID    string
-	CreatedAt string
-	UpdatedAt string
-	Status    string
-	Error     string
-	UploadID  string
-	Body      string
-	Response  string
+	ID         string
+	UserID     string
+	CreatedAt  string
+	UpdatedAt  string
+	Status     string
+	Error      string
+	UploadID   string
+	Body       string
+	Response   string
+	ReadyToRun string
+	FileReady  string
+	FileMeta   string
 }{
-	ID:        "id",
-	UserID:    "user_id",
-	CreatedAt: "created_at",
-	UpdatedAt: "updated_at",
-	Status:    "status",
-	Error:     "error",
-	UploadID:  "upload_id",
-	Body:      "body",
-	Response:  "response",
+	ID:         "id",
+	UserID:     "user_id",
+	CreatedAt:  "created_at",
+	UpdatedAt:  "updated_at",
+	Status:     "status",
+	Error:      "error",
+	UploadID:   "upload_id",
+	Body:       "body",
+	Response:   "response",
+	ReadyToRun: "ready_to_run",
+	FileReady:  "file_ready",
+	FileMeta:   "file_meta",
 }
 
 // Generated where
@@ -146,26 +155,41 @@ func (w whereHelpernull_JSON) GTE(x null.JSON) qm.QueryMod {
 	return qmhelper.Where(w.field, qmhelper.GTE, x)
 }
 
+type whereHelperbool struct{ field string }
+
+func (w whereHelperbool) EQ(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
+func (w whereHelperbool) NEQ(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
+func (w whereHelperbool) LT(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
+func (w whereHelperbool) LTE(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
+func (w whereHelperbool) GT(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
+func (w whereHelperbool) GTE(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
+
 var AsynqueryWhere = struct {
-	ID        whereHelperstring
-	UserID    whereHelperint
-	CreatedAt whereHelpertime_Time
-	UpdatedAt whereHelpernull_Time
-	Status    whereHelperstring
-	Error     whereHelperstring
-	UploadID  whereHelperstring
-	Body      whereHelpernull_JSON
-	Response  whereHelpernull_JSON
+	ID         whereHelperstring
+	UserID     whereHelperint
+	CreatedAt  whereHelpertime_Time
+	UpdatedAt  whereHelpernull_Time
+	Status     whereHelperstring
+	Error      whereHelperstring
+	UploadID   whereHelperstring
+	Body       whereHelpernull_JSON
+	Response   whereHelpernull_JSON
+	ReadyToRun whereHelperbool
+	FileReady  whereHelperbool
+	FileMeta   whereHelpernull_JSON
 }{
-	ID:        whereHelperstring{field: "\"asynqueries\".\"id\""},
-	UserID:    whereHelperint{field: "\"asynqueries\".\"user_id\""},
-	CreatedAt: whereHelpertime_Time{field: "\"asynqueries\".\"created_at\""},
-	UpdatedAt: whereHelpernull_Time{field: "\"asynqueries\".\"updated_at\""},
-	Status:    whereHelperstring{field: "\"asynqueries\".\"status\""},
-	Error:     whereHelperstring{field: "\"asynqueries\".\"error\""},
-	UploadID:  whereHelperstring{field: "\"asynqueries\".\"upload_id\""},
-	Body:      whereHelpernull_JSON{field: "\"asynqueries\".\"body\""},
-	Response:  whereHelpernull_JSON{field: "\"asynqueries\".\"response\""},
+	ID:         whereHelperstring{field: "\"asynqueries\".\"id\""},
+	UserID:     whereHelperint{field: "\"asynqueries\".\"user_id\""},
+	CreatedAt:  whereHelpertime_Time{field: "\"asynqueries\".\"created_at\""},
+	UpdatedAt:  whereHelpernull_Time{field: "\"asynqueries\".\"updated_at\""},
+	Status:     whereHelperstring{field: "\"asynqueries\".\"status\""},
+	Error:      whereHelperstring{field: "\"asynqueries\".\"error\""},
+	UploadID:   whereHelperstring{field: "\"asynqueries\".\"upload_id\""},
+	Body:       whereHelpernull_JSON{field: "\"asynqueries\".\"body\""},
+	Response:   whereHelpernull_JSON{field: "\"asynqueries\".\"response\""},
+	ReadyToRun: whereHelperbool{field: "\"asynqueries\".\"ready_to_run\""},
+	FileReady:  whereHelperbool{field: "\"asynqueries\".\"file_ready\""},
+	FileMeta:   whereHelpernull_JSON{field: "\"asynqueries\".\"file_meta\""},
 }
 
 // AsynqueryRels is where relationship names are stored.
@@ -189,9 +213,9 @@ func (*asynqueryR) NewStruct() *asynqueryR {
 type asynqueryL struct{}
 
 var (
-	asynqueryAllColumns            = []string{"id", "user_id", "created_at", "updated_at", "status", "error", "upload_id", "body", "response"}
-	asynqueryColumnsWithoutDefault = []string{"id", "user_id", "updated_at", "status", "error", "upload_id", "body", "response"}
-	asynqueryColumnsWithDefault    = []string{"created_at"}
+	asynqueryAllColumns            = []string{"id", "user_id", "created_at", "updated_at", "status", "error", "upload_id", "body", "response", "ready_to_run", "file_ready", "file_meta"}
+	asynqueryColumnsWithoutDefault = []string{"id", "user_id", "updated_at", "status", "error", "upload_id", "body", "response", "file_meta"}
+	asynqueryColumnsWithDefault    = []string{"created_at", "ready_to_run", "file_ready"}
 	asynqueryPrimaryKeyColumns     = []string{"id"}
 )
 

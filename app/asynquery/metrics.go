@@ -37,10 +37,23 @@ var (
 		Namespace: ns,
 		Name:      "queries_errored",
 	})
+	DraftsCreated = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: ns,
+		Name:      "drafts_created_total",
+	})
+	CommitsTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: ns,
+		Name:      "commits_total",
+	})
+	CommitEnqueueFailed = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: ns,
+		Name:      "commit_enqueue_failed_total",
+	})
 )
 
 func registerMetrics() {
 	prometheus.MustRegister(
 		InternalErrors, QueriesSent, QueriesCompleted, QueriesFailed, QueriesErrored,
+		DraftsCreated, CommitsTotal, CommitEnqueueFailed,
 	)
 }

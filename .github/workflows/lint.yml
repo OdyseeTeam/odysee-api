@@ -24,8 +24,10 @@ jobs:
           go-version: '1.26'
           cache: false
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v7
+        uses: golangci/golangci-lint-action@v9
         with:
           only-new-issues: true
       - id: govulncheck
         uses: golang/govulncheck-action@v1
+        with:
+          repo-checkout: 'false'
