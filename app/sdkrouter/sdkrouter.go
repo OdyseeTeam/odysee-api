@@ -26,6 +26,9 @@ type Router struct {
 	loadMu      sync.RWMutex
 	leastLoaded *models.LbrynetServer
 
+	healthMu    sync.Mutex
+	healthState map[string]*sdkHealthState
+
 	useDB      bool
 	lastLoaded time.Time
 }
@@ -41,13 +44,13 @@ func New(servers map[string]string) *Router {
 		return NewWithServers(s...)
 	}
 
-	r := &Router{useDB: true}
+	r := &Router{healthState: map[string]*sdkHealthState{}, useDB: true}
 	r.reloadServersFromDB()
 	return r
 }
 
 func NewWithServers(servers ...*models.LbrynetServer) *Router {
-	r := &Router{}
+	r := &Router{healthState: map[string]*sdkHealthState{}}
 	r.setServers(servers)
 	return r
 }

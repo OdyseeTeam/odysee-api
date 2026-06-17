@@ -20,6 +20,22 @@ const (
 	lbrynetServers           = "LbrynetServers"
 	deprecatedLbrynetSetting = "Lbrynet"
 	configName               = "oapi"
+
+	sdkHealthCheckEnabled       = "SDKHealthCheckEnabled"
+	sdkReconnectEnabled         = "SDKReconnectEnabled"
+	sdkHealthCheckInterval      = "SDKHealthCheckInterval"
+	sdkHealthProbeTimeout       = "SDKHealthProbeTimeout"
+	sdkHealthFailureThreshold   = "SDKHealthFailureThreshold"
+	sdkReconnectCooldown        = "SDKReconnectCooldown"
+	sdkReconnectLeaseTTL        = "SDKReconnectLeaseTTL"
+	sdkReconnectObservation     = "SDKReconnectObservationWindow"
+	sdkReconnectMaxConcurrent   = "SDKReconnectMaxConcurrent"
+	sdkReconnectMaxAttempts     = "SDKReconnectMaxAttempts"
+	sdkUnhealthyFleetFraction   = "SDKUnhealthyFleetFraction"
+	sdkHealthSentinelURL        = "SDKHealthSentinelURL"
+	defaultSDKHealthSentinelURL = "what#19b9c243bea0c45175e6a6027911abbad53e983e"
+	sdkMinHealthCheckInterval   = 5 * time.Second
+	sdkMinHealthProbeTimeout    = time.Second
 )
 
 type LoggingOpts struct {
@@ -224,6 +240,91 @@ func GetRPCTimeout(method string) *time.Duration {
 	return nil
 }
 
+func GetSDKHealthCheckEnabled() bool {
+	return Config.Viper.GetBool(sdkHealthCheckEnabled)
+}
+
+func GetSDKReconnectEnabled() bool {
+	return Config.Viper.GetBool(sdkReconnectEnabled)
+}
+
+func GetSDKHealthCheckInterval() time.Duration {
+	return Config.Viper.GetDuration(sdkHealthCheckInterval)
+}
+
+func GetSDKHealthProbeTimeout() time.Duration {
+	return Config.Viper.GetDuration(sdkHealthProbeTimeout)
+}
+
+func GetSDKHealthFailureThreshold() int {
+	return Config.Viper.GetInt(sdkHealthFailureThreshold)
+}
+
+func GetSDKReconnectCooldown() time.Duration {
+	return Config.Viper.GetDuration(sdkReconnectCooldown)
+}
+
+func GetSDKReconnectLeaseTTL() time.Duration {
+	return Config.Viper.GetDuration(sdkReconnectLeaseTTL)
+}
+
+func GetSDKReconnectObservationWindow() time.Duration {
+	return Config.Viper.GetDuration(sdkReconnectObservation)
+}
+
+func GetSDKReconnectMaxConcurrent() int {
+	return Config.Viper.GetInt(sdkReconnectMaxConcurrent)
+}
+
+func GetSDKReconnectMaxAttempts() int {
+	return Config.Viper.GetInt(sdkReconnectMaxAttempts)
+}
+
+func GetSDKUnhealthyFleetFraction() float64 {
+	return Config.Viper.GetFloat64(sdkUnhealthyFleetFraction)
+}
+
+func GetSDKHealthSentinelURL() string {
+	return Config.Viper.GetString(sdkHealthSentinelURL)
+}
+
+func ValidateSDKHealthConfig() error {
+	if GetSDKHealthCheckInterval() < sdkMinHealthCheckInterval {
+		return fmt.Errorf("%s must be at least %s", sdkHealthCheckInterval, sdkMinHealthCheckInterval)
+	}
+	if GetSDKHealthProbeTimeout() < sdkMinHealthProbeTimeout {
+		return fmt.Errorf("%s must be at least %s", sdkHealthProbeTimeout, sdkMinHealthProbeTimeout)
+	}
+	if GetSDKHealthFailureThreshold() <= 0 {
+		return fmt.Errorf("%s must be positive", sdkHealthFailureThreshold)
+	}
+	if GetSDKUnhealthyFleetFraction() <= 0 || GetSDKUnhealthyFleetFraction() > 1 {
+		return fmt.Errorf("%s must be between 0 and 1", sdkUnhealthyFleetFraction)
+	}
+	if GetSDKHealthSentinelURL() == "" {
+		return fmt.Errorf("%s must not be empty", sdkHealthSentinelURL)
+	}
+	if !GetSDKReconnectEnabled() {
+		return nil
+	}
+	if GetSDKReconnectCooldown() <= 0 {
+		return fmt.Errorf("%s must be positive", sdkReconnectCooldown)
+	}
+	if GetSDKReconnectMaxConcurrent() <= 0 {
+		return fmt.Errorf("%s must be positive", sdkReconnectMaxConcurrent)
+	}
+	if GetSDKReconnectMaxAttempts() <= 0 {
+		return fmt.Errorf("%s must be positive", sdkReconnectMaxAttempts)
+	}
+	if GetSDKReconnectLeaseTTL() <= GetSDKHealthCheckInterval() {
+		return fmt.Errorf("%s must be greater than %s", sdkReconnectLeaseTTL, sdkHealthCheckInterval)
+	}
+	if GetSDKReconnectObservationWindow() <= GetSDKHealthCheckInterval() {
+		return fmt.Errorf("%s must be greater than %s", sdkReconnectObservation, sdkHealthCheckInterval)
+	}
+	return nil
+}
+
 func GetProfiling() bool {
 	return Config.Viper.GetBool("Profiling")
 }
@@ -269,4 +370,37 @@ func init() {
 	c.Viper.SetDefault("Logging", map[string]string{"level": "debug", "format": "console"})
 	c.Viper.SetDefault("CacheGetterRetries", 3)
 	c.Viper.SetDefault("CacheGetterInterval", 1*time.Second)
+	c.Viper.SetDefault(sdkHealthCheckEnabled, false)
+	c.Viper.SetDefault(sdkReconnectEnabled, false)
+	c.Viper.SetDefault(sdkHealthCheckInterval, 45*time.Second)
+	c.Viper.SetDefault(sdkHealthProbeTimeout, 4*time.Second)
+	c.Viper.SetDefault(sdkHealthFailureThreshold, 3)
+	c.Viper.SetDefault(sdkReconnectCooldown, 10*time.Minute)
+	c.Viper.SetDefault(sdkReconnectLeaseTTL, 2*time.Minute)
+	c.Viper.SetDefault(sdkReconnectObservation, 3*time.Minute)
+	c.Viper.SetDefault(sdkReconnectMaxConcurrent, 1)
+	c.Viper.SetDefault(sdkReconnectMaxAttempts, 3)
+	c.Viper.SetDefault(sdkUnhealthyFleetFraction, 0.3)
+	c.Viper.SetDefault(sdkHealthSentinelURL, defaultSDKHealthSentinelURL)
+
+	bindSDKEnv(c.Viper, sdkHealthCheckEnabled, "SDK_HEALTH_CHECK_ENABLED")
+	bindSDKEnv(c.Viper, sdkReconnectEnabled, "SDK_RECONNECT_ENABLED")
+	bindSDKEnv(c.Viper, sdkHealthCheckInterval, "SDK_HEALTH_CHECK_INTERVAL")
+	bindSDKEnv(c.Viper, sdkHealthProbeTimeout, "SDK_HEALTH_PROBE_TIMEOUT")
+	bindSDKEnv(c.Viper, sdkHealthFailureThreshold, "SDK_HEALTH_FAILURE_THRESHOLD")
+	bindSDKEnv(c.Viper, sdkReconnectCooldown, "SDK_RECONNECT_COOLDOWN")
+	bindSDKEnv(c.Viper, sdkReconnectLeaseTTL, "SDK_RECONNECT_LEASE_TTL")
+	bindSDKEnv(c.Viper, sdkReconnectObservation, "SDK_RECONNECT_OBSERVATION_WINDOW")
+	bindSDKEnv(c.Viper, sdkReconnectMaxConcurrent, "SDK_RECONNECT_MAX_CONCURRENT")
+	bindSDKEnv(c.Viper, sdkReconnectMaxAttempts, "SDK_RECONNECT_MAX_ATTEMPTS")
+	bindSDKEnv(c.Viper, sdkUnhealthyFleetFraction, "SDK_UNHEALTHY_FLEET_FRACTION")
+	bindSDKEnv(c.Viper, sdkHealthSentinelURL, "SDK_HEALTH_SENTINEL_URL")
+}
+
+func bindSDKEnv(v *viper.Viper, key string, snakeName string) {
+	legacyName := "LW_" + strings.ToUpper(key)
+	err := v.BindEnv(key, "LW_"+snakeName, legacyName)
+	if err != nil {
+		panic(err)
+	}
 }
