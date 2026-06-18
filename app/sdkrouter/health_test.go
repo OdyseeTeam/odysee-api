@@ -2,6 +2,7 @@ package sdkrouter
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -83,11 +84,71 @@ func (h hungSDKProbeHandler) ServeHTTP(_ http.ResponseWriter, _ *http.Request) {
 func TestSDKFleetCircuitRequiresMinimumCount(t *testing.T) {
 	assert.False(t, sdkFleetCircuitOpen(2, 5, 0.3))
 	assert.True(t, sdkFleetCircuitOpen(3, 5, 0.3))
+	assert.False(t, sdkFleetCircuitOpen(2, 2, 0.3))
 	assert.False(t, sdkFleetCircuitOpen(5, 5, 1))
 }
 
+func TestSDKFleetCircuitScopesByGroup(t *testing.T) {
+	var probes []sdkHealthProbe
+	probes = appendSDKGroupProbes(probes, "a", 40, 12)
+	probes = appendSDKGroupProbes(probes, "b", 50, 16)
+	probes = appendSDKGroupProbes(probes, "v", 2, 2)
+	startingGroupStart := len(probes)
+	probes = appendSDKGroupProbes(probes, "s", 50, 16)
+	for i := 0; i < 16; i++ {
+		probes[startingGroupStart+i].result = sdkProbeStarting
+	}
+
+	openByGroup := sdkFleetCircuitOpenByGroup(probes, 0.3)
+
+	assert.False(t, openByGroup["a"])
+	assert.True(t, openByGroup["b"])
+	assert.False(t, openByGroup["v"])
+	assert.False(t, openByGroup["s"])
+}
+
+func appendSDKGroupProbes(probes []sdkHealthProbe, group string, total int, unhealthy int) []sdkHealthProbe {
+	for i := 0; i < total; i++ {
+		result := sdkProbeHealthy
+		if i < unhealthy {
+			result = sdkProbeDeadLoop
+		}
+		probes = append(probes, sdkHealthProbe{
+			server: &models.LbrynetServer{
+				Address: fmt.Sprintf("http://lbrynet-%s-%d.lbrynet-%s:5279/", group, i, group),
+			},
+			result: result,
+		})
+	}
+	return probes
+}
+
+func TestSDKServerGroup(t *testing.T) {
+	tests := map[string]string{
+		"http://lbrynet-a-15.lbrynet-a:5279/":                   "a",
+		"http://lbrynet-b-49.lbrynet-b:5279/":                   "b",
+		"http://lbrynet-v-1.lbrynet-v:5279/":                    "v",
+		"http://lbrynet-alpha-beta-12.lbrynet-alpha-beta:5279/": "alpha-beta",
+		"http://lbrynet-c.lbrynet-c:5279/":                      "c",
+		"http://sdk:5279/":                                      sdkMonitorContextKey,
+	}
+
+	for address, expectedGroup := range tests {
+		assert.Equal(t, expectedGroup, sdkServerGroup(address), address)
+	}
+}
+
+func TestSDKWatcherRecoveringMethodsHandlePanics(t *testing.T) {
+	var r *Router
+
+	assert.NotPanics(t, r.refreshLoadAndMetricsRecovering)
+	assert.NotPanics(t, func() {
+		r.runHealthCheckRecovering(sdkHealthRuntimeConfig{}, nil)
+	})
+}
+
 func TestSDKDeadLoopThresholdResetsOnNonActionableProbe(t *testing.T) {
-	r := NewWithServers(&models.LbrynetServer{Name: "sdk", Address: "http://sdk"})
+	r := NewWithServers(&models.LbrynetServer{Name: sdkMonitorContextKey, Address: "http://sdk"})
 
 	assert.False(t, r.markSDKDeadLoop("http://sdk", 2))
 	r.markSDKNonActionable("http://sdk")

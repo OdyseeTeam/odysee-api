@@ -7,7 +7,9 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,6 +24,7 @@ import (
 const (
 	sdkMethodResolve         = "resolve"
 	sdkMethodWalletReconnect = "wallet_reconnect"
+	sdkMonitorContextKey     = "sdk"
 	sdkParamURLs             = "urls"
 	sdkFleetCircuitMinCount  = 3
 
@@ -78,6 +81,11 @@ type sdkHealthProbe struct {
 	result sdkProbeResult
 }
 
+type sdkFleetCircuitCount struct {
+	total     int
+	unhealthy int
+}
+
 func (r *Router) WatchHealth() {
 	if !config.GetSDKHealthCheckEnabled() {
 		return
@@ -101,13 +109,13 @@ func (r *Router) WatchHealth() {
 
 	logger.Log().Infof("SDK router watching health on %d instances", len(r.GetAll()))
 	r.sleepBeforeHealthWatch(cfg)
-	r.runHealthCheck(cfg, store)
+	r.runHealthCheckRecovering(cfg, store)
 
 	ticker := time.NewTicker(cfg.HealthCheckInterval)
 	defer ticker.Stop()
 	for {
 		<-ticker.C
-		r.runHealthCheck(cfg, store)
+		r.runHealthCheckRecovering(cfg, store)
 	}
 }
 
@@ -159,7 +167,6 @@ func (r *Router) runHealthCheck(cfg sdkHealthRuntimeConfig, store *sdkLeaseStore
 	}
 
 	probes := make([]sdkHealthProbe, 0, len(servers))
-	unhealthyCount := 0
 	for _, server := range servers {
 		result := probeSDKHealth(server.Address, cfg)
 		probes = append(probes, sdkHealthProbe{server: server, result: result})
@@ -168,14 +175,13 @@ func (r *Router) runHealthCheck(cfg sdkHealthRuntimeConfig, store *sdkLeaseStore
 			metrics.LbrynetInstanceHealthy.WithLabelValues(server.Address).Set(1)
 		} else {
 			metrics.LbrynetInstanceHealthy.WithLabelValues(server.Address).Set(0)
-			if result != sdkProbeStarting {
-				unhealthyCount++
-			}
 		}
 	}
 
-	fleetCircuitOpen := sdkFleetCircuitOpen(unhealthyCount, len(servers), cfg.UnhealthyFleetFraction)
+	fleetCircuits := sdkFleetCircuitOpenByGroup(probes, cfg.UnhealthyFleetFraction)
 	for _, probe := range probes {
+		group := sdkServerGroup(probe.server.Address)
+		fleetCircuitOpen := fleetCircuits[group]
 		r.handleHealthProbe(cfg, store, probe.server, probe.result, fleetCircuitOpen)
 	}
 }
@@ -386,12 +392,61 @@ func timeoutError(err error) bool {
 	return false
 }
 
+func sdkFleetCircuitOpenByGroup(probes []sdkHealthProbe, unhealthyFleetFraction float64) map[string]bool {
+	countsByGroup := map[string]sdkFleetCircuitCount{}
+	for _, probe := range probes {
+		group := sdkServerGroup(probe.server.Address)
+		counts := countsByGroup[group]
+		counts.total++
+		if probe.result != sdkProbeHealthy && probe.result != sdkProbeStarting {
+			counts.unhealthy++
+		}
+		countsByGroup[group] = counts
+	}
+
+	openByGroup := map[string]bool{}
+	for group, counts := range countsByGroup {
+		openByGroup[group] = sdkFleetCircuitOpen(counts.unhealthy, counts.total, unhealthyFleetFraction)
+	}
+	return openByGroup
+}
+
 func sdkFleetCircuitOpen(unhealthyCount int, total int, unhealthyFleetFraction float64) bool {
-	if total == 0 || unhealthyCount < sdkFleetCircuitMinCount {
+	if total == 0 {
+		return false
+	}
+	if unhealthyCount < sdkFleetCircuitMinCount {
 		return false
 	}
 	unhealthyFraction := float64(unhealthyCount) / float64(total)
 	return unhealthyFraction > unhealthyFleetFraction
+}
+
+func sdkServerGroup(address string) string {
+	host := address
+	parsed, err := url.Parse(address)
+	if err == nil && parsed.Host != "" {
+		host = parsed.Host
+	}
+	splitHost, _, err := net.SplitHostPort(host)
+	if err == nil {
+		host = splitHost
+	}
+	host = strings.Split(host, ".")[0]
+	if strings.HasPrefix(host, "lbrynet-") {
+		group := strings.TrimPrefix(host, "lbrynet-")
+		lastDash := strings.LastIndex(group, "-")
+		if lastDash > 0 {
+			_, err = strconv.Atoi(group[lastDash+1:])
+			if err == nil {
+				return group[:lastDash]
+			}
+		}
+		if group != "" {
+			return group
+		}
+	}
+	return host
 }
 
 func (r *Router) markSDKHealthy(address string) *sdkActiveRecovery {
@@ -500,7 +555,7 @@ func newSDKHealthOwner() string {
 func reportSDKMaxAttemptsExhausted(address string, reason string) {
 	err := fmt.Errorf("SDK reconnect attempts exhausted for %s: %s", address, reason)
 	logger.Log().Error(err)
-	monitor.ErrorToSentry(err, map[string]string{"sdk": address})
+	monitor.ErrorToSentry(err, map[string]string{sdkMonitorContextKey: address})
 	decisionMetric(address, sdkReconnectDecisionMaxAttemptsExhausted)
 }
 

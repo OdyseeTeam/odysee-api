@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/OdyseeTeam/odysee-api/internal/errors"
 	"github.com/OdyseeTeam/odysee-api/internal/metrics"
 	"github.com/OdyseeTeam/odysee-api/internal/monitor"
 	"github.com/OdyseeTeam/odysee-api/models"
@@ -13,7 +14,12 @@ import (
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 )
 
-const RPCTimeout = 420 * time.Second
+const (
+	RPCTimeout           = 420 * time.Second
+	sdkHealthWatcherName = "health"
+	sdkLoadWatcherName   = "load"
+	sdkWatcherContextKey = "watcher"
+)
 
 var logger = monitor.NewModuleLogger("sdkrouter")
 
@@ -113,16 +119,37 @@ func (r *Router) WatchLoad() {
 	ticker := time.NewTicker(2 * time.Minute)
 
 	logger.Log().Infof("SDK router watching load on %d instances", len(r.servers))
-	r.reloadServersFromDB()
-	r.updateLoadAndMetrics()
+	r.refreshLoadAndMetricsRecovering()
 
 	time.Sleep(time.Duration(rand.Intn(60)) * time.Second) // stagger these so they don't all happen at the same time for every api server
 
 	for {
 		<-ticker.C
-		r.reloadServersFromDB()
-		r.updateLoadAndMetrics()
+		r.refreshLoadAndMetricsRecovering()
 	}
+}
+
+func (r *Router) refreshLoadAndMetricsRecovering() {
+	var recoveredErr error
+	defer reportSDKWatcherPanic(sdkLoadWatcherName, &recoveredErr)
+	defer errors.Recover(&recoveredErr)
+	r.reloadServersFromDB()
+	r.updateLoadAndMetrics()
+}
+
+func (r *Router) runHealthCheckRecovering(cfg sdkHealthRuntimeConfig, store *sdkLeaseStore) {
+	var recoveredErr error
+	defer reportSDKWatcherPanic(sdkHealthWatcherName, &recoveredErr)
+	defer errors.Recover(&recoveredErr)
+	r.runHealthCheck(cfg, store)
+}
+
+func reportSDKWatcherPanic(watcher string, recoveredErr *error) {
+	if recoveredErr == nil || *recoveredErr == nil {
+		return
+	}
+	logger.Log().Errorf("recovered panic in SDK %s watcher: %s", watcher, *recoveredErr)
+	monitor.ErrorToSentry(*recoveredErr, map[string]string{sdkWatcherContextKey: watcher})
 }
 
 func (r *Router) updateLoadAndMetrics() {
