@@ -22,6 +22,7 @@ var rootCmd = &cobra.Command{
 	Run: func(_ *cobra.Command, _ []string) {
 		sdkRouter := sdkrouter.New(config.GetLbrynetServers())
 		go sdkRouter.WatchLoad()
+		go sdkRouter.WatchHealth()
 
 		s := server.NewServer(config.GetAddress(), sdkRouter, &api.RoutesOptions{
 			EnableProfiling: config.GetProfiling(),

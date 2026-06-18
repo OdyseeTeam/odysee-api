@@ -45,3 +45,56 @@ func TestGetRPCTimeout(t *testing.T) {
 	assert.Equal(t, 200*time.Millisecond, *GetRPCTimeout("resolve"))
 	assert.Nil(t, GetRPCTimeout("random_method"))
 }
+
+func TestSDKHealthConfigSnakeCaseEnv(t *testing.T) {
+	t.Setenv("LW_SDK_HEALTH_CHECK_ENABLED", "true")
+	t.Setenv("LW_SDK_HEALTH_CHECK_INTERVAL", "30s")
+
+	assert.True(t, GetSDKHealthCheckEnabled())
+	assert.Equal(t, 30*time.Second, GetSDKHealthCheckInterval())
+}
+
+func TestSDKHealthConfigLegacyEnvStillWorks(t *testing.T) {
+	t.Setenv("LW_SDKHEALTHCHECKENABLED", "true")
+
+	assert.True(t, GetSDKHealthCheckEnabled())
+}
+
+func TestValidateSDKHealthConfig(t *testing.T) {
+	assert.NoError(t, ValidateSDKHealthConfig())
+
+	Config.Override(sdkHealthCheckInterval, 0)
+	assert.Error(t, ValidateSDKHealthConfig())
+	Config.RestoreOverridden()
+
+	Config.Override(sdkHealthCheckInterval, 45)
+	assert.Error(t, ValidateSDKHealthConfig())
+	Config.RestoreOverridden()
+
+	Config.Override(sdkReconnectEnabled, false)
+	Config.Override(sdkReconnectMaxConcurrent, 0)
+	Config.Override(sdkReconnectLeaseTTL, time.Nanosecond)
+	assert.NoError(t, ValidateSDKHealthConfig())
+	Config.RestoreOverridden()
+
+	Config.Override(sdkReconnectEnabled, true)
+	Config.Override(sdkHealthCheckInterval, 5*time.Second)
+	Config.Override(sdkReconnectLeaseTTL, 5*time.Second)
+	defer Config.RestoreOverridden()
+	assert.Error(t, ValidateSDKHealthConfig())
+}
+
+func TestSDKHealthConfigDefaults(t *testing.T) {
+	assert.False(t, GetSDKHealthCheckEnabled())
+	assert.False(t, GetSDKReconnectEnabled())
+	assert.Equal(t, 45*time.Second, GetSDKHealthCheckInterval())
+	assert.Equal(t, 4*time.Second, GetSDKHealthProbeTimeout())
+	assert.Equal(t, 3, GetSDKHealthFailureThreshold())
+	assert.Equal(t, 10*time.Minute, GetSDKReconnectCooldown())
+	assert.Equal(t, 2*time.Minute, GetSDKReconnectLeaseTTL())
+	assert.Equal(t, 3*time.Minute, GetSDKReconnectObservationWindow())
+	assert.Equal(t, 1, GetSDKReconnectMaxConcurrent())
+	assert.Equal(t, 3, GetSDKReconnectMaxAttempts())
+	assert.Equal(t, 0.3, GetSDKUnhealthyFleetFraction())
+	assert.Equal(t, defaultSDKHealthSentinelURL, GetSDKHealthSentinelURL())
+}

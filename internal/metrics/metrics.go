@@ -20,6 +20,8 @@ const (
 	nsOperations  = "op"
 	nsPublish     = "publish"
 
+	subsystemWalletReconnect = "wallet_reconnect"
+
 	LabelSource   = "source"
 	LabelInstance = "instance"
 	LabelPlayer   = "player"
@@ -182,6 +184,42 @@ var (
 		Name:      "count",
 		Help:      "Number of wallets currently loaded",
 	}, []string{LabelSource})
+	LbrynetHealthProbeTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: nsLbrynet,
+		Subsystem: "health",
+		Name:      "probe_total",
+		Help:      "Total number of SDK health probe results",
+	}, []string{LabelSource, "result"})
+	LbrynetInstanceHealthy = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: nsLbrynet,
+		Subsystem: "instance",
+		Name:      "healthy",
+		Help:      "Whether the SDK instance is currently healthy",
+	}, []string{LabelSource})
+	LbrynetWalletReconnectAttemptTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: nsLbrynet,
+		Subsystem: subsystemWalletReconnect,
+		Name:      "attempt_total",
+		Help:      "Total number of SDK wallet reconnect attempts",
+	}, []string{LabelSource})
+	LbrynetWalletReconnectAcceptedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: nsLbrynet,
+		Subsystem: subsystemWalletReconnect,
+		Name:      "accepted_total",
+		Help:      "Total number of accepted SDK wallet reconnect requests",
+	}, []string{LabelSource})
+	LbrynetWalletReconnectRecoveredTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: nsLbrynet,
+		Subsystem: subsystemWalletReconnect,
+		Name:      "recovered_total",
+		Help:      "Total number of SDK wallet reconnect recoveries confirmed by a healthy probe",
+	}, []string{LabelSource})
+	LbrynetWalletReconnectDecisionTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: nsLbrynet,
+		Subsystem: subsystemWalletReconnect,
+		Name:      "decision_total",
+		Help:      "Total number of SDK wallet reconnect decisions",
+	}, []string{LabelSource, "decision"})
 
 	UIBufferCount = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: nsUI,

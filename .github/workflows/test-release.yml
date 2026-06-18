@@ -5,6 +5,9 @@ on:
     branches:
       - master
       - dev
+    tags:
+      - 'api-v*'
+      - 'watchman-v*'
   pull_request:
     branches:
       - master
@@ -32,19 +35,6 @@ jobs:
         with:
           go-version: '1.26'
         id: go
-
-      - name: Retrieve release details
-        id: release_details
-        run: |
-          echo "APP_NAME=$(git describe --tags|sed -e 's/\-v.*//')" >> $GITHUB_ENV
-          echo "APP_VERSION=$(git describe --tags --match '*-v*'|sed 's/.*v\([0-9.]*\).*/\1/')" >> $GITHUB_ENV
-
-      - name: Release details
-        run: |
-            echo "::group::app ${{ env.APP_NAME }}"
-            echo "version ${{ env.APP_VERSION }}"
-            echo "env ${{ github.ref }}"
-            echo "::endgroup::"
 
       - name: Set up containers
         run: docker compose up -d
@@ -83,7 +73,7 @@ jobs:
   release:
     name: release
     needs: test
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
 
     steps:
@@ -95,20 +85,56 @@ jobs:
           go-version: '1.26'
         id: go
 
-      - run: git branch
-
-      - name: Retrieve release details
-        id: release
+      - name: Compute release details
         run: |
-          echo "APP_NAME=$(git describe --tags|sed -e 's/\-v.*//')" >> $GITHUB_ENV
-          echo "APP_VERSION=$(git describe --tags --match '*-v*'|sed 's/.*v\([0-9.]*\).*/\1/')" >> $GITHUB_ENV
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
+            app="${tag%%-v*}"
+            version="${tag#*-v}"
+            case "$app" in
+              api|watchman) ;;
+              *) echo "::error::unsupported app in tag: $app"; exit 1 ;;
+            esac
+            if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::version does not match CalVer pattern: $version"
+              exit 1
+            fi
+            case "$app" in
+              api) image="odyseeteam/odysee-api" ;;
+              watchman) image="odyseeteam/watchman" ;;
+            esac
+            {
+              echo "APP_NAME=$app"
+              echo "APP_VERSION=$version"
+              echo "APP_IMAGE_TAG=$version"
+              echo "DOCKER_TAGS<<EOF"
+              echo "$image:$version"
+              echo "$image:latest"
+              echo "EOF"
+            } >> "$GITHUB_ENV"
+          else
+            {
+              echo "APP_NAME=api"
+              echo "APP_VERSION="
+              echo "APP_IMAGE_TAG=$GITHUB_REF_NAME"
+              echo "DOCKER_TAGS<<EOF"
+              echo "odyseeteam/odysee-api:$GITHUB_REF_NAME"
+              echo "EOF"
+            } >> "$GITHUB_ENV"
+          fi
 
-      - name: Release details
+      - name: Show release details
         run: |
-            echo "::group::${{ env.APP_NAME }}"
-            echo "version ${{ env.APP_VERSION }}"
-            echo "env ${{ github.ref }}"
-            echo "::endgroup::"
+          echo "::group::release details"
+          echo "APP_NAME=$APP_NAME"
+          echo "APP_VERSION=$APP_VERSION"
+          echo "APP_IMAGE_TAG=$APP_IMAGE_TAG"
+          echo "DOCKER_TAGS<<<"
+          echo "$DOCKER_TAGS"
+          echo ">>>"
+          echo "ref=$GITHUB_REF"
+          echo "::endgroup::"
 
       - name: Login to DockerHub
         uses: docker/login-action@v4
@@ -116,11 +142,16 @@ jobs:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # odysee-api deployment
+      # odysee-api
 
-      - name: Build odysee-api
+      - name: Build odysee-api binary
         if: env.APP_NAME == 'api'
-        run: make oapi
+        run: |
+          if [ -z "$APP_VERSION" ]; then
+            make oapi oapi_version="$GITHUB_SHA"
+          else
+            make oapi
+          fi
 
       - name: Build and push odysee-api docker image
         if: env.APP_NAME == 'api'
@@ -128,9 +159,7 @@ jobs:
         with:
           push: true
           context: .
-          tags: |
-            odyseeteam/odysee-${{ env.APP_NAME }}:latest
-            odyseeteam/odysee-${{ env.APP_NAME }}:${{ env.APP_VERSION }}
+          tags: ${{ env.DOCKER_TAGS }}
 
       - name: Deploy odysee-api
         if: env.APP_NAME == 'api'
@@ -139,34 +168,32 @@ jobs:
         run: |
           gh api repos/odyseeteam/misc-deployment/dispatches \
             -f event_type=deploy-odysee \
-            -f 'client_payload[tag]=${{ env.APP_VERSION }}' \
-            -f 'client_payload[ref]=${{ github.ref }}' \
+            -f "client_payload[tag]=$APP_IMAGE_TAG" \
+            -f "client_payload[ref]=$GITHUB_REF" \
             -f 'client_payload[service]=odysee-api'
 
-      # Watchman deployment
+      # Watchman (tag push only)
 
-      - name: Build watchman
+      - name: Build watchman binary
         if: env.APP_NAME == 'watchman'
         run: make watchman
 
-      - name: Build watchman docker image
+      - name: Build and push watchman docker image
         if: env.APP_NAME == 'watchman'
         uses: docker/build-push-action@v7
         with:
           push: true
-          context: apps/${{ env.APP_NAME }}/
-          tags: |
-            odyseeteam/${{ env.APP_NAME }}:latest
-            odyseeteam/${{ env.APP_NAME }}:${{ env.APP_VERSION }}
-          file: apps/${{ env.APP_NAME }}/Dockerfile
+          context: apps/watchman/
+          tags: ${{ env.DOCKER_TAGS }}
+          file: apps/watchman/Dockerfile
 
       - name: Deploy watchman
-        if: env.APP_NAME == 'watchman'
+        if: env.APP_NAME == 'watchman' && startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
         run: |
           gh api repos/OdyseeTeam/misc-deployment/dispatches \
             -f event_type=deploy-odysee \
-            -f 'client_payload[tag]=${{ env.APP_VERSION }}' \
-            -f 'client_payload[ref]=${{ github.ref }}' \
-            -f 'client_payload[service]=${{ env.APP_NAME }}'
+            -f "client_payload[tag]=$APP_IMAGE_TAG" \
+            -f "client_payload[ref]=$GITHUB_REF" \
+            -f 'client_payload[service]=watchman'

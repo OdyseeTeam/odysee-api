@@ -673,7 +673,8 @@ func TestCaller_DontReloadWalletAfterOtherErrors(t *testing.T) {
 }
 
 func TestCaller_DontReloadWalletIfAlreadyLoaded(t *testing.T) {
-	walletID := sdkrouter.WalletID(rand.Intn(100))
+	const walletUserID = 123321
+	walletID := sdkrouter.WalletID(walletUserID)
 
 	srv := test.MockHTTPServer(nil)
 	defer srv.Close()
