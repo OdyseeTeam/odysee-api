@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -93,6 +94,50 @@ func (s *asynqueryHandlerSuite) TestCreateUpload() {
 			s.Equal(s.launcher.uploadServiceURL+c.suffix+"/", rr.Payload.(UploadTokenCreatedPayload).Location)
 		})
 	}
+}
+
+func (s *asynqueryHandlerSuite) TestUploadTranscodePackage() {
+	ts := httptest.NewServer(s.router)
+	defer ts.Close()
+
+	claimID := "1234567890abcdef1234567890abcdef12345678"
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	err := writer.WriteField("claim_id", claimID)
+	s.Require().NoError(err)
+
+	part, err := writer.CreateFormFile("master.m3u8", "master.m3u8")
+	s.Require().NoError(err)
+	_, err = part.Write([]byte("#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1280x720\nv0.m3u8\n"))
+	s.Require().NoError(err)
+
+	part2, err := writer.CreateFormFile("v0.m3u8", "v0.m3u8")
+	s.Require().NoError(err)
+	_, err = part2.Write([]byte("#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXTINF:2.0,\nv0_00000.ts\n#EXT-X-ENDLIST\n"))
+	s.Require().NoError(err)
+
+	err = writer.Close()
+	s.Require().NoError(err)
+
+	httpTest := &test.HTTPTest{
+		Method: http.MethodPost,
+		URL:    ts.URL + "/api/v1/asynqueries/transcode/upload",
+		ReqHeader: map[string]string{
+			wallet.AuthorizationHeader: s.userHelper.TokenHeader,
+			"Content-Type":              writer.FormDataContentType(),
+		},
+		ReqBody: body,
+		Code:    http.StatusOK,
+	}
+
+	resp := httpTest.Run(s.router, s.T())
+	var res TranscodeUploadResponse
+	err = json.Unmarshal(resp.Body.Bytes(), &res)
+	s.Require().NoError(err)
+	s.Equal("success", res.Status)
+	s.Equal(claimID, res.ClaimID)
+	s.Equal(2, res.FilesCount)
 }
 
 func (s *asynqueryHandlerSuite) TestCreate() {

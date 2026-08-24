@@ -40,6 +40,17 @@ OAuth:
 PublishSourceDir: ./rundata/storage/publish
 GeoPublishSourceDir: ./rundata/storage/geopublish
 
+TranscoderS3:
+  Endpoint: https://s3.wasabisys.com
+  Region: us-east-1
+  Bucket: production-videos
+  Key: YOUR_KEY
+  Secret: secret3
+  Flavor: aws
+
+TranscoderDB:
+  DSN: "postgres://postgres:postgres@localhost:5432/transcoder?sslmode=disable"
+
 PaidTokenPrivKey: token_privkey.rsa
 
 # Change this key for production!

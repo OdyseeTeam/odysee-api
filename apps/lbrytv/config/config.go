@@ -9,6 +9,7 @@ import (
 
 	cfg "github.com/OdyseeTeam/odysee-api/config"
 	"github.com/OdyseeTeam/odysee-api/models"
+	"github.com/OdyseeTeam/odysee-api/pkg/configng"
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
 
@@ -227,6 +228,28 @@ func GetCacheGetterInterval() time.Duration {
 
 func GetCORSDomains() []string {
 	return Config.Viper.GetStringSlice("CORSDomains")
+}
+
+func GetTranscoderS3Config() *configng.S3Config {
+	if !Config.Viper.IsSet("TranscoderS3") {
+		return nil
+	}
+	var s3cfg configng.S3Config
+	if err := Config.Viper.UnmarshalKey("TranscoderS3", &s3cfg); err != nil {
+		return nil
+	}
+	return &s3cfg
+}
+
+func GetTranscoderDBConfig() *configng.PostgresConfig {
+	if !Config.Viper.IsSet("TranscoderDB") {
+		return nil
+	}
+	var pcfg configng.PostgresConfig
+	if err := Config.Viper.UnmarshalKey("TranscoderDB", &pcfg); err != nil {
+		return nil
+	}
+	return &pcfg
 }
 
 func GetRPCTimeout(method string) *time.Duration {
