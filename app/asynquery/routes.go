@@ -91,6 +91,7 @@ func (l *Launcher) InstallRoutes(r *mux.Router) error {
 	r.PathPrefix("/").HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}).Methods(http.MethodOptions)
 	r.HandleFunc("/auth/pubkey", keyfob.PublicKeyHandler).Methods("GET")
 	r.HandleFunc("/{type:(?:urls)|(?:uploads)}/", handler.CreateUpload).Methods("POST")
+	r.HandleFunc("/transcode/upload", handler.UploadTranscodePackage).Methods("POST")
 	r.HandleFunc("/{id}", handler.Get).Methods("GET")
 	r.HandleFunc("/", handler.CreateQuery).Methods("POST")
 	l.logger.Info("routes installed")
