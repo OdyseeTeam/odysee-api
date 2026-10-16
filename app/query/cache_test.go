@@ -45,7 +45,7 @@ func TestRetrieveCachesSlowGetter(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				backend := &deadlineCache{entries: make(map[string]any)}
 				queryCache := NewQueryCache(backend)
-				query, err := NewQuery(jsonrpc.NewRequest(MethodResolve, map[string]any{"urls": []string{"what"}}), "")
+				query, err := NewQuery(jsonrpc.NewRequest(MethodResolve, map[string]any{ParamUrls: []string{"what"}}), "")
 				require.NoError(t, err)
 				result := map[string]any{"resolved": "lbry://what"}
 				calls := 0
