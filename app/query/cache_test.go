@@ -40,14 +40,15 @@ func (c *deadlineCache) Set(ctx context.Context, key, value any, _ ...store.Opti
 }
 
 func TestRetrieveCachesSlowGetter(t *testing.T) {
+	const url = "lbry://cache-deadline-regression"
 	for _, delay := range []time.Duration{0, 6 * time.Second} {
 		t.Run(delay.String(), func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				backend := &deadlineCache{entries: make(map[string]any)}
 				queryCache := NewQueryCache(backend)
-				query, err := NewQuery(jsonrpc.NewRequest(MethodResolve, map[string]any{ParamUrls: []string{"what"}}), "")
+				query, err := NewQuery(jsonrpc.NewRequest(MethodResolve, map[string]any{ParamUrls: []string{url}}), "")
 				require.NoError(t, err)
-				result := map[string]any{"resolved": "lbry://what"}
+				result := map[string]any{"resolved": url}
 				calls := 0
 				getter := func() (any, error) {
 					calls++
