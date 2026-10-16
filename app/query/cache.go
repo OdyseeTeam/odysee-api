@@ -127,9 +127,12 @@ func (c *QueryCache) Retrieve(query *Query, getter func() (any, error)) (*Cached
 		if res.Error != nil {
 			log.Debugf("rpc error received (%s), not caching", cacheReq.Method)
 		} else {
+			// Retrieval may outlast the lookup deadline; give the write its own budget.
+			setCtx, setCancel := context.WithTimeout(context.Background(), 5000*time.Millisecond)
+			defer setCancel()
 			start := time.Now()
 			err = c.cache.Set(
-				ctx, cacheReq, cacheResp,
+				setCtx, cacheReq, cacheResp,
 				store.WithExpiration(cacheReq.Expiration()),
 				store.WithTags(cacheReq.Tags()),
 			)
