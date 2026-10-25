@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand/v2"
-	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -306,14 +305,8 @@ func (c *Caller) SendQuery(ctx context.Context, q *Query) (*jsonrpc.RPCResponse,
 func (c *Caller) newRPCClient(timeout time.Duration) jsonrpc.RPCClient {
 	client := jsonrpc.NewClientWithOpts(c.Endpoint(), &jsonrpc.RPCClientOpts{
 		HTTPClient: &http.Client{
-			Timeout: sdkrouter.RPCTimeout + timeout,
-			Transport: &http.Transport{
-				Dial: (&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 120 * time.Second,
-				}).Dial,
-				ResponseHeaderTimeout: timeout * 2,
-			},
+			Timeout:   sdkrouter.RPCTimeout + timeout,
+			Transport: rpcTransport(timeout),
 		},
 	})
 	return client
