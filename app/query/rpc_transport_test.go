@@ -2,6 +2,7 @@ package query
 
 import (
 	"fmt"
+	"html"
 	"io"
 	"net"
 	"net/http"
@@ -68,6 +69,7 @@ func TestRPCTransportConcurrentPoolCreation(t *testing.T) {
 }
 
 func TestRPCTransportPreservesMethodHeaderTimeouts(t *testing.T) {
+	const responseBody = "delayed response"
 	fast := rpcTransport(20 * time.Millisecond)
 	slow := rpcTransport(2 * time.Second)
 	defer fast.CloseIdleConnections()
@@ -78,7 +80,7 @@ func TestRPCTransportPreservesMethodHeaderTimeouts(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-time.After(120 * time.Millisecond):
-			fmt.Fprint(w, "ok")
+			fmt.Fprint(w, responseBody)
 		case <-r.Context().Done():
 		}
 	}))
@@ -98,7 +100,7 @@ func TestRPCTransportPreservesMethodHeaderTimeouts(t *testing.T) {
 	}
 	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
-	if err != nil || string(body) != "ok" {
+	if err != nil || string(body) != responseBody {
 		t.Fatalf("longer deadline did not succeed: %q %v", body, err)
 	}
 }
@@ -108,7 +110,7 @@ func TestRPCTransportDoesNotMixEndpointOrRequestHeaders(t *testing.T) {
 	defer transport.CloseIdleConnections()
 	server := func(prefix string) *httptest.Server {
 		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, "%s:%s", prefix, r.Header.Get("X-Wallet-Test"))
+			fmt.Fprintf(w, "%s:%s", prefix, html.EscapeString(r.Header.Get("X-Wallet-Test")))
 		}))
 	}
 	a, b := server("a"), server("b")
